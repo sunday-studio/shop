@@ -21,6 +21,7 @@ import (
 	"shop/internal/receipts"
 	"shop/internal/search"
 	"shop/internal/shopping"
+	"shop/internal/shopsuggest"
 	"shop/internal/stats"
 	"shop/internal/store"
 	"shop/internal/store/db"
@@ -49,13 +50,14 @@ type Server struct {
 	Deps
 	q       *db.Queries
 	pairing *pairLimiter
+	suggest *shopsuggest.Service
 }
 
 func New(d Deps) *Server {
 	if d.Location == nil {
 		d.Location = time.UTC
 	}
-	return &Server{Deps: d, q: db.New(d.DB), pairing: newPairLimiter()}
+	return &Server{Deps: d, q: db.New(d.DB), pairing: newPairLimiter(), suggest: shopsuggest.NewService(d.DB)}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -83,6 +85,9 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("GET /v1/receipts/{id}", s.getReceipt)
 	api.HandleFunc("PATCH /v1/receipts/{id}", s.updateReceipt)
 	api.HandleFunc("DELETE /v1/receipts/{id}", s.deleteReceipt)
+	api.HandleFunc("GET /v1/receipts/{id}/shop-suggestion", s.getShopSuggestion)
+	api.HandleFunc("POST /v1/receipts/{id}/shop-suggestion/accept", s.acceptShopSuggestion)
+	api.HandleFunc("POST /v1/receipts/{id}/shop-suggestion/reject", s.rejectShopSuggestion)
 	api.HandleFunc("GET /v1/receipts/{id}/image", s.receiptImage)
 	api.HandleFunc("POST /v1/receipts/{id}/confirm", s.confirmReceipt)
 	api.HandleFunc("POST /v1/receipts/{id}/reparse", s.requeue(false))

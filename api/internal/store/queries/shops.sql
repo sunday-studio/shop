@@ -22,3 +22,10 @@ RETURNING *;
 UPDATE shops
 SET deleted_at = ?, updated_at = ?
 WHERE id = ? AND deleted_at IS NULL;
+
+-- name: RejectShopSuggestion :exec
+INSERT INTO shop_suggestion_rejections (branch_key, created_at) VALUES (?, ?)
+ON CONFLICT (branch_key) DO NOTHING;
+
+-- name: IsShopSuggestionRejected :one
+SELECT COUNT(*) FROM shop_suggestion_rejections WHERE branch_key = ?;

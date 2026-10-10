@@ -237,6 +237,12 @@ func (s *Server) getReceipt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := toReceipt(rec, lines)
+	if sug, err := s.suggest.Suggest(r.Context(), id); err != nil {
+		s.writeErr(w, r, err)
+		return
+	} else {
+		out.ShopSuggestion = toShopSuggestion(sug)
+	}
 	if err := s.withProducts(r, *out.Lines); err != nil {
 		s.writeErr(w, r, err)
 		return

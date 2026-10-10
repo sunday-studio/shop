@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.9.1
+  version: 0.10.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -264,6 +264,78 @@ paths:
       operationId: deleteReceipt
       responses:
         "204": { description: Deleted (image file too) }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/{id}/shop-suggestion:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      operationId: getShopSuggestion
+      description: |
+        Reads the receipt header (chain name + street/number/town) and suggests a shop: an existing one
+        or a new one to create. `suggestion` is null when nothing safe can be said (cropped slips, unreadable
+        header, already on the right shop, or rejected before). Supermarket-style receipts only.
+      responses:
+        "200":
+          description: The suggestion (or null)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [receipt_id, suggestion]
+                properties:
+                  receipt_id: { type: integer, format: int64 }
+                  suggestion:
+                    nullable: true
+                    allOf: [{ $ref: "#/components/schemas/ShopSuggestion" }]
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/{id}/shop-suggestion/accept:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: acceptShopSuggestion
+      description: |
+        Puts the receipt on the suggested shop. With `shop_id` it uses that existing shop; otherwise it
+        creates a new shop called `name` (default: the suggested name) from the suggested chain and branch.
+        With `apply_to_waiting` (default true) every other unconfirmed receipt from the same branch is moved
+        to that shop too. Confirmed receipts are never touched.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shop_id: { type: integer, format: int64 }
+                name: { type: string, description: "name for the new shop; the user may edit the suggestion" }
+                apply_to_waiting: { type: boolean, default: true }
+      responses:
+        "200":
+          description: The shop and the receipts that were moved onto it (this one included)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [shop, linked_receipt_ids]
+                properties:
+                  shop: { $ref: "#/components/schemas/Shop" }
+                  linked_receipt_ids: { type: array, items: { type: integer, format: int64 } }
+        "409":
+          description: The receipt is confirmed
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/{id}/shop-suggestion/reject:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: rejectShopSuggestion
+      description: Remembers the branch so this suggestion is not offered again.
+      responses:
+        "204": { description: Remembered }
         default: { $ref: "#/components/responses/Problem" }
 
   /v1/receipts/{id}/image:
@@ -1237,10 +1309,29 @@ components:
         purchased_at: { type: string, format: date-time }
         total_cents: { type: integer, format: int64 }
 
+    ShopSuggestion:
+      type: object
+      required: [kind, name, confidence, evidence, waiting_receipt_ids]
+      properties:
+        kind: { type: string, enum: [existing, new] }
+        shop_id: { type: integer, format: int64, description: "set when kind=existing" }
+        name: { type: string, description: "existing shop's name, or the proposed name of the new shop" }
+        chain: { type: string }
+        branch: { type: string, description: "street + number, town" }
+        confidence: { type: number, format: float }
+        evidence: { type: array, items: { type: string }, description: "header rows the suggestion was read from" }
+        waiting_receipt_ids:
+          type: array
+          items: { type: integer, format: int64 }
+          description: other unconfirmed receipts from the same branch that accepting would move to the shop
     Receipt:
       type: object
       required: [id, shop_id, status, review_reasons, created_at, updated_at]
       properties:
+        shop_suggestion:
+          nullable: true
+          description: single-receipt GET only; null/absent when there is nothing to suggest
+          allOf: [{ $ref: "#/components/schemas/ShopSuggestion" }]
         id: { type: integer, format: int64 }
         shop_id: { type: integer, format: int64 }
         purchased_at: { type: string, format: date-time }

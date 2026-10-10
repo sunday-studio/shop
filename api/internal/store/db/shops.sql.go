@@ -83,6 +83,17 @@ func (q *Queries) GetShop(ctx context.Context, id int64) (Shop, error) {
 	return i, err
 }
 
+const isShopSuggestionRejected = `-- name: IsShopSuggestionRejected :one
+SELECT COUNT(*) FROM shop_suggestion_rejections WHERE branch_key = ?
+`
+
+func (q *Queries) IsShopSuggestionRejected(ctx context.Context, branchKey string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, isShopSuggestionRejected, branchKey)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const listShops = `-- name: ListShops :many
 SELECT id, name, chain, branch, address, city, parser_profile, notes, created_at, updated_at, deleted_at, domain FROM shops
 WHERE deleted_at IS NULL
@@ -123,6 +134,21 @@ func (q *Queries) ListShops(ctx context.Context) ([]Shop, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const rejectShopSuggestion = `-- name: RejectShopSuggestion :exec
+INSERT INTO shop_suggestion_rejections (branch_key, created_at) VALUES (?, ?)
+ON CONFLICT (branch_key) DO NOTHING
+`
+
+type RejectShopSuggestionParams struct {
+	BranchKey string `json:"branch_key"`
+	CreatedAt string `json:"created_at"`
+}
+
+func (q *Queries) RejectShopSuggestion(ctx context.Context, arg RejectShopSuggestionParams) error {
+	_, err := q.db.ExecContext(ctx, rejectShopSuggestion, arg.BranchKey, arg.CreatedAt)
+	return err
 }
 
 const softDeleteShop = `-- name: SoftDeleteShop :execrows
