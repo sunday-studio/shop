@@ -25,7 +25,7 @@ func newStatsFixture(t *testing.T) *statsFixture {
 	e := newEnv(t)
 	f := &statsFixture{e: e, ah: e.shop("AH"), lidl: e.shop("Lidl")}
 	for _, c := range decodeAs[[]apitypes.Category](t, e.do("GET", "/v1/categories", nil)) {
-		if c.Name == "Zuivel" {
+		if c.Name == "Dairy" {
 			f.zuivel = c.Id
 		}
 	}

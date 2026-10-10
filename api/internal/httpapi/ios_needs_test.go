@@ -21,7 +21,7 @@ func TestReceiptCountsAndLineProducts(t *testing.T) {
 	shop := e.shop("AH")
 	var zuivel int64
 	for _, c := range decodeAs[[]apitypes.Category](t, e.do("GET", "/v1/categories", nil)) {
-		if c.Name == "Zuivel" {
+		if c.Name == "Dairy" {
 			zuivel = c.Id
 		}
 	}
