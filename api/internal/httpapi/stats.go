@@ -1,8 +1,10 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"shop/internal/apitypes"
@@ -62,17 +64,24 @@ func (s *Server) getSpend(w http.ResponseWriter, r *http.Request) {
 	group := stats.ByMonth
 	if v := q.Get("group_by"); v != "" {
 		group = stats.GroupBy(v)
-		if !group.Valid() {
-			s.writeErr(w, r, badf("group_by must be day, week, month, shop or category"))
-			return
-		}
 	}
 	shop, err := s.optInt64(r, "shop_id")
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
-	res, err := s.Stats.Spend(r.Context(), from, to, group, shop)
+	cat, err := s.optInt64(r, "category_id")
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	res, err := s.Stats.Spend(r.Context(), stats.SpendQuery{
+		From: from, To: to, GroupBy: group, SplitBy: stats.GroupBy(q.Get("split_by")), ShopID: shop, CategoryID: cat,
+	})
+	if errors.Is(err, stats.ErrInvalid) {
+		s.writeErr(w, r, badf("%s", strings.TrimPrefix(err.Error(), stats.ErrInvalid.Error()+": ")))
+		return
+	}
 	if err != nil {
 		s.writeErr(w, r, err)
 		return

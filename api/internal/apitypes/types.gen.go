@@ -422,6 +422,7 @@ const (
 	SpendGroupByCategory SpendGroupBy = "category"
 	SpendGroupByDay      SpendGroupBy = "day"
 	SpendGroupByMonth    SpendGroupBy = "month"
+	SpendGroupByProduct  SpendGroupBy = "product"
 	SpendGroupByShop     SpendGroupBy = "shop"
 	SpendGroupByWeek     SpendGroupBy = "week"
 )
@@ -435,9 +436,50 @@ func (e SpendGroupBy) Valid() bool {
 		return true
 	case SpendGroupByMonth:
 		return true
+	case SpendGroupByProduct:
+		return true
 	case SpendGroupByShop:
 		return true
 	case SpendGroupByWeek:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SpendSplitBy.
+const (
+	SpendSplitByCategory SpendSplitBy = "category"
+	SpendSplitByShop     SpendSplitBy = "shop"
+)
+
+// Valid indicates whether the value is a known member of the SpendSplitBy enum.
+func (e SpendSplitBy) Valid() bool {
+	switch e {
+	case SpendSplitByCategory:
+		return true
+	case SpendSplitByShop:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SpendBucketUnit.
+const (
+	SpendBucketUnitKg SpendBucketUnit = "kg"
+	SpendBucketUnitL  SpendBucketUnit = "l"
+	SpendBucketUnitPc SpendBucketUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the SpendBucketUnit enum.
+func (e SpendBucketUnit) Valid() bool {
+	switch e {
+	case SpendBucketUnitKg:
+		return true
+	case SpendBucketUnitL:
+		return true
+	case SpendBucketUnitPc:
 		return true
 	default:
 		return false
@@ -477,11 +519,33 @@ func (e GetAuthStatus200JSONResponseBodyServer) Valid() bool {
 	}
 }
 
+// Defines values for ListProductsParamsSort.
+const (
+	Name      ListProductsParamsSort = "name"
+	Purchases ListProductsParamsSort = "purchases"
+	Recent    ListProductsParamsSort = "recent"
+)
+
+// Valid indicates whether the value is a known member of the ListProductsParamsSort enum.
+func (e ListProductsParamsSort) Valid() bool {
+	switch e {
+	case Name:
+		return true
+	case Purchases:
+		return true
+	case Recent:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetSpendParamsGroupBy.
 const (
 	GetSpendParamsGroupByCategory GetSpendParamsGroupBy = "category"
 	GetSpendParamsGroupByDay      GetSpendParamsGroupBy = "day"
 	GetSpendParamsGroupByMonth    GetSpendParamsGroupBy = "month"
+	GetSpendParamsGroupByProduct  GetSpendParamsGroupBy = "product"
 	GetSpendParamsGroupByShop     GetSpendParamsGroupBy = "shop"
 	GetSpendParamsGroupByWeek     GetSpendParamsGroupBy = "week"
 )
@@ -495,9 +559,29 @@ func (e GetSpendParamsGroupBy) Valid() bool {
 		return true
 	case GetSpendParamsGroupByMonth:
 		return true
+	case GetSpendParamsGroupByProduct:
+		return true
 	case GetSpendParamsGroupByShop:
 		return true
 	case GetSpendParamsGroupByWeek:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSpendParamsSplitBy.
+const (
+	GetSpendParamsSplitByCategory GetSpendParamsSplitBy = "category"
+	GetSpendParamsSplitByShop     GetSpendParamsSplitBy = "shop"
+)
+
+// Valid indicates whether the value is a known member of the GetSpendParamsSplitBy enum.
+func (e GetSpendParamsSplitBy) Valid() bool {
+	switch e {
+	case GetSpendParamsSplitByCategory:
+		return true
+	case GetSpendParamsSplitByShop:
 		return true
 	default:
 		return false
@@ -742,9 +826,11 @@ type Product struct {
 	Barcode       *string              `json:"barcode,omitempty"`
 	Brand         *string              `json:"brand,omitempty"`
 	CategoryId    *int64               `json:"category_id,omitempty"`
+	Cheapest      *ShopPrice           `json:"cheapest,omitempty"`
 	CreatedAt     time.Time            `json:"created_at"`
 	HasImage      bool                 `json:"has_image"`
 	Id            int64                `json:"id"`
+	LastBoughtAt  *time.Time           `json:"last_bought_at,omitempty"`
 	Name          string               `json:"name"`
 	NameEn        *string              `json:"name_en,omitempty"`
 	NameEnSource  *ProductNameEnSource `json:"name_en_source,omitempty"`
@@ -756,6 +842,9 @@ type Product struct {
 	// Nutrition Values per 100 g / 100 ml.
 	Nutrition         *Nutrition `json:"nutrition,omitempty"`
 	OpenfoodfactsCode *string    `json:"openfoodfacts_code,omitempty"`
+
+	// Purchases receipts it was bought on
+	Purchases *int `json:"purchases,omitempty"`
 
 	// Score search relevance, only with q
 	Score     *float64  `json:"score,omitempty"`
@@ -950,6 +1039,7 @@ type Spend struct {
 	From     time.Time     `json:"from"`
 	GroupBy  SpendGroupBy  `json:"group_by"`
 	Receipts int           `json:"receipts"`
+	SplitBy  *SpendSplitBy `json:"split_by,omitempty"`
 
 	// To exclusive
 	To         time.Time `json:"to"`
@@ -959,15 +1049,34 @@ type Spend struct {
 // SpendGroupBy defines model for Spend.GroupBy.
 type SpendGroupBy string
 
+// SpendSplitBy defines model for Spend.SplitBy.
+type SpendSplitBy string
+
 // SpendBucket defines model for SpendBucket.
 type SpendBucket struct {
 	Cents int64 `json:"cents"`
 
-	// Key 2026-10-03 | 2026-W40 | 2026-10 | shop id | category id | none
-	Key      string `json:"key"`
-	Label    string `json:"label"`
-	Receipts int    `json:"receipts"`
+	// Key 2026-10-03 | 2026-W40 | 2026-10 | shop id | category id | none | product id
+	Key   string `json:"key"`
+	Label string `json:"label"`
+
+	// Qty group_by=product: quantity bought, in unit
+	Qty      *float64 `json:"qty,omitempty"`
+	Receipts int      `json:"receipts"`
+
+	// Split with split_by: parts of this bucket, largest first (absent when the bucket has no spend)
+	Split *[]struct {
+		Cents int64  `json:"cents"`
+		Key   string `json:"key"`
+		Label string `json:"label"`
+	} `json:"split,omitempty"`
+
+	// Unit group_by=product
+	Unit *SpendBucketUnit `json:"unit,omitempty"`
 }
+
+// SpendBucketUnit group_by=product
+type SpendBucketUnit string
 
 // UnmatchedLine defines model for UnmatchedLine.
 type UnmatchedLine struct {
@@ -1028,9 +1137,15 @@ type ListChangesParams struct {
 type ListProductsParams struct {
 	Q          *string `form:"q,omitempty" json:"q,omitempty"`
 	CategoryId *int64  `form:"category_id,omitempty" json:"category_id,omitempty"`
-	Limit      *int    `form:"limit,omitempty" json:"limit,omitempty"`
-	Offset     *int    `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Sort without q: name (default), recent (last bought first) or purchases (most bought first)
+	Sort   *ListProductsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+	Limit  *int                    `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int                    `form:"offset,omitempty" json:"offset,omitempty"`
 }
+
+// ListProductsParamsSort defines parameters for ListProducts.
+type ListProductsParamsSort string
 
 // PutProductImageMultipartBody defines parameters for PutProductImage.
 type PutProductImageMultipartBody struct {
@@ -1107,11 +1222,20 @@ type GetSpendParams struct {
 	From    *openapi_types.Date    `form:"from,omitempty" json:"from,omitempty"`
 	To      *openapi_types.Date    `form:"to,omitempty" json:"to,omitempty"`
 	GroupBy *GetSpendParamsGroupBy `form:"group_by,omitempty" json:"group_by,omitempty"`
-	ShopId  *int64                 `form:"shop_id,omitempty" json:"shop_id,omitempty"`
+
+	// SplitBy with a time group_by: category or shop; each bucket carries split[] and its cents is their sum
+	SplitBy *GetSpendParamsSplitBy `form:"split_by,omitempty" json:"split_by,omitempty"`
+
+	// CategoryId group_by=product only
+	CategoryId *int64 `form:"category_id,omitempty" json:"category_id,omitempty"`
+	ShopId     *int64 `form:"shop_id,omitempty" json:"shop_id,omitempty"`
 }
 
 // GetSpendParamsGroupBy defines parameters for GetSpend.
 type GetSpendParamsGroupBy string
+
+// GetSpendParamsSplitBy defines parameters for GetSpend.
+type GetSpendParamsSplitBy string
 
 // PreviewTranslationParams defines parameters for PreviewTranslation.
 type PreviewTranslationParams struct {

@@ -206,7 +206,7 @@ func (s *server) resolveProduct(ctx context.Context, ref string) (ProductRef, er
 type SpendIn struct {
 	From    string `json:"from,omitempty" jsonschema:"start date YYYY-MM-DD, inclusive (default: 30 days ago)"`
 	To      string `json:"to,omitempty" jsonschema:"end date YYYY-MM-DD, inclusive (default: today)"`
-	GroupBy string `json:"group_by,omitempty" jsonschema:"day, week, month (default), shop or category"`
+	GroupBy string `json:"group_by,omitempty" jsonschema:"day, week, month (default), shop, category or product"`
 	Shop    string `json:"shop,omitempty" jsonschema:"only this shop (id or name)"`
 }
 
@@ -214,7 +214,9 @@ type SpendBucket struct {
 	Key   string `json:"key"`
 	Label string `json:"label"`
 	Amount
-	Receipts int `json:"receipts"`
+	Receipts int     `json:"receipts"`
+	Qty      float64 `json:"qty,omitempty"`  // group_by=product
+	Unit     string  `json:"unit,omitempty"` // group_by=product
 }
 
 type SpendOut struct {
@@ -249,7 +251,7 @@ func (s *server) spendSummary(ctx context.Context, _ *mcp.CallToolRequest, in Sp
 		group = stats.GroupBy(in.GroupBy)
 	}
 	if !group.Valid() {
-		return nil, SpendOut{}, errors.New("group_by must be day, week, month, shop or category")
+		return nil, SpendOut{}, errors.New("group_by must be day, week, month, shop, category or product")
 	}
 	shop, err := s.resolveShop(ctx, in.Shop)
 	if err != nil {
@@ -260,14 +262,18 @@ func (s *server) spendSummary(ctx context.Context, _ *mcp.CallToolRequest, in Sp
 	if shop != nil {
 		shopID, out.Shop = &shop.ID, shop.Name
 	}
-	res, err := s.Stats.Spend(ctx, from, to, group, shopID)
+	res, err := s.Stats.Spend(ctx, stats.SpendQuery{From: from, To: to, GroupBy: group, ShopID: shopID})
 	if err != nil {
 		return nil, SpendOut{}, err
 	}
 	out.Total, out.Receipts = amount(res.TotalCents), res.Receipts
 	out.Buckets = make([]SpendBucket, 0, len(res.Buckets))
 	for _, b := range res.Buckets {
-		out.Buckets = append(out.Buckets, SpendBucket{Key: b.Key, Label: b.Label, Amount: amount(b.Cents), Receipts: b.Receipts})
+		sb := SpendBucket{Key: b.Key, Label: b.Label, Amount: amount(b.Cents), Receipts: b.Receipts, Unit: b.Unit}
+		if b.Qty != nil {
+			sb.Qty = *b.Qty
+		}
+		out.Buckets = append(out.Buckets, sb)
 	}
 	return nil, out, nil
 }

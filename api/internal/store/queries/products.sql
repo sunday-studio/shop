@@ -100,3 +100,32 @@ LIMIT 500;
 -- name: SetProductEnglish :exec
 UPDATE products SET name_en = ?, name_en_source = ? WHERE id = ?;
 
+
+-- name: ListProductsByRecent :many
+-- Most recently bought first; never-bought products last, then by name.
+-- (Separate queries per order: sqlc can't bind args inside ORDER BY on SQLite.)
+SELECT sqlc.embed(p) FROM products p
+LEFT JOIN (
+  SELECT l.product_id AS pid, MAX(COALESCE(r.purchased_at, r.created_at)) AS last_at
+  FROM receipt_lines l JOIN receipts r ON r.id = l.receipt_id
+  WHERE l.kind = 'item' AND l.product_id IS NOT NULL AND r.status IN ('ok', 'needs_review')
+  GROUP BY l.product_id
+) b ON b.pid = p.id
+WHERE p.deleted_at IS NULL
+  AND (sqlc.narg(category_id) IS NULL OR p.category_id = sqlc.narg(category_id))
+ORDER BY b.last_at IS NULL, b.last_at DESC, p.name
+LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);
+
+-- name: ListProductsByPurchases :many
+-- Most often bought first; never-bought products last, then by name.
+SELECT sqlc.embed(p) FROM products p
+LEFT JOIN (
+  SELECT l.product_id AS pid, COUNT(DISTINCT r.id) AS n
+  FROM receipt_lines l JOIN receipts r ON r.id = l.receipt_id
+  WHERE l.kind = 'item' AND l.product_id IS NOT NULL AND r.status IN ('ok', 'needs_review')
+  GROUP BY l.product_id
+) b ON b.pid = p.id
+WHERE p.deleted_at IS NULL
+  AND (sqlc.narg(category_id) IS NULL OR p.category_id = sqlc.narg(category_id))
+ORDER BY b.n IS NULL, b.n DESC, p.name
+LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);

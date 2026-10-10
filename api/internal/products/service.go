@@ -332,14 +332,47 @@ type SearchResult struct {
 	Score float64
 }
 
-// List returns products; with a query they are ranked by fuzzy score.
-func (s *Service) List(ctx context.Context, query string, categoryID *int64, limit, offset int) ([]SearchResult, error) {
+// Sort orders for listing without a query.
+const (
+	SortName      = "name"
+	SortRecent    = "recent"    // most recently bought first
+	SortPurchases = "purchases" // most often bought first
+)
+
+// List returns products; with a query they are ranked by fuzzy score,
+// otherwise ordered by sort (name, recent or purchases).
+func (s *Service) List(ctx context.Context, query string, categoryID *int64, limit, offset int, sortBy string) ([]SearchResult, error) {
 	if strings.TrimSpace(query) == "" {
-		arg := db.ListProductsParams{Lim: int64(limit), Off: int64(offset)}
+		var cat any
 		if categoryID != nil {
-			arg.CategoryID = *categoryID
+			cat = *categoryID
 		}
-		ps, err := s.q.ListProducts(ctx, arg)
+		var ps []db.Product
+		var err error
+		order := sortBy
+		if order == "" {
+			order = SortName
+		}
+		switch order {
+		case SortRecent, SortPurchases:
+			var rows []db.ListProductsByRecentRow
+			if order == SortRecent {
+				rows, err = s.q.ListProductsByRecent(ctx, db.ListProductsByRecentParams{CategoryID: cat, Lim: int64(limit), Off: int64(offset)})
+			} else {
+				var prs []db.ListProductsByPurchasesRow
+				prs, err = s.q.ListProductsByPurchases(ctx, db.ListProductsByPurchasesParams{CategoryID: cat, Lim: int64(limit), Off: int64(offset)})
+				for _, r := range prs {
+					rows = append(rows, db.ListProductsByRecentRow(r))
+				}
+			}
+			for _, r := range rows {
+				ps = append(ps, r.Product)
+			}
+		case SortName:
+			ps, err = s.q.ListProducts(ctx, db.ListProductsParams{CategoryID: cat, Lim: int64(limit), Off: int64(offset)})
+		default:
+			return nil, fmt.Errorf("%w: sort must be name, recent or purchases", ErrInvalid)
+		}
 		if err != nil {
 			return nil, err
 		}

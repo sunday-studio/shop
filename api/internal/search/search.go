@@ -47,7 +47,7 @@ func (s *Service) Search(ctx context.Context, q string, limit int) (Results, err
 		return out, nil
 	}
 	var err error
-	if out.Products, err = s.products.List(ctx, q, nil, limit, 0); err != nil {
+	if out.Products, err = s.products.List(ctx, q, nil, limit, 0, ""); err != nil {
 		return out, err
 	}
 	if out.Aliases, err = s.matcher.SearchAliases(ctx, q, limit, 0.6); err != nil {

@@ -371,6 +371,133 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]P
 	return items, nil
 }
 
+const listProductsByPurchases = `-- name: ListProductsByPurchases :many
+SELECT p.id, p.name, p.brand, p.category_id, p.barcode, p.net_quantity, p.net_unit, p.image_path, p.off_code, p.created_at, p.updated_at, p.deleted_at, p.name_en, p.name_en_source FROM products p
+LEFT JOIN (
+  SELECT l.product_id AS pid, COUNT(DISTINCT r.id) AS n
+  FROM receipt_lines l JOIN receipts r ON r.id = l.receipt_id
+  WHERE l.kind = 'item' AND l.product_id IS NOT NULL AND r.status IN ('ok', 'needs_review')
+  GROUP BY l.product_id
+) b ON b.pid = p.id
+WHERE p.deleted_at IS NULL
+  AND (?1 IS NULL OR p.category_id = ?1)
+ORDER BY b.n IS NULL, b.n DESC, p.name
+LIMIT ?3 OFFSET ?2
+`
+
+type ListProductsByPurchasesParams struct {
+	CategoryID interface{} `json:"category_id"`
+	Off        int64       `json:"off"`
+	Lim        int64       `json:"lim"`
+}
+
+type ListProductsByPurchasesRow struct {
+	Product Product `json:"product"`
+}
+
+// Most often bought first; never-bought products last, then by name.
+func (q *Queries) ListProductsByPurchases(ctx context.Context, arg ListProductsByPurchasesParams) ([]ListProductsByPurchasesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listProductsByPurchases, arg.CategoryID, arg.Off, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListProductsByPurchasesRow{}
+	for rows.Next() {
+		var i ListProductsByPurchasesRow
+		if err := rows.Scan(
+			&i.Product.ID,
+			&i.Product.Name,
+			&i.Product.Brand,
+			&i.Product.CategoryID,
+			&i.Product.Barcode,
+			&i.Product.NetQuantity,
+			&i.Product.NetUnit,
+			&i.Product.ImagePath,
+			&i.Product.OffCode,
+			&i.Product.CreatedAt,
+			&i.Product.UpdatedAt,
+			&i.Product.DeletedAt,
+			&i.Product.NameEn,
+			&i.Product.NameEnSource,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductsByRecent = `-- name: ListProductsByRecent :many
+SELECT p.id, p.name, p.brand, p.category_id, p.barcode, p.net_quantity, p.net_unit, p.image_path, p.off_code, p.created_at, p.updated_at, p.deleted_at, p.name_en, p.name_en_source FROM products p
+LEFT JOIN (
+  SELECT l.product_id AS pid, MAX(COALESCE(r.purchased_at, r.created_at)) AS last_at
+  FROM receipt_lines l JOIN receipts r ON r.id = l.receipt_id
+  WHERE l.kind = 'item' AND l.product_id IS NOT NULL AND r.status IN ('ok', 'needs_review')
+  GROUP BY l.product_id
+) b ON b.pid = p.id
+WHERE p.deleted_at IS NULL
+  AND (?1 IS NULL OR p.category_id = ?1)
+ORDER BY b.last_at IS NULL, b.last_at DESC, p.name
+LIMIT ?3 OFFSET ?2
+`
+
+type ListProductsByRecentParams struct {
+	CategoryID interface{} `json:"category_id"`
+	Off        int64       `json:"off"`
+	Lim        int64       `json:"lim"`
+}
+
+type ListProductsByRecentRow struct {
+	Product Product `json:"product"`
+}
+
+// Most recently bought first; never-bought products last, then by name.
+// (Separate queries per order: sqlc can't bind args inside ORDER BY on SQLite.)
+func (q *Queries) ListProductsByRecent(ctx context.Context, arg ListProductsByRecentParams) ([]ListProductsByRecentRow, error) {
+	rows, err := q.db.QueryContext(ctx, listProductsByRecent, arg.CategoryID, arg.Off, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListProductsByRecentRow{}
+	for rows.Next() {
+		var i ListProductsByRecentRow
+		if err := rows.Scan(
+			&i.Product.ID,
+			&i.Product.Name,
+			&i.Product.Brand,
+			&i.Product.CategoryID,
+			&i.Product.Barcode,
+			&i.Product.NetQuantity,
+			&i.Product.NetUnit,
+			&i.Product.ImagePath,
+			&i.Product.OffCode,
+			&i.Product.CreatedAt,
+			&i.Product.UpdatedAt,
+			&i.Product.DeletedAt,
+			&i.Product.NameEn,
+			&i.Product.NameEnSource,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recentUnmatchedLines = `-- name: RecentUnmatchedLines :many
 SELECT l.id, l.receipt_id, l.line_no, l.raw_text, l.norm_text, l.kind, l.qty, l.unit, l.unit_price_cents, l.line_total_cents, l.vat_code, l.parent_line_id, l.product_id, l.user_edited, r.shop_id, r.purchased_at, s.name AS shop_name
 FROM receipt_lines l

@@ -79,6 +79,46 @@ func (q *Queries) ProductPricePoints(ctx context.Context, arg ProductPricePoints
 	return items, nil
 }
 
+const productPurchaseSummary = `-- name: ProductPurchaseSummary :many
+SELECT l.product_id AS product_id,
+       CAST(COUNT(DISTINCT r.id) AS INTEGER) AS purchases,
+       CAST(MAX(COALESCE(r.purchased_at, r.created_at)) AS TEXT) AS last_at
+FROM receipt_lines l
+JOIN receipts r ON r.id = l.receipt_id
+WHERE l.kind = 'item' AND l.product_id IS NOT NULL AND r.status IN ('ok', 'needs_review')
+GROUP BY l.product_id
+`
+
+type ProductPurchaseSummaryRow struct {
+	ProductID sql.NullInt64 `json:"product_id"`
+	Purchases int64         `json:"purchases"`
+	LastAt    string        `json:"last_at"`
+}
+
+// Per product: receipts it was bought on, and the most recent purchase.
+func (q *Queries) ProductPurchaseSummary(ctx context.Context) ([]ProductPurchaseSummaryRow, error) {
+	rows, err := q.db.QueryContext(ctx, productPurchaseSummary)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ProductPurchaseSummaryRow{}
+	for rows.Next() {
+		var i ProductPurchaseSummaryRow
+		if err := rows.Scan(&i.ProductID, &i.Purchases, &i.LastAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const productPurchases = `-- name: ProductPurchases :many
 SELECT l.product_id, p.name AS product_name, r.id AS receipt_id,
        CAST(MIN(COALESCE(r.purchased_at, r.created_at)) AS TEXT) AS at
@@ -130,7 +170,8 @@ func (q *Queries) ProductPurchases(ctx context.Context, since sql.NullString) ([
 const spendLines = `-- name: SpendLines :many
 SELECT r.id AS receipt_id, r.shop_id, s.name AS shop_name,
        CAST(COALESCE(r.purchased_at, r.created_at) AS TEXT) AS at,
-       l.kind, l.line_total_cents,
+       l.kind, l.qty, l.unit, l.line_total_cents,
+       p.id AS product_id, p.name AS product_name,
        c.id AS category_id, c.name AS category_name
 FROM receipt_lines l
 JOIN receipts r ON r.id = l.receipt_id
@@ -156,12 +197,17 @@ type SpendLinesRow struct {
 	ShopName       string         `json:"shop_name"`
 	At             string         `json:"at"`
 	Kind           string         `json:"kind"`
+	Qty            float64        `json:"qty"`
+	Unit           string         `json:"unit"`
 	LineTotalCents int64          `json:"line_total_cents"`
+	ProductID      sql.NullInt64  `json:"product_id"`
+	ProductName    sql.NullString `json:"product_name"`
 	CategoryID     sql.NullInt64  `json:"category_id"`
 	CategoryName   sql.NullString `json:"category_name"`
 }
 
-// Lines with the category of their product (discounts inherit from their parent item).
+// Lines with the product and category they count towards (discounts
+// inherit both from their parent item).
 func (q *Queries) SpendLines(ctx context.Context, arg SpendLinesParams) ([]SpendLinesRow, error) {
 	rows, err := q.db.QueryContext(ctx, spendLines, arg.FromTs, arg.ToTs, arg.ShopID)
 	if err != nil {
@@ -177,7 +223,11 @@ func (q *Queries) SpendLines(ctx context.Context, arg SpendLinesParams) ([]Spend
 			&i.ShopName,
 			&i.At,
 			&i.Kind,
+			&i.Qty,
+			&i.Unit,
 			&i.LineTotalCents,
+			&i.ProductID,
+			&i.ProductName,
 			&i.CategoryID,
 			&i.CategoryName,
 		); err != nil {
