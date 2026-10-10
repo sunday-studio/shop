@@ -15,6 +15,7 @@ import (
 	"shop/internal/apitypes"
 	"shop/internal/backup"
 	"shop/internal/english"
+	"shop/internal/logos"
 	"shop/internal/ocr"
 	"shop/internal/products"
 	"shop/internal/receipts"
@@ -36,6 +37,7 @@ type Deps struct {
 	List        *shopping.Service
 	English     *english.Service
 	Search      *search.Service
+	Logos       *logos.Cache // nil or disabled: no logos
 	Location    *time.Location
 	Log         *slog.Logger
 	DataDir     string // for backup status and storage size; optional
@@ -68,6 +70,7 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("GET /v1/shops/{id}", s.getShop)
 	api.HandleFunc("PATCH /v1/shops/{id}", s.updateShop)
 	api.HandleFunc("DELETE /v1/shops/{id}", s.deleteShop)
+	api.HandleFunc("GET /v1/shops/{id}/logo", s.shopLogo)
 
 	api.HandleFunc("GET /v1/categories", s.listCategories)
 	api.HandleFunc("POST /v1/categories", s.createCategory)

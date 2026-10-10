@@ -26,6 +26,7 @@ import (
 	"shop/internal/english"
 	"shop/internal/httpapi"
 	"shop/internal/jobs"
+	"shop/internal/logos"
 	"shop/internal/match"
 	"shop/internal/mcpserver"
 	"shop/internal/ocr"
@@ -123,6 +124,15 @@ func newEnv(t *testing.T) *env {
 		filepath.Join(dir, "images"), log)
 	st := stats.New(conn, ams)
 	list := shopping.New(conn, match.NewMatcher(conn), st)
+	logoDev := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/nologo.nl" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write([]byte("PNG:" + strings.TrimPrefix(r.URL.Path, "/")))
+	}))
+	t.Cleanup(logoDev.Close)
 	eng := english.New(conn)
 	if err := eng.Load(context.Background()); err != nil { // resets the global user glossary per test
 		t.Fatal(err)
@@ -131,6 +141,7 @@ func newEnv(t *testing.T) *env {
 		Matcher: match.NewMatcher(conn), English: eng, Location: ams})
 	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Stats: st, List: list, English: eng,
 		Search:   search.New(conn, prods, match.NewMatcher(conn)),
+		Logos:    logos.New("pk_test", filepath.Join(dir, "images")).WithBaseURL(logoDev.URL),
 		Location: ams, Log: log, DataDir: dir, Authed: map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)}})
 
 	q := db.New(conn)

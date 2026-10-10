@@ -21,6 +21,7 @@ services:
       OCR_FALLBACK_URL: ${OCR_FALLBACK_URL:-}
       OFF_USER_AGENT: "Shop/0.1 (self-hosted)"
       SHOP_TZ: Europe/Amsterdam
+      LOGO_DEV_TOKEN: ${LOGO_DEV_TOKEN:-}   # from deploy/.env (git-ignored)
     depends_on:
       ocr:
         condition: service_started

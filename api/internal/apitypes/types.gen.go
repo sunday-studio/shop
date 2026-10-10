@@ -893,7 +893,11 @@ type Shop struct {
 	Chain     *string   `json:"chain,omitempty"`
 	City      *string   `json:"city,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
+	Domain    *string   `json:"domain,omitempty"`
 	Id        int64     `json:"id"`
+
+	// LogoUrl relative URL of the cached logo; absent when there is none
+	LogoUrl   *string   `json:"logo_url,omitempty"`
 	Name      string    `json:"name"`
 	Notes     *string   `json:"notes,omitempty"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -905,8 +909,11 @@ type ShopInput struct {
 	Branch  *string `json:"branch,omitempty"`
 	Chain   *string `json:"chain,omitempty"`
 	City    *string `json:"city,omitempty"`
-	Name    string  `json:"name"`
-	Notes   *string `json:"notes,omitempty"`
+
+	// Domain Web domain for the logo, e.g. ah.nl. Omit to keep the current one (or have it guessed for known chains: Albert Heijn, Jumbo, Lidl, Aldi, Plus, Dirk, …); send "" to clear.
+	Domain *string `json:"domain,omitempty"`
+	Name   string  `json:"name"`
+	Notes  *string `json:"notes,omitempty"`
 }
 
 // ShopPrice defines model for ShopPrice.

@@ -1,23 +1,80 @@
 package httpapi
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	"shop/internal/apitypes"
+	"shop/internal/logos"
 	"shop/internal/store"
 	"shop/internal/store/db"
 )
 
-func toShop(s db.Shop) apitypes.Shop {
-	created, _ := store.ParseTS(s.CreatedAt)
-	updated, _ := store.ParseTS(s.UpdatedAt)
-	return apitypes.Shop{
-		Id: s.ID, Name: s.Name, Chain: store.StrPtr(s.Chain), Branch: store.StrPtr(s.Branch),
-		Address: store.StrPtr(s.Address), City: store.StrPtr(s.City), Notes: store.StrPtr(s.Notes),
-		CreatedAt: created, UpdatedAt: updated,
+func (s *Server) toShop(sh db.Shop) apitypes.Shop {
+	created, _ := store.ParseTS(sh.CreatedAt)
+	updated, _ := store.ParseTS(sh.UpdatedAt)
+	out := apitypes.Shop{
+		Id: sh.ID, Name: sh.Name, Chain: store.StrPtr(sh.Chain), Branch: store.StrPtr(sh.Branch),
+		Address: store.StrPtr(sh.Address), City: store.StrPtr(sh.City), Notes: store.StrPtr(sh.Notes),
+		Domain: store.StrPtr(sh.Domain), CreatedAt: created, UpdatedAt: updated,
 	}
+	if sh.Domain.Valid && s.Logos.Enabled() {
+		u := "/v1/shops/" + itoa(sh.ID) + "/logo"
+		out.LogoUrl = &u
+	}
+	return out
+}
+
+// shopDomain decides the stored domain: an explicit value (normalised; ""
+// clears it), else the current one, else a guess from the chain/name.
+func shopDomain(in apitypes.ShopInput, cur sql.NullString) (sql.NullString, error) {
+	if in.Domain != nil {
+		d, err := logos.NormaliseDomain(*in.Domain)
+		if err != nil {
+			return sql.NullString{}, badf("domain must look like ah.nl")
+		}
+		return store.Str(d), nil
+	}
+	if cur.Valid {
+		return cur, nil
+	}
+	chain := ""
+	if in.Chain != nil {
+		chain = *in.Chain
+	}
+	return store.Str(logos.GuessDomain(in.Name, chain)), nil
+}
+
+func (s *Server) shopLogo(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	sh, err := s.q.GetShop(r.Context(), id)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	if !sh.Domain.Valid || !s.Logos.Enabled() {
+		writeProblem(w, http.StatusNotFound, "no logo", "")
+		return
+	}
+	path, err := s.Logos.Path(r.Context(), sh.Domain.String)
+	if errors.Is(err, logos.ErrNoLogo) || errors.Is(err, logos.ErrDomain) {
+		writeProblem(w, http.StatusNotFound, "no logo", "")
+		return
+	}
+	if err != nil {
+		s.Log.Warn("logo fetch", "shop", id, "err", err)
+		writeProblem(w, http.StatusBadGateway, "logo unavailable", "")
+		return
+	}
+	w.Header().Set("Cache-Control", "private, max-age=604800")
+	http.ServeFile(w, r, path)
 }
 
 func decodeShop(r *http.Request) (apitypes.ShopInput, error) {
@@ -40,7 +97,7 @@ func (s *Server) listShops(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]apitypes.Shop, len(shops))
 	for i, sh := range shops {
-		out[i] = toShop(sh)
+		out[i] = s.toShop(sh)
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -56,7 +113,7 @@ func (s *Server) getShop(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toShop(sh))
+	writeJSON(w, http.StatusOK, s.toShop(sh))
 }
 
 func (s *Server) createShop(w http.ResponseWriter, r *http.Request) {
@@ -65,17 +122,22 @@ func (s *Server) createShop(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
+	domain, err := shopDomain(in, sql.NullString{})
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
 	now := store.Now()
 	sh, err := s.q.CreateShop(r.Context(), db.CreateShopParams{
 		Name: in.Name, Chain: store.NullStr(in.Chain), Branch: store.NullStr(in.Branch),
 		Address: store.NullStr(in.Address), City: store.NullStr(in.City), Notes: store.NullStr(in.Notes),
-		CreatedAt: now, UpdatedAt: now,
+		Domain: domain, CreatedAt: now, UpdatedAt: now,
 	})
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, toShop(sh))
+	writeJSON(w, http.StatusCreated, s.toShop(sh))
 }
 
 func (s *Server) updateShop(w http.ResponseWriter, r *http.Request) {
@@ -89,16 +151,26 @@ func (s *Server) updateShop(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
+	cur, err := s.q.GetShop(r.Context(), id)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	domain, err := shopDomain(in, cur.Domain)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
 	sh, err := s.q.UpdateShop(r.Context(), db.UpdateShopParams{
 		Name: in.Name, Chain: store.NullStr(in.Chain), Branch: store.NullStr(in.Branch),
 		Address: store.NullStr(in.Address), City: store.NullStr(in.City), Notes: store.NullStr(in.Notes),
-		UpdatedAt: store.Now(), ID: id,
+		Domain: domain, UpdatedAt: store.Now(), ID: id,
 	})
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toShop(sh))
+	writeJSON(w, http.StatusOK, s.toShop(sh))
 }
 
 func (s *Server) deleteShop(w http.ResponseWriter, r *http.Request) {

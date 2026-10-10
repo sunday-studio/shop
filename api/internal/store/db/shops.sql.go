@@ -11,9 +11,9 @@ import (
 )
 
 const createShop = `-- name: CreateShop :one
-INSERT INTO shops (name, chain, branch, address, city, notes, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, name, chain, branch, address, city, parser_profile, notes, created_at, updated_at, deleted_at
+INSERT INTO shops (name, chain, branch, address, city, notes, domain, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, name, chain, branch, address, city, parser_profile, notes, created_at, updated_at, deleted_at, domain
 `
 
 type CreateShopParams struct {
@@ -23,6 +23,7 @@ type CreateShopParams struct {
 	Address   sql.NullString `json:"address"`
 	City      sql.NullString `json:"city"`
 	Notes     sql.NullString `json:"notes"`
+	Domain    sql.NullString `json:"domain"`
 	CreatedAt string         `json:"created_at"`
 	UpdatedAt string         `json:"updated_at"`
 }
@@ -35,6 +36,7 @@ func (q *Queries) CreateShop(ctx context.Context, arg CreateShopParams) (Shop, e
 		arg.Address,
 		arg.City,
 		arg.Notes,
+		arg.Domain,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -51,12 +53,13 @@ func (q *Queries) CreateShop(ctx context.Context, arg CreateShopParams) (Shop, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Domain,
 	)
 	return i, err
 }
 
 const getShop = `-- name: GetShop :one
-SELECT id, name, chain, branch, address, city, parser_profile, notes, created_at, updated_at, deleted_at FROM shops
+SELECT id, name, chain, branch, address, city, parser_profile, notes, created_at, updated_at, deleted_at, domain FROM shops
 WHERE id = ? AND deleted_at IS NULL
 `
 
@@ -75,12 +78,13 @@ func (q *Queries) GetShop(ctx context.Context, id int64) (Shop, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Domain,
 	)
 	return i, err
 }
 
 const listShops = `-- name: ListShops :many
-SELECT id, name, chain, branch, address, city, parser_profile, notes, created_at, updated_at, deleted_at FROM shops
+SELECT id, name, chain, branch, address, city, parser_profile, notes, created_at, updated_at, deleted_at, domain FROM shops
 WHERE deleted_at IS NULL
 ORDER BY name
 `
@@ -106,6 +110,7 @@ func (q *Queries) ListShops(ctx context.Context) ([]Shop, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.Domain,
 		); err != nil {
 			return nil, err
 		}
@@ -142,9 +147,9 @@ func (q *Queries) SoftDeleteShop(ctx context.Context, arg SoftDeleteShopParams) 
 
 const updateShop = `-- name: UpdateShop :one
 UPDATE shops
-SET name = ?, chain = ?, branch = ?, address = ?, city = ?, notes = ?, updated_at = ?
+SET name = ?, chain = ?, branch = ?, address = ?, city = ?, notes = ?, domain = ?, updated_at = ?
 WHERE id = ? AND deleted_at IS NULL
-RETURNING id, name, chain, branch, address, city, parser_profile, notes, created_at, updated_at, deleted_at
+RETURNING id, name, chain, branch, address, city, parser_profile, notes, created_at, updated_at, deleted_at, domain
 `
 
 type UpdateShopParams struct {
@@ -154,6 +159,7 @@ type UpdateShopParams struct {
 	Address   sql.NullString `json:"address"`
 	City      sql.NullString `json:"city"`
 	Notes     sql.NullString `json:"notes"`
+	Domain    sql.NullString `json:"domain"`
 	UpdatedAt string         `json:"updated_at"`
 	ID        int64          `json:"id"`
 }
@@ -166,6 +172,7 @@ func (q *Queries) UpdateShop(ctx context.Context, arg UpdateShopParams) (Shop, e
 		arg.Address,
 		arg.City,
 		arg.Notes,
+		arg.Domain,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -182,6 +189,7 @@ func (q *Queries) UpdateShop(ctx context.Context, arg UpdateShopParams) (Shop, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Domain,
 	)
 	return i, err
 }

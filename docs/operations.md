@@ -42,7 +42,7 @@ Guessing is rate-limited: 5 wrong passwords from one address lock it out for 15 
 
 ## Configuration
 
-Set these as environment variables when running `make up`, or put them in `deploy/.env`.
+Set these as environment variables when running `make up`, or put them in `deploy/.env` (git-ignored; start from `deploy/.env.example`).
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -50,6 +50,7 @@ Set these as environment variables when running `make up`, or put them in `deplo
 | `SHOP_BACKUP_DIR` | `../backups` (repo `backups/`) | Host path of the backup target (NAS mount) |
 | `BACKUP_AT` | `03:30` | Daily backup time (Europe/Amsterdam) |
 | `BACKUP_KEEP_DAYS` | `30` | Snapshot retention; the newest 3 are always kept |
+| `LOGO_DEV_TOKEN` | — | logo.dev publishable key (`pk_…`) for shop logos. Keep it in `deploy/.env` (git-ignored; see `deploy/.env.example`). Without it the app shows monograms |
 | `OCR_URL` | `http://ocr:8000` | OCR engine (any service implementing the OCR contract) |
 | `OCR_FALLBACK_URL` | — | Second engine to retry `needs_review` receipts with |
 
