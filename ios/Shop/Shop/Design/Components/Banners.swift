@@ -142,6 +142,8 @@ struct ToastMessage: Identifiable, Equatable {
     let id = UUID()
     var text: String
     var tone: Tone = .neutral
+    /// Optional trailing button, e.g. "Undo". Runs once, then the toast closes.
+    var action: (title: String, run: () -> Void)? = nil
 
     static func == (a: ToastMessage, b: ToastMessage) -> Bool { a.id == b.id }
 }
@@ -153,9 +155,9 @@ final class ToastCenter {
     var current: ToastMessage?
     private var dismissTask: Task<Void, Never>?
 
-    func show(_ text: String, tone: Tone = .neutral, haptic: HapticEvent? = nil, duration: Duration = .seconds(2.6)) {
+    func show(_ text: String, tone: Tone = .neutral, haptic: HapticEvent? = nil, duration: Duration = .seconds(2.6), action: (title: String, run: () -> Void)? = nil) {
         if let haptic { Haptics.play(haptic) }
-        let message = ToastMessage(text: text, tone: tone)
+        let message = ToastMessage(text: text, tone: tone, action: action)
         withAnimation(Motion.spring) { current = message }
         dismissTask?.cancel()
         dismissTask = Task { [weak self] in
@@ -168,6 +170,18 @@ final class ToastCenter {
     }
 
     func error(_ text: String) { show(text, tone: .red, haptic: .error) }
+
+    /// "Merged into AH BIO MELK · Undo": stays 8 s so a second thought still works.
+    /// The button plays `soft` (a restore, not an outcome) and closes the toast.
+    func undoable(_ text: String, run: @escaping () -> Void) {
+        show(text, duration: .seconds(8), action: (title: "Undo", run: { [weak self] in
+            Haptics.play(.soft)
+            withAnimation(Motion.ease) { self?.current = nil }
+            run()
+        }))
+    }
+
+    func dismiss() { withAnimation(Motion.ease) { current = nil } }
 }
 
 struct ToastView: View {
@@ -180,9 +194,18 @@ struct ToastView: View {
                 .textStyle(TypeStyle.label.sized(14))
                 .foregroundStyle(message.tone == .neutral ? Palette.btnInk : Palette.ink)
                 .lineLimit(2)
+            if let action = message.action {
+                Button(action.title, action: action.run)
+                    .textStyle(TypeStyle.label.sized(14))
+                    .foregroundStyle(message.tone == .neutral ? Accent.blue : Palette.blueText)
+                    .padding(.leading, Space.m)
+                    .frame(minHeight: 36)
+                    .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+            }
         }
-        .padding(.horizontal, Space.xl)
-        .padding(.vertical, Space.l)
+        .padding(.leading, Space.xl)
+        .padding(.trailing, message.action == nil ? Space.xl : Space.l)
+        .padding(.vertical, message.action == nil ? Space.l : Space.xs)
         .background(message.tone == .neutral ? Palette.btn : Palette.tray, in: Capsule())
         .elevation(.bar)
         .accessibilityAddTraits(.isStaticText)

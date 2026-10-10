@@ -57,10 +57,12 @@ struct ReceiptRow: View {
     var amountColor: Color = Palette.ink
     var showsSpinner: Bool = false
     var trailingIcon: Icon? = nil
+    /// Receipt has no shop yet ("Unassigned"): dashed "?" mark instead of a monogram.
+    var isUnknownShop: Bool = false
 
     var body: some View {
         HStack(spacing: Space.l) {
-            ShopMark(name: shopName)
+            if isUnknownShop { UnknownShopMark() } else { ShopMark(name: shopName) }
             VStack(alignment: .leading, spacing: 1) {
                 Text(shopName).textStyle(.rowTitle).foregroundStyle(Palette.ink)
                     .lineLimit(1)
@@ -196,26 +198,30 @@ struct ListItemRow: View {
     var onTap: (() -> Void)? = nil
 
     @State private var struck = false
+    /// Optimistic checked state while a check-off plays out, before the parent moves the row.
+    @State private var pendingCheck = false
     @Environment(\.accessibilityReduceMotion) private var reduce
+
+    private var shownChecked: Bool { isChecked || pendingCheck }
 
     var body: some View {
         HStack(spacing: Space.l) {
             Button {
                 toggle()
             } label: {
-                CheckCircle(isChecked: isChecked)
+                CheckCircle(isChecked: shownChecked)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
             .padding(.horizontal, -10)
-            .accessibilityLabel(isChecked ? "Uncheck \(title)" : "Check off \(title)")
+            .accessibilityLabel(shownChecked ? "Uncheck \(title)" : "Check off \(title)")
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .textStyle(.rowTitle)
                     .strikethrough(struck || (isChecked && reduce), color: Palette.ink3)
-                    .foregroundStyle(struck || isChecked ? Palette.ink3 : Palette.ink)
+                    .foregroundStyle(struck || shownChecked ? Palette.ink3 : Palette.ink)
                     .lineLimit(1)
                 if let hint {
                     HStack(spacing: 5) {
@@ -235,18 +241,31 @@ struct ListItemRow: View {
         .frame(minHeight: Size.rowList)
         .hairline()
         .onAppear { struck = isChecked }
-        .onChange(of: isChecked) { _, now in if !now { struck = false } }
+        .onChange(of: isChecked) { _, now in
+            if now { pendingCheck = false } else { struck = false }
+        }
     }
 
+    /// Check-off: the circle fills and `onToggle` fires right away, text strikes at 160ms. The
+    /// parent may apply the change later (the list screen waits ~420ms before moving the row),
+    /// so the circle stays filled optimistically until `isChecked` catches up (1s safety cap).
+    /// Without that the circle stayed empty while the text was already struck.
     private func toggle() {
+        guard !pendingCheck else { return }
         let next = !isChecked
         Haptics.play(.soft)
-        withAnimation(reduce ? Motion.reducedFade : Motion.pop) { onToggle(next) }
-        guard next, !reduce else { struck = next; return }
-        Task {
-            try? await Task.sleep(for: .milliseconds(160))
-            withAnimation(Motion.fade) { struck = true }
+        if next && !reduce {
+            withAnimation(Motion.pop) { pendingCheck = true }
+            Task {
+                try? await Task.sleep(for: .milliseconds(160))
+                withAnimation(Motion.fade) { struck = true }
+                try? await Task.sleep(for: .milliseconds(840))
+                pendingCheck = false
+            }
+        } else {
+            struck = next
         }
+        withAnimation(reduce ? Motion.reducedFade : Motion.pop) { onToggle(next) }
     }
 }
 
