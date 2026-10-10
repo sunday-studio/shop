@@ -1,0 +1,22 @@
+# build / runtime
+api/bin/
+api/data/
+*.db
+*.db-shm
+*.db-wal
+
+# spike: receipt images and OCR caches stay local
+spike/receipts/
+spike/ocr/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# xcode
+ios/**/xcuserdata/
+ios/**/DerivedData/
+*.xcuserstate
+
+.DS_Store
