@@ -1,10 +1,11 @@
 openapi: 3.0.3
 info:
   title: Pantry API
-  version: 0.1.0
+  version: 0.2.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
+    All /v1 routes need `Authorization: Bearer <token>` (create with `pantry token create`).
 servers:
   - url: http://localhost:8080
 security:
@@ -38,6 +39,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Version" }
 
+  # ---------------------------------------------------------------- shops
   /v1/shops:
     get:
       operationId: listShops
@@ -66,7 +68,7 @@ paths:
 
   /v1/shops/{id}:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      - $ref: "#/components/parameters/ID"
     get:
       operationId: getShop
       responses:
@@ -78,6 +80,7 @@ paths:
         default: { $ref: "#/components/responses/Problem" }
     patch:
       operationId: updateShop
+      description: Replaces all editable fields (send the full shop).
       requestBody:
         required: true
         content:
@@ -96,29 +99,74 @@ paths:
         "204": { description: Soft-deleted }
         default: { $ref: "#/components/responses/Problem" }
 
+  # ----------------------------------------------------------- categories
+  /v1/categories:
+    get:
+      operationId: listCategories
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Category" }
+    post:
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/categories/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    patch:
+      operationId: updateCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteCategory
+      responses:
+        "204": { description: Soft-deleted }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ------------------------------------------------------------- receipts
   /v1/receipts:
     get:
       operationId: listReceipts
       parameters:
-        - { name: from, in: query, schema: { type: string, format: date } }
-        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: from, in: query, description: "inclusive, YYYY-MM-DD (local)", schema: { type: string, format: date } }
+        - { name: to, in: query, description: "inclusive, YYYY-MM-DD (local)", schema: { type: string, format: date } }
         - { name: shop_id, in: query, schema: { type: integer, format: int64 } }
         - { name: status, in: query, schema: { $ref: "#/components/schemas/ReceiptStatus" } }
         - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
         - { name: cursor, in: query, schema: { type: string } }
       responses:
         "200":
-          description: Page of receipts
+          description: Page of receipts, newest first (without lines)
           content:
             application/json:
-              schema:
-                type: object
-                required: [items]
-                properties:
-                  items:
-                    type: array
-                    items: { $ref: "#/components/schemas/Receipt" }
-                  next_cursor: { type: string }
+              schema: { $ref: "#/components/schemas/ReceiptPage" }
+        default: { $ref: "#/components/responses/Problem" }
     post:
       operationId: uploadReceipt
       requestBody:
@@ -129,9 +177,9 @@ paths:
               type: object
               required: [image, shop_id]
               properties:
-                image: { type: string, format: binary }
+                image: { type: string, format: binary, description: "JPEG or PNG, max 20 MB" }
                 shop_id: { type: integer, format: int64 }
-                purchased_at: { type: string, format: date-time }
+                purchased_at: { type: string, format: date-time, description: "overrides the date read from the receipt" }
       responses:
         "202":
           description: Accepted for processing
@@ -139,7 +187,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Receipt" }
         "409":
-          description: Same image already uploaded
+          description: Same image already uploaded; body holds the existing receipt id in `detail`
           content:
             application/problem+json:
               schema: { $ref: "#/components/schemas/Problem" }
@@ -147,7 +195,7 @@ paths:
 
   /v1/receipts/{id}:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      - $ref: "#/components/parameters/ID"
     get:
       operationId: getReceipt
       responses:
@@ -157,12 +205,136 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Receipt" }
         default: { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateReceipt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReceiptPatch" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Receipt" }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteReceipt
+      responses:
+        "204": { description: Deleted (image file too) }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/{id}/image:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      operationId: getReceiptImage
+      responses:
+        "200":
+          description: Original image
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/{id}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: confirmReceipt
+      responses:
+        "200":
+          description: Marked ok by the user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Receipt" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/{id}/reparse:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+      - { name: force, in: query, description: "discard user edits", schema: { type: boolean, default: false } }
+    post:
+      operationId: reparseReceipt
+      description: Re-runs the parser on stored OCR output. Refused (409) for confirmed or user-edited receipts unless force=true.
+      responses:
+        "202":
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Receipt" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/{id}/reocr:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+      - { name: force, in: query, schema: { type: boolean, default: false } }
+    post:
+      operationId: reocrReceipt
+      description: Runs OCR again, then parses. Same edit protection as reparse.
+      responses:
+        "202":
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Receipt" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/{id}/lines:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: createLine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LineInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReceiptLine" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/lines/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    patch:
+      operationId: updateLine
+      description: Replaces the line's editable fields and marks it user-edited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LineInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReceiptLine" }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteLine
+      responses:
+        "204": { description: Deleted }
+        default: { $ref: "#/components/responses/Problem" }
 
 components:
   securitySchemes:
     bearer:
       type: http
       scheme: bearer
+
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
 
   responses:
     Problem:
@@ -217,14 +389,33 @@ components:
         notes: { type: string }
 
     Shop:
-      allOf:
-        - $ref: "#/components/schemas/ShopInput"
-        - type: object
-          required: [id, created_at, updated_at]
-          properties:
-            id: { type: integer, format: int64 }
-            created_at: { type: string, format: date-time }
-            updated_at: { type: string, format: date-time }
+      type: object
+      required: [id, name, created_at, updated_at]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        chain: { type: string }
+        branch: { type: string }
+        address: { type: string }
+        city: { type: string }
+        notes: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        sort: { type: integer }
+
+    Category:
+      type: object
+      required: [id, name, sort]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        sort: { type: integer }
 
     ReceiptStatus:
       type: string
@@ -234,38 +425,78 @@ components:
       type: string
       enum: [item, discount, deposit, bag, other]
 
+    LineUnit:
+      type: string
+      enum: [pc, kg, l]
+
+    LineInput:
+      type: object
+      required: [raw_text, kind, line_total_cents]
+      properties:
+        raw_text: { type: string }
+        kind: { $ref: "#/components/schemas/LineKind" }
+        qty: { type: number, format: double, default: 1 }
+        unit: { $ref: "#/components/schemas/LineUnit" }
+        unit_price_cents: { type: integer, format: int64 }
+        line_total_cents: { type: integer, format: int64 }
+        vat_code: { type: string }
+        parent_line_id: { type: integer, format: int64 }
+
     ReceiptLine:
       type: object
-      required: [id, line_no, raw_text, kind, qty, unit, line_total_cents]
+      required: [id, receipt_id, line_no, raw_text, kind, qty, unit, line_total_cents, user_edited]
       properties:
         id: { type: integer, format: int64 }
+        receipt_id: { type: integer, format: int64 }
         line_no: { type: integer }
         raw_text: { type: string }
         kind: { $ref: "#/components/schemas/LineKind" }
         qty: { type: number, format: double }
-        unit: { type: string, enum: [pc, kg, l] }
+        unit: { $ref: "#/components/schemas/LineUnit" }
         unit_price_cents: { type: integer, format: int64 }
         line_total_cents: { type: integer, format: int64 }
         vat_code: { type: string }
         parent_line_id: { type: integer, format: int64 }
         product_id: { type: integer, format: int64 }
+        user_edited: { type: boolean }
+
+    ReceiptPatch:
+      type: object
+      description: Only the fields present are changed.
+      properties:
+        shop_id: { type: integer, format: int64 }
+        purchased_at: { type: string, format: date-time }
+        total_cents: { type: integer, format: int64 }
 
     Receipt:
       type: object
-      required: [id, shop_id, status, created_at]
+      required: [id, shop_id, status, review_reasons, created_at, updated_at]
       properties:
         id: { type: integer, format: int64 }
         shop_id: { type: integer, format: int64 }
         purchased_at: { type: string, format: date-time }
         total_cents: { type: integer, format: int64 }
         parsed_sum_cents: { type: integer, format: int64 }
+        payment_method: { type: string }
         status: { $ref: "#/components/schemas/ReceiptStatus" }
         review_reasons:
           type: array
-          items: { type: string }
+          items: { type: string, enum: [no_total, total_mismatch, line_math, no_date, low_conf, unparsed_rows] }
         ocr_engine: { type: string }
+        ocr_ms: { type: integer, format: int64 }
+        parser_version: { type: integer }
         confirmed_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
         lines:
           type: array
           items: { $ref: "#/components/schemas/ReceiptLine" }
+
+    ReceiptPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Receipt" }
+        next_cursor: { type: string }

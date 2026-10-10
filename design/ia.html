@@ -204,28 +204,32 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 <div class="wrap">
 
 <header>
-  <span class="eyebrow">Pantry · iOS app · Information architecture v0.2</span>
+  <span class="eyebrow">Pantry · iOS app · Information architecture v0.3</span>
   <h1>Information architecture</h1>
-  <p class="lede">How the Pantry iPhone app is organised: what lives where, how people move between screens, and which screens ship in which phase. Built from PLAN.md §2–§9; this is the skeleton the wireframes will be drawn on.</p>
-  <div class="meta"><span>10 Oct 2026</span><span>Source: PLAN.md</span><span>Single user</span><span>Primary tabs: 4 + Add</span></div>
+  <p class="lede">How the Pantry iPhone app is organised: what lives where, how you move between screens, and what each screen carries. Built from docs/PLAN.md (§0, §5–§10) and openapi.yaml; this is the skeleton the wireframes are drawn on.</p>
+  <div class="meta"><span>10 Oct 2026</span><span>Source: docs/PLAN.md</span><span>Single user</span><span>Paper receipts only</span><span>Tabs: 4 + Add</span></div>
   <div class="strip" aria-label="Example of the core problem: a receipt line mapped to a product">
     <div class="row"><span>AH HALFV MELK 1,5L</span><span>1,79</span></div>
-    <div class="row"><span>BONUS HALFV MELK</span><span>-0,45</span></div>
-    <div class="row arrow"><span>→ Halfvolle melk · AH · 1,5 L</span><span>€0,89/L</span></div>
+    <div class="row"><span>BONUS HALFV MELK</span><span>0,45-</span></div>
+    <div class="row arrow"><span>→ Halfvolle melk · AH · 1,5 L</span><span>€ 0,89/l</span></div>
   </div>
 </header>
 
 <section>
   <div class="sec-head">
-    <span class="eyebrow">What changed in v0.2</span>
-    <h2>Decisions from review</h2>
+    <span class="eyebrow">What changed in v0.3</span>
+    <h2>Your answers, plus the updated plan</h2>
   </div>
   <div class="changes">
-    <div><span class="q">Spend analytics</span><span class="a"><b>Own tab.</b> Analytics replaces the spend view inside Home. Home becomes the receipts inbox.</span></div>
-    <div><span class="q">Who uses it</span><span class="a"><b>One person.</b> No household members, no “added by”, no live list presence.</span></div>
-    <div><span class="q">Server connection</span><span class="a"><b>First-class sync.</b> New onboarding steps to find, pair and first-sync a server, a Server &amp; sync area in Settings, and one sync status model used across the app.</span></div>
-    <div><span class="q">Manual entry</span><span class="a"><b>Removed.</b> Receipts only arrive as images. A failed receipt can be retaken or reprocessed.</span></div>
-    <div><span class="q">Capture vs share</span><span class="a"><b>One flow.</b> Camera, Photos and the iOS share sheet all land on the same Add receipts screen (C.3).</span></div>
+    <div><span class="q">Finding the server</span><span class="a"><b>Typed URL.</b> One field, then Test connection. Works the same for LAN and Tailscale addresses.</span></div>
+    <div><span class="q">Pairing</span><span class="a"><b>Via the server.</b> Create a token on the Mac mini (<code>pantry token create iphone</code>) and paste it into the app. Stored in the Keychain.</span></div>
+    <div><span class="q">Home</span><span class="a"><b>Shows spending this month</b> above the receipts inbox. Tapping it opens Analytics.</span></div>
+    <div><span class="q">Phases</span><span class="a"><b>Removed.</b> Every screen here ships. M9 items in the plan (widgets, bank import, label OCR) stay out until you opt in.</span></div>
+    <div><span class="q">Input (plan §0)</span><span class="a"><b>Paper receipts only, via the document scanner.</b> Screenshot import and the share sheet are gone, so Add has one receipt path: Scan → pick shop → queued.</span></div>
+    <div><span class="q">Shop (plan §0)</span><span class="a"><b>You pick the shop for each receipt</b>, with the last one preselected. No automatic shop detection, so the Pick shop fallback is gone.</span></div>
+    <div><span class="q">Review (plan §9)</span><span class="a"><b>One review screen, not a queue.</b> Image on top, lines below, a sticky Σ vs total bar, and Confirm always enabled. Link product shows 3 fuzzy suggestions, search, and New product.</span></div>
+    <div><span class="q">No push (plan §9)</span><span class="a"><b>Processing updates by polling.</b> Home refreshes while receipts are processing; no notification settings.</span></div>
+    <div><span class="q">Manage (plan §9)</span><span class="a"><b>Shops and categories are edited in Settings.</b> Backup health from the NAS shows there too.</span></div>
   </div>
 </section>
 
@@ -235,10 +239,10 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
     <h2>Four rules the structure follows</h2>
   </div>
   <div class="principles">
-    <div><h3>One way in for receipts</h3><p>Whether a receipt comes from the camera, Photos or another app's share sheet, it lands on the same screen with the same Send button. People learn it once.</p></div>
-    <div><h3>Review is a queue, not a form</h3><p>Unmatched lines are shown one at a time with the best guess first. Each confirmation teaches an alias, so the queue shrinks with use.</p></div>
-    <div><h3>Every price is per unit</h3><p>Anywhere a price appears next to another shop's price, it is shown per kg, L or piece. Shelf price and paid price are both kept.</p></div>
-    <div><h3>The server is home, the phone is a copy</h3><p>The phone keeps a working copy of products, shops and the list, and queues uploads. Sync status is always one glance away and never blocks the list in a shop.</p></div>
+    <div><h3>Scan soon, review later</h3><p>Thermal paper fades. Scanning takes two decisions (keep the scan, confirm the shop) and then gets out of the way. Review happens whenever you have a minute.</p></div>
+    <div><h3>The receipt is the review</h3><p>A receipt that needs attention opens straight into review mode: image, lines, and the running sum against the printed total. Confirm is always available, because some receipts are just odd.</p></div>
+    <div><h3>Every price is per unit</h3><p>Anywhere prices from different shops sit together, they are shown per kg, l or piece after linked discounts, formatted the Dutch way (€ 1,29).</p></div>
+    <div><h3>The server is home, the phone is a copy</h3><p>Products, shops and the list are cached on the phone and uploads queue offline. Sync status stays out of sight until something needs you.</p></div>
   </div>
 </section>
 
@@ -246,25 +250,24 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   <div class="sec-head">
     <span class="eyebrow">Navigation model</span>
     <h2>Four tabs, one Add button, three global surfaces</h2>
-    <p>A floating pill tab bar (Alan) with a detached Add button (MoonPay's pinned primary actions). Home is the receipts inbox; Analytics holds every chart and total.</p>
+    <p>A floating pill tab bar (Alan) with a detached Add button (MoonPay's pinned primary action). Home is this month plus the receipts inbox; Analytics holds every chart.</p>
   </div>
   <div class="navmodel">
     <div class="phone" aria-hidden="true">
       <div class="top"><div class="dot"></div><div class="pills"><span></span><span></span></div></div>
-      <div><div class="label">Receipts</div><div class="big">Home</div></div>
+      <div><div class="label">Spent in October</div><div class="big">€ 412,38</div></div>
       <div class="ph-card review">2 receipts need review</div>
-      <div class="ph-card"></div>
       <div class="ph-card"></div>
       <div class="ph-card"></div>
       <div class="tabbar"><div class="bar"><b>Home</b><span>Analytics</span><span>Products</span><span>List</span></div><div class="fab">+</div></div>
     </div>
     <dl class="navlist">
-      <div><dt>Home<span class="kbd">tab 1 · H</span></dt><dd>The receipts inbox. Receipts needing review or failed at the top, processing rows, then every receipt by date. Badge when something needs review.</dd></div>
-      <div><dt>Analytics<span class="kbd">tab 2 · A</span></dt><dd>Spend over any date range by month, shop and category; shop breakdowns; price changes.</dd></div>
-      <div><dt>Products<span class="kbd">tab 3 · P</span></dt><dd>The catalog: search and categories. Product detail holds price history and cross-shop comparison.</dd></div>
-      <div><dt>List<span class="kbd">tab 4 · L</span></dt><dd>Shopping list, grouped by category or by cheapest shop, with suggestions for items that are due.</dd></div>
-      <div><dt>Add <span class="kbd">button · sheet</span></dt><dd>Scan receipt, Choose screenshots, Unpack groceries. The first two lead to Add receipts (C.3), the same screen the share sheet opens.</dd></div>
-      <div><dt>Global surfaces</dt><dd><b>Avatar</b> (top left) opens Settings. <b>Search</b> (top right) searches products, shops and receipts together. <b>Sync pill</b> sits under the header only when the phone is offline, uploads are queued, or the server can't be reached; tapping it opens Server &amp; sync.</dd></div>
+      <div><dt>Home<span class="kbd">tab 1 · H</span></dt><dd>Spent this month vs last month, then receipts that need review or failed, receipts processing, and every receipt by date. Badge when something needs review.</dd></div>
+      <div><dt>Analytics<span class="kbd">tab 2 · A</span></dt><dd>Spend over any range grouped by week, month, shop or category; shop and category drill-downs; price changes.</dd></div>
+      <div><dt>Products<span class="kbd">tab 3 · P</span></dt><dd>The catalog: fuzzy search and categories. Product detail holds price history per shop, the compare card, nutrition and receipt names.</dd></div>
+      <div><dt>List<span class="kbd">tab 4 · L</span></dt><dd>Shopping list with “cheapest at” hints and suggestions from items you buy often. Works offline.</dd></div>
+      <div><dt>Add <span class="kbd">button · sheet</span></dt><dd>Scan receipt or Unpack groceries.</dd></div>
+      <div><dt>Global surfaces</dt><dd><b>Avatar</b> (top left) opens Settings. <b>Search</b> (top right) finds products, shops and receipts. <b>Sync pill</b> sits under the header only when offline, uploading, or the server can't be reached; tapping it opens Server &amp; sync.</dd></div>
     </dl>
   </div>
 </section>
@@ -273,71 +276,64 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   <div class="sec-head">
     <span class="eyebrow">Sitemap</span>
     <h2>Every screen and where it hangs</h2>
-    <p>IDs are used in the wireframes and the inventory below. The phase tag follows the roadmap in PLAN.md §11: P3 is the iOS MVP, P4 the catalog, P5 lists and insight.</p>
+    <p>IDs are used in the wireframes and the inventory below.</p>
   </div>
   <div class="legend">
     <span><i class="sw"></i>Pushed screen</span>
     <span><i class="sw dash"></i>Sheet / modal</span>
-    <span><i class="ph p3">P3</i>MVP</span>
-    <span><i class="ph">P4</i><i class="ph">P5</i>Later phases</span>
   </div>
   <div class="sitemap-scroll">
-    <div class="root">Pantry <small>app root · server pairing gate</small></div>
+    <div class="root">Pantry <small>app root · server connection gate</small></div>
     <div class="sitemap">
       <div class="col">
-        <div class="col-head"><span class="sid">H</span><span class="name">Home</span><span class="what">Receipts inbox tab</span></div>
-        <div class="node l2"><span class="name">Receipt detail <i class="ph p3">P3</i></span><span class="sid">H.1</span><span class="what">Totals, lines, image, status</span></div>
-        <div class="node l3 sheet"><span class="name">Receipt image <i class="ph p3">P3</i></span><span class="sid">H.1.1</span><span class="what">Zoom, line highlight</span></div>
-        <div class="node l3 sheet"><span class="name">Edit header <i class="ph p3">P3</i></span><span class="sid">H.1.2</span><span class="what">Shop, date, total, payment</span></div>
-        <div class="node l3 sheet"><span class="name">Edit line <i class="ph p3">P3</i></span><span class="sid">H.1.3</span><span class="what">Qty, unit, price, kind, product</span></div>
-        <div class="node l2"><span class="name">Review queue <i class="ph p3">P3</i></span><span class="sid">H.2</span><span class="what">One line at a time, swipe to confirm</span></div>
-        <div class="node l3 sheet"><span class="name">Pick product <i class="ph p3">P3</i></span><span class="sid">H.2.1</span><span class="what">Search or create</span></div>
-        <div class="node l3 sheet"><span class="name">Pick shop <i class="ph p3">P3</i></span><span class="sid">H.2.2</span><span class="what">When shop match failed</span></div>
-        <div class="node l2 sheet"><span class="name">Filter <i class="ph p3">P3</i></span><span class="sid">H.3</span><span class="what">Status, shop, month</span></div>
+        <div class="col-head"><span class="sid">H</span><span class="name">Home</span><span class="what">This month + receipts inbox</span></div>
+        <div class="node l2"><span class="name">Receipt</span><span class="sid">H.1</span><span class="what">Detail and review in one screen</span></div>
+        <div class="node l3 sheet"><span class="name">Receipt image</span><span class="sid">H.1.1</span><span class="what">Full screen, zoom</span></div>
+        <div class="node l3 sheet"><span class="name">Edit details</span><span class="sid">H.1.2</span><span class="what">Shop, date, printed total</span></div>
+        <div class="node l3 sheet"><span class="name">Edit line</span><span class="sid">H.1.3</span><span class="what">Kind, qty, unit, price; also Add line</span></div>
+        <div class="node l3 sheet"><span class="name">Link product</span><span class="sid">H.1.4</span><span class="what">3 suggestions, search, new</span></div>
+        <div class="node l3 sheet"><span class="name">Receipt actions</span><span class="sid">H.1.5</span><span class="what">Reparse, re-run OCR, delete</span></div>
+        <div class="node l2 sheet"><span class="name">Filter</span><span class="sid">H.2</span><span class="what">Status, shop</span></div>
       </div>
       <div class="col">
-        <div class="col-head"><span class="sid">A</span><span class="name">Analytics</span><span class="what">Spend tab · range, charts</span></div>
-        <div class="node l2"><span class="name">Category spend <i class="ph p3">P3</i></span><span class="sid">A.1</span><span class="what">Trend, top products</span></div>
-        <div class="node l2"><span class="name">Shop spend <i class="ph p3">P3</i></span><span class="sid">A.2</span><span class="what">Visits, receipts, basket size</span></div>
-        <div class="node l2"><span class="name">Price changes <i class="ph">P5</i></span><span class="sid">A.3</span><span class="what">What got more expensive</span></div>
-        <div class="node l2 sheet"><span class="name">Date range <i class="ph p3">P3</i></span><span class="sid">A.4</span><span class="what">Presets + custom</span></div>
+        <div class="col-head"><span class="sid">A</span><span class="name">Analytics</span><span class="what">Range, chart, breakdown</span></div>
+        <div class="node l2"><span class="name">Shop spend</span><span class="sid">A.1</span><span class="what">Trend, visits, receipts</span></div>
+        <div class="node l2"><span class="name">Category spend</span><span class="sid">A.2</span><span class="what">Trend, top products</span></div>
+        <div class="node l2"><span class="name">Price changes</span><span class="sid">A.3</span><span class="what">Up and down since a date</span></div>
+        <div class="node l2 sheet"><span class="name">Date range</span><span class="sid">A.4</span><span class="what">Presets + custom</span></div>
       </div>
       <div class="col">
-        <div class="col-head fab-col"><span class="sid">C</span><span class="name">Add +</span><span class="what">Action sheet · also share sheet</span></div>
-        <div class="node l2 sheet"><span class="name">Scan receipt <i class="ph p3">P3</i></span><span class="sid">C.1</span><span class="what">Document camera, auto-crop</span></div>
-        <div class="node l2 sheet"><span class="name">Choose screenshots <i class="ph p3">P3</i></span><span class="sid">C.2</span><span class="what">Photos picker, multi-select</span></div>
-        <div class="node l2 sheet"><span class="name">Add receipts <i class="ph p3">P3</i></span><span class="sid">C.3</span><span class="what">Shared screen for camera, Photos and share sheet</span></div>
-        <div class="node l2 sheet"><span class="name">Unpack <i class="ph">P4</i></span><span class="sid">C.4</span><span class="what">Continuous barcode scanner</span></div>
-        <div class="node l3 sheet"><span class="name">Quick add product <i class="ph">P4</i></span><span class="sid">C.4.1</span><span class="what">Prefilled from Open Food Facts</span></div>
-        <div class="node l3 sheet"><span class="name">Nutrition label <i class="ph">P4</i></span><span class="sid">C.4.2</span><span class="what">Photo → OCR → confirm</span></div>
+        <div class="col-head fab-col"><span class="sid">C</span><span class="name">Add +</span><span class="what">Action sheet</span></div>
+        <div class="node l2 sheet"><span class="name">Document scanner</span><span class="sid">C.1</span><span class="what">System camera, multi-page</span></div>
+        <div class="node l3 sheet"><span class="name">Shop &amp; date</span><span class="sid">C.2</span><span class="what">Last shop preselected</span></div>
+        <div class="node l2 sheet"><span class="name">Unpack</span><span class="sid">C.3</span><span class="what">Continuous barcode scanner</span></div>
+        <div class="node l3 sheet"><span class="name">Quick add product</span><span class="sid">C.3.1</span><span class="what">Open Food Facts prefill</span></div>
+        <div class="node l3 sheet"><span class="name">Nutrition</span><span class="sid">C.3.2</span><span class="what">Per 100 g / ml form</span></div>
+        <div class="node l3 sheet"><span class="name">Link to receipt line</span><span class="sid">C.3.3</span><span class="what">Unmatched lines, 14 days</span></div>
       </div>
       <div class="col">
-        <div class="col-head"><span class="sid">P</span><span class="name">Products</span><span class="what">Catalog tab · search, categories</span></div>
-        <div class="node l2"><span class="name">Product detail <i class="ph">P4</i></span><span class="sid">P.1</span><span class="what">Photo, cheapest-at, price history</span></div>
-        <div class="node l3"><span class="name">Compare shops <i class="ph">P4</i></span><span class="sid">P.1.1</span><span class="what">Latest per-unit price per shop</span></div>
-        <div class="node l3"><span class="name">Nutrition <i class="ph">P4</i></span><span class="sid">P.1.2</span><span class="what">Per 100 g / ml, Nutri-Score</span></div>
-        <div class="node l3 sheet"><span class="name">Edit product <i class="ph">P4</i></span><span class="sid">P.1.3</span><span class="what">Name, size, category, receipt names</span></div>
-        <div class="node l2"><span class="name">Category <i class="ph">P4</i></span><span class="sid">P.2</span><span class="what">Products in a category</span></div>
+        <div class="col-head"><span class="sid">P</span><span class="name">Products</span><span class="what">Search, categories</span></div>
+        <div class="node l2"><span class="name">Product detail</span><span class="sid">P.1</span><span class="what">Cheapest at, history, compare</span></div>
+        <div class="node l3"><span class="name">Price history</span><span class="sid">P.1.1</span><span class="what">All points per shop</span></div>
+        <div class="node l3 sheet"><span class="name">Edit product</span><span class="sid">P.1.2</span><span class="what">Name, brand, size, category, photo</span></div>
+        <div class="node l3 sheet"><span class="name">Nutrition</span><span class="sid">P.1.3</span><span class="what">View / edit</span></div>
+        <div class="node l3"><span class="name">Receipt names</span><span class="sid">P.1.4</span><span class="what">Aliases, delete bad ones</span></div>
+        <div class="node l2 sheet"><span class="name">New product</span><span class="sid">P.2</span><span class="what">Same form as C.3.1</span></div>
       </div>
       <div class="col">
-        <div class="col-head"><span class="sid">L</span><span class="name">List</span><span class="what">Shopping list tab</span></div>
-        <div class="node l2 sheet"><span class="name">Add item <i class="ph">P5</i></span><span class="sid">L.1</span><span class="what">Product search or free text, qty</span></div>
-        <div class="node l2 sheet"><span class="name">Group by <i class="ph">P5</i></span><span class="sid">L.2</span><span class="what">Category · cheapest shop</span></div>
-        <div class="node l2"><span class="name">Suggestions <i class="ph">P5</i></span><span class="sid">L.3</span><span class="what">Due by purchase interval</span></div>
+        <div class="col-head"><span class="sid">L</span><span class="name">List</span><span class="what">Shopping list</span></div>
+        <div class="node l2 sheet"><span class="name">Add item</span><span class="sid">L.1</span><span class="what">Product or free text, qty</span></div>
+        <div class="node l2 sheet"><span class="name">Suggestions</span><span class="sid">L.2</span><span class="what">Bought often, not lately</span></div>
       </div>
       <div class="col">
-        <div class="col-head side"><span class="sid">S · O · X</span><span class="name">Outside the tabs</span><span class="what">Settings, onboarding, system</span></div>
-        <div class="node l2"><span class="name">Settings <i class="ph p3">P3</i></span><span class="sid">S</span><span class="what">From avatar</span></div>
-        <div class="node l3"><span class="name">Server &amp; sync <i class="ph p3">P3</i></span><span class="sid">S.1</span><span class="what">Status, route, last sync, Sync now</span></div>
-        <div class="node l3"><span class="name">Server health <i class="ph p3">P3</i></span><span class="sid">S.1.1</span><span class="what">API, OCR, model, versions</span></div>
-        <div class="node l3"><span class="name">Upload queue <i class="ph p3">P3</i></span><span class="sid">S.1.2</span><span class="what">Waiting, failed, retry</span></div>
-        <div class="node l3 sheet"><span class="name">Change server <i class="ph p3">P3</i></span><span class="sid">S.1.3</span><span class="what">Re-pair or disconnect</span></div>
-        <div class="node l3"><span class="name">Assistant access <i class="ph p3">P3</i></span><span class="sid">S.2</span><span class="what">MCP tokens</span></div>
-        <div class="node l3"><span class="name">Shops &amp; categories <i class="ph">P4</i></span><span class="sid">S.3</span><span class="what">Merge, rename, branches</span></div>
-        <div class="node l3"><span class="name">Notifications <i class="ph p3">P3</i></span><span class="sid">S.4</span><span class="what">Receipt ready, price alerts</span></div>
-        <div class="node l2"><span class="name">Onboarding <i class="ph p3">P3</i></span><span class="sid">O.1–O.5</span><span class="what">Welcome, find, pair, first sync, permissions</span></div>
-        <div class="node l2 sheet"><span class="name">Share sheet entry <i class="ph p3">P3</i></span><span class="sid">X.1 → C.3</span><span class="what">Opens Add receipts</span></div>
-        <div class="node l2 sheet"><span class="name">Global search <i class="ph p3">P3</i></span><span class="sid">X.2</span><span class="what">Products, shops, receipts</span></div>
+        <div class="col-head side"><span class="sid">S · O · X</span><span class="name">Outside the tabs</span><span class="what">Settings, onboarding, search</span></div>
+        <div class="node l2"><span class="name">Settings</span><span class="sid">S</span><span class="what">From avatar</span></div>
+        <div class="node l3"><span class="name">Server &amp; sync</span><span class="sid">S.1</span><span class="what">URL, token, health, backup</span></div>
+        <div class="node l3"><span class="name">Upload queue</span><span class="sid">S.2</span><span class="what">Waiting, failed, retry</span></div>
+        <div class="node l3"><span class="name">Shops</span><span class="sid">S.3</span><span class="what">List → edit shop</span></div>
+        <div class="node l3"><span class="name">Categories</span><span class="sid">S.4</span><span class="what">Rename, reorder</span></div>
+        <div class="node l2"><span class="name">Onboarding</span><span class="sid">O.1–O.4</span><span class="what">Welcome, URL, token, ready</span></div>
+        <div class="node l2 sheet"><span class="name">Search</span><span class="sid">X.1</span><span class="what">Products, shops, receipts</span></div>
       </div>
     </div>
   </div>
@@ -346,40 +342,41 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 <section>
   <div class="sec-head">
     <span class="eyebrow">Server &amp; sync</span>
-    <h2>Connecting to the home server, and staying in step</h2>
-    <p>The app is useless until it has paired with a server, so pairing is the onboarding. After that, sync runs in the background and only surfaces when something needs attention.</p>
+    <h2>Connecting to the Mac mini, and staying in step</h2>
+    <p>The app does nothing until it can reach the server, so connecting is the onboarding. After that, sync runs in the background and only surfaces when something needs attention.</p>
   </div>
   <div class="sync-grid">
     <div class="panel">
-      <h3>Setting up (onboarding)</h3>
+      <h3>Setting up</h3>
       <div class="dir">
-        <div><span>Find the server: Pantry servers on this Wi-Fi are listed automatically</span><span>O.2</span></div>
-        <div><span>Or scan the QR code on the server's setup page, or type its address</span><span>O.2</span></div>
-        <div><span>Pair: a 6-digit code appears on the phone; approve it on the server</span><span>O.3</span></div>
-        <div><span>First sync: shops, categories, products, list and recent receipts download</span><span>O.4</span></div>
-        <div><span>Away from home: add the Tailscale address so sync keeps working</span><span>O.4 · S.1</span></div>
+        <div><span>Type the server URL (LAN or <code>pantry.&lt;tailnet&gt;.ts.net:8080</code>)</span><span>O.2</span></div>
+        <div><span>Test connection: <code>/healthz</code> and <code>/version</code></span><span>O.2</span></div>
+        <div><span>On the server, run <code>pantry token create iphone</code></span><span>O.3</span></div>
+        <div><span>Paste the token; the app checks it and saves it to the Keychain</span><span>O.3</span></div>
+        <div><span>First sync downloads shops, categories, products and the list</span><span>O.4</span></div>
       </div>
     </div>
     <div class="panel">
       <h3>What moves in each direction</h3>
       <div class="dir">
-        <div><span>Phone → server: receipt images</span><span>queued offline</span></div>
-        <div><span>Phone → server: review fixes, product links, list changes</span><span>queued offline</span></div>
-        <div><span>Server → phone: receipt status and results</span><span>push + on open</span></div>
-        <div><span>Server → phone: products, shops, categories, prices</span><span>cached locally</span></div>
-        <div><span>Server → phone: analytics</span><span>live, cached last view</span></div>
+        <div><span>Phone → server: receipt scans with shop and date</span><span>queued offline</span></div>
+        <div><span>Phone → server: review edits, product links, list changes</span><span>queued offline</span></div>
+        <div><span>Server → phone: receipt status</span><span>polled while processing</span></div>
+        <div><span>Server → phone: products, shops, categories, list</span><span>cached locally</span></div>
+        <div><span>Server → phone: analytics and prices</span><span>live, last view cached</span></div>
       </div>
     </div>
   </div>
   <div class="panel">
     <h3>Sync states, shown in the sync pill and on S.1</h3>
     <div class="pills-row">
-      <div class="spill"><span class="p" style="background:var(--accent-soft);color:var(--accent)">Synced · home</span><span>Reached over the local network. No pill on screen; S.1 shows last sync time.</span></div>
-      <div class="spill"><span class="p" style="background:var(--accent-soft);color:var(--accent)">Synced · Tailscale</span><span>Reached remotely. No pill on screen.</span></div>
-      <div class="spill"><span class="p" style="background:var(--proc-soft);color:var(--proc)">Syncing · 3 uploads</span><span>Pill shows while uploads or the first sync are in progress.</span></div>
-      <div class="spill"><span class="p" style="background:var(--sunk);color:var(--ink-2)">Offline · 2 waiting</span><span>No network. Everything still works; receipts wait in the upload queue.</span></div>
-      <div class="spill"><span class="p" style="background:var(--review-soft);color:var(--review)">Server unreachable</span><span>Network is fine but the server doesn't answer. Pill links to Server health.</span></div>
-      <div class="spill"><span class="p" style="background:var(--fail-soft);color:var(--fail)">Pairing expired</span><span>Token rejected. Full-screen prompt to pair again; local data is kept.</span></div>
+      <div class="spill"><span class="p" style="background:var(--accent-soft);color:var(--accent)">Connected</span><span>No pill on screen. S.1 shows last sync time and server health.</span></div>
+      <div class="spill"><span class="p" style="background:var(--proc-soft);color:var(--proc)">Uploading 3</span><span>Pill while scans upload.</span></div>
+      <div class="spill"><span class="p" style="background:var(--sunk);color:var(--ink-2)">Offline · 2 waiting</span><span>No network. Everything still works; scans wait in the upload queue.</span></div>
+      <div class="spill"><span class="p" style="background:var(--review-soft);color:var(--review)">Server unreachable</span><span>Network is fine but the server doesn't answer. Pill opens Server &amp; sync.</span></div>
+      <div class="spill"><span class="p" style="background:var(--review-soft);color:var(--review)">OCR down</span><span><code>/healthz</code> degraded. Scans upload but wait to be processed.</span></div>
+      <div class="spill"><span class="p" style="background:var(--review-soft);color:var(--review)">Backup stale</span><span>Last NAS backup over 36 h ago. Shown in Settings only.</span></div>
+      <div class="spill"><span class="p" style="background:var(--fail-soft);color:var(--fail)">Token rejected</span><span>Full-screen prompt to paste a new token; local data is kept.</span></div>
     </div>
   </div>
 </section>
@@ -387,17 +384,17 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 <section>
   <div class="sec-head">
     <span class="eyebrow">Content model</span>
-    <h2>The objects people see, and where</h2>
-    <p>Aliases, jobs and tokens exist in the backend but are never first-class in the UI. Aliases surface as “Receipt names” on a product; jobs surface as receipt status.</p>
+    <h2>The objects you see, and where</h2>
+    <p>Jobs and tokens exist in the backend but are never first-class in the UI. Aliases surface as “Receipt names” on a product; jobs surface as receipt status.</p>
   </div>
   <div class="objects">
-    <div class="obj"><h3>Receipt</h3><div class="attrs">shop · date · total · payment<br>status · confidence · image</div><div class="where"><span class="chip">H</span><span class="chip">H.1</span><span class="chip">A.2</span></div></div>
-    <div class="obj"><h3>Receipt line</h3><div class="attrs">raw text · qty · unit · price<br>kind: item | discount | deposit | bag<br>linked product</div><div class="where"><span class="chip">H.1</span><span class="chip">H.2</span><span class="chip">H.1.3</span></div></div>
-    <div class="obj"><h3>Product</h3><div class="attrs">name · brand · size · barcode<br>category · photo · nutrition<br>receipt names (aliases)</div><div class="where"><span class="chip">P</span><span class="chip">P.1</span><span class="chip">H.2.1</span><span class="chip">C.4</span><span class="chip">L</span></div></div>
-    <div class="obj"><h3>Price point</h3><div class="attrs">product × shop × date<br>paid · shelf · per kg/L/pc</div><div class="where"><span class="chip">P.1</span><span class="chip">P.1.1</span><span class="chip">A.3</span></div></div>
-    <div class="obj"><h3>Shop</h3><div class="attrs">chain · branch · address<br>VAT / KvK</div><div class="where"><span class="chip">A.2</span><span class="chip">A</span><span class="chip">H.2.2</span><span class="chip">S.3</span></div></div>
-    <div class="obj"><h3>List item</h3><div class="attrs">product or free text · qty · note<br>checked</div><div class="where"><span class="chip">L</span><span class="chip">L.3</span><span class="chip">P.1</span></div></div>
-    <div class="obj"><h3>Server</h3><div class="attrs">name · home address · Tailscale address<br>pairing · last sync · upload queue</div><div class="where"><span class="chip">O.2–O.4</span><span class="chip">S.1</span><span class="chip">sync pill</span></div></div>
+    <div class="obj"><h3>Receipt</h3><div class="attrs">shop · date · printed total · Σ lines<br>status · review reasons · image</div><div class="where"><span class="chip">H</span><span class="chip">H.1</span><span class="chip">A.1</span></div></div>
+    <div class="obj"><h3>Receipt line</h3><div class="attrs">raw text · qty · unit · price · VAT<br>kind: item | discount | deposit | bag | other<br>linked product · parent line</div><div class="where"><span class="chip">H.1</span><span class="chip">H.1.3</span><span class="chip">H.1.4</span><span class="chip">C.3.3</span></div></div>
+    <div class="obj"><h3>Product</h3><div class="attrs">name · brand · size · barcode<br>category · photo · nutrition<br>receipt names</div><div class="where"><span class="chip">P</span><span class="chip">P.1</span><span class="chip">H.1.4</span><span class="chip">C.3</span><span class="chip">L</span></div></div>
+    <div class="obj"><h3>Price point</h3><div class="attrs">product × shop × date<br>paid after discounts · per kg/l/pc</div><div class="where"><span class="chip">P.1</span><span class="chip">P.1.1</span><span class="chip">A.3</span><span class="chip">L</span></div></div>
+    <div class="obj"><h3>Shop</h3><div class="attrs">name · chain · branch<br>address · city</div><div class="where"><span class="chip">C.2</span><span class="chip">A.1</span><span class="chip">S.3</span></div></div>
+    <div class="obj"><h3>List item</h3><div class="attrs">product or text · qty · note<br>checked</div><div class="where"><span class="chip">L</span><span class="chip">L.2</span><span class="chip">P.1</span></div></div>
+    <div class="obj"><h3>Server</h3><div class="attrs">URL · token · health checks<br>queue depth · last backup</div><div class="where"><span class="chip">O.2–O.4</span><span class="chip">S.1</span><span class="chip">sync pill</span></div></div>
   </div>
 </section>
 
@@ -405,14 +402,14 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   <div class="sec-head">
     <span class="eyebrow">Receipt lifecycle</span>
     <h2>One status, shown the same way everywhere</h2>
-    <p>Receipt status drives the Home attention card, the Home filter, the tab badge and push notifications. Each state has one colour and one label across the app.</p>
+    <p>Status drives the Home attention card, the Home filter and the tab badge. Each state has one colour and one label across the app.</p>
   </div>
   <div class="life">
-    <div class="state s-pend"><h3>pending</h3><p>Stored on the phone, waiting for the server. Shown as “Waiting to upload”.</p></div>
-    <div class="state s-proc"><h3>processing</h3><p>OCR and structuring running, 30–120 s. Progress row with shop guess when known.</p></div>
-    <div class="state s-rev"><h3>needs_review</h3><p>Total mismatch or unmatched lines. Badge on Home tab, card at the top of Home.</p></div>
-    <div class="state s-ok"><h3>ok</h3><p>Totals match, all lines linked. Counts toward Analytics. No badge.</p></div>
-    <div class="state s-fail"><h3>failed</h3><p>Unreadable or job error. Offers Reprocess or Retake.</p></div>
+    <div class="state s-pend"><h3>pending</h3><p>On the phone, waiting to upload. Shown as “Waiting to upload”.</p></div>
+    <div class="state s-proc"><h3>processing</h3><p>OCR and parsing on the server, about 4–15 s. Row shows shop and a spinner.</p></div>
+    <div class="state s-rev"><h3>needs_review</h3><p>One or more reasons: no total, total mismatch, line math, no date, low confidence, unparsed rows.</p></div>
+    <div class="state s-ok"><h3>ok</h3><p>No reasons, or you confirmed it. Counts toward Analytics and prices.</p></div>
+    <div class="state s-fail"><h3>failed</h3><p>Image couldn't be read. Offers Re-run OCR or Delete and rescan.</p></div>
   </div>
 </section>
 
@@ -420,84 +417,82 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   <div class="sec-head">
     <span class="eyebrow">Key flows</span>
     <h2>Seven journeys the structure must make short</h2>
-    <p>Dark steps are where the user decides something. Dashed steps happen on the server or in iOS.</p>
+    <p>Dark steps are where you decide something. Dashed steps happen on the server or in iOS.</p>
   </div>
   <div class="flows">
     <div class="flow">
       <div class="flow-head"><h3>F1 · Connect to the server</h3><p>First launch, about a minute</p></div>
       <div class="rail">
         <div class="step"><div class="box">Welcome <span class="sid">O.1</span></div></div>
-        <div class="step"><div class="box sys">Look for servers on Wi-Fi</div></div>
-        <div class="step"><div class="box hl">Pick “pantry.local” or scan QR <span class="sid">O.2</span></div></div>
-        <div class="step"><div class="box hl">Approve code on server <span class="sid">O.3</span></div></div>
-        <div class="step"><div class="box">First sync progress <span class="sid">O.4</span></div></div>
-        <div class="step"><div class="box">Camera + notifications <span class="sid">O.5</span></div></div>
+        <div class="step"><div class="box hl">Type server URL <span class="sid">O.2</span></div></div>
+        <div class="step"><div class="box sys">Test /healthz</div></div>
+        <div class="step"><div class="box sys">Run <code>pantry token create</code> on server</div></div>
+        <div class="step"><div class="box hl">Paste token <span class="sid">O.3</span></div></div>
+        <div class="step"><div class="box">First sync + camera <span class="sid">O.4</span></div></div>
         <div class="step"><div class="box">Home, empty state</div></div>
       </div>
     </div>
     <div class="flow">
-      <div class="flow-head"><h3>F2 · Add a receipt, from anywhere</h3><p>Camera, Photos and share sheet converge on C.3</p></div>
+      <div class="flow-head"><h3>F2 · Scan a receipt</h3><p>Goal: under 15 s of attention</p></div>
       <div class="rail">
-        <div class="step"><div class="box">+ → Scan <span class="sid">C.1</span><br>+ → Screenshots <span class="sid">C.2</span><br>AH app → Share <span class="sid">X.1</span></div></div>
-        <div class="step"><div class="box">Add receipts <span class="sid">C.3</span></div></div>
-        <div class="step"><div class="box hl">Send</div></div>
-        <div class="step"><div class="box sys">Upload, or wait in queue</div></div>
+        <div class="step"><div class="box">+ → Scan receipt <span class="sid">C</span></div></div>
+        <div class="step"><div class="box">Document scanner, pages <span class="sid">C.1</span></div></div>
+        <div class="step"><div class="box hl">Confirm shop (last used) <span class="sid">C.2</span></div></div>
+        <div class="step"><div class="box sys">Pages stitched, queued</div></div>
         <div class="step"><div class="box">Processing row on Home <span class="sid">H</span></div></div>
-        <div class="step"><div class="box">Push: “Lidl · €38,12 ready”</div></div>
+        <div class="step"><div class="box sys">OCR → parse → validate → match</div></div>
+        <div class="step"><div class="box">Row turns ok or needs review</div></div>
       </div>
     </div>
     <div class="flow">
-      <div class="flow-head"><h3>F3 · Review a receipt</h3><p>Each confirmation writes an alias</p></div>
+      <div class="flow-head"><h3>F3 · Review a receipt</h3><p>Goal: under 90 s</p></div>
       <div class="rail">
         <div class="step"><div class="box">Home card “2 need review” <span class="sid">H</span></div></div>
-        <div class="step"><div class="box">Receipt detail <span class="sid">H.1</span></div></div>
-        <div class="step"><div class="box">Fix total mismatch <span class="sid">H.1.2</span></div></div>
-        <div class="step"><div class="box">Review queue <span class="sid">H.2</span></div></div>
-        <div class="step"><div class="box hl">Accept suggestion · Pick · Create · Not a product</div></div>
-        <div class="step"><div class="box">“Will match at AH next time”</div></div>
-        <div class="step"><div class="box">Receipt → ok</div></div>
+        <div class="step"><div class="box">Receipt in review mode <span class="sid">H.1</span></div></div>
+        <div class="step"><div class="box">Tap line → fix price/kind <span class="sid">H.1.3</span></div></div>
+        <div class="step"><div class="box hl">Link product: suggestion · search · new <span class="sid">H.1.4</span></div></div>
+        <div class="step"><div class="box">Σ bar turns green</div></div>
+        <div class="step"><div class="box hl">Confirm</div></div>
       </div>
     </div>
     <div class="flow">
-      <div class="flow-head"><h3>F4 · Unpack groceries</h3><p>Goal: a new shop in under 2 min</p></div>
+      <div class="flow-head"><h3>F4 · Unpack groceries</h3><p>Every new product added and linked</p></div>
       <div class="rail">
-        <div class="step"><div class="box">+ → Unpack <span class="sid">C.4</span></div></div>
+        <div class="step"><div class="box">+ → Unpack <span class="sid">C.3</span></div></div>
         <div class="step"><div class="box">Scan barcode</div></div>
         <div class="step"><div class="box sys">Local → Open Food Facts</div></div>
-        <div class="step"><div class="box">Known: tick + haptic, keep scanning</div></div>
-        <div class="step"><div class="box hl">New: confirm prefill <span class="sid">C.4.1</span></div></div>
-        <div class="step"><div class="box hl">Link to “AH HV MELK”?</div></div>
-        <div class="step"><div class="box">Label photo if no nutrition <span class="sid">C.4.2</span></div></div>
+        <div class="step"><div class="box">Known: “✓ Melk halfvol” + haptic</div></div>
+        <div class="step"><div class="box hl">New: confirm prefill + photo <span class="sid">C.3.1</span></div></div>
+        <div class="step"><div class="box hl">Link to “AH HALFV MELK”? <span class="sid">C.3.3</span></div></div>
       </div>
     </div>
     <div class="flow">
-      <div class="flow-head"><h3>F5 · “What did I spend at Lidl in September?”</h3><p>Same answer the assistant gives over MCP</p></div>
+      <div class="flow-head"><h3>F5 · “What did I spend at Lidl in September?”</h3><p>Same numbers the assistant gets over MCP</p></div>
       <div class="rail">
-        <div class="step"><div class="box">Analytics tab <span class="sid">A</span></div></div>
+        <div class="step"><div class="box">Analytics <span class="sid">A</span></div></div>
         <div class="step"><div class="box hl">Range: September <span class="sid">A.4</span></div></div>
         <div class="step"><div class="box">By shop → Lidl</div></div>
-        <div class="step"><div class="box">Shop spend <span class="sid">A.2</span></div></div>
+        <div class="step"><div class="box">Shop spend <span class="sid">A.1</span></div></div>
         <div class="step"><div class="box">Receipt <span class="sid">H.1</span></div></div>
       </div>
     </div>
     <div class="flow">
-      <div class="flow-head"><h3>F6 · Where is oat milk cheapest?</h3><p>Per-litre, after discounts</p></div>
+      <div class="flow-head"><h3>F6 · Where is milk cheapest?</h3><p>Per litre, after discounts</p></div>
       <div class="rail">
-        <div class="step"><div class="box">Search “oat” <span class="sid">X.2</span></div></div>
+        <div class="step"><div class="box">Search “melk” <span class="sid">X.1</span></div></div>
         <div class="step"><div class="box">Product detail <span class="sid">P.1</span></div></div>
-        <div class="step"><div class="box">Cheapest at: Lidl €1,39/L</div></div>
-        <div class="step"><div class="box">Compare shops <span class="sid">P.1.1</span></div></div>
-        <div class="step"><div class="box hl">Add to List</div></div>
+        <div class="step"><div class="box">Cheapest at: Lidl € 0,99/l</div></div>
+        <div class="step"><div class="box">Compare card, history</div></div>
+        <div class="step"><div class="box hl">Add to list</div></div>
       </div>
     </div>
     <div class="flow">
       <div class="flow-head"><h3>F7 · Shopping with no signal</h3><p>Sync pill shows “Offline”, nothing else changes</p></div>
       <div class="rail">
         <div class="step"><div class="box">List <span class="sid">L</span></div></div>
-        <div class="step"><div class="box hl">Group by cheapest shop <span class="sid">L.2</span></div></div>
         <div class="step"><div class="box">Check off items</div></div>
         <div class="step"><div class="box">Scan receipt at till → F2</div></div>
-        <div class="step"><div class="box sys">Queue uploads on reconnect</div></div>
+        <div class="step"><div class="box sys">Upload + list sync on reconnect</div></div>
       </div>
     </div>
   </div>
@@ -511,49 +506,47 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   </div>
   <div class="table-scroll">
     <table>
-      <thead><tr><th>ID</th><th>Screen</th><th>Primary content</th><th>Primary action</th><th>Reached from</th><th>Phase</th></tr></thead>
+      <thead><tr><th>ID</th><th>Screen</th><th>Primary content</th><th>Primary action</th><th>Reached from</th></tr></thead>
       <tbody>
-        <tr class="grp"><td colspan="6">Onboarding &amp; pairing</td></tr>
-        <tr><td>O.1</td><td class="n">Welcome</td><td class="d">What Pantry does, everything stays on your server</td><td class="d">Connect a server</td><td class="d">First launch</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>O.2</td><td class="n">Find server</td><td class="d">Servers found on this Wi-Fi, Scan QR, Enter address</td><td class="d">Select server</td><td class="d">O.1, S.1.3</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>O.3</td><td class="n">Pair</td><td class="d">6-digit code, “Approve on your server”, waiting state, success</td><td class="d">—</td><td class="d">O.2</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>O.4</td><td class="n">First sync</td><td class="d">Progress per item (shops, products, list, receipts), optional Tailscale address</td><td class="d">Continue</td><td class="d">O.3</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>O.5</td><td class="n">Permissions</td><td class="d">Camera, notifications, how to share receipts from shop apps</td><td class="d">Start</td><td class="d">O.4</td><td><span class="ph p3">P3</span></td></tr>
-        <tr class="grp"><td colspan="6">Home</td></tr>
-        <tr><td>H</td><td class="n">Home</td><td class="d">Needs attention (review / failed) · processing rows · receipts by month: shop logo, shop, time, total, status</td><td class="d">Add</td><td class="d">Tab, push</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>H.1</td><td class="n">Receipt detail</td><td class="d">Shop, date, total, mismatch banner, lines with discounts nested, VAT summary, image thumb</td><td class="d">Review lines</td><td class="d">H, A.2</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>H.1.1</td><td class="n">Receipt image</td><td class="d">Full image, tap line to highlight its box</td><td class="d">Close</td><td class="d">H.1</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>H.1.2</td><td class="n">Edit header</td><td class="d">Shop, date/time, total, payment method; Reprocess, Delete</td><td class="d">Save</td><td class="d">H.1</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>H.1.3</td><td class="n">Edit line</td><td class="d">Raw text, qty × unit price = total, kind, linked product</td><td class="d">Save</td><td class="d">H.1</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>H.2</td><td class="n">Review queue</td><td class="d">Progress (3 of 7), raw text in receipt type, image crop, ranked suggestions with match reason</td><td class="d">Confirm</td><td class="d">H.1, H card</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>H.2.1</td><td class="n">Pick product</td><td class="d">Search, recent at this shop, Create new</td><td class="d">Select</td><td class="d">H.2, H.1.3</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>H.2.2</td><td class="n">Pick shop</td><td class="d">Detected header text, known shops, Add shop</td><td class="d">Select</td><td class="d">H.1</td><td><span class="ph p3">P3</span></td></tr>
-        <tr class="grp"><td colspan="6">Analytics</td></tr>
-        <tr><td>A</td><td class="n">Analytics</td><td class="d">Range, total vs previous period, bar chart by week/month, segmented By shop / By category, ranked list</td><td class="d">Change range</td><td class="d">Tab</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>A.1</td><td class="n">Category spend</td><td class="d">Category total, trend, top products with per-unit price</td><td class="d">Open product</td><td class="d">A</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>A.2</td><td class="n">Shop spend</td><td class="d">Spend in range, visits, average basket, receipts, address</td><td class="d">Open receipt</td><td class="d">A, H.1</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>A.3</td><td class="n">Price changes</td><td class="d">Products up/down since date, % and per-unit delta, shop</td><td class="d">Open product</td><td class="d">A</td><td><span class="ph">P5</span></td></tr>
-        <tr class="grp"><td colspan="6">Add</td></tr>
-        <tr><td>C</td><td class="n">Add sheet</td><td class="d">Scan receipt · Choose screenshots · Unpack groceries</td><td class="d">Choose</td><td class="d">+ button</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>C.1</td><td class="n">Scan receipt</td><td class="d">System document camera; multi-page for long receipts</td><td class="d">Keep scan</td><td class="d">C</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>C.2</td><td class="n">Choose screenshots</td><td class="d">Photos picker filtered to screenshots</td><td class="d">Add</td><td class="d">C</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>C.3</td><td class="n">Add receipts</td><td class="d">Thumbnails, remove/retake, duplicate warning (same hash), sync state line (“Will upload when online”)</td><td class="d">Send</td><td class="d">C.1, C.2, share sheet</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>C.4</td><td class="n">Unpack</td><td class="d">Live scanner, session tally (12 known · 3 new), last-scanned chip</td><td class="d">Finish</td><td class="d">C</td><td><span class="ph">P4</span></td></tr>
-        <tr><td>C.4.1</td><td class="n">Quick add product</td><td class="d">OFF prefill: photo, name, brand, size, category, nutrition; link-to-line suggestion</td><td class="d">Add</td><td class="d">C.4</td><td><span class="ph">P4</span></td></tr>
-        <tr><td>C.4.2</td><td class="n">Nutrition label</td><td class="d">Camera, then extracted values per 100 g to confirm</td><td class="d">Save</td><td class="d">C.4.1, P.1.2</td><td><span class="ph">P4</span></td></tr>
-        <tr class="grp"><td colspan="6">Products</td></tr>
-        <tr><td>P</td><td class="n">Products</td><td class="d">Search, category chips, recently bought</td><td class="d">Search</td><td class="d">Tab</td><td><span class="ph">P4</span></td></tr>
-        <tr><td>P.1</td><td class="n">Product detail</td><td class="d">Photo, name, size, cheapest-at badge, per-unit price history chart per shop, last bought, receipt names</td><td class="d">Add to List</td><td class="d">P, H.1, A.1, X.2</td><td><span class="ph">P4</span></td></tr>
-        <tr><td>P.1.1</td><td class="n">Compare shops</td><td class="d">Latest per-unit price per shop, date seen, discount flag</td><td class="d">—</td><td class="d">P.1</td><td><span class="ph">P4</span></td></tr>
-        <tr><td>P.1.2</td><td class="n">Nutrition</td><td class="d">Nutri-Score, per 100 g table, source (OFF / label)</td><td class="d">Rescan label</td><td class="d">P.1</td><td><span class="ph">P4</span></td></tr>
-        <tr class="grp"><td colspan="6">List</td></tr>
-        <tr><td>L</td><td class="n">List</td><td class="d">Items grouped, qty, checked section collapsed, suggestions row</td><td class="d">Add item</td><td class="d">Tab</td><td><span class="ph">P5</span></td></tr>
-        <tr class="grp"><td colspan="6">Settings &amp; sync</td></tr>
-        <tr><td>S</td><td class="n">Settings</td><td class="d">Server card with sync state, assistant access, shops &amp; categories, notifications, about</td><td class="d">—</td><td class="d">Avatar</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>S.1</td><td class="n">Server &amp; sync</td><td class="d">Server name, route (home / Tailscale), last sync, queue count, addresses, Sync now</td><td class="d">Sync now</td><td class="d">S, sync pill</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>S.1.1</td><td class="n">Server health</td><td class="d">API, OCR and model status, versions, processing time</td><td class="d">—</td><td class="d">S.1, sync pill</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>S.1.2</td><td class="n">Upload queue</td><td class="d">Waiting and failed uploads with thumbnails, retry, remove</td><td class="d">Retry all</td><td class="d">S.1, sync pill</td><td><span class="ph p3">P3</span></td></tr>
-        <tr><td>S.2</td><td class="n">Assistant access</td><td class="d">MCP tokens: name, created, revoke; new token</td><td class="d">New token</td><td class="d">S</td><td><span class="ph p3">P3</span></td></tr>
+        <tr class="grp"><td colspan="5">Onboarding</td></tr>
+        <tr><td>O.1</td><td class="n">Welcome</td><td class="d">What Pantry does; your receipts stay on your own server</td><td class="d">Connect server</td><td class="d">First launch</td></tr>
+        <tr><td>O.2</td><td class="n">Server address</td><td class="d">URL field, examples (LAN, Tailscale), test result with OCR engine and version</td><td class="d">Test connection</td><td class="d">O.1, S.1</td></tr>
+        <tr><td>O.3</td><td class="n">Access token</td><td class="d">Command to run on the server with copy button, token field with Paste, check result</td><td class="d">Connect</td><td class="d">O.2, token rejected</td></tr>
+        <tr><td>O.4</td><td class="n">Ready</td><td class="d">First sync progress (shops, categories, products, list), camera permission</td><td class="d">Scan first receipt</td><td class="d">O.3</td></tr>
+        <tr class="grp"><td colspan="5">Home</td></tr>
+        <tr><td>H</td><td class="n">Home</td><td class="d">Spent this month vs last month · needs attention · processing rows · receipts by date (shop, time, total, status)</td><td class="d">Add</td><td class="d">Tab</td></tr>
+        <tr><td>H.1</td><td class="n">Receipt</td><td class="d">Image strip (zoomable), sticky Σ lines vs printed total, review reasons, lines with kind, qty × price, discounts nested, link state</td><td class="d">Confirm</td><td class="d">H, A.1, X.1</td></tr>
+        <tr><td>H.1.1</td><td class="n">Receipt image</td><td class="d">Full image, pinch zoom, tapped line highlighted</td><td class="d">Close</td><td class="d">H.1</td></tr>
+        <tr><td>H.1.2</td><td class="n">Edit details</td><td class="d">Shop, date and time, printed total</td><td class="d">Save</td><td class="d">H.1</td></tr>
+        <tr><td>H.1.3</td><td class="n">Edit line</td><td class="d">Raw text, kind picker, qty, unit, unit price, line total with math check, VAT code; Delete line</td><td class="d">Save</td><td class="d">H.1, Add line</td></tr>
+        <tr><td>H.1.4</td><td class="n">Link product</td><td class="d">Raw text, 3 suggestions with score, search, New product, “Remember for this shop”</td><td class="d">Link</td><td class="d">H.1, H.1.3</td></tr>
+        <tr><td>H.1.5</td><td class="n">Receipt actions</td><td class="d">Edit details, Reparse, Re-run OCR, Delete receipt (with confirm)</td><td class="d">—</td><td class="d">H.1 menu</td></tr>
+        <tr class="grp"><td colspan="5">Analytics</td></tr>
+        <tr><td>A</td><td class="n">Analytics</td><td class="d">Range, total vs previous period, bars by week or month, By shop / By category toggle, ranked breakdown, price changes teaser</td><td class="d">Change range</td><td class="d">Tab, H</td></tr>
+        <tr><td>A.1</td><td class="n">Shop spend</td><td class="d">Total in range, trend, visits, average basket, receipts</td><td class="d">Open receipt</td><td class="d">A</td></tr>
+        <tr><td>A.2</td><td class="n">Category spend</td><td class="d">Total, trend, top products with per-unit price</td><td class="d">Open product</td><td class="d">A</td></tr>
+        <tr><td>A.3</td><td class="n">Price changes</td><td class="d">Products up/down, old → new per unit, %, shop</td><td class="d">Open product</td><td class="d">A</td></tr>
+        <tr class="grp"><td colspan="5">Add</td></tr>
+        <tr><td>C</td><td class="n">Add sheet</td><td class="d">Scan receipt · Unpack groceries</td><td class="d">Choose</td><td class="d">+ button</td></tr>
+        <tr><td>C.1</td><td class="n">Document scanner</td><td class="d">System scanner; several pages make one long receipt</td><td class="d">Save</td><td class="d">C, O.4</td></tr>
+        <tr><td>C.2</td><td class="n">Shop &amp; date</td><td class="d">Stitched preview, shop list (last used first), optional date override</td><td class="d">Add receipt</td><td class="d">C.1</td></tr>
+        <tr><td>C.3</td><td class="n">Unpack</td><td class="d">Live scanner, last result chip, session tally (known / new)</td><td class="d">Done</td><td class="d">C</td></tr>
+        <tr><td>C.3.1</td><td class="n">Quick add product</td><td class="d">OFF prefill: photo, name, brand, size, category, barcode; take photo</td><td class="d">Save</td><td class="d">C.3</td></tr>
+        <tr><td>C.3.2</td><td class="n">Nutrition</td><td class="d">Per 100 g / ml: energy, fat, saturates, carbs, sugars, fibre, protein, salt</td><td class="d">Save</td><td class="d">C.3.1, P.1.3</td></tr>
+        <tr><td>C.3.3</td><td class="n">Link to receipt line</td><td class="d">Unmatched lines from the last 14 days, best guess first</td><td class="d">Link</td><td class="d">C.3.1</td></tr>
+        <tr class="grp"><td colspan="5">Products</td></tr>
+        <tr><td>P</td><td class="n">Products</td><td class="d">Search, category chips, products with photo and latest per-unit price</td><td class="d">Search</td><td class="d">Tab</td></tr>
+        <tr><td>P.1</td><td class="n">Product detail</td><td class="d">Photo, name, size, cheapest-at badge, price history per shop, compare card, nutrition summary, receipt names</td><td class="d">Add to list</td><td class="d">P, H.1, A.2, A.3, X.1</td></tr>
+        <tr><td>P.1.4</td><td class="n">Receipt names</td><td class="d">Raw texts linked to this product, per shop; swipe to delete</td><td class="d">—</td><td class="d">P.1</td></tr>
+        <tr class="grp"><td colspan="5">List</td></tr>
+        <tr><td>L</td><td class="n">List</td><td class="d">Items with qty and cheapest-at hint, suggestions row, checked section collapsed</td><td class="d">Add item</td><td class="d">Tab</td></tr>
+        <tr><td>L.1</td><td class="n">Add item</td><td class="d">Search products or type free text, qty, note</td><td class="d">Add</td><td class="d">L</td></tr>
+        <tr class="grp"><td colspan="5">Settings</td></tr>
+        <tr><td>S</td><td class="n">Settings</td><td class="d">Server card with status, upload queue, shops, categories, about</td><td class="d">—</td><td class="d">Avatar</td></tr>
+        <tr><td>S.1</td><td class="n">Server &amp; sync</td><td class="d">URL, token (replace), checks (database, OCR, fallback OCR, queue), last backup, version, Disconnect</td><td class="d">Sync now</td><td class="d">S, sync pill</td></tr>
+        <tr><td>S.2</td><td class="n">Upload queue</td><td class="d">Waiting and failed scans with thumbnail, shop, error; retry or remove</td><td class="d">Retry all</td><td class="d">S, sync pill</td></tr>
+        <tr><td>S.3</td><td class="n">Shops</td><td class="d">Shops with receipt count → edit: name, chain, branch, address, city</td><td class="d">Add shop</td><td class="d">S, C.2</td></tr>
+        <tr><td>S.4</td><td class="n">Categories</td><td class="d">Ten seed categories, rename, reorder, add</td><td class="d">Add category</td><td class="d">S</td></tr>
       </tbody>
     </table>
   </div>
@@ -566,24 +559,11 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
     <p>These set the visual and interaction language for the wireframes. Pantry borrows patterns, not branding.</p>
   </div>
   <div class="refs">
-    <div class="ref"><a href="https://mobbin.com/apps/moon-pay-ios-fb491862-9742-4a18-a145-2197e3a9c446/f47364ed-f260-4104-a08c-6e212a8fc9ed/screens">MoonPay</a><span class="use">→ A, H.1, S</span><ul><li>Oversized total as the hero number</li><li>Monochrome base, pill buttons pinned to the bottom</li><li>Inset grouped settings rows with icon tiles</li><li>Order detail with Status / Details segment</li></ul></div>
+    <div class="ref"><a href="https://mobbin.com/apps/moon-pay-ios-fb491862-9742-4a18-a145-2197e3a9c446/f47364ed-f260-4104-a08c-6e212a8fc9ed/screens">MoonPay</a><span class="use">→ H, A, H.1, S</span><ul><li>Oversized total as the hero number</li><li>Monochrome base, pill buttons pinned to the bottom</li><li>Inset grouped settings rows with icon tiles</li><li>Detail card with label / value rows</li></ul></div>
     <div class="ref"><a href="https://mobbin.com/apps/alan-ios-4515c0bf-91d9-4283-835d-941997cb8cb1/8fc5d594-06b3-471b-8858-d316eae0f1b9/screens">Alan</a><span class="use">→ tab bar, H, L</span><ul><li>Floating pill tab bar with a detached action</li><li>Soft cards with a trailing arrow for “do this next”</li><li>Friendly empty states with one clear action</li></ul></div>
     <div class="ref"><a href="https://mobbin.com/apps/base-ios-27ff00a8-2e6d-468c-a51c-c9cb178f5c9a">Base</a><span class="use">→ H, P</span><ul><li>Plain, dense activity lists</li><li>Restrained use of one accent colour</li></ul></div>
     <div class="ref"><a href="https://mobbin.com/apps/fuse-ios-879dff81-10a1-4491-8347-6aa6b230e907">Fuse</a><span class="use">→ A, O, P.1</span><ul><li>Large numerals with quiet secondary text</li><li>Bottom sheets for focused tasks</li><li>Calm, step-by-step setup screens</li></ul></div>
-    <div class="ref"><a href="https://mobbin.com/apps/family-ios-91274a89-9f29-40f9-9b83-c7dae12d40b6/46088ce2-9ad5-4019-9ccc-6f8a050e9638/screens">Family</a><span class="use">→ H.2, C.3, C.4</span><ul><li>Sheets that resize to their content</li><li>Springy confirmations and haptics</li><li>Card stack feel for the review queue</li></ul></div>
-  </div>
-</section>
-
-<section>
-  <div class="sec-head">
-    <span class="eyebrow">Open decisions</span>
-    <h2>Smaller calls I'll make unless you say otherwise</h2>
-  </div>
-  <div class="decisions">
-    <div class="decision"><div><h3>How does the phone find the server?</h3><p>Options: automatic discovery on the home Wi-Fi, a QR code on the server's setup page, or typing an address.</p></div><div class="rec"><b>Proposed:</b> all three on one screen, discovery first. QR covers Tailscale-only setups.</div></div>
-    <div class="decision"><div><h3>How is pairing approved?</h3><p>The server needs to trust the phone before issuing a token.</p></div><div class="rec"><b>Proposed:</b> phone shows a 6-digit code; approve it on the server's web page or CLI (<code>pantry pair approve</code>).</div></div>
-    <div class="decision"><div><h3>Where does Unpack live?</h3><p>It scans products, not receipts, but it is still “adding something”.</p></div><div class="rec"><b>Proposed:</b> in the Add sheet as the third option, and as a scan button on Products.</div></div>
-    <div class="decision"><div><h3>Does Home show any spend number?</h3><p>Analytics now owns totals. A small figure on Home would duplicate it.</p></div><div class="rec"><b>Proposed:</b> no. Home is purely the receipts inbox; Analytics is one tap away.</div></div>
+    <div class="ref"><a href="https://mobbin.com/apps/family-ios-91274a89-9f29-40f9-9b83-c7dae12d40b6/46088ce2-9ad5-4019-9ccc-6f8a050e9638/screens">Family</a><span class="use">→ H.1.4, C.2, C.3</span><ul><li>Sheets that resize to their content</li><li>Springy confirmations and haptics</li><li>Big, tappable choice rows</li></ul></div>
   </div>
 </section>
 

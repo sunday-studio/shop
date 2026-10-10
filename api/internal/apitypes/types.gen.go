@@ -54,21 +54,51 @@ func (e LineKind) Valid() bool {
 	}
 }
 
-// Defines values for ReceiptLineUnit.
+// Defines values for LineUnit.
 const (
-	Kg ReceiptLineUnit = "kg"
-	L  ReceiptLineUnit = "l"
-	Pc ReceiptLineUnit = "pc"
+	Kg LineUnit = "kg"
+	L  LineUnit = "l"
+	Pc LineUnit = "pc"
 )
 
-// Valid indicates whether the value is a known member of the ReceiptLineUnit enum.
-func (e ReceiptLineUnit) Valid() bool {
+// Valid indicates whether the value is a known member of the LineUnit enum.
+func (e LineUnit) Valid() bool {
 	switch e {
 	case Kg:
 		return true
 	case L:
 		return true
 	case Pc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReceiptReviewReasons.
+const (
+	LineMath      ReceiptReviewReasons = "line_math"
+	LowConf       ReceiptReviewReasons = "low_conf"
+	NoDate        ReceiptReviewReasons = "no_date"
+	NoTotal       ReceiptReviewReasons = "no_total"
+	TotalMismatch ReceiptReviewReasons = "total_mismatch"
+	UnparsedRows  ReceiptReviewReasons = "unparsed_rows"
+)
+
+// Valid indicates whether the value is a known member of the ReceiptReviewReasons enum.
+func (e ReceiptReviewReasons) Valid() bool {
+	switch e {
+	case LineMath:
+		return true
+	case LowConf:
+		return true
+	case NoDate:
+		return true
+	case NoTotal:
+		return true
+	case TotalMismatch:
+		return true
+	case UnparsedRows:
 		return true
 	default:
 		return false
@@ -102,6 +132,19 @@ func (e ReceiptStatus) Valid() bool {
 	}
 }
 
+// Category defines model for Category.
+type Category struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+	Sort int    `json:"sort"`
+}
+
+// CategoryInput defines model for CategoryInput.
+type CategoryInput struct {
+	Name string `json:"name"`
+	Sort *int   `json:"sort,omitempty"`
+}
+
 // Check defines model for Check.
 type Check struct {
 	Detail *string `json:"detail,omitempty"`
@@ -117,8 +160,23 @@ type Health struct {
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
 
+// LineInput defines model for LineInput.
+type LineInput struct {
+	Kind           LineKind  `json:"kind"`
+	LineTotalCents int64     `json:"line_total_cents"`
+	ParentLineId   *int64    `json:"parent_line_id,omitempty"`
+	Qty            *float64  `json:"qty,omitempty"`
+	RawText        string    `json:"raw_text"`
+	Unit           *LineUnit `json:"unit,omitempty"`
+	UnitPriceCents *int64    `json:"unit_price_cents,omitempty"`
+	VatCode        *string   `json:"vat_code,omitempty"`
+}
+
 // LineKind defines model for LineKind.
 type LineKind string
+
+// LineUnit defines model for LineUnit.
+type LineUnit string
 
 // Problem defines model for Problem.
 type Problem struct {
@@ -130,36 +188,55 @@ type Problem struct {
 
 // Receipt defines model for Receipt.
 type Receipt struct {
-	ConfirmedAt    *time.Time     `json:"confirmed_at,omitempty"`
-	CreatedAt      time.Time      `json:"created_at"`
-	Id             int64          `json:"id"`
-	Lines          *[]ReceiptLine `json:"lines,omitempty"`
-	OcrEngine      *string        `json:"ocr_engine,omitempty"`
-	ParsedSumCents *int64         `json:"parsed_sum_cents,omitempty"`
-	PurchasedAt    *time.Time     `json:"purchased_at,omitempty"`
-	ReviewReasons  *[]string      `json:"review_reasons,omitempty"`
-	ShopId         int64          `json:"shop_id"`
-	Status         ReceiptStatus  `json:"status"`
-	TotalCents     *int64         `json:"total_cents,omitempty"`
+	ConfirmedAt    *time.Time             `json:"confirmed_at,omitempty"`
+	CreatedAt      time.Time              `json:"created_at"`
+	Id             int64                  `json:"id"`
+	Lines          *[]ReceiptLine         `json:"lines,omitempty"`
+	OcrEngine      *string                `json:"ocr_engine,omitempty"`
+	OcrMs          *int64                 `json:"ocr_ms,omitempty"`
+	ParsedSumCents *int64                 `json:"parsed_sum_cents,omitempty"`
+	ParserVersion  *int                   `json:"parser_version,omitempty"`
+	PaymentMethod  *string                `json:"payment_method,omitempty"`
+	PurchasedAt    *time.Time             `json:"purchased_at,omitempty"`
+	ReviewReasons  []ReceiptReviewReasons `json:"review_reasons"`
+	ShopId         int64                  `json:"shop_id"`
+	Status         ReceiptStatus          `json:"status"`
+	TotalCents     *int64                 `json:"total_cents,omitempty"`
+	UpdatedAt      time.Time              `json:"updated_at"`
 }
+
+// ReceiptReviewReasons defines model for Receipt.ReviewReasons.
+type ReceiptReviewReasons string
 
 // ReceiptLine defines model for ReceiptLine.
 type ReceiptLine struct {
-	Id             int64           `json:"id"`
-	Kind           LineKind        `json:"kind"`
-	LineNo         int             `json:"line_no"`
-	LineTotalCents int64           `json:"line_total_cents"`
-	ParentLineId   *int64          `json:"parent_line_id,omitempty"`
-	ProductId      *int64          `json:"product_id,omitempty"`
-	Qty            float64         `json:"qty"`
-	RawText        string          `json:"raw_text"`
-	Unit           ReceiptLineUnit `json:"unit"`
-	UnitPriceCents *int64          `json:"unit_price_cents,omitempty"`
-	VatCode        *string         `json:"vat_code,omitempty"`
+	Id             int64    `json:"id"`
+	Kind           LineKind `json:"kind"`
+	LineNo         int      `json:"line_no"`
+	LineTotalCents int64    `json:"line_total_cents"`
+	ParentLineId   *int64   `json:"parent_line_id,omitempty"`
+	ProductId      *int64   `json:"product_id,omitempty"`
+	Qty            float64  `json:"qty"`
+	RawText        string   `json:"raw_text"`
+	ReceiptId      int64    `json:"receipt_id"`
+	Unit           LineUnit `json:"unit"`
+	UnitPriceCents *int64   `json:"unit_price_cents,omitempty"`
+	UserEdited     bool     `json:"user_edited"`
+	VatCode        *string  `json:"vat_code,omitempty"`
 }
 
-// ReceiptLineUnit defines model for ReceiptLine.Unit.
-type ReceiptLineUnit string
+// ReceiptPage defines model for ReceiptPage.
+type ReceiptPage struct {
+	Items      []Receipt `json:"items"`
+	NextCursor *string   `json:"next_cursor,omitempty"`
+}
+
+// ReceiptPatch Only the fields present are changed.
+type ReceiptPatch struct {
+	PurchasedAt *time.Time `json:"purchased_at,omitempty"`
+	ShopId      *int64     `json:"shop_id,omitempty"`
+	TotalCents  *int64     `json:"total_cents,omitempty"`
+}
 
 // ReceiptStatus defines model for ReceiptStatus.
 type ReceiptStatus string
@@ -194,9 +271,15 @@ type Version struct {
 	Version       string `json:"version"`
 }
 
+// ID defines model for ID.
+type ID = int64
+
 // ListReceiptsParams defines parameters for ListReceipts.
 type ListReceiptsParams struct {
-	From   *openapi_types.Date `form:"from,omitempty" json:"from,omitempty"`
+	// From inclusive, YYYY-MM-DD (local)
+	From *openapi_types.Date `form:"from,omitempty" json:"from,omitempty"`
+
+	// To inclusive, YYYY-MM-DD (local)
 	To     *openapi_types.Date `form:"to,omitempty" json:"to,omitempty"`
 	ShopId *int64              `form:"shop_id,omitempty" json:"shop_id,omitempty"`
 	Status *ReceiptStatus      `form:"status,omitempty" json:"status,omitempty"`
@@ -206,13 +289,42 @@ type ListReceiptsParams struct {
 
 // UploadReceiptMultipartBody defines parameters for UploadReceipt.
 type UploadReceiptMultipartBody struct {
-	Image       openapi_types.File `json:"image"`
-	PurchasedAt *time.Time         `json:"purchased_at,omitempty"`
-	ShopId      int64              `json:"shop_id"`
+	// Image JPEG or PNG, max 20 MB
+	Image openapi_types.File `json:"image"`
+
+	// PurchasedAt overrides the date read from the receipt
+	PurchasedAt *time.Time `json:"purchased_at,omitempty"`
+	ShopId      int64      `json:"shop_id"`
 }
+
+// ReocrReceiptParams defines parameters for ReocrReceipt.
+type ReocrReceiptParams struct {
+	Force *bool `form:"force,omitempty" json:"force,omitempty"`
+}
+
+// ReparseReceiptParams defines parameters for ReparseReceipt.
+type ReparseReceiptParams struct {
+	// Force discard user edits
+	Force *bool `form:"force,omitempty" json:"force,omitempty"`
+}
+
+// CreateCategoryJSONRequestBody defines body for CreateCategory for application/json ContentType.
+type CreateCategoryJSONRequestBody = CategoryInput
+
+// UpdateCategoryJSONRequestBody defines body for UpdateCategory for application/json ContentType.
+type UpdateCategoryJSONRequestBody = CategoryInput
+
+// UpdateLineJSONRequestBody defines body for UpdateLine for application/json ContentType.
+type UpdateLineJSONRequestBody = LineInput
 
 // UploadReceiptMultipartRequestBody defines body for UploadReceipt for multipart/form-data ContentType.
 type UploadReceiptMultipartRequestBody UploadReceiptMultipartBody
+
+// UpdateReceiptJSONRequestBody defines body for UpdateReceipt for application/json ContentType.
+type UpdateReceiptJSONRequestBody = ReceiptPatch
+
+// CreateLineJSONRequestBody defines body for CreateLine for application/json ContentType.
+type CreateLineJSONRequestBody = LineInput
 
 // CreateShopJSONRequestBody defines body for CreateShop for application/json ContentType.
 type CreateShopJSONRequestBody = ShopInput
