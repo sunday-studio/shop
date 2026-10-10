@@ -174,6 +174,16 @@ final class AppModel {
             await list.sync()
             await home.refresh()
         }
+        // Barcodes scanned offline become products now (safe to repeat).
+        Task {
+            for code in PendingScans.codes {
+                if let response = try? await api.createBarcodeProduct(code) {
+                    catalog.upsert(response.product)
+                    PendingScans.remove(code)
+                }
+            }
+            await productReview.refreshCount()
+        }
     }
 
     private func uploadFinished(_ item: UploadItem) {

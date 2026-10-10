@@ -10,6 +10,7 @@ struct UnpackView: View {
     @State private var torch = false
     @State private var manualCode = ""
     @State private var scanLine = false
+    @State private var showSummary = false
     @Environment(\.accessibilityReduceMotion) private var reduce
 
     private let darkTray = Color(hex: 0x1C1C1A)
@@ -39,11 +40,24 @@ struct UnpackView: View {
             sessionTray
         }
         .trayHost(trays)
+        .toastHost(app.toasts, bottomInset: 480)
         .onAppear {
             if model == nil { model = UnpackModel(app: app) }
             Haptics.prepare()
+            // Simulator aid (no camera): `-mock-scan` scans one code of each outcome, a second apart.
+            if app.isMock, ProcessInfo.processInfo.arguments.contains("-mock-scan") {
+                Task {
+                    for code in ["8718907400718", "8710000000010", "4000000000001", "9900000000009", "8711111111118", "123"] {
+                        try? await Task.sleep(for: .seconds(1))
+                        model?.scanned(code)
+                    }
+                }
+            }
         }
         .onDisappear { if torch { Torch.set(false) } }
+        .onChange(of: app.network.isOnline) { _, online in
+            if online { Task { await model?.flushQueued() } }
+        }
     }
 
     // MARK: Top bar
@@ -61,7 +75,7 @@ struct UnpackView: View {
                 }
                 HStack(spacing: 5) {
                     RoundedRectangle.continuous(3).fill(Color(hex: 0xFFB340)).frame(width: 8, height: 8)
-                    Text("\(model?.newCount ?? 0) new")
+                    Text("\((model?.addedCount ?? 0) + (model?.toNameCount ?? 0)) new")
                 }
             }
             .textStyle(.label)
@@ -112,41 +126,61 @@ struct UnpackView: View {
 
     private var sessionTray: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("This session").textStyle(TypeStyle.trayTitle.sized(17)).foregroundStyle(darkInk)
-                Spacer()
-                Text("\(model?.entries.count ?? 0) scanned").textStyle(.label.withFace(.regular)).foregroundStyle(darkInk2)
-            }
-            .padding(.horizontal, Space.xs)
-            .padding(.bottom, 6)
-
-            if !BarcodeScanner.isAvailable {
-                manualEntry
-            }
-
-            if let model, !model.entries.isEmpty {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(model.entries) { entry in
-                            entryRow(entry, model: model)
-                                .transition(.opacity.combined(with: .offset(y: -8)))
-                        }
-                    }
-                    .animation(Motion.spring, value: model.entries.map(\.id))
-                }
-                .frame(maxHeight: 210)
-                .scrollBounceBehavior(.basedOnSize)
+            if showSummary, let model {
+                summary(model)
             } else {
-                Text(BarcodeScanner.isAvailable ? "Point the camera at a barcode." : "Type a barcode to look it up.")
-                    .textStyle(.body)
-                    .foregroundStyle(darkInk2)
-                    .padding(.horizontal, Space.xs)
-                    .padding(.vertical, Space.l)
-            }
+                HStack {
+                    Text("This session").textStyle(TypeStyle.trayTitle.sized(17)).foregroundStyle(darkInk)
+                    Spacer()
+                    Text("\(model?.entries.count ?? 0) scanned").textStyle(.label.withFace(.regular)).foregroundStyle(darkInk2)
+                }
+                .padding(.horizontal, Space.xs)
+                .padding(.bottom, 2)
 
-            Button("Done") { app.capture = nil }
-                .buttonStyle(.shop(.tinted(text: darkInk, tint: darkLine)))
-                .padding(.top, Space.ml)
+                if let model, !model.entries.isEmpty {
+                    ScanTally(known: model.knownCount, added: model.addedCount, toName: model.toNameCount)
+                        .padding(.horizontal, Space.xs)
+                        .padding(.bottom, 6)
+                }
+
+                if !BarcodeScanner.isAvailable {
+                    manualEntry
+                }
+
+                if let model, !model.entries.isEmpty {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(model.entries) { entry in
+                                ScanEntryRow(
+                                    code: entry.code,
+                                    outcome: entry.outcome,
+                                    mergeSuggestion: entry.mergeSuggestion?.name,
+                                    receiptLines: entry.receiptLines.count,
+                                    onName: { nameTray(entry, model: model) },
+                                    onRetry: { model.retry(entry) },
+                                    onLinkLines: { linkLines(entry) },
+                                    onMerge: { Task { await model.merge(entry) } },
+                                    onDismissMerge: { model.dismissMerge(entry) }
+                                )
+                                .transition(.opacity.combined(with: .offset(y: -8)))
+                            }
+                        }
+                        .animation(Motion.spring, value: model.entries.map(\.id))
+                    }
+                    .frame(maxHeight: 210)
+                    .scrollBounceBehavior(.basedOnSize)
+                } else {
+                    Text(BarcodeScanner.isAvailable ? "Point the camera at a barcode." : "Type a barcode to look it up.")
+                        .textStyle(.body)
+                        .foregroundStyle(darkInk2)
+                        .padding(.horizontal, Space.xs)
+                        .padding(.vertical, Space.l)
+                }
+
+                Button("Done") { done() }
+                    .buttonStyle(.shop(.tinted(text: darkInk, tint: darkLine)))
+                    .padding(.top, Space.ml)
+            }
         }
         .padding(.top, 18)
         .padding(.horizontal, Space.xl)
@@ -155,6 +189,61 @@ struct UnpackView: View {
         .padding(.horizontal, Space.trayInset)
         .padding(.bottom, Space.trayInset)
         .ignoresSafeArea(.container, edges: .bottom)
+        .animation(Motion.heightSpring, value: showSummary)
+    }
+
+    // MARK: Done and summary (§5.5)
+
+    private func done() {
+        guard let model, model.createdAny else { close(); return }
+        Haptics.play(.light)
+        showSummary = true
+    }
+
+    private func close() {
+        app.capture = nil
+        Task { await app.productReview.refreshCount() }
+    }
+
+    private func summary(_ model: UnpackModel) -> some View {
+        VStack(alignment: .leading, spacing: Space.lx) {
+            Text("Session done").textStyle(TypeStyle.trayTitle.sized(17)).foregroundStyle(darkInk)
+                .padding(.horizontal, Space.xs)
+            HStack(spacing: Space.m) {
+                summaryCell(model.knownCount, "known", Color(hex: 0x3DDC84))
+                summaryCell(model.addedCount, "added", Color(hex: 0x4DA3FF))
+                summaryCell(model.toNameCount, "to name", Color(hex: 0xFFB340))
+            }
+            if model.reviewCount > 0 {
+                Button(model.reviewCount == 1 ? "Review 1 new product" : "Review \(model.reviewCount) new products") {
+                    app.capture = nil
+                    app.tab = .products
+                    app.push(.productReview)
+                }
+                .buttonStyle(.shop(.tinted(text: Color(hex: 0x0C0C0B), tint: darkInk)))
+            }
+            if model.linkableCount > 0 {
+                Button("Link receipt lines (\(model.linkableCount))") {
+                    if let entry = model.entries.first(where: { !$0.receiptLines.isEmpty }) { linkLines(entry) }
+                }
+                .textStyle(.label)
+                .foregroundStyle(Color(hex: 0x4DA3FF))
+                .buttonStyle(.press(haptic: .selection))
+                .frame(maxWidth: .infinity)
+            }
+            Button("Done") { close() }
+                .buttonStyle(.shop(.tinted(text: darkInk, tint: darkLine)))
+        }
+    }
+
+    private func summaryCell(_ value: Int, _ label: String, _ color: Color) -> some View {
+        VStack(spacing: 2) {
+            Text("\(value)").textStyle(TypeStyle.trayTitle.sized(22)).foregroundStyle(color)
+            Text(label).textStyle(.rowSub).foregroundStyle(darkInk2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Space.l)
+        .background(darkLine, in: RoundedRectangle.continuous(Radius.l))
     }
 
     private var manualEntry: some View {
@@ -176,67 +265,45 @@ struct UnpackView: View {
         }
     }
 
-    private func entryRow(_ entry: UnpackModel.Entry, model: UnpackModel) -> some View {
-        let (title, subtitle, isNew, icon, tint, fg): (String, String, Bool, Icon, Color, Color) = {
-            switch entry.state {
-            case .looking:
-                return ("Looking up…", entry.code, false, .search, darkLine, darkInk2)
-            case .known(let p):
-                let size = p.sizeText.map { " · \($0)" } ?? ""
-                return (p.name, "Known\(size) · \(Dates.ago(entry.at))", false, .check, Color(hex: 0x3DDC84).opacity(0.16), Color(hex: 0x3DDC84))
-            case .new(let prefill):
-                return (prefill?.name ?? "Unknown product", prefill == nil ? "New · not on Open Food Facts" : "New · found on Open Food Facts", true, .plus,
-                        Color(hex: 0xFFB340).opacity(0.18), Color(hex: 0xFFB340))
-            case .failed(let message):
-                return ("Couldn't look up", message, false, .retry, Color(hex: 0xFF6B61).opacity(0.18), Color(hex: 0xFF6B61))
-            }
-        }()
-        return HStack(spacing: Space.l) {
-            Group {
-                if case .looking = entry.state {
-                    ProgressView().controlSize(.small).tint(darkInk2)
-                } else {
-                    IconView(icon, size: 16, weight: .bold)
-                }
-            }
-            .foregroundStyle(fg)
-            .frame(width: 32, height: 32)
-            .background(tint, in: RoundedRectangle.continuous(10))
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).textStyle(.rowTitle).foregroundStyle(darkInk).lineLimit(1)
-                Text(subtitle).textStyle(.rowSub).foregroundStyle(isNew ? Color(hex: 0xFFB340) : darkInk2).lineLimit(1)
-            }
-            Spacer(minLength: Space.m)
-            if isNew {
-                Button("Add") { add(entry, model: model) }
-                    .buttonStyle(.shop(.tinted(text: Color(hex: 0x0C0C0B), tint: darkInk), size: .small, fullWidth: false))
-            } else if case .failed = entry.state {
-                Button("Retry") { model.retry(entry) }
-                    .buttonStyle(.shop(.tinted(text: darkInk, tint: darkLine), size: .small, fullWidth: false))
-            }
-        }
-        .padding(.horizontal, Space.xs)
-        .frame(height: 50)
-        .overlay(alignment: .bottom) { darkLine.frame(height: 1) }
-    }
-
-    private func add(_ entry: UnpackModel.Entry, model: UnpackModel) {
-        guard case .new(let prefill) = entry.state else { return }
-        let code = entry.code
-        trays.present("quick-add-\(code)") {
-            ProductFormTray(mode: .create(name: prefill?.name ?? "", barcode: code, prefill: prefill)) { product in
-                model.saved(product, for: code)
-                Task { await offerLink(product) }
+    private func nameTray(_ entry: UnpackModel.Entry, model: UnpackModel) {
+        trays.present("unpack-name-\(entry.code)") {
+            UnpackNameTray(code: entry.code) { text in
+                Task { await model.name(entry, text) }
             }
         }
     }
 
-    /// C.3.3: after saving, offer recent unmatched receipt lines (14 days).
-    private func offerLink(_ product: Product) async {
-        guard let lines = try? await app.api.unmatchedLines(productId: product.id, days: 14), !lines.isEmpty else { return }
+    /// C.3.3: receipt lines that could belong to the product (opened from the "N on receipts" link).
+    private func linkLines(_ entry: UnpackModel.Entry) {
+        guard let product = entry.product, !entry.receiptLines.isEmpty else { return }
         trays.present("link-line-\(product.id)") {
-            LinkLineTray(product: product, lines: Array(lines.prefix(4)))
+            LinkLineTray(product: product, lines: Array(entry.receiptLines.prefix(4)))
+        }
+    }
+}
+
+/// "Name it": a one-field tray over the dark scanner (the scanner keeps running behind it).
+private struct UnpackNameTray: View {
+    let code: String
+    let onSave: (String) -> Void
+    @Environment(TrayCoordinator.self) private var trays
+    @State private var name = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.xl) {
+            TrayHeader(title: "Name this product", subtitle: code)
+            FieldTile(label: "Name", text: $name, placeholder: "What is it?", background: Palette.trayField)
+            Button("Save") {
+                let text = name.trimmingCharacters(in: .whitespaces)
+                trays.dismiss()
+                onSave(text)
+            }
+            .buttonStyle(.shop(haptic: .medium))
+            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            Button("Cancel") { trays.dismiss() }
+                .textStyle(.label).foregroundStyle(Palette.ink2)
+                .frame(maxWidth: .infinity)
+                .buttonStyle(.press(haptic: nil))
         }
     }
 }
