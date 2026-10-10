@@ -215,6 +215,8 @@ nonisolated struct Receipt: Codable, Sendable, Hashable, Identifiable {
     var lineCount: Int?
     /// Backend need #1.
     var unlinkedCount: Int?
+    /// Single-receipt GET only: the shop this receipt header looks like (openapi 0.10.0).
+    var shopSuggestion: ShopSuggestion?
 
     var reasons: [ReviewReason] { reviewReasons.compactMap(ReviewReason.init(rawValue:)) }
     /// The date to show and group by: purchase time, else upload time.
@@ -506,4 +508,54 @@ nonisolated struct ListItemInput: Codable, Sendable, Hashable {
 
 nonisolated struct RemovedCount: Codable, Sendable {
     var removed: Int64
+}
+
+
+/// "This looks like Aldi": read from the receipt header by the server.
+nonisolated struct ShopSuggestion: Codable, Sendable, Hashable {
+    enum Kind: String, Codable, Sendable { case existing, new }
+
+    var kind: Kind
+    /// Set when `kind` is `existing`.
+    var shopId: Int64?
+    var name: String
+    var chain: String?
+    /// "Hoofdstraat 12, Teststad"
+    var branch: String?
+    /// Guessed web domain for the logo, e.g. "ah.nl".
+    var domain: String?
+    var confidence: Double
+    var evidence: [String]
+    /// Other unconfirmed receipts from the same branch that accepting would move too.
+    var waitingReceiptIds: [Int64]
+
+    /// This receipt plus the ones waiting.
+    var receiptCount: Int { waitingReceiptIds.count + 1 }
+
+    /// "Utrecht · aldi.nl" style detail line.
+    var detail: String? {
+        let parts = [branch, domain].compactMap { $0 }.filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// Same suggestion for several receipts → one Home card.
+    var groupKey: String { "\(kind.rawValue)|\(shopId ?? 0)|\(name)|\(branch ?? "")" }
+}
+
+nonisolated struct ShopSuggestionAnswer: Codable, Sendable {
+    var receiptId: Int64
+    var suggestion: ShopSuggestion?
+}
+
+nonisolated struct AcceptShopSuggestionBody: Codable, Sendable {
+    var shopId: Int64?
+    var name: String?
+    var branch: String?
+    var domain: String?
+    var applyToWaiting: Bool = true
+}
+
+nonisolated struct AcceptedShopSuggestion: Codable, Sendable {
+    var shop: Shop
+    var linkedReceiptIds: [Int64]
 }

@@ -25,6 +25,8 @@ final class ReceiptModel {
     private(set) var isLoading = false
     private(set) var error: APIError?
     private(set) var isConfirming = false
+    private(set) var isAcceptingSuggestion = false
+    private(set) var suggestionDismissed = false
     var lineFilter: LineFilter = .all
 
     @ObservationIgnored let app: AppModel
@@ -33,6 +35,8 @@ final class ReceiptModel {
     init(receiptId: Int64, app: AppModel) {
         self.receiptId = receiptId
         self.app = app
+        // Summary from Home (without lines) so the first frame has real content.
+        receipt = app.home.receipts.first { $0.id == receiptId } ?? app.home.attention.first { $0.id == receiptId }
     }
 
     var api: APIClient { app.api }
@@ -113,14 +117,18 @@ final class ReceiptModel {
         var parts: [String] = []
         if let d = r.purchasedAt { parts.append(Dates.shortDay(d)); parts.append(Dates.time(d)) } else { parts.append("No date") }
         if let pay = r.paymentMethod, !pay.isEmpty { parts.append(pay) }
-        let n = lines.count
-        parts.append(n == 1 ? "1 line" : "\(n) lines")
+        // A summary from Home has no lines yet: leave the count out rather than say "0 lines".
+        if r.lines != nil {
+            let n = lines.count
+            parts.append(n == 1 ? "1 line" : "\(n) lines")
+        }
         return parts.joined(separator: " · ")
     }
 
     /// The reason banner (nil when nothing needs saying).
     var banner: (tone: Tone, lead: String, message: String)? {
         guard let r = receipt else { return nil }
+        if r.lines == nil && r.status != .failed { return nil }
         let unread = lines.filter { $0.kind == .other }.count
         let unlinked = lines.filter { $0.kind == .item && $0.productId == nil }.count
         let unreadNote = unread == 0 ? "" : (unread == 1 ? "One row couldn't be read, it's marked below." : "\(unread) rows couldn't be read, they're marked below.")
@@ -220,6 +228,49 @@ final class ReceiptModel {
     static func tidy(_ raw: String) -> String {
         let lower = raw.lowercased()
         return lower.prefix(1).uppercased() + lower.dropFirst()
+    }
+
+    // MARK: Shop suggestion
+
+    /// "This looks like Aldi", unless the user said "Not now" or the server has none.
+    var suggestion: ShopSuggestion? {
+        suggestionDismissed ? nil : receipt?.shopSuggestion
+    }
+
+    func dismissSuggestion() {
+        guard let key = receipt?.shopSuggestion?.groupKey else { return }
+        withAnimation(Motion.collapse) { suggestionDismissed = true }
+        app.home.hideSuggestion(key)
+    }
+
+    /// One tap: puts this receipt (and the ones waiting on the same branch) on the suggested
+    /// shop, creating it first when it's new.
+    func acceptSuggestion(name: String? = nil, branch: String? = nil, domain: String? = nil) async {
+        guard let s = suggestion, !isAcceptingSuggestion else { return }
+        isAcceptingSuggestion = true
+        defer { isAcceptingSuggestion = false }
+        var body = AcceptShopSuggestionBody()
+        if s.kind == .existing {
+            body.shopId = s.shopId
+        } else {
+            body.name = name ?? s.name
+            body.branch = branch ?? s.branch
+            body.domain = domain ?? s.domain
+        }
+        do {
+            let result = try await api.acceptShopSuggestion(receiptId: receiptId, body)
+            catalog.upsert(result.shop)
+            Haptics.play(.success)
+            let count = result.linkedReceiptIds.count
+            let tail = count == 1 ? "1 receipt" : "\(count) receipts"
+            app.toasts.show(s.kind == .new ? "\(result.shop.name) added · \(tail) linked" : "Moved to \(result.shop.name) · \(tail)", tone: .green)
+            await load()
+            await app.home.suggestionAccepted(linked: result.linkedReceiptIds)
+            await catalog.syncAll()
+        } catch {
+            Haptics.play(.error)
+            app.toasts.error("Couldn't add the shop. Try again.")
+        }
     }
 
     // MARK: Actions

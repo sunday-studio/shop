@@ -28,6 +28,14 @@ final class HomeModel {
     private(set) var counts: ReceiptCounts?
     private(set) var isLoading = false
     private(set) var hasLoaded = false
+    /// True once the first month-spend request has finished (success or not). The hero waits for it.
+    private(set) var spendLoaded = false
+    /// Shop suggestions found for recent unconfirmed receipts, by receipt id.
+    private(set) var suggestions: [Int64: ShopSuggestion] = [:]
+    /// Receipt ids whose suggestion was already asked for (a suggestion can be absent).
+    @ObservationIgnored private var suggestionChecked: Set<Int64> = []
+    /// "Not now": suggestion groups hidden for this session.
+    private(set) var hiddenSuggestionKeys: Set<String> = []
     private(set) var error: APIError?
     private(set) var filter = Filter()
 
@@ -67,19 +75,19 @@ final class HomeModel {
         }
     }
 
-    /// Top five categories plus "Overig" for the rest.
+    /// Top five categories plus "Other" for the rest.
     var categoryShares: [CategoryShare] {
         guard let spend = monthSpend, spend.totalCents > 0 else { return [] }
         let buckets = spend.buckets.filter { $0.cents > 0 }.sorted { $0.cents > $1.cents }
         let named = buckets.filter { $0.key != "none" }.prefix(5)
         var shares = named.map { CategoryShare(name: Self.shortName($0.label), cents: $0.cents, color: CategoryColor.swatch(for: $0.label).color) }
         let rest = spend.totalCents - named.reduce(Int64(0)) { $0 + $1.cents }
-        if rest > 0 { shares.append(CategoryShare(name: "Overig", cents: rest, color: Palette.neutral)) }
+        if rest > 0 { shares.append(CategoryShare(name: "Other", cents: rest, color: Palette.neutral)) }
         return shares
     }
 
     static func shortName(_ name: String) -> String {
-        // "Groente & fruit" → "Groente" to fit the legend, like the wireframe.
+        // "Meat & fish" → "Meat" to fit the legend, like the wireframe.
         name.components(separatedBy: " & ").first ?? name
     }
 
@@ -112,6 +120,49 @@ final class HomeModel {
         counts = try? await api.receiptCounts()
         await refreshSpend()
         updatePolling()
+        await refreshSuggestions()
+    }
+
+    /// Asks the server about the newest unconfirmed receipts (the list payload doesn't carry
+    /// suggestions), a few at a time.
+    func refreshSuggestions() async {
+        let candidates = receipts
+            .filter { $0.confirmedAt == nil && ($0.status == .ok || $0.status == .needsReview) && !suggestionChecked.contains($0.id) }
+            .prefix(12)
+        guard !candidates.isEmpty else { return }
+        for receipt in candidates {
+            suggestionChecked.insert(receipt.id)
+            if let suggestion = try? await api.shopSuggestion(receiptId: receipt.id) { suggestions[receipt.id] = suggestion }
+        }
+    }
+
+    /// One Home card per suggested shop (at most two).
+    struct SuggestionGroup: Identifiable {
+        var id: String { suggestion.groupKey }
+        var suggestion: ShopSuggestion
+        var firstReceiptId: Int64
+        var count: Int
+    }
+
+    var suggestionGroups: [SuggestionGroup] {
+        var groups: [SuggestionGroup] = []
+        for receipt in receipts {
+            guard let suggestion = suggestions[receipt.id], !hiddenSuggestionKeys.contains(suggestion.groupKey) else { continue }
+            if let i = groups.firstIndex(where: { $0.id == suggestion.groupKey }) {
+                groups[i].count = max(groups[i].count, suggestion.receiptCount)
+            } else {
+                groups.append(SuggestionGroup(suggestion: suggestion, firstReceiptId: receipt.id, count: suggestion.receiptCount))
+            }
+        }
+        return Array(groups.prefix(2))
+    }
+
+    func hideSuggestion(_ key: String) { hiddenSuggestionKeys.insert(key) }
+
+    /// After accepting: forget the suggestion for the moved receipts and re-read them.
+    func suggestionAccepted(linked: [Int64]) async {
+        for id in linked { suggestions[id] = nil }
+        await refresh()
     }
 
     func loadMore() async {
@@ -136,6 +187,7 @@ final class HomeModel {
         async let previous = api.spend(from: lastStart, to: lastSameDay, groupBy: .month)
         monthSpend = try? await current
         lastMonthCents = (try? await previous)?.totalCents
+        spendLoaded = true
     }
 
     // MARK: Polling
@@ -206,6 +258,10 @@ final class HomeModel {
         monthSpend = nil
         lastMonthCents = nil
         hasLoaded = false
+        spendLoaded = false
+        suggestions = [:]
+        suggestionChecked = []
+        hiddenSuggestionKeys = []
         filter = Filter()
     }
 }

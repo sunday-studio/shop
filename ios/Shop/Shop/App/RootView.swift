@@ -1,4 +1,7 @@
+import AVFoundation
+import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Switches between onboarding, the app, and the re-pair screen when a token is rejected.
 struct RootView: View {
@@ -40,6 +43,7 @@ struct RootView: View {
 struct RootTabView: View {
     @Environment(AppModel.self) private var model
     @State private var previous: AppTab = .home
+    @State private var pickedPhotos: [PhotosPickerItem] = []
     @Environment(\.accessibilityReduceMotion) private var reduce
 
     var body: some View {
@@ -65,9 +69,58 @@ struct RootTabView: View {
             }
         }
         .animation(Motion.ease, value: showsBar)
+        .task {
+            // Ask up front so the first scan opens straight into the camera. Onboarding has its
+            // own camera step; this covers users who skipped it.
+            if !model.isMock, AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined {
+                _ = await AVCaptureDevice.requestAccess(for: .video)
+            }
+        }
         .fullScreenCover(item: $model.capture) { mode in
             CaptureCover(mode: mode)
                 .environment(model)
+        }
+        .fullScreenCover(item: $model.importFlow) { flow in
+            ImportScreen(model: flow)
+                .environment(model)
+        }
+        .photosPicker(
+            isPresented: Binding(get: { model.importPicker == .photos }, set: { if !$0 { pickerClosed() } }),
+            selection: $pickedPhotos, maxSelectionCount: ImportModel.maxPages, selectionBehavior: .ordered, matching: .images
+        )
+        .fileImporter(
+            isPresented: Binding(get: { model.importPicker == .files }, set: { if !$0 { pickerClosed() } }),
+            allowedContentTypes: [.jpeg, .png, .heic, .heif, .pdf], allowsMultipleSelection: true
+        ) { result in
+            guard case .success(let urls) = result, !urls.isEmpty else { return }
+            startImport(source: .files) { await $0.load(files: urls) }
+        }
+        .onChange(of: pickedPhotos) { _, items in
+            guard !items.isEmpty else { return }
+            pickedPhotos = []
+            startImport(source: .photos) { await $0.load(photos: items) }
+        }
+    }
+
+    /// A cancelled picker returns to the Add tray; a pick opens the Import screen.
+    private func pickerClosed() {
+        model.importPicker = nil
+        Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            if model.importFlow == nil && !model.isStartingImport { model.trays.present("add") { AddTray() } }
+        }
+    }
+
+    private func startImport(source: UploadItem.Source, load: @escaping (ImportModel) async -> Void) {
+        model.isStartingImport = true
+        let flow = ImportModel()
+        flow.source = source
+        Task {
+            // The system picker is still dismissing; present the screen once it is gone.
+            try? await Task.sleep(for: .milliseconds(350))
+            model.importFlow = flow
+            model.isStartingImport = false
+            await load(flow)
         }
     }
 

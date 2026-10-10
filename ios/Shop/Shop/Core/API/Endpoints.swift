@@ -70,6 +70,19 @@ extension APIClient {
     }
 
     func receipt(_ id: Int64) async throws -> Receipt { try await get("/v1/receipts/\(id)") }
+
+    func shopSuggestion(receiptId: Int64) async throws -> ShopSuggestion? {
+        let answer: ShopSuggestionAnswer = try await get("/v1/receipts/\(receiptId)/shop-suggestion")
+        return answer.suggestion
+    }
+
+    func acceptShopSuggestion(receiptId: Int64, _ body: AcceptShopSuggestionBody) async throws -> AcceptedShopSuggestion {
+        try await send("POST", "/v1/receipts/\(receiptId)/shop-suggestion/accept", body: body)
+    }
+
+    func rejectShopSuggestion(receiptId: Int64) async throws {
+        try await perform("POST", "/v1/receipts/\(receiptId)/shop-suggestion/reject")
+    }
     func receiptCounts() async throws -> ReceiptCounts { try await get("/v1/receipts/counts") }
 
     func search(_ query: String, limit: Int = 10) async throws -> SearchResults {
@@ -90,9 +103,9 @@ extension APIClient {
     func receiptImageURL(_ id: Int64) -> URL? { url("/v1/receipts/\(id)/image") }
 
     /// Foreground upload (the queue normally uploads in the background).
-    func uploadReceipt(image: Data, shopId: Int64, purchasedAt: Date?) async throws -> Receipt {
+    func uploadReceipt(image: Data, shopId: Int64?, purchasedAt: Date?) async throws -> Receipt {
         var form = Multipart()
-        form.add(field: "shop_id", value: String(shopId))
+        if let shopId { form.add(field: "shop_id", value: String(shopId)) }
         if let purchasedAt { form.add(field: "purchased_at", value: Dates.rfc3339(purchasedAt)) }
         form.add(file: "image", filename: "receipt.jpg", mimeType: "image/jpeg", data: image)
         form.finish()

@@ -214,12 +214,18 @@ final class APIClient {
         let result: (Data, HTTPURLResponse)
         do {
             result = try await transport.send(req)
+        } catch let error as URLError where error.code == .cancelled {
+            // The caller's task went away (view replaced, refresh superseded): not a connectivity
+            // problem, so don't flip reachability or surface an error.
+            throw CancellationError()
         } catch let error as URLError {
             let mapped = Self.map(error)
             reachability = mapped == .offline ? .offline : .unreachable
             throw mapped
         } catch let error as APIError {
             throw error
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             reachability = .unreachable
             throw APIError.unreachable

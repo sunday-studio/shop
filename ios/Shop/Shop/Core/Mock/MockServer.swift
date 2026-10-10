@@ -123,8 +123,30 @@ final class MockServer: HTTPTransport {
         case ("POST", "v1/receipts"):
             return upload(body, contentType: contentType)
         case ("GET", "v1/receipts/:id"):
-            guard let r = receipts.first(where: { $0.id == id(2) }) else { return notFound() }
+            guard var r = receipts.first(where: { $0.id == id(2) }) else { return notFound() }
+            r.shopSuggestion = mockSuggestion(for: r.id)
             return ok(r)
+        case ("GET", "v1/receipts/:id/shop-suggestion"):
+            guard let rid = id(2) else { return notFound() }
+            return ok(ShopSuggestionAnswer(receiptId: rid, suggestion: mockSuggestion(for: rid)))
+        case ("POST", "v1/receipts/:id/shop-suggestion/accept"):
+            guard let rid = id(2), let suggestion = mockSuggestion(for: rid) else { return notFound() }
+            let input = (try? decoder.decode(AcceptShopSuggestionBody.self, from: body)) ?? AcceptShopSuggestionBody()
+            let shop: Shop
+            if let existing = input.shopId.flatMap({ sid in shops.first { $0.id == sid } }) {
+                shop = existing
+            } else {
+                shop = Shop(id: newId(), name: input.name ?? suggestion.name, chain: suggestion.chain, branch: input.branch ?? suggestion.branch, address: nil, city: nil,
+                            notes: nil, domain: input.domain ?? suggestion.domain, logoUrl: nil, createdAt: .now, updatedAt: .now)
+                shops.append(shop)
+            }
+            let linked = [rid] + (input.applyToWaiting ? suggestion.waitingReceiptIds : [])
+            for i in receipts.indices where linked.contains(receipts[i].id) { receipts[i].shopId = shop.id }
+            acceptedSuggestions.formUnion(linked)
+            return ok(AcceptedShopSuggestion(shop: shop, linkedReceiptIds: linked))
+        case ("POST", "v1/receipts/:id/shop-suggestion/reject"):
+            if let rid = id(2) { acceptedSuggestions.insert(rid) }
+            return (204, Data())
         case ("PATCH", "v1/receipts/:id"):
             guard let i = receipts.firstIndex(where: { $0.id == id(2) }), let patch = try? decoder.decode(ReceiptPatch.self, from: body) else { return notFound() }
             if let s = patch.shopId { receipts[i].shopId = s }
@@ -518,6 +540,15 @@ final class MockServer: HTTPTransport {
     }
 
     private func shopName(_ id: Int64) -> String { shops.first { $0.id == id }?.name ?? "Shop" }
+
+    private var acceptedSuggestions: Set<Int64> = []
+
+    /// One receipt that "looks like Aldi", for trying the suggestion card in -mock.
+    private func mockSuggestion(for id: Int64) -> ShopSuggestion? {
+        guard id == 102, !acceptedSuggestions.contains(id) else { return nil }
+        return ShopSuggestion(kind: .new, shopId: nil, name: "Aldi", chain: "Aldi", branch: "Hoofdstraat 12, Teststad", domain: "aldi.nl",
+                              confidence: 0.92, evidence: ["ALDI", "Hoofdstraat 12", "Teststad"], waitingReceiptIds: acceptedSuggestions.contains(104) ? [] : [104])
+    }
 
     private func newId() -> Int64 {
         nextId += 1
