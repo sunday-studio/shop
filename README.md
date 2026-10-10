@@ -4,6 +4,7 @@ Self-hosted grocery receipt tracker: paper receipts → local OCR → SQLite →
 
 Docs live in [`docs/`](docs/):
 
+- [Backend status / handoff](docs/BACKEND-STATUS.md)
 - [Build plan](docs/PLAN.md)
 - [Operations](docs/operations.md): install, NAS backups, Tailscale, upgrades
 - [Restore](docs/restore.md)
