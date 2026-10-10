@@ -105,3 +105,45 @@ Easy to undo by accident, so read these:
 - Still not walked: unpack/scan, list check-off, swipe rows, typing in search.
 - Sim pass 4 (latest build): verified tray drag-dismiss (slides and fades, no snap-back), list check-off (circle fills green at once, strike at 160ms, row collapses after the screen's 420ms), search typing (results update live, filter chips fine). Double haptics fixed: SuggestionChip touch-down removed (ShoppingListView:27 plays its own), ProductDetailView addToList duplicate removed by swift agent. Open Features item: Home cold start flashes "€0,00 / Totals show up once a receipt is read" then rolls to €143,41 (hero needs a loading state, no roll from 0). Not testable in sim: unpack/scan (no camera), swipe rows (only ProductDetailView has swipeActions), real hitches (needs device).
 - Upload flow design (2026-10-10): spec in docs/DESIGN-UPLOAD-FLOW.md (entry points, import screen with grouping/shop/date, straighten & crop, progress/queue/failures, unknown-shop suggestion, haptics, motion, copy, backend asks, acceptance checklist). New Design/ components: Components/Import.swift (UnknownShopMark, PageStrip, ImportReceiptRow, JoinPill, UploadProgressCard, ShopSuggestionCard), Components/CropOverlay.swift (CropQuad, CropOverlay), ReceiptRow(isUnknownShop:), Catalog "Import" section. Compiles (separate DerivedData build). Features/ and Core/ untouched.
+
+## Device check pack (real iPhone), 2026-10-10
+
+Short version for the person holding the phone. The simulator cannot show hitches, real haptics, the camera or real photos, so these are the checks that only a phone can do.
+
+### 1. Run the app on the phone (about 5 minutes)
+Mac's address right now: **10.15.1.182** (it can change; check with `ipconfig getifaddr en0`). Server URL to type in the app: `http://10.15.1.182:8080`. Mac and phone on the same Wi-Fi, the Docker stack running.
+1. iPhone: Settings → Privacy & Security → **Developer Mode** on (the phone restarts once). Plug it in, unlock it, tap **Trust** on the phone.
+2. Mac: open `ios/Shop/Shop.xcodeproj` in Xcode. Top bar: pick your iPhone as the destination. Signing is already **Automatic** with team `2QG5WSN24S`, bundle id `com.sundaystudi.Shop`; if Xcode complains, open the Shop target → Signing & Capabilities → pick your team.
+3. For hitch numbers use **Release**: Product → Scheme → Edit Scheme → Run → Build Configuration **Release** (Debug builds are slower and show hitches that real users never see). Press ⌘R.
+4. First launch on the phone: if it says "Untrusted Developer", Settings → General → VPN & Device Management → your developer → Trust. Then in the app: **Allow** Local Network, **Allow** Camera, enter the server URL and the pairing password.
+5. If connecting fails with an "App Transport Security" / "insecure connection" error: the plain-http exception for local IP addresses is missing from the build. Tell the swift agent (docs/IOS-SETUP.md lists `NSAllowsLocalNetworking`; the project currently has no Info.plist entry for it, so check this first).
+   Command-line alternative to Xcode (same result): `xcodebuild -project ios/Shop/Shop.xcodeproj -scheme Shop -configuration Release -destination 'id=<UDID>' -derivedDataPath /tmp/shop-dd -allowProvisioningUpdates build`, then `xcrun devicectl device install app --device Midgard /tmp/shop-dd/Build/Products/Release-iphoneos/Shop.app` and `xcrun devicectl device process launch --device Midgard com.sundaystudi.Shop` (`devicectl` takes the phone's name or its CoreDevice id; `xcodebuild` and `xctrace` take the UDID below).
+
+The phone the Mac sees right now (connected, iPhone 15 Pro): **Midgard (iOS 26.6.2), UDID `00008130-000430CC0083401C`** (`xcrun xctrace list devices` shows the current list).
+
+### 2. Record hitches (Animation Hitches)
+Leave the app open on the screen you want to test, then run this on the Mac; it records 20 s and you do the gesture on the phone while it runs. Replace the UDID if it differs.
+
+```bash
+# Home scroll: start the command, then fling-scroll the Home list up and down for 20 s
+xcrun xctrace record --template 'Animation Hitches' --device 00008130-000430CC0083401C --attach Shop --time-limit 20s --output ~/Desktop/shop-home-scroll.trace
+
+# Tab switches: start the command, then tap Home, Analytics, Products, List, Home, ... about 15 times
+xcrun xctrace record --template 'Animation Hitches' --device 00008130-000430CC0083401C --attach Shop --time-limit 20s --output ~/Desktop/shop-tab-switch.trace
+```
+
+Notes: the phone must be unlocked and the app in the foreground; `--attach Shop` finds the running app by name. If it says it can't find the process, run `xcrun devicectl device info processes --device Midgard | grep -i shop` and pass the pid instead of `Shop`. The traces land on the Desktop (`~/Desktop/shop-home-scroll.trace`, `~/Desktop/shop-tab-switch.trace`). Open them in Instruments, or tell the design agent the paths and it reads them with `xcrun xctrace export --input <file>.trace --toc` and then `--xpath` on the hitches table, and reports hitch count and the longest hitch per gesture. Two more optional runs: tray open/close ten times (`shop-trays.trace`), and importing 20 photos (`shop-import.trace`).
+
+### 3. What to try by hand, and what to look for
+Turn the phone's volume and Silent mode off; haptics work in Silent mode. In Shop's Settings, Haptics should be on.
+- **Unpack groceries (Add → Unpack):** scan a barcode that is already a product: a single crisp tick (`scanKnown`). Scan a new one: two quick ticks, a light then a firmer one (`scanNew`). They must feel different. Scan the same code twice quickly: no second buzz within about 2 s.
+- **Trays:** open the Add tray: a soft thump. Drag a tray down to dismiss: a short firm tick as it goes. No haptic at all while dragging.
+- **Upload haptics:** switch on Airplane mode, add a receipt: one soft thud ("queued"). Switch it off: the receipt uploads with no buzz while you aren't touching the phone. To see the failure haptic, stop the server container, add a receipt, wait for it to give up: one error buzz per batch, not per receipt.
+- **Buttons and chips:** primary buttons a light tap on touch-down, chips and tabs a tick, check-off a soft tap. Look for any double buzz on one tap.
+- **First tap on a Home row after launch:** kill the app, relaunch, tap a receipt row right away. Does it open on the first tap? (In the simulator the first tap was sometimes missed; we think that was the simulator.)
+- **Camera permission at launch / drop-to-home:** delete the app, reinstall, launch: the camera prompt appears at launch (this is intended). Tap **Allow** and see whether the app stays open. In the simulator it once dropped to the Home Screen after Allow; note exactly what happens.
+- **Import with straighten and crop:** Add → Import receipts → Photo library, pick two or three real receipt photos taken at an angle (the skewed ones, such as the one that failed to parse) and one straight photo. Look for: the thumbnail is straightened, the **Straightened** chip is on it, tapping the chip flips to **Original** and back, **Edges not found · Adjust** on a photo with no clear edges, and that the uploaded receipt's prices line up with the product names. Also try picking 20+ photos: the screen should stay responsive.
+- **Scrolling and transitions in general:** Home scroll, opening a receipt, switching tabs, opening and closing trays. Anything that stutters is worth recording (step 2) while you do it.
+
+### 4. Tell us
+Send the trace paths and one line per checklist item (felt right / wrong / didn't test). The design agent reads the traces and reports hitches per screen with the cause where it can find one.
