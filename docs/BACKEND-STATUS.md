@@ -59,6 +59,7 @@ All iOS backend needs (#1–#11 in [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md))
 
 ## M11 progress (backend thread)
 
-- Done: parser treats "22 SUBTOTAAL" / "2 TOTAAL" (leading item count) as subtotal/total, with a test (`TestSubtotalWithLeadingCount`). Migration 00010 (English categories) is guarded against UNIQUE collisions with user-made categories; verified applied on the running stack (v9 -> v10, categories read in English).
-- Blocked: `shop reparse` skips receipts 1 and 2 because both are confirmed (`confirmed_at` set), by design. Needs a decision before re-parsing them.
-- Next: HEIC / multi-page upload check (use the spike agent's HEIC-through-OCR findings), purchase date from receipt, then add the real receipts as fixtures.
+- Parser: 12 of the 13 spike receipts reconcile (sum == printed total). SUBTOTAAL/"N Artikelen"/"Van x voor y"/lone-price rows are ignored; lost-comma ("20015") and trailing-junk ("2,49 49") prices are repaired only when that makes the sum equal the total exactly. IMG_1475 (perspective/curl photo) is deliberately left flagged `total_mismatch`; its fix is upstream (document-scanner crop in the app). Open question for whoever has the paper: its sum only reaches the total if the two "Van x voor y" amounts count as line amounts.
+- Uploads: HEIC/HEIF get an explicit 415 (app converts to JPEG). `purchased_at` is the client override or the parsed receipt date, else NULL; never upload time or EXIF.
+- Shop suggestions (openapi 0.10.0, migration 00011): `internal/shopsuggest` reads the header (chain from the first ~10 rows, keyboard-noise rows skipped; branch = street + number + town). `GET /v1/receipts/{id}/shop-suggestion`, `POST .../accept` (existing `shop_id` or editable `name`; `apply_to_waiting` moves other unconfirmed receipts of the same branch), `POST .../reject` (remembered by branch key). Also embedded as `shop_suggestion` in `GET /v1/receipts/{id}`. 7 AH + 4 Dirk headers detected, the 2 butcher slips return none.
+- Not done: `shop_id` is still required on upload. Making it nullable (receipts "Unassigned") waits for the user's OK.
