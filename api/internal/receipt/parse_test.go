@@ -371,3 +371,24 @@ func TestPriceRepairNeedsExactReconciliation(t *testing.T) {
 		t.Errorf("sum = %d; the repair must not apply when it does not reconcile", r.SumCents)
 	}
 }
+
+// IMG_1475 is a library photo with perspective/curl: the price column drifts from ~24px above the
+// descriptions to ~13px below, so no single rotation aligns it (deskewing was tried and made other
+// receipts worse). The parser must not pretend: it has to flag the receipt for review.
+func TestCurledPhotoIsFlaggedNotGuessed(t *testing.T) {
+	b, err := os.ReadFile("testdata/real_1475.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var res ocr.Result
+	if err := json.Unmarshal(b, &res); err != nil {
+		t.Fatal(err)
+	}
+	r := Parse(res, Options{Location: ams, Now: now})
+	if r.TotalCents == nil || *r.TotalCents != 4504 {
+		t.Errorf("total = %v; want 4504", r.TotalCents)
+	}
+	if !slices.Contains(r.Reasons, ReasonTotalMismatch) {
+		t.Errorf("reasons = %v; want total_mismatch so the receipt goes to review", r.Reasons)
+	}
+}
