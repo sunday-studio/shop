@@ -43,9 +43,33 @@ final class HomeModel {
     @ObservationIgnored private let catalog: Catalog
     @ObservationIgnored private var pollTask: Task<Void, Never>?
 
+    /// The last month figure, kept on disk so Home never shows €0,00 just because it's offline.
+    private struct CachedSpend: Codable {
+        var monthKey: String
+        var spend: Spend
+        var lastMonthCents: Int64?
+        var savedAt: Date
+    }
+
+    private static let spendCacheName = "spend.json"
+    private static func monthKey(_ date: Date) -> String { Dates.startOfMonth(date).formatted(.iso8601.year().month()) }
+
+    /// The figure on screen comes from disk (or the last good fetch), not from this launch.
+    private(set) var spendIsStale = false
+    private(set) var spendUpdatedAt: Date?
+    /// The first spend request failed and there is nothing cached for this month.
+    private(set) var spendUnavailable = false
+
     init(api: APIClient, catalog: Catalog) {
         self.api = api
         self.catalog = catalog
+        if let cached = DiskStore.load(CachedSpend.self, from: Self.spendCacheName), cached.monthKey == Self.monthKey(.now) {
+            monthSpend = cached.spend
+            lastMonthCents = cached.lastMonthCents
+            spendIsStale = true
+            spendUpdatedAt = cached.savedAt
+            spendLoaded = true
+        }
         if let cached = DiskStore.load([Receipt].self, from: "inbox.json") {
             receipts = cached
             attention = cached.filter { $0.status == .needsReview || $0.status == .failed }
@@ -192,8 +216,20 @@ final class HomeModel {
         let lastSameDay = Dates.adding(.day, min(dayOfMonth, lastMonthDays) - 1, to: lastStart)
         async let current = api.spend(from: monthStart, to: now, groupBy: .category)
         async let previous = api.spend(from: lastStart, to: lastSameDay, groupBy: .month)
-        monthSpend = try? await current
-        lastMonthCents = (try? await previous)?.totalCents
+        let fresh = try? await current
+        let freshPrevious = try? await previous
+        if let fresh {
+            monthSpend = fresh
+            lastMonthCents = freshPrevious?.totalCents
+            spendIsStale = false
+            spendUnavailable = false
+            spendUpdatedAt = .now
+            DiskStore.save(CachedSpend(monthKey: Self.monthKey(now), spend: fresh, lastMonthCents: lastMonthCents, savedAt: .now), to: Self.spendCacheName)
+        } else if monthSpend != nil {
+            spendIsStale = true   // keep the last known figure
+        } else {
+            spendUnavailable = true
+        }
         spendLoaded = true
     }
 
@@ -264,6 +300,10 @@ final class HomeModel {
         counts = nil
         monthSpend = nil
         lastMonthCents = nil
+        spendIsStale = false
+        spendUnavailable = false
+        spendUpdatedAt = nil
+        DiskStore.remove(Self.spendCacheName)
         hasLoaded = false
         spendLoaded = false
         suggestions = [:]
