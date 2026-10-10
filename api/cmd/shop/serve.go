@@ -21,6 +21,7 @@ import (
 	"shop/internal/openfoodfacts"
 	"shop/internal/products"
 	"shop/internal/receipts"
+	"shop/internal/search"
 	"shop/internal/shopping"
 	"shop/internal/stats"
 	"shop/internal/store"
@@ -120,7 +121,8 @@ func serve(ctx context.Context, log *slog.Logger) error {
 	})
 	api := httpapi.New(httpapi.Deps{
 		DB: a.db, OCR: a.ocr, OCRFallback: a.fallback, Receipts: a.receipts,
-		Products: a.products, Stats: a.stats, List: a.list, English: a.english, Location: a.cfg.Location, Log: log,
+		Products: a.products, Stats: a.stats, List: a.list, English: a.english,
+		Search: search.New(a.db, a.products, a.matcher), Location: a.cfg.Location, Log: log,
 		DataDir: a.cfg.DataDir,
 		Authed:  map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)},
 	})

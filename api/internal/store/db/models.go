@@ -159,6 +159,17 @@ type Shop struct {
 	DeletedAt     sql.NullString `json:"deleted_at"`
 }
 
+type ShoppingListClientID struct {
+	ClientID  string `json:"client_id"`
+	ItemID    int64  `json:"item_id"`
+	CreatedAt string `json:"created_at"`
+}
+
+type ShoppingListDeletion struct {
+	ItemID    int64  `json:"item_id"`
+	DeletedAt string `json:"deleted_at"`
+}
+
 type ShoppingListItem struct {
 	ID        int64           `json:"id"`
 	ProductID sql.NullInt64   `json:"product_id"`
@@ -167,4 +178,5 @@ type ShoppingListItem struct {
 	Note      sql.NullString  `json:"note"`
 	CheckedAt sql.NullString  `json:"checked_at"`
 	CreatedAt string          `json:"created_at"`
+	UpdatedAt sql.NullString  `json:"updated_at"`
 }

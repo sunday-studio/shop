@@ -354,7 +354,8 @@ func (s *server) listReceipts(ctx context.Context, _ *mcp.CallToolRequest, in Li
 	}
 	out := ListReceiptsOut{Receipts: make([]ReceiptSummary, len(recs))}
 	for i, r := range recs {
-		out.Receipts[i] = s.summary(r, names)
+		out.Receipts[i] = s.summary(r.Receipt, names)
+		out.Receipts[i].Lines = int(r.LineCount)
 	}
 	return nil, out, nil
 }

@@ -10,22 +10,37 @@ import (
 	"database/sql"
 )
 
-const clearCheckedShoppingItems = `-- name: ClearCheckedShoppingItems :execrows
-DELETE FROM shopping_list_items WHERE checked_at IS NOT NULL
+const checkedShoppingItemIDs = `-- name: CheckedShoppingItemIDs :many
+SELECT id FROM shopping_list_items WHERE checked_at IS NOT NULL
 `
 
-func (q *Queries) ClearCheckedShoppingItems(ctx context.Context) (int64, error) {
-	result, err := q.db.ExecContext(ctx, clearCheckedShoppingItems)
+func (q *Queries) CheckedShoppingItemIDs(ctx context.Context) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, checkedShoppingItemIDs)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return result.RowsAffected()
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const createShoppingItem = `-- name: CreateShoppingItem :one
-INSERT INTO shopping_list_items (product_id, text, qty, note, created_at)
-VALUES (?, ?, ?, ?, ?)
-RETURNING id, product_id, text, qty, note, checked_at, created_at
+INSERT INTO shopping_list_items (product_id, text, qty, note, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
+RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at
 `
 
 type CreateShoppingItemParams struct {
@@ -34,6 +49,7 @@ type CreateShoppingItemParams struct {
 	Qty       sql.NullFloat64 `json:"qty"`
 	Note      sql.NullString  `json:"note"`
 	CreatedAt string          `json:"created_at"`
+	UpdatedAt sql.NullString  `json:"updated_at"`
 }
 
 func (q *Queries) CreateShoppingItem(ctx context.Context, arg CreateShoppingItemParams) (ShoppingListItem, error) {
@@ -43,6 +59,7 @@ func (q *Queries) CreateShoppingItem(ctx context.Context, arg CreateShoppingItem
 		arg.Qty,
 		arg.Note,
 		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 	var i ShoppingListItem
 	err := row.Scan(
@@ -53,6 +70,7 @@ func (q *Queries) CreateShoppingItem(ctx context.Context, arg CreateShoppingItem
 		&i.Note,
 		&i.CheckedAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -70,7 +88,7 @@ func (q *Queries) DeleteShoppingItem(ctx context.Context, id int64) (int64, erro
 }
 
 const findOpenShoppingItemByProduct = `-- name: FindOpenShoppingItemByProduct :one
-SELECT id, product_id, text, qty, note, checked_at, created_at FROM shopping_list_items WHERE product_id = ? AND checked_at IS NULL LIMIT 1
+SELECT id, product_id, text, qty, note, checked_at, created_at, updated_at FROM shopping_list_items WHERE product_id = ? AND checked_at IS NULL LIMIT 1
 `
 
 func (q *Queries) FindOpenShoppingItemByProduct(ctx context.Context, productID sql.NullInt64) (ShoppingListItem, error) {
@@ -84,12 +102,24 @@ func (q *Queries) FindOpenShoppingItemByProduct(ctx context.Context, productID s
 		&i.Note,
 		&i.CheckedAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
+const getClientID = `-- name: GetClientID :one
+SELECT item_id FROM shopping_list_client_ids WHERE client_id = ?
+`
+
+func (q *Queries) GetClientID(ctx context.Context, clientID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getClientID, clientID)
+	var item_id int64
+	err := row.Scan(&item_id)
+	return item_id, err
+}
+
 const getShoppingItem = `-- name: GetShoppingItem :one
-SELECT id, product_id, text, qty, note, checked_at, created_at FROM shopping_list_items WHERE id = ?
+SELECT id, product_id, text, qty, note, checked_at, created_at, updated_at FROM shopping_list_items WHERE id = ?
 `
 
 func (q *Queries) GetShoppingItem(ctx context.Context, id int64) (ShoppingListItem, error) {
@@ -103,12 +133,13 @@ func (q *Queries) GetShoppingItem(ctx context.Context, id int64) (ShoppingListIt
 		&i.Note,
 		&i.CheckedAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const listShoppingItems = `-- name: ListShoppingItems :many
-SELECT id, product_id, text, qty, note, checked_at, created_at FROM shopping_list_items
+SELECT id, product_id, text, qty, note, checked_at, created_at, updated_at FROM shopping_list_items
 WHERE checked_at IS NULL OR (?1 = 1)
 ORDER BY checked_at IS NOT NULL, created_at, id
 `
@@ -130,6 +161,7 @@ func (q *Queries) ListShoppingItems(ctx context.Context, includeChecked interfac
 			&i.Note,
 			&i.CheckedAt,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -144,18 +176,58 @@ func (q *Queries) ListShoppingItems(ctx context.Context, includeChecked interfac
 	return items, nil
 }
 
+const pruneShoppingDeletions = `-- name: PruneShoppingDeletions :exec
+DELETE FROM shopping_list_deletions WHERE deleted_at < ?
+`
+
+func (q *Queries) PruneShoppingDeletions(ctx context.Context, deletedAt string) error {
+	_, err := q.db.ExecContext(ctx, pruneShoppingDeletions, deletedAt)
+	return err
+}
+
+const putClientID = `-- name: PutClientID :exec
+INSERT INTO shopping_list_client_ids (client_id, item_id, created_at) VALUES (?, ?, ?)
+`
+
+type PutClientIDParams struct {
+	ClientID  string `json:"client_id"`
+	ItemID    int64  `json:"item_id"`
+	CreatedAt string `json:"created_at"`
+}
+
+func (q *Queries) PutClientID(ctx context.Context, arg PutClientIDParams) error {
+	_, err := q.db.ExecContext(ctx, putClientID, arg.ClientID, arg.ItemID, arg.CreatedAt)
+	return err
+}
+
+const recordShoppingDeletion = `-- name: RecordShoppingDeletion :exec
+INSERT INTO shopping_list_deletions (item_id, deleted_at) VALUES (?, ?)
+ON CONFLICT (item_id) DO UPDATE SET deleted_at = excluded.deleted_at
+`
+
+type RecordShoppingDeletionParams struct {
+	ItemID    int64  `json:"item_id"`
+	DeletedAt string `json:"deleted_at"`
+}
+
+func (q *Queries) RecordShoppingDeletion(ctx context.Context, arg RecordShoppingDeletionParams) error {
+	_, err := q.db.ExecContext(ctx, recordShoppingDeletion, arg.ItemID, arg.DeletedAt)
+	return err
+}
+
 const setShoppingItemChecked = `-- name: SetShoppingItemChecked :one
-UPDATE shopping_list_items SET checked_at = ? WHERE id = ?
-RETURNING id, product_id, text, qty, note, checked_at, created_at
+UPDATE shopping_list_items SET checked_at = ?, updated_at = ? WHERE id = ?
+RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at
 `
 
 type SetShoppingItemCheckedParams struct {
 	CheckedAt sql.NullString `json:"checked_at"`
+	UpdatedAt sql.NullString `json:"updated_at"`
 	ID        int64          `json:"id"`
 }
 
 func (q *Queries) SetShoppingItemChecked(ctx context.Context, arg SetShoppingItemCheckedParams) (ShoppingListItem, error) {
-	row := q.db.QueryRowContext(ctx, setShoppingItemChecked, arg.CheckedAt, arg.ID)
+	row := q.db.QueryRowContext(ctx, setShoppingItemChecked, arg.CheckedAt, arg.UpdatedAt, arg.ID)
 	var i ShoppingListItem
 	err := row.Scan(
 		&i.ID,
@@ -165,13 +237,77 @@ func (q *Queries) SetShoppingItemChecked(ctx context.Context, arg SetShoppingIte
 		&i.Note,
 		&i.CheckedAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
+const shoppingDeletionsSince = `-- name: ShoppingDeletionsSince :many
+SELECT item_id FROM shopping_list_deletions WHERE deleted_at >= ? ORDER BY item_id
+`
+
+func (q *Queries) ShoppingDeletionsSince(ctx context.Context, deletedAt string) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, shoppingDeletionsSince, deletedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var item_id int64
+		if err := rows.Scan(&item_id); err != nil {
+			return nil, err
+		}
+		items = append(items, item_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shoppingItemsChangedSince = `-- name: ShoppingItemsChangedSince :many
+SELECT id, product_id, text, qty, note, checked_at, created_at, updated_at FROM shopping_list_items WHERE updated_at >= ? ORDER BY updated_at, id
+`
+
+func (q *Queries) ShoppingItemsChangedSince(ctx context.Context, updatedAt sql.NullString) ([]ShoppingListItem, error) {
+	rows, err := q.db.QueryContext(ctx, shoppingItemsChangedSince, updatedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ShoppingListItem{}
+	for rows.Next() {
+		var i ShoppingListItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.Text,
+			&i.Qty,
+			&i.Note,
+			&i.CheckedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateShoppingItem = `-- name: UpdateShoppingItem :one
-UPDATE shopping_list_items SET product_id = ?, text = ?, qty = ?, note = ? WHERE id = ?
-RETURNING id, product_id, text, qty, note, checked_at, created_at
+UPDATE shopping_list_items SET product_id = ?, text = ?, qty = ?, note = ?, updated_at = ? WHERE id = ?
+RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at
 `
 
 type UpdateShoppingItemParams struct {
@@ -179,6 +315,7 @@ type UpdateShoppingItemParams struct {
 	Text      string          `json:"text"`
 	Qty       sql.NullFloat64 `json:"qty"`
 	Note      sql.NullString  `json:"note"`
+	UpdatedAt sql.NullString  `json:"updated_at"`
 	ID        int64           `json:"id"`
 }
 
@@ -188,6 +325,7 @@ func (q *Queries) UpdateShoppingItem(ctx context.Context, arg UpdateShoppingItem
 		arg.Text,
 		arg.Qty,
 		arg.Note,
+		arg.UpdatedAt,
 		arg.ID,
 	)
 	var i ShoppingListItem
@@ -199,6 +337,7 @@ func (q *Queries) UpdateShoppingItem(ctx context.Context, arg UpdateShoppingItem
 		&i.Note,
 		&i.CheckedAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

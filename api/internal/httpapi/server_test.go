@@ -32,6 +32,7 @@ import (
 	"shop/internal/openfoodfacts"
 	"shop/internal/products"
 	"shop/internal/receipts"
+	"shop/internal/search"
 	"shop/internal/shopping"
 	"shop/internal/stats"
 	"shop/internal/store"
@@ -129,6 +130,7 @@ func newEnv(t *testing.T) *env {
 	mcpSrv := mcpserver.New(mcpserver.Deps{DB: conn, Receipts: svc, Products: prods, Stats: st, List: list,
 		Matcher: match.NewMatcher(conn), English: eng, Location: ams})
 	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Stats: st, List: list, English: eng,
+		Search:   search.New(conn, prods, match.NewMatcher(conn)),
 		Location: ams, Log: log, DataDir: dir, Authed: map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)}})
 
 	q := db.New(conn)

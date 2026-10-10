@@ -256,7 +256,8 @@ type ListFilter struct {
 	Limit    int64
 }
 
-func (s *Service) List(ctx context.Context, f ListFilter) ([]db.Receipt, error) {
+// List returns receipts with their item and unlinked line counts.
+func (s *Service) List(ctx context.Context, f ListFilter) ([]db.ListReceiptsRow, error) {
 	arg := db.ListReceiptsParams{Lim: f.Limit}
 	if f.ShopID != nil {
 		arg.ShopID = *f.ShopID
@@ -293,4 +294,20 @@ func (s *Service) ReparseAll(ctx context.Context, status string) (int, error) {
 		}
 	}
 	return len(ids), nil
+}
+
+// Counts returns the number of receipts per status (every status present).
+func (s *Service) Counts(ctx context.Context) (map[string]int64, error) {
+	rows, err := s.q.CountReceiptsByStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]int64{"pending": 0, "processing": 0, "needs_review": 0, "ok": 0, "failed": 0}
+	var total int64
+	for _, r := range rows {
+		out[r.Status] = r.N
+		total += r.N
+	}
+	out["total"] = total
+	return out, nil
 }

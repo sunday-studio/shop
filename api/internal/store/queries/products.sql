@@ -99,3 +99,4 @@ LIMIT 500;
 
 -- name: SetProductEnglish :exec
 UPDATE products SET name_en = ?, name_en_source = ? WHERE id = ?;
+

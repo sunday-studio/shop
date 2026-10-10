@@ -132,3 +132,60 @@ func (m *Matcher) Search(ctx context.Context, text string, shopID int64, limit i
 func (m *Matcher) Suggest(ctx context.Context, shopID int64, rawText string) ([]Candidate, error) {
 	return m.Search(ctx, rawText, shopID, 3, SuggestThreshold)
 }
+
+// AliasHit is a learned receipt text (alias) matching a search.
+type AliasHit struct {
+	Text        string
+	ProductID   int64
+	ProductName string
+	ShopID      *int64
+	ShopName    string
+	Score       float64
+}
+
+// SearchAliases finds learned receipt texts ("AH HALFV MELK" → product).
+func (m *Matcher) SearchAliases(ctx context.Context, text string, limit int, minScore float64) ([]AliasHit, error) {
+	norm := Normalise(text)
+	grams := Trigrams(norm)
+	if len(grams) == 0 {
+		return nil, nil
+	}
+	q := make([]string, len(grams))
+	for i, g := range grams {
+		q[i] = `"` + g + `"`
+	}
+	rows, err := m.db.QueryContext(ctx, `
+		SELECT f.text, f.ref_id, p.name, a.shop_id, COALESCE(s.name, '')
+		FROM search_fts f
+		JOIN products p ON p.id = f.ref_id AND p.deleted_at IS NULL
+		JOIN product_aliases a ON a.product_id = f.ref_id AND a.norm_text = f.text AND a.shop_id IS f.shop_id
+		LEFT JOIN shops s ON s.id = a.shop_id
+		WHERE search_fts MATCH ? AND f.kind = 'alias'
+		LIMIT 300`, strings.Join(q, " OR "))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AliasHit
+	for rows.Next() {
+		var h AliasHit
+		var shop sql.NullInt64
+		if err := rows.Scan(&h.Text, &h.ProductID, &h.ProductName, &shop, &h.ShopName); err != nil {
+			return nil, err
+		}
+		if shop.Valid {
+			h.ShopID = &shop.Int64
+		}
+		if h.Score = Score(norm, h.Text); h.Score >= minScore {
+			out = append(out, h)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}

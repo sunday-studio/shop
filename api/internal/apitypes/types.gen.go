@@ -635,30 +635,17 @@ type ListItem struct {
 	ProductName *string    `json:"product_name,omitempty"`
 	Qty         *float64   `json:"qty,omitempty"`
 	Text        string     `json:"text"`
+	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
 }
 
 // ListItemInput defines model for ListItemInput.
 type ListItemInput struct {
+	// ClientId client-generated id (UUID); makes POST /v1/list idempotent
+	ClientId  *string  `json:"client_id,omitempty"`
 	Note      *string  `json:"note,omitempty"`
 	ProductId *int64   `json:"product_id,omitempty"`
 	Qty       *float64 `json:"qty,omitempty"`
 	Text      *string  `json:"text,omitempty"`
-}
-
-// LoginRequest defines model for LoginRequest.
-type LoginRequest struct {
-	// DeviceName optional label shown in the device list
-	DeviceName *string `json:"device_name,omitempty"`
-	Password   string  `json:"password"`
-}
-
-// LoginResponse defines model for LoginResponse.
-type LoginResponse struct {
-	// ExpiresAt omitted when the token does not expire
-	ExpiresAt *time.Time `json:"expires_at,omitempty"`
-
-	// Token bearer token, st_…
-	Token string `json:"token"`
 }
 
 // NameEnStatus defines model for NameEnStatus.
@@ -823,9 +810,12 @@ type ProductMatch struct {
 
 // Receipt defines model for Receipt.
 type Receipt struct {
-	ConfirmedAt    *time.Time             `json:"confirmed_at,omitempty"`
-	CreatedAt      time.Time              `json:"created_at"`
-	Id             int64                  `json:"id"`
+	ConfirmedAt *time.Time `json:"confirmed_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	Id          int64      `json:"id"`
+
+	// LineCount item lines (excludes discounts, deposits, bags)
+	LineCount      *int                   `json:"line_count,omitempty"`
 	Lines          *[]ReceiptLine         `json:"lines,omitempty"`
 	OcrEngine      *string                `json:"ocr_engine,omitempty"`
 	OcrMs          *int64                 `json:"ocr_ms,omitempty"`
@@ -837,7 +827,10 @@ type Receipt struct {
 	ShopId         int64                  `json:"shop_id"`
 	Status         ReceiptStatus          `json:"status"`
 	TotalCents     *int64                 `json:"total_cents,omitempty"`
-	UpdatedAt      time.Time              `json:"updated_at"`
+
+	// UnlinkedCount item lines without a product
+	UnlinkedCount *int      `json:"unlinked_count,omitempty"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // ReceiptReviewReasons defines model for Receipt.ReviewReasons.
@@ -845,15 +838,21 @@ type ReceiptReviewReasons string
 
 // ReceiptLine defines model for ReceiptLine.
 type ReceiptLine struct {
+	// CategoryId linked product's category
+	CategoryId     *int64   `json:"category_id,omitempty"`
 	Id             int64    `json:"id"`
 	Kind           LineKind `json:"kind"`
 	LineNo         int      `json:"line_no"`
 	LineTotalCents int64    `json:"line_total_cents"`
 	ParentLineId   *int64   `json:"parent_line_id,omitempty"`
 	ProductId      *int64   `json:"product_id,omitempty"`
-	Qty            float64  `json:"qty"`
-	RawText        string   `json:"raw_text"`
-	ReceiptId      int64    `json:"receipt_id"`
+
+	// ProductName linked product (single-receipt GET)
+	ProductName   *string `json:"product_name,omitempty"`
+	ProductNameEn *string `json:"product_name_en,omitempty"`
+	Qty           float64 `json:"qty"`
+	RawText       string  `json:"raw_text"`
+	ReceiptId     int64   `json:"receipt_id"`
 
 	// Suggestions Up to 3 likely products for unmatched item lines (single-receipt GET only).
 	Suggestions *[]ProductMatch `json:"suggestions,omitempty"`
@@ -1007,6 +1006,17 @@ type GetShoppingListParams struct {
 	IncludeChecked *bool `form:"include_checked,omitempty" json:"include_checked,omitempty"`
 }
 
+// AddListItemParams defines parameters for AddListItem.
+type AddListItemParams struct {
+	// IdempotencyKey Same as client_id in the body (either works).
+	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
+}
+
+// ListChangesParams defines parameters for ListChanges.
+type ListChangesParams struct {
+	Since time.Time `form:"since" json:"since"`
+}
+
 // ListProductsParams defines parameters for ListProducts.
 type ListProductsParams struct {
 	Q          *string `form:"q,omitempty" json:"q,omitempty"`
@@ -1059,6 +1069,14 @@ type ReparseReceiptParams struct {
 	Force *bool `form:"force,omitempty" json:"force,omitempty"`
 }
 
+// SearchParams defines parameters for Search.
+type SearchParams struct {
+	Q string `form:"q" json:"q"`
+
+	// Limit per section
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // GetFrequentItemsParams defines parameters for GetFrequentItems.
 type GetFrequentItemsParams struct {
 	LookbackDays *int `form:"lookback_days,omitempty" json:"lookback_days,omitempty"`
@@ -1097,9 +1115,6 @@ type PreviewTranslationParams struct {
 type TranslationTodoParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
-
-// LoginJSONRequestBody defines body for Login for application/json ContentType.
-type LoginJSONRequestBody = LoginRequest
 
 // PairDeviceJSONRequestBody defines body for PairDevice for application/json ContentType.
 type PairDeviceJSONRequestBody PairDeviceJSONBody
