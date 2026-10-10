@@ -85,9 +85,19 @@ struct Banner: View {
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
                 if let action {
-                    Button(action.title, action: action.run)
-                        .textStyle(TypeStyle.label.sized(14))
-                        .buttonStyle(.press(haptic: .light))
+                    // Real chevron and a 44pt target; a trailing "›" typed into the title is dropped
+                    // so callers that already add one don't get two.
+                    Button(action: action.run) {
+                        HStack(spacing: 4) {
+                            Text(action.title.replacingOccurrences(of: " ›", with: "")).textStyle(TypeStyle.label.sized(14))
+                            IconView(.forward, size: 11, weight: .bold)
+                        }
+                        .frame(minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.press(haptic: .light))
+                    .padding(.top, -Space.s)
+                    .padding(.bottom, -Space.m)
                 }
             }
             Spacer(minLength: 0)

@@ -139,6 +139,7 @@ struct CatalogView: View {
                         JoinPill(isJoined: false) {}
                         ImportReceiptRow(pages: [page], title: "Receipt 2", shopName: nil, photoDateHint: "Photo from 3 Oct", straighten: .notFound, onShop: {}, onDetails: {}, onRemove: {})
                     }
+                    Banner(lead: "No shop yet.", message: "Pick one so prices compare across shops.", action: (title: "Pick a shop", run: {}))
                     UploadProgressCard(state: .uploading(done: 3, total: 6))
                     UploadProgressCard(state: .offline(waiting: 6))
                     UploadProgressCard(state: .partial(uploaded: 4, failed: 2))
