@@ -29,7 +29,7 @@ _Last updated 2026-10-10. Read this first; then [IOS-PLAN.md](IOS-PLAN.md) (mile
 
 ## 2. Build & run
 
-1. **Xcode 27** (Sep 2026; 27.1 fine). Swift 6 language mode, deployment target **iOS 17.0**, bundle id **`nl.casprine.shop`**.
+1. **Xcode 27** (Sep 2026; 27.1 fine). Swift 6 language mode, deployment target **iOS 17.0**, bundle id **`com.sundaystudi.Shop`**.
 2. Create the project once by following [IOS-SETUP.md](IOS-SETUP.md). All of it is manual: new App project in `ios/`, delete the template's `ShopApp.swift` / `ContentView.swift` / `Assets.xcassets`, drag in `App`, `Core`, `Design`, `Features`, `Resources`, add the Info.plist keys (fonts, camera, photo library, local network, ATS), set the signing team. Scheme: **Shop** (the default).
 3. **Without a server:** add the launch argument `-mock` (Scheme → Run → Arguments). `Core/Mock/MockServer.swift` fakes every endpoint; the password `wrong` shows the wrong-password state; an upload turns from processing to needs-review after about 4 s.
 4. **Against the local server:**
@@ -88,5 +88,11 @@ All calls go through `Core/API/Endpoints.swift`; models are in `Core/API/Models.
 - **Local only:** the phone talks only to the Shop server. Open Food Facts and logos come through the backend. Add any new server-side need to IOS-BACKEND-NEEDS.md instead of calling a third party.
 - **Money** is integer cents, formatted Dutch style (`€2.614,90`, minus sign U+2212) through `Core/Money/Money.swift`.
 - **Auth:** pairing password → device token in the Keychain; the password is never stored.
-- No third-party Swift packages. Descriptive names (no abbreviations). Bundle id `nl.casprine.shop`. All docs live under `docs/`.
+- No third-party Swift packages. Descriptive names (no abbreviations). Bundle id `com.sundaystudi.Shop`. All docs live under `docs/`.
 - Never commit `deploy/.env` (it holds the logo.dev key; git-ignored).
+
+## M11 iOS progress (swift app agent)
+- Done: built coordinator's edits (camera/local-network plist keys, ShopFont.register, FeatureCard hug, URLError.cancelled, "Other") and with MemberImportVisibility on (`SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY=YES`): both build clean.
+- Done: "Add photos" in the Add tray (`CaptureMode.photos`, `ReceiptCaptureView(photosFirst:)`), PhotosPicker up to 5, `+ Photo` to append. HEIC is decoded by `UIImage(data:)` and always re-encoded to JPEG by `Stitcher`, so the server only sees JPEG.
+- Done: haptic call sites moved to the new events (scanKnown/scanNew, uploadQueued, uploadFailed); tray-opening buttons use `haptic: nil`.
+- Next: device test of Add photos with a real HEIC; shop suggestion UI waits for the research go/no-go.

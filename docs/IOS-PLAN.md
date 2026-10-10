@@ -39,7 +39,7 @@ Changes from the draft while writing:
 | Previews | Every component and every screen gets `#Preview`s in light and dark, fed by `MockData` | This is how you check design fidelity without the server. |
 | Mock mode | Launch argument `-mock` swaps the API for an in-memory fake server | Run any screen on the phone without the Mac mini. |
 | Fonts | GT America 400/500/700 + Mono 400/500 bundled (already in `ios/Pantry/Resources/Fonts`) | Licence confirmed. |
-| Naming | Folder `ios/Shop`, app name **Shop**, bundle id **`nl.casprine.shop`** | |
+| Naming | Folder `ios/Shop`, app name **Shop**, bundle id **`com.sundaystudi.Shop`** | |
 
 ### Where the wireframes and the rules disagree (rules win, per DESIGN-RULES)
 1. **Pairing:** O.3 shows "paste an access token"; the backend and rules v2 use **URL + password** (`POST /v1/auth/pair`). The password screen reuses the O.3 layout (field with show/hide, Connect, shake on wrong password).
@@ -56,7 +56,7 @@ I design these from the system; you review them in Previews in the milestone tha
 ## 2. One-time setup (you)
 
 1. Move fonts: `ios/Pantry/Resources/Fonts` → `ios/Shop/Resources/Fonts` (I do the move in iM0, since that's just files).
-2. Xcode → File → New → Project → iOS App: name **Shop**, bundle id `nl.casprine.shop`, SwiftUI, **no** tests, minimum iOS 17. Save the `.xcodeproj` in `ios/`.
+2. Xcode → File → New → Project → iOS App: name **Shop**, bundle id `com.sundaystudi.Shop`, SwiftUI, **no** tests, minimum iOS 17. Save the `.xcodeproj` in `ios/`.
 3. Delete the template `ContentView.swift`/`ShopApp.swift`, then drag the `ios/Shop/` folder into the project (create groups, add to the Shop target).
 4. Info tab, add these keys (also listed in `ios/Shop/Resources/INFO-PLIST.md`):
    - `UIAppFonts`: the 5 `.otf` file names
