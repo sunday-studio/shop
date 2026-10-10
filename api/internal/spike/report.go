@@ -57,24 +57,31 @@ func fitsBudget(e EngineScore, ms int64, memMB float64) bool {
 	return e.N > 0 && e.MedianMS <= ms && (e.PeakMemMB == 0 || e.PeakMemMB <= memMB)
 }
 
-// Recommend picks a default engine (fast and good enough) and a fallback
-// (most accurate within the slower budget, different from the default).
-// Engines are ranked by total-correct rate, then fewer silent errors, then speed.
+// better ranks engines: more correct totals, then fewer silent errors,
+// then more receipts needing no review (less work for you), then faster.
+func better(a, b EngineScore) bool {
+	if a.Rate(a.TotalCorrect) != b.Rate(b.TotalCorrect) {
+		return a.Rate(a.TotalCorrect) > b.Rate(b.TotalCorrect)
+	}
+	if a.SilentErrors != b.SilentErrors {
+		return a.SilentErrors < b.SilentErrors
+	}
+	if a.Rate(a.AutoOK) != b.Rate(b.AutoOK) {
+		return a.Rate(a.AutoOK) > b.Rate(b.AutoOK)
+	}
+	return a.MedianMS < b.MedianMS
+}
+
+// Recommend picks a default engine (best ranked within the default budget)
+// and a fallback (a better-ranked engine within the slower budget, used to
+// re-OCR receipts that need review).
 func Recommend(scores []EngineScore, dockerOnly map[string]bool) (def, fallback string, why []string) {
 	ranked := append([]EngineScore(nil), scores...)
-	sort.SliceStable(ranked, func(i, j int) bool {
-		a, b := ranked[i], ranked[j]
-		if a.Rate(a.TotalCorrect) != b.Rate(b.TotalCorrect) {
-			return a.Rate(a.TotalCorrect) > b.Rate(b.TotalCorrect)
-		}
-		if a.SilentErrors != b.SilentErrors {
-			return a.SilentErrors < b.SilentErrors
-		}
-		return a.MedianMS < b.MedianMS
-	})
+	sort.SliceStable(ranked, func(i, j int) bool { return better(ranked[i], ranked[j]) })
+	var defScore EngineScore
 	for _, e := range ranked {
 		if dockerOnly[e.Engine] && fitsBudget(e, Targets.DefaultMS, Targets.DefaultMemMB) && meetsQuality(e) {
-			def = e.Engine
+			def, defScore = e.Engine, e
 			break
 		}
 	}
@@ -83,22 +90,23 @@ func Recommend(scores []EngineScore, dockerOnly map[string]bool) (def, fallback 
 			"improve the parser rules first (see the failure list), then re-score.")
 		for _, e := range ranked {
 			if dockerOnly[e.Engine] && fitsBudget(e, Targets.DefaultMS, Targets.DefaultMemMB) {
-				def = e.Engine
-				why = append(why, fmt.Sprintf("Best Docker engine within budget for now: %s.", def))
+				def, defScore = e.Engine, e
+				why = append(why, fmt.Sprintf("Best-ranked Docker engine within budget for now: %s.", def))
 				break
 			}
 		}
 	}
 	for _, e := range ranked {
-		if e.Engine != def && dockerOnly[e.Engine] && fitsBudget(e, Targets.FallbackMS, Targets.FallbackMemMB) &&
-			e.Rate(e.TotalCorrect) > rateOf(scores, def) {
+		if def != "" && e.Engine != def && dockerOnly[e.Engine] &&
+			fitsBudget(e, Targets.FallbackMS, Targets.FallbackMemMB) && better(e, defScore) {
 			fallback = e.Engine
 			break
 		}
 	}
 	if fallback == "" {
-		why = append(why, "No fallback: no other Docker engine is more accurate than the default within ≤90 s / ≤10 GB.")
+		why = append(why, "No fallback: no other Docker engine ranks above the default within ≤90 s / ≤10 GB.")
 	}
+	why = append(why, "Ranking: correct totals, then fewer silent errors, then more receipts that need no review, then speed.")
 	return def, fallback, why
 }
 
