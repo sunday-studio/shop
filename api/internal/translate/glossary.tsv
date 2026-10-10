@@ -414,3 +414,30 @@ soja	soy
 sojasaus	soy sauce
 rozemarijn	rosemary
 bosui	spring onion
+krul	curly
+schouder	shoulder
+gebraden	roasted
+kalfs	veal
+verpakt	packed
+los	loose
+kerrie	curry
+laurier	bay leaf
+peen	carrot
+boomgaard	orchard
+
+# --- brands (kept as written; identity entries make them count as known words)
+coca-cola	coca-cola
+fanta	fanta
+lipton	lipton
+maggi	maggi
+euroma	euroma
+kikkoman	kikkoman
+kewpie	kewpie
+indomie	indomie
+arla	arla
+camp	camp
+princes	princes
+kokki	kokki
+uchibori	uchibori
+starb	starb
+winter	winter
