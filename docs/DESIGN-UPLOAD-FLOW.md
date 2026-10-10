@@ -65,14 +65,14 @@ Layout, top to bottom, 20 pt gutters, `bg` background (this is a normal screen, 
 1. **Header** (`NavHeader`-style, not centered): close `IconButton(.close)` left; title **Import receipts**; right: count text `ink2` ("6 photos"). Close with unsaved picks asks nothing if untouched; if the user changed grouping/shop, a confirm tray "Discard 6 photos?" (destructive row **Discard**, secondary **Keep editing**).
 2. **Grouping control**, only when ≥ 2 photos: `SegmentedControl` with **Separate receipts** | **One long receipt**. Default **Separate receipts**. "One long receipt" is disabled (40 % opacity) and shows the hint *Up to 5 pages* under the control when more than 5 photos are picked. A PDF import defaults to *One long receipt* for that file only.
 3. **Batch shop row** (flat row, 52 pt, `trayField` rounded tile, like the Date row today): label **Shop**, value = `ShopMark` + name, or **Let Shop find out** (default if the backend supports it, see §9), or amber **Pick a shop**. Chevron. Tap → S4. Applies to every receipt without its own override.
-4. **Receipt list**, one `ImportReceiptRow` per receipt, with a `JoinPill` sitting on the hairline between consecutive rows when grouping is *Separate*. First 8 rows stagger in (24 ms). Each row shows: page strip (up to 3 thumbs, 56 pt), title (**Receipt 3** or **Receipt 3 · 2 pages**), shop chip (amber *Pick a shop* if unset, otherwise mark + name), date chip (default **Date from receipt**), remove (✕). A **Straightened** chip on the strip (tap = use the original) shows it was auto-straightened; **Edges not found · Adjust** appears under the title when it wasn't (§5a).
+4. **Receipt list**, one `ImportReceiptRow` per receipt, with a `JoinPill` sitting on the hairline between consecutive rows when grouping is *Separate*. First 8 rows stagger in (24 ms). Each row shows: page strip (up to 3 thumbs, 56 pt), title (**Receipt 3** or **Receipt 3 · 2 pages**), shop chip: the neutral **Shop will find out** chip (dashed `UnknownShopMark`, `ink2` on `sunk`, no amber) when the shop is left to the server, mark + name when one is chosen, and amber **Pick a shop** only for a receipt that really needs the user to choose (the app can't proceed without one), date chip (default **Date from receipt**), remove (✕). A **Straightened** chip on the strip (tap = use the original) shows it was auto-straightened; **Edges not found · Adjust** appears under the title when it wasn't (§5a).
    - Tapping the **page strip or title** opens S5 for that receipt (reorder/remove pages, shop, date).
    - **JoinPill** "Join pages" ⇄ "Same receipt": joins the photo above and below into one receipt. Disabled when the joined group would exceed 5 pages. Joining merges the two rows with a 360 ms height spring and the page strips slide together; the right-hand row's shop/date chips are dropped (the first row's win).
    - Switching the segmented control to *One long receipt* joins all (≤ 5); back to *Separate* splits all. Individual joins made by hand are kept until the control is used.
 5. **Footer** (floating, same material as `ConfirmBar`, bottom safe area): one primary button **Import 6 receipts** (singular: **Import receipt**). The count rolls (`numericText`) as rows join or are removed. Under the button, one line of status text (`rowSub`):
    - normal: **Uploads in the background**
    - offline: grey dot **Offline · uploads when you're back online**
-   - shop missing: amber **Choose a shop for 2 receipts** (button disabled, tapping the line scrolls to the first unset row and flashes its chip once)
+   - a receipt that truly needs a shop (only when *Let Shop find out* is unavailable): amber **Choose a shop for 2 receipts** (button disabled, tapping the line scrolls to the first unset row and flashes its chip once). With uploads accepting no shop this state should not occur in the default flow.
    - unreadable files present: amber **2 files can't be read · remove them or import the rest** (button stays enabled; unreadable rows are skipped on import)
 
 States:
@@ -223,7 +223,8 @@ Use `ReceiptRow(isUnknownShop: true, …)` for the last two. Amounts show normal
 
 **On the receipt** (the screen the card opens, or a tapped Unknown-shop row): `ShopSuggestionCard` as the first element under the header block, above any amber banner.
 - Title **This looks like Aldi**, subtitle **Utrecht · aldi.nl · 3 receipts are waiting for it** (parts omitted when unknown; with one receipt: **Not in your shops yet**). `ShopMark` shows the logo (the backend serves it) or monogram.
-- **Add Aldi · 3 receipts** (blue solid, small) — one tap does everything: creates the shop, links every waiting receipt. Plays `medium` on touch-down; on success `success` + toast **Aldi added · 3 receipts linked**. While the request runs the button shows the spinner (`LoadingLabel`).
+- **Add Aldi · 3 receipts** (blue solid, small) — one tap does everything: creates the shop, links every waiting receipt. This is `ShopSuggestionCard(kind: .new)`.
+- **`kind: .existing`** (the receipt looks like a shop the user already has): same card, `ShopSuggestionCard(kind: .existing, …)`, but nothing is created, so the wording changes: subtitle **One of your shops** (with several: **One of your shops · 3 receipts look like it**), button **Move to Albert Heijn** (several: **Move 3 receipts to Albert Heijn**), the secondary button reads **Pick another** instead of **Edit** (there is no shop to edit), toast **Moved to Albert Heijn** / **3 receipts moved to Albert Heijn**. Haptics are the same (`medium` on touch-down, `success` on completion). The title stays **This looks like Albert Heijn**. Plays `medium` on touch-down; on success `success` + toast **Aldi added · 3 receipts linked**. While the request runs the button shows the spinner (`LoadingLabel`).
 - **Edit** (secondary) — opens the existing `ShopFormTray` prefilled (name, chain/branch, domain, logo preview), replacing nothing on screen; **Save** has the same success outcome. Editing is for typos in the name or the branch.
 - **Not now** (text) — hides the card for this receipt this session, leaves the row as **Unknown shop · Pick a shop** (amber) and does not count in the badge twice. A **Pick another shop** option is inside the receipt's normal shop picker (the shop chip in the header).
 - After accepting: the card collapses (240 ms), the header shop mark cross-fades from the dashed "?" to the shop mark (160 ms), and on Home every waiting row's mark cross-fades the same way, in place (no reorder, no jump). The `AttentionCard` count rolls to its next value or collapses.
@@ -288,6 +289,7 @@ All from the existing taxonomy (`Design/Haptics.swift`); no new events. Max one 
 | Discard | **Discard 6 photos?** · **Discard** · **Keep editing** |
 | Toasts | **Receipts added · uploading** · **Saved · uploads when you're online** · **Skipped a duplicate** · **Aldi added · 3 receipts linked** · **Couldn't add the shop. Try again.** |
 | Progress card | **Preparing 2 of 6** · **Uploading 3 of 6** · **6 receipts waiting** · **4 uploaded · 2 didn't** · **6 receipts uploaded** |
+| Import row shop chip | **Shop will find out** (neutral) · **Pick a shop** (amber, only when a choice is required) |
 | Unknown shop rows | **Unknown shop** · Looks like Aldi · tap to add · Pick a shop |
 | Suggestion card | **This looks like Aldi** · Utrecht · aldi.nl · 3 receipts are waiting for it · **Add Aldi · 3 receipts** · **Edit** · **Not now** |
 | Straighten | **Straighten & crop** · Automatic / Adjusted / Original · **Drag the corners to the receipt's edges.** · **Use original** · **Reset** · **Done** · Straightened (chip) / Original (chip, after one tap) · Edges not found · Adjust · VoiceOver: **Straightened, double tap to use the original** · Settings: **Straighten imported photos** |
@@ -309,10 +311,10 @@ Added (done, in `Design/Components/Import.swift`, previews in `Design/Catalog/Ca
 |---|---|---|
 | `UnknownShopMark(size:)` | dashed square with "?" | S4, S7, unknown-shop rows |
 | `PageStrip(pages:height:)` | up to 3 fanned thumbs | import rows, details tray |
-| `ImportReceiptRow(pages:title:shopName:dateText:photoDateHint:straighten:onToggleStraighten:onAdjust:onShop:onDetails:onRemove:)` | flat row; `straighten` is `.straightened`, `.original` or `.notFound` | S3 |
+| `ImportReceiptRow(pages:title:shopName:shopWillFindOut:dateText:photoDateHint:straighten:onToggleStraighten:onAdjust:onShop:onDetails:onRemove:)` | flat row; `shopName` nil + `shopWillFindOut` = neutral **Shop will find out**, nil + not = amber **Pick a shop**; `straighten` is `.straightened`, `.original` or `.notFound` | S3 |
 | `JoinPill(isJoined:isEnabled:action:)` | link toggle on the hairline | S3 |
 | `UploadProgressCard(state:onOpen:onRetry:)` | `preparing/uploading/offline/partial/done` | S6 (Home) |
-| `ShopSuggestionCard(name:detail:waiting:isWorking:onAccept:onEdit:onNotNow:)` | blue-tint card | S7 receipt, optionally Home |
+| `ShopSuggestionCard(kind:name:detail:waiting:isWorking:onAccept:onEdit:onNotNow:)` | blue-tint card; `kind` is `.new` (Add X) or `.existing` (Move to X) | S7 receipt, optionally Home |
 | `CropQuad`, `CropOverlay(image:quad:)` | document outline with four draggable corners | S8 (Adjust) |
 | `ReceiptRow(isUnknownShop:)` | new parameter, default false | S7 rows |
 
@@ -322,7 +324,7 @@ Still to build in Features (not mine): the S3 screen, S2/S4/S5 trays, queue chan
 
 ## 13. Asks from the backend and Core (confirm before building)
 
-1. **Shop optional on upload.** `shop_id` is required today. For "Let Shop find out" the upload must accept no shop and store the receipt as *unassigned*. Until that lands, S3 falls back to: single photo → last used shop preselected; several photos → shop required (amber footer), and **Let Shop find out** is hidden.
+1. **Shop optional on upload (now supported by the backend).** `shop_id` is required today. For "Let Shop find out" the upload must accept no shop and store the receipt as *unassigned*. Until that lands, S3 falls back to: single photo → last used shop preselected; several photos → shop required (amber footer), and **Let Shop find out** is hidden.
 2. **Suggestion payload** on `Receipt` (names are a proposal for the backend agent): `shop_suggestion: { name, chain, branch, domain, logo_url?, waiting_receipts }`. **Accept** = `POST /v1/shop-suggestions/{id}/accept` (optional overrides `name`, `branch`, `domain`) returning the shop and the linked receipt ids; **Not now** is client-only.
 3. **Photo date.** Optional multipart field `photo_taken_at` stored with the receipt (not used for `purchased_at`), so the no-date fix tray can offer it later.
 4. **Batch id.** Local only (`UploadItem.batchId`); the server does not need it.

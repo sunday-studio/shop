@@ -143,7 +143,9 @@ struct CatalogView: View {
                     UploadProgressCard(state: .offline(waiting: 6))
                     UploadProgressCard(state: .partial(uploaded: 4, failed: 2))
                     UploadProgressCard(state: .done(total: 6))
+                    ImportReceiptRow(pages: [page], title: "Receipt 3", shopWillFindOut: true, onShop: {}, onDetails: {}, onRemove: {})
                     ShopSuggestionCard(name: "Aldi", detail: "Utrecht · aldi.nl", waiting: 3, onAccept: {}, onEdit: {}, onNotNow: {})
+                    ShopSuggestionCard(kind: .existing, name: "Albert Heijn", detail: "Oudegracht", waiting: 1, onAccept: {}, onEdit: {}, onNotNow: {})
                     ReceiptRow(shopName: "Unknown shop", subtitle: "Looks like Aldi · tap to add", subtitleColor: Palette.blueText, amount: "€27,40", isUnknownShop: true)
                 }
                 section("Review queue") {
