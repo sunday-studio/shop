@@ -29,6 +29,7 @@ type Suggestion struct {
 	Name     string
 	Chain    string
 	Branch   string
+	Domain   string
 	Conf     float64
 	Evidence []string
 	Waiting  []int64
@@ -79,12 +80,14 @@ func (s *Service) Suggest(ctx context.Context, receiptID int64) (*Suggestion, er
 	if err != nil {
 		return nil, err
 	}
-	sug := &Suggestion{Kind: "new", Name: d.Chain, Chain: d.Chain, Branch: d.Branch, Conf: d.Conf, Evidence: d.Evidence}
+	sug := &Suggestion{Kind: "new", Name: d.Chain, Chain: d.Chain, Branch: d.Branch, Conf: d.Conf, Evidence: d.Evidence,
+		Domain: logos.GuessDomain(d.Chain, d.Chain)}
 	if sh := findShop(shops, d); sh != nil {
 		if sh.ID == rec.ShopID {
 			return nil, nil // already on the right shop
 		}
 		sug.Kind, sug.ShopID, sug.Name = "existing", &sh.ID, sh.Name
+		sug.Domain = sh.Domain.String
 	}
 	all, err := s.q.ListReceiptsForShopSuggestion(ctx)
 	if err != nil {
@@ -136,7 +139,7 @@ func findShop(shops []db.Shop, d *Detected) *db.Shop {
 
 // Accept moves the receipt (and, with applyWaiting, the other unconfirmed receipts from the same
 // branch) onto a shop: the given existing one, or a new one called name.
-func (s *Service) Accept(ctx context.Context, receiptID int64, shopID *int64, name string, applyWaiting bool) (db.Shop, []int64, error) {
+func (s *Service) Accept(ctx context.Context, receiptID int64, shopID *int64, name, branchOverride, domainOverride string, applyWaiting bool) (db.Shop, []int64, error) {
 	rec, err := s.q.GetReceipt(ctx, receiptID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return db.Shop{}, nil, ErrNotFound
@@ -180,10 +183,19 @@ func (s *Service) Accept(ctx context.Context, receiptID int64, shopID *int64, na
 				city = store.Str(d.Branch[i+2:])
 			}
 		}
+		if b := strings.TrimSpace(branchOverride); b != "" {
+			branch = store.Str(b)
+		}
+		domain := logos.GuessDomain(name, chain.String)
+		if dm := strings.TrimSpace(domainOverride); dm != "" {
+			if domain, err = logos.NormaliseDomain(dm); err != nil {
+				return db.Shop{}, nil, fmt.Errorf("%w: domain must look like ah.nl", ErrInvalid)
+			}
+		}
 		now := store.Now()
 		shop, err = s.q.CreateShop(ctx, db.CreateShopParams{
 			Name: name, Chain: chain, Branch: branch, Address: address, City: city,
-			Domain: store.Str(logos.GuessDomain(name, chain.String)), CreatedAt: now, UpdatedAt: now,
+			Domain: store.Str(domain), CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {
 			return db.Shop{}, nil, err

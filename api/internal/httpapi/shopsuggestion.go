@@ -29,6 +29,9 @@ func toShopSuggestion(s *shopsuggest.Suggestion) *apitypes.ShopSuggestion {
 	if s.Branch != "" {
 		out.Branch = &s.Branch
 	}
+	if s.Domain != "" {
+		out.Domain = &s.Domain
+	}
 	return out
 }
 
@@ -55,6 +58,8 @@ func (s *Server) acceptShopSuggestion(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		ShopID         *int64 `json:"shop_id"`
 		Name           string `json:"name"`
+		Branch         string `json:"branch"`
+		Domain         string `json:"domain"`
 		ApplyToWaiting *bool  `json:"apply_to_waiting"`
 	}
 	if body, err := io.ReadAll(io.LimitReader(r.Body, 1<<16)); err != nil {
@@ -67,7 +72,7 @@ func (s *Server) acceptShopSuggestion(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	apply := in.ApplyToWaiting == nil || *in.ApplyToWaiting
-	shop, moved, err := s.suggest.Accept(r.Context(), id, in.ShopID, in.Name, apply)
+	shop, moved, err := s.suggest.Accept(r.Context(), id, in.ShopID, in.Name, in.Branch, in.Domain, apply)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
