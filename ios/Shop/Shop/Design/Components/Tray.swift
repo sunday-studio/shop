@@ -43,6 +43,19 @@ final class TrayCoordinator {
     }
 }
 
+private struct InTrayKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// True for views inside a tray. Fields use it to wait for the enter animation before taking
+    /// focus (the keyboard would move the tray while it is still sliding in).
+    var isInTray: Bool {
+        get { self[InTrayKey.self] }
+        set { self[InTrayKey.self] = newValue }
+    }
+}
+
 private struct TrayHost: ViewModifier {
     let coordinator: TrayCoordinator
     @Environment(\.accessibilityReduceMotion) private var reduce
@@ -82,6 +95,7 @@ private struct TraySurface: View {
         ZStack(alignment: .top) {
             tray.content
                 .id(tray.id)
+                .environment(\.isInTray, true)
                 .transition(.traySwap)
         }
         .padding(.top, 22)
