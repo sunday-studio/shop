@@ -26,6 +26,7 @@ import (
 	"pantry/internal/httpapi"
 	"pantry/internal/jobs"
 	"pantry/internal/match"
+	"pantry/internal/mcpserver"
 	"pantry/internal/ocr"
 	"pantry/internal/openfoodfacts"
 	"pantry/internal/products"
@@ -120,7 +121,10 @@ func newEnv(t *testing.T) *env {
 		filepath.Join(dir, "images"), log)
 	st := stats.New(conn, ams)
 	list := shopping.New(conn, match.NewMatcher(conn), st)
-	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Stats: st, List: list, Location: ams, Log: log})
+	mcpSrv := mcpserver.New(mcpserver.Deps{DB: conn, Receipts: svc, Products: prods, Stats: st, List: list,
+		Matcher: match.NewMatcher(conn), Location: ams})
+	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Stats: st, List: list,
+		Location: ams, Log: log, Authed: map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)}})
 
 	q := db.New(conn)
 	tok, err := auth.Create(context.Background(), q, "test")

@@ -497,10 +497,13 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 **Done when** the spend totals for each month equal the sum of the confirmed receipts (property test), and the compare output is correct on fixtures.
 
 ### M5 — MCP over HTTP (2 d)
-- [ ] go-sdk server mounted at `/mcp` behind token auth
-- [ ] All tools from §8, with JSON schemas and compact outputs
-- [ ] Integration test: an MCP client in Go calls each tool against a fixture DB
-- [ ] Connect your assistant; write `docs/mcp.md` with example prompts
+- [x] go-sdk server mounted at `/mcp` behind token auth
+- [x] All tools from §8, with JSON schemas and compact outputs
+- [x] Integration test: an MCP client in Go calls each tool against a fixture DB
+- [x] Write `docs/mcp.md` with setup + example prompts
+- [ ] Connect your own assistant (needs you)
+
+**Status: done (2026-10-10)** except connecting your assistant. Stateless streamable HTTP with JSON responses; 13 tools + 2 resources; product/shop args accept id or fuzzy name. Verified with the Go SDK client in tests and with raw JSON-RPC against the Docker stack.
 
 **Done when** the assistant correctly answers: September spend, spend per shop this year, "where is milk cheapest", "add eggs to the list".
 
