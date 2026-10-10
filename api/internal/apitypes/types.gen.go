@@ -922,16 +922,19 @@ type Receipt struct {
 	Id          int64      `json:"id"`
 
 	// LineCount item lines (excludes discounts, deposits, bags)
-	LineCount      *int                   `json:"line_count,omitempty"`
-	Lines          *[]ReceiptLine         `json:"lines,omitempty"`
-	OcrEngine      *string                `json:"ocr_engine,omitempty"`
-	OcrMs          *int64                 `json:"ocr_ms,omitempty"`
-	ParsedSumCents *int64                 `json:"parsed_sum_cents,omitempty"`
-	ParserVersion  *int                   `json:"parser_version,omitempty"`
-	PaymentMethod  *string                `json:"payment_method,omitempty"`
-	PurchasedAt    *time.Time             `json:"purchased_at,omitempty"`
-	ReviewReasons  []ReceiptReviewReasons `json:"review_reasons"`
-	ShopId         int64                  `json:"shop_id"`
+	LineCount      *int           `json:"line_count,omitempty"`
+	Lines          *[]ReceiptLine `json:"lines,omitempty"`
+	OcrEngine      *string        `json:"ocr_engine,omitempty"`
+	OcrMs          *int64         `json:"ocr_ms,omitempty"`
+	ParsedSumCents *int64         `json:"parsed_sum_cents,omitempty"`
+	ParserVersion  *int           `json:"parser_version,omitempty"`
+	PaymentMethod  *string        `json:"payment_method,omitempty"`
+
+	// PhotoTakenAt hint from the photo's EXIF; never the purchase date unless the user picks it
+	PhotoTakenAt  *time.Time             `json:"photo_taken_at,omitempty"`
+	PurchasedAt   *time.Time             `json:"purchased_at,omitempty"`
+	ReviewReasons []ReceiptReviewReasons `json:"review_reasons"`
+	ShopId        *int64                 `json:"shop_id,omitempty"`
 
 	// ShopSuggestion single-receipt GET only; null/absent when there is nothing to suggest
 	ShopSuggestion *ShopSuggestion `json:"shop_suggestion,omitempty"`
@@ -989,8 +992,10 @@ type ReceiptPage struct {
 // ReceiptPatch Only the fields present are changed.
 type ReceiptPatch struct {
 	PurchasedAt *time.Time `json:"purchased_at,omitempty"`
-	ShopId      *int64     `json:"shop_id,omitempty"`
-	TotalCents  *int64     `json:"total_cents,omitempty"`
+
+	// ShopId absent while the receipt is unassigned (shown as Unassigned)
+	ShopId     *int64 `json:"shop_id,omitempty"`
+	TotalCents *int64 `json:"total_cents,omitempty"`
 }
 
 // ReceiptStatus defines model for ReceiptStatus.
@@ -1131,8 +1136,10 @@ type UnmatchedLine struct {
 	Line        ReceiptLine `json:"line"`
 	PurchasedAt *time.Time  `json:"purchased_at,omitempty"`
 	Score       float64     `json:"score"`
-	ShopId      int64       `json:"shop_id"`
-	ShopName    string      `json:"shop_name"`
+
+	// ShopId absent for an unassigned receipt (shop_name is then Unassigned)
+	ShopId   *int64 `json:"shop_id,omitempty"`
+	ShopName string `json:"shop_name"`
 }
 
 // Version defines model for Version.
@@ -1223,9 +1230,14 @@ type UploadReceiptMultipartBody struct {
 	// Image JPEG or PNG, max 20 MB
 	Image openapi_types.File `json:"image"`
 
+	// PhotoTakenAt hint only (photo EXIF); stored, never used as purchased_at
+	PhotoTakenAt *time.Time `json:"photo_taken_at,omitempty"`
+
 	// PurchasedAt overrides the date read from the receipt
 	PurchasedAt *time.Time `json:"purchased_at,omitempty"`
-	ShopId      int64      `json:"shop_id"`
+
+	// ShopId optional: without it the receipt is unassigned until a shop is chosen or suggested
+	ShopId *int64 `json:"shop_id,omitempty"`
 }
 
 // ReocrReceiptParams defines parameters for ReocrReceipt.

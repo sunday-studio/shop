@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.10.0
+  version: 0.11.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -191,11 +191,12 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [image, shop_id]
+              required: [image]
               properties:
                 image: { type: string, format: binary, description: "JPEG or PNG, max 20 MB" }
-                shop_id: { type: integer, format: int64 }
+                shop_id: { type: integer, format: int64, description: "optional: without it the receipt is unassigned until a shop is chosen or suggested" }
                 purchased_at: { type: string, format: date-time, description: "overrides the date read from the receipt" }
+                photo_taken_at: { type: string, format: date-time, description: "hint only (photo EXIF); stored, never used as purchased_at" }
       responses:
         "202":
           description: Accepted for processing
@@ -1307,7 +1308,7 @@ components:
       type: object
       description: Only the fields present are changed.
       properties:
-        shop_id: { type: integer, format: int64 }
+        shop_id: { type: integer, format: int64, description: "absent while the receipt is unassigned (shown as Unassigned)" }
         purchased_at: { type: string, format: date-time }
         total_cents: { type: integer, format: int64 }
 
@@ -1329,8 +1330,9 @@ components:
           description: other unconfirmed receipts from the same branch that accepting would move to the shop
     Receipt:
       type: object
-      required: [id, shop_id, status, review_reasons, created_at, updated_at]
+      required: [id, status, review_reasons, created_at, updated_at]
       properties:
+        photo_taken_at: { type: string, format: date-time, description: "hint from the photo's EXIF; never the purchase date unless the user picks it" }
         shop_suggestion:
           nullable: true
           description: single-receipt GET only; null/absent when there is nothing to suggest
@@ -1470,10 +1472,10 @@ components:
 
     UnmatchedLine:
       type: object
-      required: [line, shop_id, shop_name, score]
+      required: [line, shop_name, score]
       properties:
         line: { $ref: "#/components/schemas/ReceiptLine" }
-        shop_id: { type: integer, format: int64 }
+        shop_id: { type: integer, format: int64, description: "absent for an unassigned receipt (shop_name is then Unassigned)" }
         shop_name: { type: string }
         purchased_at: { type: string, format: date-time }
         score: { type: number, format: double }

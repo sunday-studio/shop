@@ -475,11 +475,12 @@ func (s *Service) LinkLine(ctx context.Context, lineID int64, productID *int64, 
 	}
 	err = store.InTx(ctx, s.conn, func(q *db.Queries) error {
 		res.Line, err = q.SetLineProduct(ctx, db.SetLineProductParams{ProductID: store.NullInt(productID), ID: lineID})
-		if err != nil || productID == nil || !remember || line.NormText == "" {
+		// No shop yet (unassigned receipt): nothing to scope an alias to, so only this line is linked.
+		if err != nil || productID == nil || !remember || line.NormText == "" || !rec.ShopID.Valid {
 			return err
 		}
 		if _, err := q.UpsertAlias(ctx, db.UpsertAliasParams{
-			ShopID: sql.NullInt64{Int64: rec.ShopID, Valid: true}, NormText: line.NormText,
+			ShopID: rec.ShopID, NormText: line.NormText,
 			ProductID: *productID, CreatedAt: store.Now(),
 		}); err != nil {
 			return err

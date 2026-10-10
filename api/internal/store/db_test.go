@@ -101,3 +101,51 @@ func TestShopsCRUD(t *testing.T) {
 		t.Fatalf("list after delete = %d, %v; want 0", len(shops), err)
 	}
 }
+
+// Migration 00012 relaxes receipts.shop_id in place; existing receipts and their lines must survive.
+func TestMigrationShopOptionalKeepsData(t *testing.T) {
+	ctx := context.Background()
+	conn, err := store.Open(filepath.Join(t.TempDir(), "shop.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if err := store.MigrateTo(ctx, conn, 11); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO shops (id, name, created_at, updated_at) VALUES (1, 'AH', 't', 't')`,
+		`INSERT INTO receipts (id, shop_id, image_path, image_sha256, status, created_at, updated_at) VALUES (1, 1, 'p', 's', 'ok', 't', 't')`,
+		`INSERT INTO receipt_lines (receipt_id, line_no, raw_text, norm_text, kind, line_total_cents) VALUES (1, 0, 'MELK', 'melk', 'item', 129)`,
+	} {
+		if _, err := conn.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := conn.Exec(`INSERT INTO receipts (shop_id, image_path, image_sha256, status, created_at, updated_at) VALUES (NULL, 'p2', 's2', 'ok', 't', 't')`); err == nil {
+		t.Fatal("shop_id was already nullable before 00012")
+	}
+	if err := store.Migrate(ctx, conn); err != nil {
+		t.Fatal(err)
+	}
+	var receipts, lines int
+	_ = conn.QueryRow(`SELECT COUNT(*) FROM receipts`).Scan(&receipts)
+	_ = conn.QueryRow(`SELECT COUNT(*) FROM receipt_lines`).Scan(&lines)
+	if receipts != 1 || lines != 1 {
+		t.Fatalf("after migration: %d receipts, %d lines; want 1 and 1", receipts, lines)
+	}
+	if _, err := conn.Exec(`INSERT INTO receipts (shop_id, photo_taken_at, image_path, image_sha256, status, created_at, updated_at) VALUES (NULL, 't', 'p2', 's2', 'ok', 't', 't')`); err != nil {
+		t.Fatalf("unassigned receipt rejected after migration: %v", err)
+	}
+	var fkErrs int
+	rows, _ := conn.Query(`PRAGMA foreign_key_check`)
+	for rows.Next() {
+		fkErrs++
+	}
+	rows.Close()
+	var integrity string
+	_ = conn.QueryRow(`PRAGMA integrity_check`).Scan(&integrity)
+	if fkErrs != 0 || integrity != "ok" {
+		t.Errorf("fk errors %d, integrity %q", fkErrs, integrity)
+	}
+}

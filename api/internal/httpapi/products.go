@@ -447,7 +447,7 @@ func (s *Server) unmatchedLines(w http.ResponseWriter, r *http.Request) {
 				LineTotalCents: u.LineTotalCents, VatCode: u.VatCode, ParentLineID: u.ParentLineID,
 				ProductID: u.ProductID, UserEdited: u.UserEdited,
 			}),
-			ShopId: u.ShopID, ShopName: u.ShopName, PurchasedAt: store.TimePtr(u.PurchasedAt),
+			ShopId: store.IntPtr(u.ShopID), ShopName: u.ShopName, PurchasedAt: store.TimePtr(u.PurchasedAt),
 			Score: round3(u.Score),
 		}
 	}

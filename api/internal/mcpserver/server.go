@@ -314,9 +314,11 @@ func (s *server) shopNames(ctx context.Context) (map[int64]string, error) {
 }
 
 func (s *server) summary(r db.Receipt, names map[int64]string) ReceiptSummary {
-	out := ReceiptSummary{ID: r.ID, Shop: names[r.ShopID], Status: r.Status}
-	if out.Shop == "" {
-		out.Shop = fmt.Sprintf("shop %d", r.ShopID)
+	out := ReceiptSummary{ID: r.ID, Shop: names[r.ShopID.Int64], Status: r.Status}
+	if !r.ShopID.Valid {
+		out.Shop = "Unassigned"
+	} else if out.Shop == "" {
+		out.Shop = fmt.Sprintf("shop %d", r.ShopID.Int64)
 	}
 	if t := store.TimePtr(r.PurchasedAt); t != nil {
 		out.Date = t.In(s.Location).Format("2006-01-02 15:04")

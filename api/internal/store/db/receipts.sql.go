@@ -26,7 +26,7 @@ func (q *Queries) ClearHeaderEdited(ctx context.Context, arg ClearHeaderEditedPa
 
 const confirmReceipt = `-- name: ConfirmReceipt :one
 UPDATE receipts SET status = 'ok', confirmed_at = ?, updated_at = ? WHERE id = ?
-RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited
+RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at
 `
 
 type ConfirmReceiptParams struct {
@@ -59,6 +59,7 @@ func (q *Queries) ConfirmReceipt(ctx context.Context, arg ConfirmReceiptParams) 
 		&i.UpdatedAt,
 		&i.DateLocked,
 		&i.HeaderEdited,
+		&i.PhotoTakenAt,
 	)
 	return i, err
 }
@@ -107,25 +108,27 @@ func (q *Queries) CountReceiptsByStatus(ctx context.Context) ([]CountReceiptsByS
 }
 
 const createReceipt = `-- name: CreateReceipt :one
-INSERT INTO receipts (shop_id, purchased_at, date_locked, image_path, image_sha256, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
-RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited
+INSERT INTO receipts (shop_id, purchased_at, photo_taken_at, date_locked, image_path, image_sha256, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at
 `
 
 type CreateReceiptParams struct {
-	ShopID      int64          `json:"shop_id"`
-	PurchasedAt sql.NullString `json:"purchased_at"`
-	DateLocked  int64          `json:"date_locked"`
-	ImagePath   string         `json:"image_path"`
-	ImageSha256 string         `json:"image_sha256"`
-	CreatedAt   string         `json:"created_at"`
-	UpdatedAt   string         `json:"updated_at"`
+	ShopID       sql.NullInt64  `json:"shop_id"`
+	PurchasedAt  sql.NullString `json:"purchased_at"`
+	PhotoTakenAt sql.NullString `json:"photo_taken_at"`
+	DateLocked   int64          `json:"date_locked"`
+	ImagePath    string         `json:"image_path"`
+	ImageSha256  string         `json:"image_sha256"`
+	CreatedAt    string         `json:"created_at"`
+	UpdatedAt    string         `json:"updated_at"`
 }
 
 func (q *Queries) CreateReceipt(ctx context.Context, arg CreateReceiptParams) (Receipt, error) {
 	row := q.db.QueryRowContext(ctx, createReceipt,
 		arg.ShopID,
 		arg.PurchasedAt,
+		arg.PhotoTakenAt,
 		arg.DateLocked,
 		arg.ImagePath,
 		arg.ImageSha256,
@@ -154,6 +157,7 @@ func (q *Queries) CreateReceipt(ctx context.Context, arg CreateReceiptParams) (R
 		&i.UpdatedAt,
 		&i.DateLocked,
 		&i.HeaderEdited,
+		&i.PhotoTakenAt,
 	)
 	return i, err
 }
@@ -171,7 +175,7 @@ func (q *Queries) DeleteReceipt(ctx context.Context, id int64) (int64, error) {
 }
 
 const getReceipt = `-- name: GetReceipt :one
-SELECT id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited FROM receipts WHERE id = ?
+SELECT id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at FROM receipts WHERE id = ?
 `
 
 func (q *Queries) GetReceipt(ctx context.Context, id int64) (Receipt, error) {
@@ -198,12 +202,13 @@ func (q *Queries) GetReceipt(ctx context.Context, id int64) (Receipt, error) {
 		&i.UpdatedAt,
 		&i.DateLocked,
 		&i.HeaderEdited,
+		&i.PhotoTakenAt,
 	)
 	return i, err
 }
 
 const getReceiptBySHA = `-- name: GetReceiptBySHA :one
-SELECT id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited FROM receipts WHERE image_sha256 = ?
+SELECT id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at FROM receipts WHERE image_sha256 = ?
 `
 
 func (q *Queries) GetReceiptBySHA(ctx context.Context, imageSha256 string) (Receipt, error) {
@@ -230,6 +235,7 @@ func (q *Queries) GetReceiptBySHA(ctx context.Context, imageSha256 string) (Rece
 		&i.UpdatedAt,
 		&i.DateLocked,
 		&i.HeaderEdited,
+		&i.PhotoTakenAt,
 	)
 	return i, err
 }
@@ -268,7 +274,7 @@ func (q *Queries) ListReceiptIDsForReparse(ctx context.Context, status interface
 }
 
 const listReceipts = `-- name: ListReceipts :many
-SELECT receipts.id, receipts.shop_id, receipts.purchased_at, receipts.total_cents, receipts.parsed_sum_cents, receipts.currency, receipts.payment_method, receipts.image_path, receipts.image_sha256, receipts.status, receipts.review_reasons, receipts.ocr_engine, receipts.ocr_ms, receipts.raw_ocr_json, receipts.parser_version, receipts.confirmed_at, receipts.created_at, receipts.updated_at, receipts.date_locked, receipts.header_edited,
+SELECT receipts.id, receipts.shop_id, receipts.purchased_at, receipts.total_cents, receipts.parsed_sum_cents, receipts.currency, receipts.payment_method, receipts.image_path, receipts.image_sha256, receipts.status, receipts.review_reasons, receipts.ocr_engine, receipts.ocr_ms, receipts.raw_ocr_json, receipts.parser_version, receipts.confirmed_at, receipts.created_at, receipts.updated_at, receipts.date_locked, receipts.header_edited, receipts.photo_taken_at,
   CAST((SELECT COUNT(*) FROM receipt_lines l
         WHERE l.receipt_id = receipts.id AND l.kind = 'item') AS INTEGER) AS line_count,
   CAST((SELECT COUNT(*) FROM receipt_lines l
@@ -335,6 +341,7 @@ func (q *Queries) ListReceipts(ctx context.Context, arg ListReceiptsParams) ([]L
 			&i.Receipt.UpdatedAt,
 			&i.Receipt.DateLocked,
 			&i.Receipt.HeaderEdited,
+			&i.Receipt.PhotoTakenAt,
 			&i.LineCount,
 			&i.UnlinkedCount,
 		); err != nil {
@@ -359,7 +366,7 @@ ORDER BY id
 
 type ListReceiptsForShopSuggestionRow struct {
 	ID          int64          `json:"id"`
-	ShopID      int64          `json:"shop_id"`
+	ShopID      sql.NullInt64  `json:"shop_id"`
 	ConfirmedAt sql.NullString `json:"confirmed_at"`
 	RawOcrJson  sql.NullString `json:"raw_ocr_json"`
 }
@@ -463,9 +470,9 @@ WHERE id = ? AND confirmed_at IS NULL
 `
 
 type SetReceiptShopParams struct {
-	ShopID    int64  `json:"shop_id"`
-	UpdatedAt string `json:"updated_at"`
-	ID        int64  `json:"id"`
+	ShopID    sql.NullInt64 `json:"shop_id"`
+	UpdatedAt string        `json:"updated_at"`
+	ID        int64         `json:"id"`
 }
 
 func (q *Queries) SetReceiptShop(ctx context.Context, arg SetReceiptShopParams) (int64, error) {
@@ -518,11 +525,11 @@ const updateReceiptHeader = `-- name: UpdateReceiptHeader :one
 UPDATE receipts
 SET shop_id = ?, purchased_at = ?, date_locked = ?, total_cents = ?, header_edited = 1, updated_at = ?
 WHERE id = ?
-RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited
+RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at
 `
 
 type UpdateReceiptHeaderParams struct {
-	ShopID      int64          `json:"shop_id"`
+	ShopID      sql.NullInt64  `json:"shop_id"`
 	PurchasedAt sql.NullString `json:"purchased_at"`
 	DateLocked  int64          `json:"date_locked"`
 	TotalCents  sql.NullInt64  `json:"total_cents"`
@@ -561,6 +568,7 @@ func (q *Queries) UpdateReceiptHeader(ctx context.Context, arg UpdateReceiptHead
 		&i.UpdatedAt,
 		&i.DateLocked,
 		&i.HeaderEdited,
+		&i.PhotoTakenAt,
 	)
 	return i, err
 }

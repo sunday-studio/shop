@@ -39,11 +39,11 @@ func (q *Queries) GetGlossaryTerm(ctx context.Context, dutch string) (GlossaryTe
 }
 
 const latestPurchases = `-- name: LatestPurchases :many
-SELECT l.product_id AS product_id, s.name AS shop_name, s.chain AS shop_chain,
+SELECT l.product_id AS product_id, CAST(COALESCE(s.name, '') AS TEXT) AS shop_name, s.chain AS shop_chain,
        CAST(MAX(COALESCE(r.purchased_at, r.created_at)) AS TEXT) AS at
 FROM receipt_lines l
 JOIN receipts r ON r.id = l.receipt_id
-JOIN shops s ON s.id = r.shop_id
+LEFT JOIN shops s ON s.id = r.shop_id
 WHERE l.product_id IS NOT NULL
 GROUP BY l.product_id
 `

@@ -168,14 +168,14 @@ func (q *Queries) ProductPurchases(ctx context.Context, since sql.NullString) ([
 }
 
 const spendLines = `-- name: SpendLines :many
-SELECT r.id AS receipt_id, r.shop_id, s.name AS shop_name,
+SELECT r.id AS receipt_id, r.shop_id, CAST(COALESCE(s.name, 'Unassigned') AS TEXT) AS shop_name,
        CAST(COALESCE(r.purchased_at, r.created_at) AS TEXT) AS at,
        l.kind, l.qty, l.unit, l.line_total_cents,
        p.id AS product_id, p.name AS product_name,
        c.id AS category_id, c.name AS category_name
 FROM receipt_lines l
 JOIN receipts r ON r.id = l.receipt_id
-JOIN shops s ON s.id = r.shop_id
+LEFT JOIN shops s ON s.id = r.shop_id
 LEFT JOIN receipt_lines pl ON pl.id = l.parent_line_id
 LEFT JOIN products p ON p.id = COALESCE(l.product_id, pl.product_id)
 LEFT JOIN categories c ON c.id = p.category_id
@@ -193,7 +193,7 @@ type SpendLinesParams struct {
 
 type SpendLinesRow struct {
 	ReceiptID      int64          `json:"receipt_id"`
-	ShopID         int64          `json:"shop_id"`
+	ShopID         sql.NullInt64  `json:"shop_id"`
 	ShopName       string         `json:"shop_name"`
 	At             string         `json:"at"`
 	Kind           string         `json:"kind"`
@@ -246,10 +246,10 @@ func (q *Queries) SpendLines(ctx context.Context, arg SpendLinesParams) ([]Spend
 
 const spendReceipts = `-- name: SpendReceipts :many
 
-SELECT r.id, r.shop_id, s.name AS shop_name,
+SELECT r.id, r.shop_id, CAST(COALESCE(s.name, 'Unassigned') AS TEXT) AS shop_name,
        CAST(COALESCE(r.purchased_at, r.created_at) AS TEXT) AS at,
        CAST(COALESCE(r.total_cents, r.parsed_sum_cents, 0) AS INTEGER) AS total_cents
-FROM receipts r JOIN shops s ON s.id = r.shop_id
+FROM receipts r LEFT JOIN shops s ON s.id = r.shop_id
 WHERE r.status IN ('ok', 'needs_review')
   AND COALESCE(r.purchased_at, r.created_at) >= ?1
   AND COALESCE(r.purchased_at, r.created_at) < ?2
@@ -264,13 +264,14 @@ type SpendReceiptsParams struct {
 }
 
 type SpendReceiptsRow struct {
-	ID         int64  `json:"id"`
-	ShopID     int64  `json:"shop_id"`
-	ShopName   string `json:"shop_name"`
-	At         string `json:"at"`
-	TotalCents int64  `json:"total_cents"`
+	ID         int64         `json:"id"`
+	ShopID     sql.NullInt64 `json:"shop_id"`
+	ShopName   string        `json:"shop_name"`
+	At         string        `json:"at"`
+	TotalCents int64         `json:"total_cents"`
 }
 
+// Receipts without a shop count too, under "Unassigned".
 // Spend counts receipts that were read (ok) or are awaiting review: the
 // money was spent either way. Undated receipts fall back to upload time.
 func (q *Queries) SpendReceipts(ctx context.Context, arg SpendReceiptsParams) ([]SpendReceiptsRow, error) {

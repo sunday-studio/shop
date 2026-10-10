@@ -73,7 +73,9 @@ type processPayload struct {
 }
 
 // Ingest stores the image, creates a pending receipt and queues processing.
-func (s *Service) Ingest(ctx context.Context, shopID int64, purchasedAt *time.Time, image []byte) (db.Receipt, error) {
+// shopID may be nil: the receipt is then unassigned until a shop is chosen or suggested.
+// photoTakenAt is only a hint stored for the date fix; it never becomes purchased_at here.
+func (s *Service) Ingest(ctx context.Context, shopID *int64, purchasedAt, photoTakenAt *time.Time, image []byte) (db.Receipt, error) {
 	ext, ok := allowedImageType[http.DetectContentType(image)]
 	if !ok {
 		if isHEIF(image) {
@@ -81,11 +83,13 @@ func (s *Service) Ingest(ctx context.Context, shopID int64, purchasedAt *time.Ti
 		}
 		return db.Receipt{}, ErrUnsupported
 	}
-	if _, err := s.q.GetShop(ctx, shopID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return db.Receipt{}, fmt.Errorf("%w: shop %d does not exist", ErrInvalid, shopID)
+	if shopID != nil {
+		if _, err := s.q.GetShop(ctx, *shopID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return db.Receipt{}, fmt.Errorf("%w: shop %d does not exist", ErrInvalid, *shopID)
+			}
+			return db.Receipt{}, err
 		}
-		return db.Receipt{}, err
 	}
 
 	sum := sha256.Sum256(image)
@@ -106,7 +110,7 @@ func (s *Service) Ingest(ctx context.Context, shopID int64, purchasedAt *time.Ti
 		now := store.Now()
 		var err error
 		rec, err = q.CreateReceipt(ctx, db.CreateReceiptParams{
-			ShopID: shopID, PurchasedAt: store.NullTS(purchasedAt), DateLocked: boolInt(purchasedAt != nil), ImagePath: rel,
+			ShopID: store.NullInt(shopID), PurchasedAt: store.NullTS(purchasedAt), PhotoTakenAt: store.NullTS(photoTakenAt), DateLocked: boolInt(purchasedAt != nil), ImagePath: rel,
 			ImageSha256: sha, CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {
@@ -264,7 +268,7 @@ func (s *Service) persist(ctx context.Context, rec db.Receipt, res ocr.Result, p
 			}
 			var product sql.NullInt64
 			if l.Kind == receipt.KindItem && norm != "" {
-				if pid, err := q.LookupAlias(ctx, db.LookupAliasParams{NormText: norm, ShopID: sql.NullInt64{Int64: rec.ShopID, Valid: true}}); err == nil {
+				if pid, err := q.LookupAlias(ctx, db.LookupAliasParams{NormText: norm, ShopID: rec.ShopID}); err == nil {
 					product = sql.NullInt64{Int64: pid, Valid: true}
 				} else if !errors.Is(err, sql.ErrNoRows) {
 					return err

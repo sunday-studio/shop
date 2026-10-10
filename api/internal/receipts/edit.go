@@ -47,7 +47,7 @@ func (s *Service) UpdateHeader(ctx context.Context, id int64, p HeaderPatch) (db
 			}
 			return rec, err
 		}
-		arg.ShopID = *p.ShopID
+		arg.ShopID = sql.NullInt64{Int64: *p.ShopID, Valid: true}
 	}
 	if p.PurchasedAt != nil {
 		arg.PurchasedAt, arg.DateLocked = store.NullTS(p.PurchasedAt), 1

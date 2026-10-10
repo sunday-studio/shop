@@ -1,11 +1,12 @@
+-- Receipts without a shop count too, under "Unassigned".
 -- Spend counts receipts that were read (ok) or are awaiting review: the
 -- money was spent either way. Undated receipts fall back to upload time.
 
 -- name: SpendReceipts :many
-SELECT r.id, r.shop_id, s.name AS shop_name,
+SELECT r.id, r.shop_id, CAST(COALESCE(s.name, 'Unassigned') AS TEXT) AS shop_name,
        CAST(COALESCE(r.purchased_at, r.created_at) AS TEXT) AS at,
        CAST(COALESCE(r.total_cents, r.parsed_sum_cents, 0) AS INTEGER) AS total_cents
-FROM receipts r JOIN shops s ON s.id = r.shop_id
+FROM receipts r LEFT JOIN shops s ON s.id = r.shop_id
 WHERE r.status IN ('ok', 'needs_review')
   AND COALESCE(r.purchased_at, r.created_at) >= sqlc.arg(from_ts)
   AND COALESCE(r.purchased_at, r.created_at) < sqlc.arg(to_ts)
@@ -15,14 +16,14 @@ ORDER BY at;
 -- name: SpendLines :many
 -- Lines with the product and category they count towards (discounts
 -- inherit both from their parent item).
-SELECT r.id AS receipt_id, r.shop_id, s.name AS shop_name,
+SELECT r.id AS receipt_id, r.shop_id, CAST(COALESCE(s.name, 'Unassigned') AS TEXT) AS shop_name,
        CAST(COALESCE(r.purchased_at, r.created_at) AS TEXT) AS at,
        l.kind, l.qty, l.unit, l.line_total_cents,
        p.id AS product_id, p.name AS product_name,
        c.id AS category_id, c.name AS category_name
 FROM receipt_lines l
 JOIN receipts r ON r.id = l.receipt_id
-JOIN shops s ON s.id = r.shop_id
+LEFT JOIN shops s ON s.id = r.shop_id
 LEFT JOIN receipt_lines pl ON pl.id = l.parent_line_id
 LEFT JOIN products p ON p.id = COALESCE(l.product_id, pl.product_id)
 LEFT JOIN categories c ON c.id = p.category_id

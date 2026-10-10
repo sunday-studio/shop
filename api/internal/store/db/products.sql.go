@@ -261,7 +261,7 @@ WHERE product_id IS NULL
 type LinkMatchingLinesParams struct {
 	ProductID sql.NullInt64 `json:"product_id"`
 	NormText  string        `json:"norm_text"`
-	ShopID    int64         `json:"shop_id"`
+	ShopID    sql.NullInt64 `json:"shop_id"`
 }
 
 // Apply a newly learned alias to other unmatched lines from the same shop.
@@ -499,10 +499,10 @@ func (q *Queries) ListProductsByRecent(ctx context.Context, arg ListProductsByRe
 }
 
 const recentUnmatchedLines = `-- name: RecentUnmatchedLines :many
-SELECT l.id, l.receipt_id, l.line_no, l.raw_text, l.norm_text, l.kind, l.qty, l.unit, l.unit_price_cents, l.line_total_cents, l.vat_code, l.parent_line_id, l.product_id, l.user_edited, r.shop_id, r.purchased_at, s.name AS shop_name
+SELECT l.id, l.receipt_id, l.line_no, l.raw_text, l.norm_text, l.kind, l.qty, l.unit, l.unit_price_cents, l.line_total_cents, l.vat_code, l.parent_line_id, l.product_id, l.user_edited, r.shop_id, r.purchased_at, CAST(COALESCE(s.name, 'Unassigned') AS TEXT) AS shop_name
 FROM receipt_lines l
 JOIN receipts r ON r.id = l.receipt_id
-JOIN shops s ON s.id = r.shop_id
+LEFT JOIN shops s ON s.id = r.shop_id
 WHERE l.product_id IS NULL
   AND l.kind = 'item'
   AND COALESCE(r.purchased_at, r.created_at) >= ?1
@@ -525,7 +525,7 @@ type RecentUnmatchedLinesRow struct {
 	ParentLineID   sql.NullInt64  `json:"parent_line_id"`
 	ProductID      sql.NullInt64  `json:"product_id"`
 	UserEdited     int64          `json:"user_edited"`
-	ShopID         int64          `json:"shop_id"`
+	ShopID         sql.NullInt64  `json:"shop_id"`
 	PurchasedAt    sql.NullString `json:"purchased_at"`
 	ShopName       string         `json:"shop_name"`
 }

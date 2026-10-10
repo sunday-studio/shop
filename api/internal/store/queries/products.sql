@@ -87,10 +87,10 @@ WHERE product_id IS NULL
   AND receipt_id IN (SELECT id FROM receipts WHERE shop_id = sqlc.arg(shop_id));
 
 -- name: RecentUnmatchedLines :many
-SELECT l.*, r.shop_id, r.purchased_at, s.name AS shop_name
+SELECT l.*, r.shop_id, r.purchased_at, CAST(COALESCE(s.name, 'Unassigned') AS TEXT) AS shop_name
 FROM receipt_lines l
 JOIN receipts r ON r.id = l.receipt_id
-JOIN shops s ON s.id = r.shop_id
+LEFT JOIN shops s ON s.id = r.shop_id
 WHERE l.product_id IS NULL
   AND l.kind = 'item'
   AND COALESCE(r.purchased_at, r.created_at) >= sqlc.arg(since)
