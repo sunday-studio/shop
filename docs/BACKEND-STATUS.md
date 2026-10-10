@@ -56,3 +56,9 @@ All iOS backend needs (#1–#11 in [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md))
 - Migrations are append-only (`internal/migrations/000NN_*.sql`). The server snapshots the DB before applying new ones.
 - No LLMs or embeddings: models are for OCR only. Everything must run in Docker on any CPU.
 - All docs live in `docs/`. Commit per milestone. Secrets go in `deploy/.env` (git-ignored), never in commits.
+
+## M11 progress (backend thread)
+
+- Done: parser treats "22 SUBTOTAAL" / "2 TOTAAL" (leading item count) as subtotal/total, with a test (`TestSubtotalWithLeadingCount`). Migration 00010 (English categories) is guarded against UNIQUE collisions with user-made categories; verified applied on the running stack (v9 -> v10, categories read in English).
+- Blocked: `shop reparse` skips receipts 1 and 2 because both are confirmed (`confirmed_at` set), by design. Needs a decision before re-parsing them.
+- Next: HEIC / multi-page upload check (use the spike agent's HEIC-through-OCR findings), purchase date from receipt, then add the real receipts as fixtures.

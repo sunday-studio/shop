@@ -78,8 +78,8 @@ const (
 )
 
 var (
-	totalRe    = regexp.MustCompile(`^(totaal|te betalen|total|te voldoen|totaalbedrag)\b`)
-	subtotalRe = regexp.MustCompile(`^sub\s*-?\s*tota`)
+	totalRe    = regexp.MustCompile(`^(?:\d{1,3}\s+)?(totaal|te betalen|total|te voldoen|totaalbedrag)\b`)
+	subtotalRe = regexp.MustCompile(`^(?:\d{1,3}\s+)?sub\s*-?\s*tota`)
 	paymentRe  = regexp.MustCompile(`\b(pin|pinnen|pinbetaling|maestro|v ?pay|visa|mastercard|contant|contactloos|creditcard|debit|betaald)\b`)
 	ignoreRe   = regexp.MustCompile(`^(btw|b\.t\.w|vat|aantal|artikelen|bonuskaart|air ?miles|klantenkaart)\b`)
 	discountRe = regexp.MustCompile(`(bonus|korting|actie|voordeel|kassakorting|prijsvoordeel|aanbieding)`)

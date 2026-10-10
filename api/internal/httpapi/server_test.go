@@ -302,7 +302,7 @@ func TestCategories(t *testing.T) {
 	if len(cats) != 10 {
 		t.Fatalf("seeded = %d", len(cats))
 	}
-	if rec := e.do("POST", "/v1/categories", map[string]any{"name": "Zuivel"}); rec.Code != 409 {
+	if rec := e.do("POST", "/v1/categories", map[string]any{"name": "Dairy"}); rec.Code != 409 {
 		t.Errorf("duplicate: %d", rec.Code)
 	}
 	c := decodeAs[apitypes.Category](t, e.do("POST", "/v1/categories", map[string]any{"name": "Baby", "sort": 95}))

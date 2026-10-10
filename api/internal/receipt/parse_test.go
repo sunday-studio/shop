@@ -291,3 +291,15 @@ func TestOCRNoiseTolerance(t *testing.T) {
 		t.Errorf("reasons = %v", r.Reasons)
 	}
 }
+
+// Some chains print the item count before the label ("22 SUBTOTAAL"); it must not become an item.
+func TestSubtotalWithLeadingCount(t *testing.T) {
+	r := parse("01-10-2026|", "MELK|1,29", "BROOD|2,00", "2 SUBTOTAAL|3,29", "2 TOTAAL|3,29")
+	checkLines(t, r.Lines, []want{
+		{"MELK", KindItem, 1, "pc", 129, 129},
+		{"BROOD", KindItem, 1, "pc", 200, 200},
+	})
+	if len(r.Reasons) != 0 {
+		t.Errorf("reasons = %v; want none", r.Reasons)
+	}
+}
