@@ -288,12 +288,20 @@ Products are named in Dutch as sold. The English name (`name_en`) comes from Ope
 | `partial` | Some words unknown, but ≥ 50 % known | English with the unknown Dutch words **highlighted**; "needs English" badge |
 | `missing` | Too few words known to show a translation | Dutch name only; "needs English" badge |
 
-The API also returns `name_en_unknown`: the Dutch words the dictionary didn't know (e.g. `["Elstar"]`). The app uses it to highlight them and to offer "teach this word".
+The API also returns `name_en_unknown`: the words the dictionary didn't know, as spans for highlighting:
+
+```json
+"name_en_unknown": [{"word": "Calvé", "key": "calve", "start": 10, "end": 15}]
+```
+
+- `word` is the display form, as written. `key` is the folded glossary key (lowercase, no accents); the app shows `word` and sends `key` when teaching.
+- `start`/`end` are **UTF-16 offsets** (end exclusive; maps directly to `NSRange`) into the string the app displays. That's `name_en` for `partial`, and `name` (the Dutch) for `missing`. A word that appears twice gets two spans.
+- Receipt lines carry the same spans as `text_en_unknown` (over `text_en`, or `raw_text` when there's no gloss).
 
 ### Two ways to correct
 
 1. **Fix this product.** Edit the English name. It becomes `manual` and is never overwritten (that already works). "Reset to automatic" sends `name_en: ""`.
-2. **Teach a word.** Give the English for a Dutch word or phrase, e.g. `elstar → Elstar (apple variety)`, `vlkrn → wholemeal`, or mark it **"keep as is"** (brands like `Unox`). The term goes into **your glossary**, which overrides the built-in one. Saving it:
+2. **Teach a word.** Give the English for a single Dutch word (phrases stay in the built-in glossary; user phrase teaching is out of scope for now), e.g. `elstar → Elstar (apple variety)`, `vlkrn → wholemeal`, or mark it **"keep as is"** (brands like `Unox`). The term goes into **your glossary**, which overrides the built-in one. Saving it:
    - re-translates every `dictionary`/`partial`/`missing` product. Manual and Open Food Facts names are untouched;
    - updates receipt-line glosses (`text_en` is computed, never stored);
    - responds with how many products changed, so the app can say "Updated 4 products";
@@ -307,19 +315,25 @@ Unknown words that are brand names are expected. Marking them "keep as is" count
 - **words:** unknown Dutch words ranked by how many products (and unmatched receipt lines) use them, with up to 3 example product names each. Teaching the top words fixes the most names.
 - **products:** those in `partial` or `missing`, most recently bought first.
 
-This drives a small review screen: work down the words, and each one fixes several products at once.
+This drives a small review screen: work down the words, and each one fixes several products at once. UI copy uses the server's numbers: the preview button says "Save and update N products" (`products_affected`), and the confirmation says "Updated N products" (`products_updated`).
+
+Design: Shop Wireframes canvas, section 11 (frames E1–E6, light and dark): https://claude.ai/artifact/LVSTnG3RYKArPtpCcCu4mG
 
 ### API additions
 
 ```
-GET    /v1/glossary                     your terms: [{dutch, english, keep_as_is, updated_at}]
+GET    /v1/glossary                     your terms: [{dutch, english, keep_as_is, products_count, updated_at}]
 POST   /v1/glossary/preview             {dutch, english | keep_as_is, examples: 3}
                                         → {products_affected, examples: [{product_id, name, name_en_before, name_en_after, status_after}]}
                                         (nothing saved; drives the "will become" list in the teach sheet)
 PUT    /v1/glossary/{dutch}             {english} | {keep_as_is: true}
                                         → {term, previous: {english, keep_as_is} | null, products_updated}
 DELETE /v1/glossary/{dutch}             back to built-in behaviour → {products_updated}
-GET    /v1/translations/todo?limit=     {words: [{dutch, products, lines, examples[]}], products: [Product]}
+GET    /v1/translations/todo?limit=     {totals: {words_left, products_left},
+                                         words: [{word, key, products, lines, examples[]}],
+                                         products: [{id, name, name_en, name_en_status, name_en_unknown[],
+                                                     shop_name, shop_chain}]}   -- shop of the latest purchase
+                                        totals come from the server (words overlap products)
 GET    /v1/translate?text=              preview without saving: {english, status, unknown[]} (for live edit forms)
 Product (all reads) gains: name_en_status, name_en_unknown[]
 ReceiptLine gains:         text_en_status, text_en_unknown[]
