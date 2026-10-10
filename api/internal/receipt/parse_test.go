@@ -250,6 +250,8 @@ func TestFindDate(t *testing.T) {
 		{"Datum: 03-10-2026 18:05", time.Date(2026, 10, 3, 18, 5, 0, 0, ams)},
 		{"03/10/26", time.Date(2026, 10, 3, 0, 0, 0, 0, ams)},
 		{"3.10.2026 9:07:11", time.Date(2026, 10, 3, 9, 7, 11, 0, ams)},
+		{"07-10-202618:44", time.Date(2026, 10, 7, 18, 44, 0, 0, ams)},
+		{"Kassa 3 21-09-2026 Bon 1234", time.Date(2026, 9, 21, 0, 0, 0, 0, ams)},
 	}
 	for _, c := range cases {
 		got, ok := FindDate([]string{c.in}, ams, now)
@@ -261,5 +263,31 @@ func TestFindDate(t *testing.T) {
 		if got, ok := FindDate([]string{bad}, ams, now); ok {
 			t.Errorf("FindDate(%q) = %v; want none", bad, got)
 		}
+	}
+}
+
+// OCR noise seen in the spike: punctuation after the VAT code or price,
+// and a semicolon read instead of the decimal comma.
+func TestOCRNoiseTolerance(t *testing.T) {
+	r := parse(
+		"21-09-2026 17:08|",
+		"KOFFIEBONEN|17,98 B.",
+		"2 x 8,99|",
+		"BANANEN|",
+		"1;338 kg x 3,49 EUR/kg|.4,67 B",
+		"PASTA|1,19.",
+		"APPELS|2,79.B",
+		"BONUS APPELS|-0,50.B",
+		"TOTAAL|26,13",
+	)
+	checkLines(t, r.Lines, []want{
+		{"KOFFIEBONEN", KindItem, 2, "pc", 899, 1798},
+		{"BANANEN", KindItem, 1.338, "kg", 349, 467},
+		{"PASTA", KindItem, 1, "pc", 119, 119},
+		{"APPELS", KindItem, 1, "pc", 279, 279},
+		{"BONUS APPELS", KindDiscount, 1, "pc", 0, -50},
+	})
+	if len(r.Reasons) != 0 {
+		t.Errorf("reasons = %v", r.Reasons)
 	}
 }

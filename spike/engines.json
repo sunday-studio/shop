@@ -1,0 +1,34 @@
+[
+  {
+    "name": "ppocrv5",
+    "url": "http://localhost:8101",
+    "container": "spike-ppocrv5",
+    "notes": "Default in compose. PP-OCRv5 mobile det + latin mobile rec, CPU."
+  },
+  {
+    "name": "ppocrv5-server",
+    "url": "http://localhost:8102",
+    "container": "spike-ppocrv5-server",
+    "notes": "PP-OCRv5 server det + server rec (no accents), CPU.",
+    "timeout_s": 300
+  },
+  {
+    "name": "tesseract",
+    "url": "http://localhost:8103",
+    "container": "spike-tesseract",
+    "notes": "Tesseract 5, nld+eng, --psm 4. Baseline."
+  },
+  {
+    "name": "doctr",
+    "url": "http://localhost:8104",
+    "container": "spike-doctr",
+    "notes": "docTR db_resnet50 + parseq, PyTorch CPU."
+  },
+  {
+    "name": "paddleocr-vl",
+    "url": "http://localhost:8105",
+    "container": "spike-paddleocr-vl",
+    "notes": "PaddleOCR-VL 0.9B vision-language OCR, CPU. Accuracy reference; slow.",
+    "timeout_s": 600
+  }
+]

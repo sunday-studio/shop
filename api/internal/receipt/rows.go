@@ -20,8 +20,21 @@ type Row struct {
 
 var (
 	vatTokenRe     = regexp.MustCompile(`^(?i:[a-d]|[0-2])$`)
-	amountVATGlued = regexp.MustCompile(`^(.*\d[.,]\d{2}-?)([A-Da-d])$`)
+	amountVATGlued = regexp.MustCompile(`^(.*\d[.,]\d{2}-?)[.,:;']?([A-Da-d])$`)
+	// OCR often reads the decimal comma as a semicolon: "1;338 kg".
+	semicolonDecimal = regexp.MustCompile(`(\d);(\d)`)
 )
+
+// cleanOCRText fixes systematic OCR confusions before parsing.
+func cleanOCRText(s string) string {
+	return semicolonDecimal.ReplaceAllString(s, "$1,$2")
+}
+
+// trimNoise drops stray punctuation OCR attaches to either end of a token
+// ("B." / "3,39." / ".4,81" / "4,51'"). A leading minus is kept.
+func trimNoise(tok string) string {
+	return strings.Trim(tok, ".,:;'`\"")
+}
 
 type piece struct {
 	ocr.Line
@@ -59,7 +72,7 @@ func BuildRows(lines []ocr.Line) []Row {
 			conf = min(conf, p.Conf)
 			ysum += p.yc
 		}
-		r := splitAmount(strings.Join(texts, " "))
+		r := splitAmount(cleanOCRText(strings.Join(texts, " ")))
 		r.Conf = conf
 		r.Y = ysum / float64(len(g))
 		rows = append(rows, r)
@@ -86,6 +99,17 @@ func splitAmount(raw string) Row {
 	toks := strings.Fields(raw)
 	if len(toks) == 0 {
 		return r
+	}
+	// Ignore trailing tokens that are only punctuation, and stray
+	// punctuation on the last two tokens (price and VAT code).
+	for len(toks) > 0 && trimNoise(toks[len(toks)-1]) == "" {
+		toks = toks[:len(toks)-1]
+	}
+	if len(toks) == 0 {
+		return r
+	}
+	for i := max(0, len(toks)-2); i < len(toks); i++ {
+		toks[i] = trimNoise(toks[i])
 	}
 	vat := ""
 	end := len(toks)

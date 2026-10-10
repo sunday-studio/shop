@@ -41,10 +41,13 @@ type Client struct {
 	http    *http.Client
 }
 
-func New(baseURL string) *Client {
+func New(baseURL string) *Client { return NewWithTimeout(baseURL, 120*time.Second) }
+
+// NewWithTimeout is New with a custom per-request timeout (slow engines).
+func NewWithTimeout(baseURL string, timeout time.Duration) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
-		http:    &http.Client{Timeout: 120 * time.Second},
+		http:    &http.Client{Timeout: timeout},
 	}
 }
 
