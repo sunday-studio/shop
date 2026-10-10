@@ -247,14 +247,16 @@ struct AnalyticsView: View {
                     }
                 } label: {
                     HStack(spacing: Space.l) {
-                        if model.breakdown == .shop {
+                        if model.breakdown == .shop && b.key == "none" {
+                            UnknownShopMark()
+                        } else if model.breakdown == .shop {
                             ShopMark(name: b.label)
                         } else {
                             CategoryDot(color: color, size: 12)
                         }
                         VStack(spacing: 5) {
                             HStack {
-                                Text(b.key == "none" ? "Uncategorised" : b.label).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                                Text(b.key == "none" ? (model.breakdown == .shop ? "Unassigned" : "Uncategorised") : b.label).textStyle(.rowTitle).foregroundStyle(Palette.ink)
                                 Spacer()
                                 Text(Money.format(b.cents)).textStyle(.rowTitle).foregroundStyle(Palette.ink)
                             }
@@ -272,7 +274,7 @@ struct AnalyticsView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.press(haptic: nil))
-                .disabled(model.breakdown == .category && b.key == "none")
+                .disabled(b.key == "none")
             }
         }
     }

@@ -12,7 +12,11 @@ final class NetworkMonitor {
 
     @ObservationIgnored private let monitor = NWPathMonitor()
 
+    /// Simulator aid: `-offline` (with `-mock`) pins the app offline.
+    @ObservationIgnored private let pinnedOffline = ProcessInfo.processInfo.arguments.contains("-offline")
+
     init() {
+        if pinnedOffline { isOnline = false }
         monitor.pathUpdateHandler = Self.handler(for: self)
         monitor.start(queue: DispatchQueue(label: "nl.casprine.shop.network"))
     }
@@ -28,6 +32,7 @@ final class NetworkMonitor {
     }
 
     private func update(_ online: Bool) {
+        guard !pinnedOffline else { return }
         let wasOnline = isOnline
         isOnline = online
         if online && !wasOnline { onReconnect?() }

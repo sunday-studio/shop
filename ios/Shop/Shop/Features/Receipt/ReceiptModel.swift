@@ -266,7 +266,8 @@ final class ReceiptModel {
             Haptics.play(.success)
             let count = result.linkedReceiptIds.count
             let tail = count == 1 ? "1 receipt" : "\(count) receipts"
-            app.toasts.show(s.kind == .new ? "\(result.shop.name) added · \(tail) linked" : "Moved to \(result.shop.name) · \(tail)", tone: .green)
+            app.toasts.show(s.kind == .new ? "\(result.shop.name) added · \(tail) linked"
+                            : (count == 1 ? "Moved to \(result.shop.name)" : "\(count) receipts moved to \(result.shop.name)"), tone: .green)
             await load()
             await app.home.suggestionAccepted(linked: result.linkedReceiptIds)
             await catalog.syncAll()
