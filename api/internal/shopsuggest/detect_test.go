@@ -80,3 +80,22 @@ func TestKeyboardNoiseIgnored(t *testing.T) {
 		t.Errorf("got %+v", d)
 	}
 }
+
+// Headers from the first real batch (rows as OCR read them).
+func TestLiveBatchHeaders(t *testing.T) {
+	// a Turkish supermarket: the name is two rows, the postcode row has no letters
+	d := Detect([]string{"istanbul", "SUPERMARKT", "Marktweg 37", "1234 Teststad", "01 31828", "13"})
+	if d == nil || d.Known || d.Chain != "Istanbul Supermarkt" || d.Branch != "Marktweg 37, Teststad" {
+		t.Errorf("istanbul: %+v", d)
+	}
+	// "34Teststad": the number is glued to the town
+	d = Detect([]string{"Albert Heijn", "Hoofdstraat 12Teststad", "010-5550142", "AANTAL OMSCHRIJVING PRIJS BEDRAG"})
+	if d == nil || d.Chain != "Albert Heijn" || d.Branch != "Hoofdstraat 12, Teststad" {
+		t.Errorf("glued town: %+v", d)
+	}
+	// a delivery order whose first line is the town: no shop name to suggest
+	d = Detect([]string{"Teststad", "Dorpsstraat 7", "Teststad", "1234 AB", "Nederland", "0105550142", "KVK nummer: 12345678"})
+	if d != nil {
+		t.Errorf("a town is not a shop: %+v", d)
+	}
+}

@@ -26,6 +26,7 @@ type Detected struct {
 	Conf     float64
 
 	hasPostcode bool
+	town        string // folded
 }
 
 type chain struct {
@@ -65,6 +66,13 @@ var noiseWords = map[string]bool{
 
 var (
 	postcodeRe = regexp.MustCompile(`\b(\d{4})\s?([a-z]{2})\b`)
+	// "1234 Teststad": four digits and a town, no letters in the postcode
+	postcodeTownRe = regexp.MustCompile(`\b\d{4}\s+([a-z]{3,})`)
+	// OCR glues the number to the town: "34schiedam"
+	glueRe = regexp.MustCompile(`(\d)([a-z]{3,})`)
+	// words that follow a shop's name on its own row
+	singleWordRe = regexp.MustCompile(`^[a-z]{3,}$`)
+	genericRowRe = regexp.MustCompile(`^(supermarkt|supermarket|slagerij|bakkerij|toko|groenteboer|market|markt|shop|winkel)$`)
 	// street + house number: "lange kerkstraat 34", "broersveld 68-70", "ring 5a"
 	streetRe = regexp.MustCompile(`^([a-z][a-z .'-]{2,}?)\s+(\d{1,4}\s?[a-z]?(?:\s?-\s?\d{1,4})?)\b`)
 	// Rows that are receipt furniture, never a shop name.
@@ -155,10 +163,16 @@ func Detect(rows []string) *Detected {
 		if isNoise(folded[i]) || !nameLike(rows[i], folded[i]) {
 			continue
 		}
-		d := &Detected{Chain: titleCase(strings.TrimSpace(rows[i])), Evidence: []string{rows[i]}, Conf: 0.4}
-		d.fillBranch(rows, folded, i+1, min(n, i+4))
-		// Without a known chain, demand a real postcode: otherwise product rows pass as addresses.
-		if d.Branch != "" && d.hasPostcode {
+		name, from := strings.TrimSpace(rows[i]), i+1
+		if from < n && genericRowRe.MatchString(folded[from]) { // "Istanbul" / "SUPERMARKT"
+			name += " " + strings.TrimSpace(rows[from])
+			from++
+		}
+		d := &Detected{Chain: titleCase(name), Evidence: []string{rows[i]}, Conf: 0.4}
+		d.fillBranch(rows, folded, from, min(n, from+3))
+		// Without a known chain, demand a postcode: otherwise product rows pass as addresses. A name that
+		// is only the town ("Teststad" above the street) is not a shop.
+		if d.Branch != "" && d.hasPostcode && match.Fold(name) != d.town {
 			return d
 		}
 	}
@@ -183,7 +197,7 @@ func (d *Detected) fillBranch(rows, folded []string, from, to int) {
 	to = min(to, from+4, len(rows))
 	street, town := "", ""
 	for i := from; i < to; i++ {
-		f := folded[i]
+		f := glueRe.ReplaceAllString(folded[i], "$1 $2")
 		if isNoise(f) {
 			continue
 		}
@@ -207,6 +221,19 @@ func (d *Detected) fillBranch(rows, folded []string, from, to int) {
 				continue
 			}
 		}
+		if street != "" && town == "" && singleWordRe.MatchString(f) { // the town on its own row
+			town = f
+			d.Evidence = append(d.Evidence, rows[i])
+			continue
+		}
+		if m := postcodeTownRe.FindStringSubmatch(f); m != nil && street != "" && !postcodeRe.MatchString(f) {
+			if town == "" {
+				town = m[1]
+			}
+			d.Evidence = append(d.Evidence, rows[i])
+			d.hasPostcode = true
+			break
+		}
 		if m := postcodeRe.FindStringSubmatchIndex(f); m != nil && street != "" {
 			if t := strings.TrimSpace(f[m[1]:]); town == "" && t != "" {
 				town = strings.Fields(t)[0]
@@ -224,6 +251,7 @@ func (d *Detected) fillBranch(rows, folded []string, from, to int) {
 	if street == "" {
 		return
 	}
+	d.town = town
 	d.Branch = titleCase(street)
 	if town != "" {
 		d.Branch += ", " + titleCase(town)
