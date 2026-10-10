@@ -23,6 +23,10 @@ admin (run where the database lives, e.g. docker compose exec api shop ...):
   token list                    list tokens
   token revoke <name>           delete a token
   reparse [-status S]           re-parse unedited receipts from stored OCR output
+  backup [-dir D] [-schedule]   snapshot DB + mirror images to D (the NAS); -schedule runs daily
+  restore -yes [-dir D] [-snapshot NAME|latest]
+                                replace the DB with a snapshot (API must be stopped)
+  healthcheck                   exit 0 if the local server answers (container probe)
 
 client (talks to a running server over HTTP):
   import -shop ID [-url U] [-token T] <dir|file>...
@@ -52,6 +56,12 @@ func main() {
 		err = tokenCmd(ctx, args)
 	case "reparse":
 		err = reparseCmd(ctx, args)
+	case "backup":
+		err = backupCmd(ctx, log, args)
+	case "restore":
+		err = restoreCmd(ctx, args)
+	case "healthcheck":
+		err = healthcheckCmd()
 	case "import":
 		err = importCmd(ctx, args)
 	case "version":

@@ -48,6 +48,31 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 	return err
 }
 
+// MigrateTo applies migrations up to and including version (for tests).
+func MigrateTo(ctx context.Context, db *sql.DB, version int64) error {
+	p, err := newProvider(db)
+	if err != nil {
+		return err
+	}
+	_, err = p.UpTo(ctx, version)
+	return err
+}
+
+// PendingMigrations reports whether Migrate would change the schema, and
+// the current version (0 for a fresh database).
+func PendingMigrations(ctx context.Context, db *sql.DB) (bool, int64, error) {
+	p, err := newProvider(db)
+	if err != nil {
+		return false, 0, err
+	}
+	pending, err := p.HasPending(ctx)
+	if err != nil {
+		return false, 0, err
+	}
+	v, err := p.GetDBVersion(ctx)
+	return pending, v, err
+}
+
 // MigrationVersion reports the current schema version.
 func MigrationVersion(ctx context.Context, db *sql.DB) (int64, error) {
 	p, err := newProvider(db)

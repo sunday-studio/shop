@@ -16,6 +16,9 @@ type Config struct {
 	OCRFallbackURL     string
 	FoodFactsUserAgent string
 	Workers            int
+	BackupDir          string
+	BackupKeepDays     int
+	BackupAt           string // HH:MM local time for scheduled backups
 	Location           *time.Location
 }
 
@@ -30,6 +33,14 @@ func Load() (Config, error) {
 		OCRFallbackURL:     env("OCR_FALLBACK_URL", ""),
 		FoodFactsUserAgent: env("OFF_USER_AGENT", "Shop/0.1 (self-hosted)"),
 	}
+
+	c.BackupDir = env("BACKUP_DIR", "/backup")
+	c.BackupAt = env("BACKUP_AT", "03:30")
+	keep, err := strconv.Atoi(env("BACKUP_KEEP_DAYS", "30"))
+	if err != nil || keep < 1 {
+		return c, fmt.Errorf("BACKUP_KEEP_DAYS must be a positive integer")
+	}
+	c.BackupKeepDays = keep
 
 	workers, err := strconv.Atoi(env("SHOP_WORKERS", "1"))
 	if err != nil || workers < 1 {

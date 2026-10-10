@@ -124,7 +124,7 @@ func newEnv(t *testing.T) *env {
 	mcpSrv := mcpserver.New(mcpserver.Deps{DB: conn, Receipts: svc, Products: prods, Stats: st, List: list,
 		Matcher: match.NewMatcher(conn), Location: ams})
 	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Stats: st, List: list,
-		Location: ams, Log: log, Authed: map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)}})
+		Location: ams, Log: log, DataDir: dir, Authed: map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)}})
 
 	q := db.New(conn)
 	tok, err := auth.Create(context.Background(), q, "test")
@@ -492,5 +492,37 @@ func TestListReceipts(t *testing.T) {
 	}
 	if rec := e.do("GET", "/v1/receipts?from=10/2026", nil); rec.Code != 400 {
 		t.Errorf("bad date: %d", rec.Code)
+	}
+}
+
+func TestHealthReportsBackups(t *testing.T) {
+	e := newEnv(t)
+	health := func() (int, apitypes.Health) {
+		rec := httptest.NewRecorder()
+		e.h.ServeHTTP(rec, httptest.NewRequest("GET", "/healthz", nil))
+		return rec.Code, decodeAs[apitypes.Health](t, rec)
+	}
+	// No backup has ever run: no backup check, still healthy.
+	if code, h := health(); code != 200 || h.Checks["storage"].Detail == nil {
+		t.Fatalf("no backups yet: %d %+v", code, h.Checks)
+	} else if _, ok := h.Checks["backup"]; ok {
+		t.Fatal("backup check should be absent before the first run")
+	}
+	write := func(st string) {
+		if err := os.WriteFile(filepath.Join(e.dataDir, "backup_status.json"), []byte(st), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(fmt.Sprintf(`{"ok":true,"at":%q,"snapshot":"shop-x.db"}`, time.Now().Add(-2*time.Hour).UTC().Format(time.RFC3339)))
+	if code, h := health(); code != 200 || !h.Checks["backup"].Ok {
+		t.Errorf("fresh backup: %d %+v", code, h.Checks["backup"])
+	}
+	write(fmt.Sprintf(`{"ok":true,"at":%q}`, time.Now().Add(-48*time.Hour).UTC().Format(time.RFC3339)))
+	if code, h := health(); code != 503 || h.Checks["backup"].Ok || !strings.Contains(*h.Checks["backup"].Detail, "stale") {
+		t.Errorf("stale backup: %d %+v", code, h.Checks["backup"])
+	}
+	write(fmt.Sprintf(`{"ok":false,"at":%q,"error":"backup directory not available"}`, time.Now().UTC().Format(time.RFC3339)))
+	if code, h := health(); code != 503 || !strings.Contains(*h.Checks["backup"].Detail, "not available") {
+		t.Errorf("failed backup: %d %+v", code, h.Checks["backup"])
 	}
 }

@@ -2,7 +2,7 @@ COMPOSE := docker compose -f deploy/docker-compose.yml
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 
-.PHONY: help gen test vet lint build run up down logs ps clean
+.PHONY: help gen test vet lint build run up down logs ps clean backup token
 
 help: ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-8s %s\n", $$1, $$2}'
@@ -36,6 +36,12 @@ logs: ## follow stack logs
 
 ps: ## stack status
 	$(COMPOSE) ps
+
+backup: ## run a backup now (to SHOP_BACKUP_DIR, default ./backups)
+	$(COMPOSE) run --rm backup backup
+
+token: ## create an API token: make token NAME=phone
+	@$(COMPOSE) exec api shop token create $(NAME)
 
 clean: ## remove local build output
 	rm -rf api/bin

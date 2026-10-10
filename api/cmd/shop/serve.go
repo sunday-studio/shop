@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"time"
 
+	"shop/internal/backup"
 	"shop/internal/config"
 	"shop/internal/httpapi"
 	"shop/internal/jobs"
@@ -46,6 +48,19 @@ func openApp(ctx context.Context, log *slog.Logger) (*app, error) {
 	conn, err := store.Open(cfg.DBPath())
 	if err != nil {
 		return nil, err
+	}
+	// Safety net for upgrades: snapshot an existing database before its
+	// schema changes. Snapshots older than the newest few are pruned.
+	if pending, v, err := store.PendingMigrations(ctx, conn); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("check migrations: %w", err)
+	} else if pending && v > 0 {
+		path := filepath.Join(cfg.DataDir, fmt.Sprintf("pre-migrate-v%d-%s.db", v, time.Now().UTC().Format("20060102-150405")))
+		if err := backup.Snapshot(ctx, conn, path); err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("pre-migration snapshot: %w", err)
+		}
+		log.Info("pre-migration snapshot", "path", path, "from_version", v)
 	}
 	if err := store.Migrate(ctx, conn); err != nil {
 		conn.Close()
@@ -92,7 +107,8 @@ func serve(ctx context.Context, log *slog.Logger) error {
 	api := httpapi.New(httpapi.Deps{
 		DB: a.db, OCR: a.ocr, OCRFallback: a.fallback, Receipts: a.receipts,
 		Products: a.products, Stats: a.stats, List: a.list, Location: a.cfg.Location, Log: log,
-		Authed: map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)},
+		DataDir: a.cfg.DataDir,
+		Authed:  map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)},
 	})
 
 	srv := &http.Server{
