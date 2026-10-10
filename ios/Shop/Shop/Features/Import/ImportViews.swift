@@ -162,7 +162,8 @@ struct ImportScreen: View {
                         ImportReceiptRow(
                             pages: receipt.pages.map(\.thumbnail),
                             title: model.title(at: index),
-                            shopName: app.catalog.shop(model.effectiveShopId(receipt, fallback: fallbackShopId))?.name ?? (ImportFlags.letShopFindOut ? "Let Shop find out" : nil),
+                            shopName: app.catalog.shop(model.effectiveShopId(receipt, fallback: fallbackShopId))?.name,
+                            shopWillFindOut: ImportFlags.letShopFindOut,
                             dateText: model.dateText(receipt),
                             photoDateHint: model.photoHint(for: receipt),
                             onShop: { trays.present("import-shop") { ImportShopTray(model: model, target: receipt.id, fallbackShopId: fallbackShopId) } },

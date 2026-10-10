@@ -28,6 +28,8 @@ final class MockServer: HTTPTransport {
 
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         try? await Task.sleep(for: latency)
+        // Simulator aid: `-offline` makes every request fail like a dead connection.
+        if ProcessInfo.processInfo.arguments.contains("-offline") { throw URLError(.notConnectedToInternet) }
         guard let url = request.url else { throw APIError.invalidURL }
         let method = request.httpMethod ?? "GET"
         let parts = url.path.split(separator: "/").map(String.init)
@@ -363,7 +365,15 @@ final class MockServer: HTTPTransport {
 
     // MARK: Behaviours
 
+    private var uploadCount = 0
+
     private func upload(_ body: Data, contentType: String?) -> (Int, Data) {
+        // Simulator aid: `-mock-fail` makes every 2nd upload a 415 and every 3rd a 409 duplicate.
+        uploadCount += 1
+        if ProcessInfo.processInfo.arguments.contains("-mock-fail") {
+            if uploadCount % 3 == 2 { return problem(415, "Unsupported image", "This file isn't a readable image.") }
+            if uploadCount % 3 == 0 { return problem(409, "Duplicate receipt", "Already uploaded as receipt 101") }
+        }
         let text = String(decoding: body.prefix(2000), as: UTF8.self)
         let shopId = text.range(of: "name=\"shop_id\"\r\n\r\n").flatMap { r -> Int64? in
             let rest = text[r.upperBound...]

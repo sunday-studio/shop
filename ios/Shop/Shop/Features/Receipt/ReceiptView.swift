@@ -51,6 +51,7 @@ private struct ReceiptScreen: View {
 
                         if let suggestion = model.suggestion {
                             ShopSuggestionCard(
+                                kind: suggestion.kind == .existing ? .existing : .new,
                                 name: suggestion.name, detail: suggestion.detail, waiting: suggestion.receiptCount,
                                 isWorking: model.isAcceptingSuggestion,
                                 onAccept: { Task { await model.acceptSuggestion() } },
