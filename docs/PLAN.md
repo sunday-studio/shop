@@ -296,7 +296,8 @@ The API also returns `name_en_unknown`: the Dutch words the dictionary didn't kn
 2. **Teach a word.** Give the English for a Dutch word or phrase, e.g. `elstar → Elstar (apple variety)`, `vlkrn → wholemeal`, or mark it **"keep as is"** (brands like `Unox`). The term goes into **your glossary**, which overrides the built-in one. Saving it:
    - re-translates every `dictionary`/`partial`/`missing` product. Manual and Open Food Facts names are untouched;
    - updates receipt-line glosses (`text_en` is computed, never stored);
-   - responds with how many products changed, so the app can say "Updated 4 products".
+   - responds with how many products changed, so the app can say "Updated 4 products";
+   - returns the term's `previous` value. **Undo** = `PUT` that previous value back, or `DELETE` the term when `previous` is null. Both re-translate again, so undo is exact and needs no server-side undo state.
 
 Unknown words that are brand names are expected. Marking them "keep as is" counts them as known, so the product moves to `dictionary`.
 
@@ -312,7 +313,11 @@ This drives a small review screen: work down the words, and each one fixes sever
 
 ```
 GET    /v1/glossary                     your terms: [{dutch, english, keep_as_is, updated_at}]
-PUT    /v1/glossary/{dutch}             {english} | {keep_as_is: true} → {term, products_updated}
+POST   /v1/glossary/preview             {dutch, english | keep_as_is, examples: 3}
+                                        → {products_affected, examples: [{product_id, name, name_en_before, name_en_after, status_after}]}
+                                        (nothing saved; drives the "will become" list in the teach sheet)
+PUT    /v1/glossary/{dutch}             {english} | {keep_as_is: true}
+                                        → {term, previous: {english, keep_as_is} | null, products_updated}
 DELETE /v1/glossary/{dutch}             back to built-in behaviour → {products_updated}
 GET    /v1/translations/todo?limit=     {words: [{dutch, products, lines, examples[]}], products: [Product]}
 GET    /v1/translate?text=              preview without saving: {english, status, unknown[]} (for live edit forms)
