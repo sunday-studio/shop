@@ -204,7 +204,7 @@ struct ProductFormTray: View {
                         Text(draft.existing == nil ? "Add a photo so it's easy to spot in lists." : "Change the photo or details.")
                             .textStyle(TypeStyle.body.sized(13)).foregroundStyle(Palette.ink2)
                     } else {
-                        (Text("Check the details. Barcode ") + Text(draft.barcode).font(TypeStyle.mono.sized(13).font))
+                        Text("Check the details.")
                             .textStyle(TypeStyle.body.sized(13))
                             .foregroundStyle(Palette.ink2)
                     }
@@ -286,19 +286,20 @@ struct ProductFormTray: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: Space.s) {
                 Button { scanning = true } label: {
-                    HStack(spacing: Space.l) {
-                        IconView(.barcode, size: 18, weight: .semibold).foregroundStyle(Palette.ink2)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Barcode").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                            Text(draft.barcode.isEmpty ? "Scan it to fill in nutrition" : draft.barcode)
-                                .textStyle(draft.barcode.isEmpty ? .rowSub : TypeStyle.mono.sized(13))
-                                .foregroundStyle(Palette.ink2)
+                    HStack(spacing: Space.m) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Barcode").textStyle(.caption).foregroundStyle(Palette.ink2)
+                            Text(draft.barcode.isEmpty ? "Not set" : draft.barcode)
+                                .textStyle(TypeStyle.mono.sized(16))
+                                .foregroundStyle(draft.barcode.isEmpty ? Palette.ink3 : Palette.ink)
                         }
                         Spacer()
                         if lookingUp {
                             ProgressView().controlSize(.small).tint(Palette.ink2)
                         } else {
-                            Text(draft.barcode.isEmpty ? "Scan" : "Rescan").textStyle(.label).foregroundStyle(Palette.blueText)
+                            Text(draft.barcode.isEmpty ? "Scan" : "Rescan")
+                                .textStyle(.label).foregroundStyle(Palette.blueText)
+                                .frame(minHeight: 44)
                         }
                     }
                     .contentShape(Rectangle())
@@ -311,16 +312,29 @@ struct ProductFormTray: View {
                             .foregroundStyle(Palette.ink2)
                             .frame(width: 28, height: 28)
                             .background(Palette.sunk, in: Circle())
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.press(haptic: .selection))
-                    .accessibilityLabel("Clear barcode")
+                    .accessibilityLabel("Remove barcode")
                 }
             }
-            .padding(.horizontal, Space.lx)
-            .frame(height: 52)
+            .padding(.leading, Space.lx)
+            .padding(.trailing, Space.xs)
+            .frame(minHeight: 56)
             .background(Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
             scanFeedbackLine
         }
+    }
+
+    private func openItButton(_ other: Product) -> some View {
+        Button("Open it ›") {
+            trays.dismiss()
+            app.push(.product(other.id))
+        }
+        .textStyle(.captionMedium).foregroundStyle(Palette.blueText)
+        .frame(minHeight: 44)
+        .buttonStyle(.press(haptic: .selection))
     }
 
     @ViewBuilder private var scanFeedbackLine: some View {
@@ -338,15 +352,16 @@ struct ProductFormTray: View {
             Text("Couldn't reach Open Food Facts. The code is saved.")
                 .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
         case .belongsTo(let other):
-            HStack(spacing: Space.m) {
-                Text("This barcode belongs to \(other.name)").textStyle(.rowSub).foregroundStyle(Palette.amberText)
-                Spacer(minLength: 0)
-                Button("Open it") {
-                    trays.dismiss()
-                    app.push(.product(other.id))
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Space.m) {
+                    Text("This barcode belongs to \(other.name)").textStyle(.rowSub).foregroundStyle(Palette.amberText).lineLimit(1)
+                    Spacer(minLength: 0)
+                    openItButton(other)
                 }
-                .textStyle(.captionMedium).foregroundStyle(Palette.blueText)
-                .buttonStyle(.press(haptic: .selection))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("This barcode belongs to \(other.name)").textStyle(.rowSub).foregroundStyle(Palette.amberText)
+                    openItButton(other)
+                }
             }
             .padding(.horizontal, Space.xs)
         case nil:
