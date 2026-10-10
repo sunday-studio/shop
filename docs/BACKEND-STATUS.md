@@ -1,10 +1,10 @@
 # Backend status (handoff)
 
-_Last updated 2026-10-10 by the backend thread._ Read this first if you're picking up the server side. The detailed spec and milestone checklists are in [PLAN.md](PLAN.md).
+_Last updated 2026-10-11 by the backend thread._ Read this first if you're picking up the server side. The detailed spec and milestone checklists are in [PLAN.md](PLAN.md).
 
 ## What it is
 
-A Go server (`api/`) with SQLite, an OCR sidecar (`ocr/`, Python + PaddleOCR) and Docker Compose (`deploy/`). It serves the REST API (`/v1`, contract in [`openapi.yaml`](../openapi.yaml) **0.9.0**), MCP for an AI assistant (`/mcp`), and the iOS app. Everything runs CPU-only in Docker, with no macOS dependency (a deliberate decision).
+A Go server (`api/`) with SQLite, an OCR sidecar (`ocr/`, Python + PaddleOCR) and Docker Compose (`deploy/`). It serves the REST API (`/v1`, contract in [`openapi.yaml`](../openapi.yaml) **0.12.1**; migrations `00001`-`00013`), MCP for an AI assistant (`/mcp`), and the iOS app. Everything runs CPU-only in Docker, with no macOS dependency (a deliberate decision).
 
 ## Run it
 
@@ -29,24 +29,24 @@ make token NAME=assistant             # bearer token for MCP/scripts
 | Stats, list | `internal/stats`, `internal/shopping` | Spend (time/shop/category/product, split_by), per-unit prices, price changes, frequent items. List: idempotent adds (client_id), changes feed |
 | Search, logos | `internal/search`, `internal/logos` | Unified search; shop logos via logo.dev, cached on disk |
 | Auth | `internal/auth`, `internal/httpapi/pairing.go` | Pairing password (bcrypt) → per-device tokens; rate-limited |
-| MCP | `internal/mcpserver` | 15 tools, 2 resources (stateless streamable HTTP) |
+| MCP | `internal/mcpserver` | 17 tools (incl. `review_new_products`, `resolve_review`), 2 resources (stateless streamable HTTP) |
 | Ops | `internal/backup`, `cmd/shop` | Nightly NAS backup service, restore, pre-migration snapshots, health checks |
+| Shop suggestions | `internal/shopsuggest` | Chain + branch read from the receipt header; suggestion / accept / reject endpoints; migrations 00011, 00012 (nullable `receipts.shop_id`, `photo_taken_at`) |
+| Auto products | `internal/autoprod` | `create_or_link`, category rules, review queue, merge / undo / split / discard, barcode create, `off_refresh`, backfill; migration 00013; `AUTO_PRODUCTS` on by default |
 | Spike tooling | `cmd/shop-spike`, `internal/spike`, `docs/spike.md` | Multi-engine OCR, labelling web page, scoring report |
 
 All iOS backend needs (#1–#11 in [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md)) are live.
 
 ## Not done / open
 
-1. **The parser has never seen a real receipt.** Every result so far is from generated receipts. The next real step is the spike: scan about 100 receipts into `spike/receipts/`, then run `make spike-up`, `make spike-ocr`, `make spike-label` and `make spike-score` ([spike.md](spike.md)). Then fix parser rules from the failure list and commit about 25 line-labelled receipts as regression tests (PLAN M1 "done when").
-2. **The fallback OCR engine** isn't wired into production compose yet. Choose it from the spike report, then set `OCR_FALLBACK_URL`.
-3. **The English glossary** (`internal/translate/glossary.tsv`) will need words from real product names. Users can also teach words (M10).
-4. **Never observed:** the nightly backup firing on schedule; backups to a real NAS (only a local folder so far).
-5. **No CI:** the workflow was removed on purpose by the owner. Run `make test` locally.
-6. **Owner decisions pending:**
-   - Tailscale setup.
-   - Connecting the AI assistant to MCP.
-   - Whether to drop PaddleOCR-VL from the spike (recommended: keep it parked).
-   - Confirming the GT America font licences (committed under `design/` and `ios/`).
+1. **IMG_1475 (receipt 3 on the real DB, Dirk)** is a curled library photo: price column drifts against the descriptions, so it parses with a total mismatch (printed 45,04, parsed 43,57) and stays flagged `needs_review`/`total_mismatch`. It needs a straightened photo (the app's document scanner). Its lines were left out of the backfill (`skip_receipt_ids [3]`); 3 of them are junk products (Jw Sardines, Raworganic Chtaz Wit, Madame Jeanette), 6 are fine. It is also unknown whether the two "Van x voor y" amounts are real line prices.
+2. **Dutch to English model: held, conditional go** (PLAN M11). Not built; the glossary plus the user's taught words do the English names for now.
+3. **The fallback OCR engine** isn't wired into production compose yet. Choose it from the spike report, then set `OCR_FALLBACK_URL`.
+4. **Taught category keywords:** table `category_keywords` exists, no endpoint to add them yet.
+5. **`Idempotency-Key`** on the barcode create call was not built (`created_now` covers retries).
+6. **Never observed:** the nightly backup firing on schedule; backups to a real NAS (only the local `backups/` folder so far).
+7. **No CI:** the workflow was removed on purpose by the owner. Run `make test` locally.
+8. **Owner decisions pending:** Tailscale setup; connecting the AI assistant to MCP; whether to drop PaddleOCR-VL from the spike (recommended: keep it parked); confirming the GT America font licences.
 
 ## Conventions that matter
 
@@ -57,17 +57,11 @@ All iOS backend needs (#1–#11 in [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md))
 - No LLMs or embeddings: models are for OCR only. Everything must run in Docker on any CPU.
 - All docs live in `docs/`. Commit per milestone. Secrets go in `deploy/.env` (git-ignored), never in commits.
 
-## M11 progress (backend thread)
+## M11 (backend thread): what is done
 
-- Parser: 12 of the 13 spike receipts reconcile (sum == printed total). SUBTOTAAL/"N Artikelen"/"Van x voor y"/lone-price rows are ignored; lost-comma ("20015") and trailing-junk ("2,49 49") prices are repaired only when that makes the sum equal the total exactly. IMG_1475 (perspective/curl photo) is deliberately left flagged `total_mismatch`; its fix is upstream (document-scanner crop in the app). Open question for whoever has the paper: its sum only reaches the total if the two "Van x voor y" amounts count as line amounts.
-- Uploads: HEIC/HEIF get an explicit 415 (app converts to JPEG). `purchased_at` is the client override or the parsed receipt date, else NULL; never upload time or EXIF.
-- Shop suggestions (openapi 0.10.0, migration 00011): `internal/shopsuggest` reads the header (chain from the first ~10 rows, keyboard-noise rows skipped; branch = street + number + town). `GET /v1/receipts/{id}/shop-suggestion`, `POST .../accept` (existing `shop_id` or editable `name`; `apply_to_waiting` moves other unconfirmed receipts of the same branch), `POST .../reject` (remembered by branch key). Also embedded as `shop_suggestion` in `GET /v1/receipts/{id}`. 7 AH + 4 Dirk headers detected, the 2 butcher slips return none.
-- Not done: `shop_id` is still required on upload. Making it nullable (receipts "Unassigned") waits for the user's OK.
-
-## Auto-populate products (backend step of docs/PRODUCT-AUTOPOPULATE.md) - built, flag ON by default
-
-Live on the dev stack (openapi 0.12.0, migration 00013, package `internal/autoprod`). `AUTO_PRODUCTS` now defaults to `on` (the user's call; set `AUTO_PRODUCTS=off` in `deploy/.env` to disable). Confirming a receipt links or creates products; the backfill over already confirmed receipts still has to be started by hand.
-
-- **Works even with the flag off:** the review queue (lists whatever is flagged), review/merge/undo/split, `POST /v1/barcodes/{code}/product` (an explicit scan), `POST /v1/products/{id}/refresh`, and the `off_refresh` job. **Needs the flag on:** creating products on receipt confirm, and the backfill (409 otherwise).
-- **Tested** on the 13 real receipts (fixture `internal/autoprod/testdata/receipts.json`): 99 item lines give 28 links and 68 products, 5 near matches queued, no weight-row product, twins of OCR-junk names link to the clean product, the six wrong pairs are never auto-linked, `NUNNUNONNTT` is flagged odd_name, a second pass and a backfill create nothing. Category rules reproduce the spike's 50 correct / 1 wrong / 16 no hit. Merge+undo and discard+undo restore every row exactly. Barcode create is tested against a fake OFF server (found, no category, not found, timeout, 503, repeat, merge with a receipt product).
-- **Differences from the spec:** (1) the confirm hook runs right after the confirm in its own transaction, not the same one; a failure only sets `auto_products.error`. (2) Backfill progress is a JSON value in `settings` (`autopop_backfill_state`), not the job payload; a dry run is one transaction that is rolled back. (3) No `Idempotency-Key` header; `created_now` is provided. (4) Matching ignores the matcher's same-shop alias bonus (+0.05): with it a 0.874 near match became a 0.924 auto-link. (5) `product_merges.into_product_id` is nullable (discard has no survivor) and has extra columns `alias_rows`, `from_review_before`. (6) Undo answers 409 for both already-undone and older than 30 days. (7) `ErrInvalid` on the new endpoints is 422; a malformed barcode is 400. (8) `suggested_merge` is filled on single-product, queue, review, undo and barcode responses, not on `GET /v1/products` lists. (9) After merging a `barcode_name_match` card, the surviving barcode product is re-queued as `no_category` if it still has no category. (10) User category keywords have a table (`category_keywords`) but no API to teach them yet.
+- **Parser** (12 of the 13 spike receipts reconcile, sum == printed total): SUBTOTAAL / "N Artikelen" / "Van x voor y" / lone-price / savings-summary rows are ignored; a lost comma ("20015") or trailing junk ("2,49 49") is repaired only when that makes the sum equal the printed total exactly. Receipts 1 and 2 on the real DB were force-reparsed (their doubled sums are fixed: 8468 and 9980).
+- **Uploads:** `shop_id` is optional on `POST /v1/receipts` (receipts show as Unassigned; they count in spend under an "Unassigned" bucket) and `photo_taken_at` is an optional hint that is never the purchase date. HEIC/HEIF get an explicit 415 (the app converts to JPEG); `purchased_at` is the client override or the date parsed from the receipt, else NULL. Never the upload time or EXIF.
+- **Shop suggestions** (openapi 0.10+): `GET /v1/receipts/{id}/shop-suggestion`, `POST .../accept` (existing `shop_id` or editable `name`/`branch`/`domain`; `apply_to_waiting` moves the other unconfirmed receipts of the same branch, unassigned ones included), `POST .../reject`; also embedded as `shop_suggestion` in `GET /v1/receipts/{id}`. 7 AH + 4 Dirk headers detected, the 2 butcher slips return none.
+- **Auto products** (spec: [PRODUCT-AUTOPOPULATE.md](PRODUCT-AUTOPOPULATE.md)): live, `AUTO_PRODUCTS` defaults to `on` (set `off` in `deploy/.env` to disable). Confirming a receipt links or creates products. Tested on the 13 real receipts (99 item lines: 28 links, 68 products, 5 near matches queued, weight and totals rows never become products; the category rules reproduce 50 correct / 1 wrong / 16 no hit); merge+undo, discard+undo and split+undo restore every row exactly; barcode create is tested against a fake Open Food Facts server.
+- **What the backfill did on the real DB (2026-10-10):** snapshot `shop-20261010-205648.db` first. Receipts 1 and 2 were force-reparsed (a forced reparse clears `confirmed_at`, so they were confirmed again) and the confirm created 25 products and 3 links (receipt 1: 13 created; receipt 2: 12 created, 3 linked); the backfill with `skip_receipt_ids [3]` then found nothing left to do. 11 products wait in the review queue (near_match 2, no_category 6, odd_name 3). Products carry `created_via=receipt`.
+- **Differences from the spec:** (1) the confirm hook runs right after the confirm in its own transaction, not the same one; a failure only sets `auto_products.error`. (2) Backfill progress is a JSON value in `settings` (`autopop_backfill_state`), not the job payload; a dry run is one rolled-back transaction; the request takes an optional `skip_receipt_ids`. (3) No `Idempotency-Key` header. (4) Matching ignores the matcher's same-shop alias bonus (+0.05): with it a 0.874 near match became a 0.924 auto-link. (5) `product_merges.into_product_id` is nullable (discard has no survivor) and has extra columns `alias_rows`, `from_review_before`. (6) Undo answers 409 for both already-undone and older than 30 days. (7) New endpoints use 422 for "cannot do that", 400 for a malformed barcode. (8) `suggested_merge` is filled on single-product, queue, review, undo and barcode responses, not in `GET /v1/products` lists. (9) After merging a `barcode_name_match` card, the surviving barcode product is re-queued as `no_category` if it still has no category.
