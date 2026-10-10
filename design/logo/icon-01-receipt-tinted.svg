@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect width="1024" height="1024" fill="#000000"/>
+  <path d="M312,150 H712 Q752,150 752,190 V824 L722,874 L692,824 L662,874 L632,824 L602,874 L572,824 L542,874 L512,824 L482,874 L452,824 L422,874 L392,824 L362,874 L332,824 L302,874 L272,824 V190 Q272,150 312,150 Z" transform="translate(0 26)" fill="#4A4A4A"/>
+  <path d="M312,150 H712 Q752,150 752,190 V824 L722,874 L692,824 L662,874 L632,824 L602,874 L572,824 L542,874 L512,824 L482,874 L452,824 L422,874 L392,824 L362,874 L332,824 L302,874 L272,824 V190 Q272,150 312,150 Z" fill="#FFFFFF"/>
+  <rect x="332" y="226" width="180" height="36" rx="18" fill="#1D1D1B"/>
+  <rect x="332" y="330" width="200" height="28" rx="14" fill="#9A9A9A"/><rect x="612" y="330" width="80" height="28" rx="14" fill="#1D1D1B"/>
+  <rect x="332" y="410" width="240" height="28" rx="14" fill="#9A9A9A"/><rect x="612" y="410" width="80" height="28" rx="14" fill="#1D1D1B"/>
+  <rect x="332" y="490" width="160" height="28" rx="14" fill="#9A9A9A"/><rect x="612" y="490" width="80" height="28" rx="14" fill="#1D1D1B"/>
+  <rect x="332" y="600" width="360" height="110" rx="28" fill="#C8C8C8"/>
+  <rect x="372" y="640" width="120" height="30" rx="15" fill="#1D1D1B"/>
+</svg>
