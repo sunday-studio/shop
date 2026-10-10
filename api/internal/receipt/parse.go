@@ -14,7 +14,7 @@ import (
 
 // ParserVersion is stored on each receipt; bump it whenever rules change so
 // receipts can be selectively re-parsed.
-const ParserVersion = 1
+const ParserVersion = 2
 
 type Kind string
 

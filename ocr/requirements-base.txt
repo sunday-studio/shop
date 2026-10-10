@@ -3,6 +3,3 @@ uvicorn==0.34.2
 python-multipart==0.0.20
 pillow==11.2.1
 numpy<2.3
-paddlepaddle==3.2.2
-paddleocr==3.7.0
-paddlex==3.7.2

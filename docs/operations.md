@@ -30,7 +30,7 @@ Set these as environment variables when running `make up`, or put them in `deplo
 | `SHOP_BACKUP_DIR` | `../backups` (repo `backups/`) | Host path of the backup target (NAS mount) |
 | `BACKUP_AT` | `03:30` | Daily backup time (Europe/Amsterdam) |
 | `BACKUP_KEEP_DAYS` | `30` | Snapshot retention; the newest 3 are always kept |
-| `OCR_URL` | `http://ocr:8000` | OCR engine; point at a native helper with `http://host.docker.internal:8010` |
+| `OCR_URL` | `http://ocr:8000` | OCR engine (any service implementing the OCR contract) |
 | `OCR_FALLBACK_URL` | — | Second engine to retry `needs_review` receipts with |
 
 ## NAS

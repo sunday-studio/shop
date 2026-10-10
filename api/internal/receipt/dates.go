@@ -7,8 +7,12 @@ import (
 )
 
 var (
-	dateRe = regexp.MustCompile(`\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}|\d{2})\b`)
-	timeRe = regexp.MustCompile(`\b([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.]([0-5]\d))?\b`)
+	// The year may be glued to the time when OCR drops the space
+	// ("07-10-202618:44"), so a 4-digit year needs no trailing boundary.
+	dateRe = regexp.MustCompile(`\b(\d{1,2})[-/.](\d{1,2})[-/.](20\d{2}|\d{2}\b)`)
+	// Time right after the date (space optional), else anywhere later on the row.
+	timeNextRe = regexp.MustCompile(`^\s*([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.]([0-5]\d))?`)
+	timeRe     = regexp.MustCompile(`\b([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.]([0-5]\d))?\b`)
 )
 
 // FindDate returns the first plausible dd-mm-yyyy date (with an optional
@@ -27,7 +31,11 @@ func FindDate(rows []string, loc *time.Location, now time.Time) (time.Time, bool
 				continue
 			}
 			hh, mm, ss := 0, 0, 0
-			if tm := timeRe.FindStringSubmatch(row[m[1]:]); tm != nil {
+			tm := timeNextRe.FindStringSubmatch(row[m[1]:])
+			if tm == nil {
+				tm = timeRe.FindStringSubmatch(row[m[1]:])
+			}
+			if tm != nil {
 				hh, _ = strconv.Atoi(tm[1])
 				mm, _ = strconv.Atoi(tm[2])
 				if tm[3] != "" {

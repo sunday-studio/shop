@@ -1,0 +1,54 @@
+# OCR engines for the spike, each on its own host port (see spike/engines.json).
+#   docker compose -f deploy/docker-compose.spike.yml up -d
+# Engines are independent; start a subset by naming services.
+
+name: shop-spike
+
+x-engine: &engine
+  restart: "no"
+  build:
+    context: ../ocr
+
+services:
+  ppocrv5:
+    <<: *engine
+    image: shop-ocr:ppocrv5
+    container_name: spike-ppocrv5
+    build: { context: ../ocr, args: { OCR_ENGINE: ppocrv5 } }
+    ports: ["8101:8000"]
+    mem_limit: 3g
+
+  ppocrv5-server:
+    <<: *engine
+    image: shop-ocr:ppocrv5
+    container_name: spike-ppocrv5-server
+    build: { context: ../ocr, args: { OCR_ENGINE: ppocrv5 } }
+    environment:
+      OCR_DET_MODEL: PP-OCRv5_server_det
+      OCR_REC_MODEL: PP-OCRv5_server_rec
+    ports: ["8102:8000"]
+    mem_limit: 4g
+
+  tesseract:
+    <<: *engine
+    image: shop-ocr:tesseract
+    container_name: spike-tesseract
+    build: { context: ../ocr, args: { OCR_ENGINE: tesseract } }
+    ports: ["8103:8000"]
+    mem_limit: 2g
+
+  doctr:
+    <<: *engine
+    image: shop-ocr:doctr
+    container_name: spike-doctr
+    build: { context: ../ocr, args: { OCR_ENGINE: doctr } }
+    ports: ["8104:8000"]
+    mem_limit: 4g
+
+  paddleocr-vl:
+    <<: *engine
+    image: shop-ocr:paddleocr-vl
+    container_name: spike-paddleocr-vl
+    build: { context: ../ocr, args: { OCR_ENGINE: paddleocr-vl } }
+    ports: ["8105:8000"]
+    mem_limit: 10g
