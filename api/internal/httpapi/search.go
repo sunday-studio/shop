@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"net/http"
+
+	"shop/internal/apitypes"
 	"strings"
 )
 
@@ -33,17 +35,21 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		Receipt      any      `json:"receipt"`
 		MatchedLines []string `json:"matched_lines"`
 	}
-	out := struct {
-		Products []any        `json:"products"`
-		Aliases  []alias      `json:"aliases"`
-		Receipts []receiptHit `json:"receipts"`
-	}{Products: []any{}, Aliases: []alias{}, Receipts: []receiptHit{}}
-	for _, p := range res.Products {
-		ap := toProduct(p.Product, nil)
+	prods := make([]apitypes.Product, len(res.Products))
+	for i, p := range res.Products {
+		prods[i] = toProduct(p.Product, nil)
 		sc := round3(p.Score)
-		ap.Score = &sc
-		out.Products = append(out.Products, ap)
+		prods[i].Score = &sc
 	}
+	if err := s.withSummaries(r, prods); err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	out := struct {
+		Products []apitypes.Product `json:"products"`
+		Aliases  []alias            `json:"aliases"`
+		Receipts []receiptHit       `json:"receipts"`
+	}{Products: prods, Aliases: []alias{}, Receipts: []receiptHit{}}
 	for _, a := range res.Aliases {
 		out.Aliases = append(out.Aliases, alias{Text: a.Text, ProductID: a.ProductID, ProductName: a.ProductName,
 			ShopID: a.ShopID, ShopName: a.ShopName, Score: round3(a.Score)})

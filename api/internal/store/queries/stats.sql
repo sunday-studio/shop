@@ -13,10 +13,12 @@ WHERE r.status IN ('ok', 'needs_review')
 ORDER BY at;
 
 -- name: SpendLines :many
--- Lines with the category of their product (discounts inherit from their parent item).
+-- Lines with the product and category they count towards (discounts
+-- inherit both from their parent item).
 SELECT r.id AS receipt_id, r.shop_id, s.name AS shop_name,
        CAST(COALESCE(r.purchased_at, r.created_at) AS TEXT) AS at,
-       l.kind, l.line_total_cents,
+       l.kind, l.qty, l.unit, l.line_total_cents,
+       p.id AS product_id, p.name AS product_name,
        c.id AS category_id, c.name AS category_name
 FROM receipt_lines l
 JOIN receipts r ON r.id = l.receipt_id
@@ -54,3 +56,13 @@ WHERE l.kind = 'item' AND r.status IN ('ok', 'needs_review')
   AND COALESCE(r.purchased_at, r.created_at) >= sqlc.arg(since)
 GROUP BY l.product_id, r.id
 ORDER BY l.product_id, at;
+
+-- name: ProductPurchaseSummary :many
+-- Per product: receipts it was bought on, and the most recent purchase.
+SELECT l.product_id AS product_id,
+       CAST(COUNT(DISTINCT r.id) AS INTEGER) AS purchases,
+       CAST(MAX(COALESCE(r.purchased_at, r.created_at)) AS TEXT) AS last_at
+FROM receipt_lines l
+JOIN receipts r ON r.id = l.receipt_id
+WHERE l.kind = 'item' AND l.product_id IS NOT NULL AND r.status IN ('ok', 'needs_review')
+GROUP BY l.product_id;

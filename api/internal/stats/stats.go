@@ -5,6 +5,7 @@ package stats
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -39,44 +40,91 @@ const (
 	ByCategory GroupBy = "category"
 )
 
+const ByProduct GroupBy = "product"
+
 func (g GroupBy) Valid() bool {
 	switch g {
-	case ByDay, ByWeek, ByMonth, ByShop, ByCategory:
+	case ByDay, ByWeek, ByMonth, ByShop, ByCategory, ByProduct:
 		return true
 	}
 	return false
 }
 
+func (g GroupBy) isTime() bool { return g == ByDay || g == ByWeek || g == ByMonth }
+
+// Part is one slice of a split time bucket (a category or shop).
+type Part struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Cents int64  `json:"cents"`
+}
+
 type Bucket struct {
-	Key      string `json:"key"`
-	Label    string `json:"label"`
-	Cents    int64  `json:"cents"`
-	Receipts int    `json:"receipts"`
+	Key      string   `json:"key"`
+	Label    string   `json:"label"`
+	Cents    int64    `json:"cents"`
+	Receipts int      `json:"receipts"`
+	Qty      *float64 `json:"qty,omitempty"`  // group_by=product
+	Unit     string   `json:"unit,omitempty"` // group_by=product: pc | kg | l
+	Split    []Part   `json:"split,omitempty"`
 }
 
 type Spend struct {
 	From       time.Time `json:"from"`
 	To         time.Time `json:"to"` // exclusive
 	GroupBy    GroupBy   `json:"group_by"`
+	SplitBy    GroupBy   `json:"split_by,omitempty"`
 	TotalCents int64     `json:"total_cents"`
 	Receipts   int       `json:"receipts"`
 	Buckets    []Bucket  `json:"buckets"`
 }
 
-// Spend totals receipts in [from, to). Time buckets are in local time and
-// include empty periods so charts have no gaps. Category grouping sums
-// receipt lines (unlinked lines fall under "Uncategorised").
-func (s *Service) Spend(ctx context.Context, from, to time.Time, group GroupBy, shopID *int64) (Spend, error) {
-	if !group.Valid() {
-		return Spend{}, fmt.Errorf("invalid group_by %q", group)
-	}
-	out := Spend{From: from, To: to, GroupBy: group, Buckets: []Bucket{}}
-	var shop any
-	if shopID != nil {
-		shop = *shopID
-	}
+// SpendQuery selects and groups spend.
+type SpendQuery struct {
+	From, To   time.Time // [From, To)
+	GroupBy    GroupBy
+	SplitBy    GroupBy // "", category or shop; only with a time GroupBy
+	ShopID     *int64
+	CategoryID *int64 // only with GroupBy product
+}
 
-	rows, err := s.q.SpendReceipts(ctx, db.SpendReceiptsParams{FromTs: store.Str(store.TS(from)), ToTs: store.Str(store.TS(to)), ShopID: shop})
+// ErrInvalid marks a bad SpendQuery.
+var ErrInvalid = errors.New("invalid spend query")
+
+func (q SpendQuery) validate() error {
+	if !q.GroupBy.Valid() {
+		return fmt.Errorf("%w: group_by must be day, week, month, shop, category or product", ErrInvalid)
+	}
+	if q.SplitBy != "" && (!q.GroupBy.isTime() || (q.SplitBy != ByCategory && q.SplitBy != ByShop)) {
+		return fmt.Errorf("%w: split_by must be category or shop, with group_by day, week or month", ErrInvalid)
+	}
+	if q.CategoryID != nil && q.GroupBy != ByProduct {
+		return fmt.Errorf("%w: category_id is only supported with group_by=product", ErrInvalid)
+	}
+	return nil
+}
+
+// Spend totals receipts in [From, To).
+//
+//   - Time buckets are local and include empty periods so charts have no gaps.
+//   - Shop and plain time buckets sum receipt totals.
+//   - Category and product buckets sum receipt lines: discounts count
+//     towards their item, and unlinked lines fall under "Uncategorised"
+//     (category) or are left out (product).
+//   - With split_by, each time bucket carries its parts. Its cents is the
+//     sum of the parts, so stacked bars add up exactly.
+//
+// TotalCents and Receipts always describe all receipts in the range.
+func (s *Service) Spend(ctx context.Context, q SpendQuery) (Spend, error) {
+	if err := q.validate(); err != nil {
+		return Spend{}, err
+	}
+	out := Spend{From: q.From, To: q.To, GroupBy: q.GroupBy, SplitBy: q.SplitBy, Buckets: []Bucket{}}
+	var shop any
+	if q.ShopID != nil {
+		shop = *q.ShopID
+	}
+	rows, err := s.q.SpendReceipts(ctx, db.SpendReceiptsParams{FromTs: store.Str(store.TS(q.From)), ToTs: store.Str(store.TS(q.To)), ShopID: shop})
 	if err != nil {
 		return out, err
 	}
@@ -85,68 +133,169 @@ func (s *Service) Spend(ctx context.Context, from, to time.Time, group GroupBy, 
 	}
 	out.Receipts = len(rows)
 
-	buckets := map[string]*Bucket{}
-	add := func(key, label string, cents int64, receipt int64, seen map[string]map[int64]bool) {
-		b, ok := buckets[key]
-		if !ok {
-			b = &Bucket{Key: key, Label: label}
-			buckets[key] = b
-		}
-		b.Cents += cents
-		if seen[key] == nil {
-			seen[key] = map[int64]bool{}
-		}
-		if !seen[key][receipt] {
-			seen[key][receipt] = true
-			b.Receipts++
-		}
-	}
-	seen := map[string]map[int64]bool{}
-
-	switch group {
-	case ByShop:
-		for _, r := range rows {
-			add(strconv.FormatInt(r.ShopID, 10), r.ShopName, r.TotalCents, r.ID, seen)
-		}
-	case ByCategory:
-		lines, err := s.q.SpendLines(ctx, db.SpendLinesParams{FromTs: store.Str(store.TS(from)), ToTs: store.Str(store.TS(to)), ShopID: shop})
-		if err != nil {
+	var lines []db.SpendLinesRow
+	if q.GroupBy == ByCategory || q.GroupBy == ByProduct || q.SplitBy == ByCategory {
+		if lines, err = s.q.SpendLines(ctx, db.SpendLinesParams{FromTs: store.Str(store.TS(q.From)), ToTs: store.Str(store.TS(q.To)), ShopID: shop}); err != nil {
 			return out, err
 		}
-		for _, l := range lines {
-			key, label := "none", "Uncategorised"
-			if l.CategoryID.Valid {
-				key, label = strconv.FormatInt(l.CategoryID.Int64, 10), l.CategoryName.String
-			}
-			add(key, label, l.LineTotalCents, l.ReceiptID, seen)
+	}
+
+	g := newGrouper()
+	categoryOf := func(l db.SpendLinesRow) (string, string) {
+		if l.CategoryID.Valid {
+			return strconv.FormatInt(l.CategoryID.Int64, 10), l.CategoryName.String
 		}
-	default:
-		for _, k := range s.periods(from, to, group) {
-			buckets[k.Key] = &Bucket{Key: k.Key, Label: k.Label}
-		}
+		return "none", "Uncategorised"
+	}
+
+	switch {
+	case q.GroupBy == ByShop:
 		for _, r := range rows {
-			t, err := store.ParseTS(r.At)
-			if err != nil {
+			g.add(strconv.FormatInt(r.ShopID, 10), r.ShopName, r.TotalCents, r.ID)
+		}
+	case q.GroupBy == ByCategory:
+		for _, l := range lines {
+			k, lb := categoryOf(l)
+			g.add(k, lb, l.LineTotalCents, l.ReceiptID)
+		}
+	case q.GroupBy == ByProduct:
+		for _, l := range lines {
+			if !l.ProductID.Valid || (q.CategoryID != nil && (!l.CategoryID.Valid || l.CategoryID.Int64 != *q.CategoryID)) {
 				continue
 			}
-			k := s.period(t, group)
-			add(k.Key, k.Label, r.TotalCents, r.ID, seen)
+			b := g.add(strconv.FormatInt(l.ProductID.Int64, 10), l.ProductName.String, l.LineTotalCents, l.ReceiptID)
+			if l.Kind == "item" {
+				g.addQty(b, l.Qty, l.Unit)
+			}
+		}
+	default: // time
+		for _, k := range s.periods(q.From, q.To, q.GroupBy) {
+			g.ensure(k.Key, k.Label)
+		}
+		if q.SplitBy == ByCategory {
+			for _, l := range lines {
+				t, err := store.ParseTS(l.At)
+				if err != nil {
+					continue
+				}
+				p := s.period(t, q.GroupBy)
+				b := g.add(p.Key, p.Label, l.LineTotalCents, l.ReceiptID)
+				ck, cl := categoryOf(l)
+				g.addPart(b, ck, cl, l.LineTotalCents)
+			}
+		} else {
+			for _, r := range rows {
+				t, err := store.ParseTS(r.At)
+				if err != nil {
+					continue
+				}
+				p := s.period(t, q.GroupBy)
+				b := g.add(p.Key, p.Label, r.TotalCents, r.ID)
+				if q.SplitBy == ByShop {
+					g.addPart(b, strconv.FormatInt(r.ShopID, 10), r.ShopName, r.TotalCents)
+				}
+			}
 		}
 	}
 
-	for _, b := range buckets {
-		out.Buckets = append(out.Buckets, *b)
-	}
-	sort.Slice(out.Buckets, func(i, j int) bool {
-		a, b := out.Buckets[i], out.Buckets[j]
-		if group == ByShop || group == ByCategory {
-			if a.Cents != b.Cents {
-				return a.Cents > b.Cents
-			}
-		}
-		return a.Key < b.Key
-	})
+	out.Buckets = g.buckets(!q.GroupBy.isTime())
 	return out, nil
+}
+
+// grouper accumulates buckets, counting each receipt once per bucket.
+type grouper struct {
+	byKey map[string]*Bucket
+	order []string
+	seen  map[string]map[int64]bool
+	parts map[*Bucket]map[string]*Part
+	qty   map[*Bucket]map[string]float64 // unit → qty
+}
+
+func newGrouper() *grouper {
+	return &grouper{byKey: map[string]*Bucket{}, seen: map[string]map[int64]bool{},
+		parts: map[*Bucket]map[string]*Part{}, qty: map[*Bucket]map[string]float64{}}
+}
+
+func (g *grouper) ensure(key, label string) *Bucket {
+	b, ok := g.byKey[key]
+	if !ok {
+		b = &Bucket{Key: key, Label: label}
+		g.byKey[key] = b
+		g.order = append(g.order, key)
+		g.seen[key] = map[int64]bool{}
+	}
+	return b
+}
+
+func (g *grouper) add(key, label string, cents, receipt int64) *Bucket {
+	b := g.ensure(key, label)
+	b.Cents += cents
+	if !g.seen[key][receipt] {
+		g.seen[key][receipt] = true
+		b.Receipts++
+	}
+	return b
+}
+
+func (g *grouper) addPart(b *Bucket, key, label string, cents int64) {
+	m := g.parts[b]
+	if m == nil {
+		m = map[string]*Part{}
+		g.parts[b] = m
+	}
+	p := m[key]
+	if p == nil {
+		p = &Part{Key: key, Label: label}
+		m[key] = p
+	}
+	p.Cents += cents
+}
+
+func (g *grouper) addQty(b *Bucket, qty float64, unit string) {
+	m := g.qty[b]
+	if m == nil {
+		m = map[string]float64{}
+		g.qty[b] = m
+	}
+	m[unit] += qty
+}
+
+// buckets returns the result; non-time groupings are sorted by spend.
+func (g *grouper) buckets(bySpend bool) []Bucket {
+	out := make([]Bucket, 0, len(g.byKey))
+	for _, k := range g.order {
+		b := *g.byKey[k]
+		if ps := g.parts[g.byKey[k]]; len(ps) > 0 {
+			for _, p := range ps {
+				b.Split = append(b.Split, *p)
+			}
+			sort.Slice(b.Split, func(i, j int) bool {
+				if b.Split[i].Cents != b.Split[j].Cents {
+					return b.Split[i].Cents > b.Split[j].Cents
+				}
+				return b.Split[i].Key < b.Split[j].Key
+			})
+		}
+		// Quantity in the unit bought most (a product is rarely both weighed and counted).
+		if qs := g.qty[g.byKey[k]]; len(qs) > 0 {
+			best := ""
+			for u, q := range qs {
+				if best == "" || q > qs[best] || (q == qs[best] && u < best) {
+					best = u
+				}
+			}
+			q := math.Round(qs[best]*1000) / 1000
+			b.Qty, b.Unit = &q, best
+		}
+		out = append(out, b)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if bySpend && out[i].Cents != out[j].Cents {
+			return out[i].Cents > out[j].Cents
+		}
+		return out[i].Key < out[j].Key
+	})
+	return out
 }
 
 func (s *Service) period(t time.Time, g GroupBy) Bucket {
@@ -286,6 +435,11 @@ func (s *Service) Compare(ctx context.Context, productID int64) ([]ShopPrice, er
 	if err != nil {
 		return nil, err
 	}
+	return compareFrom(pts), nil
+}
+
+// compareFrom builds per-shop prices from a product's points (oldest first).
+func compareFrom(pts []PricePoint) []ShopPrice {
 	byShop := map[int64]*ShopPrice{}
 	var order []int64
 	for _, p := range pts { // oldest → newest, so the last write is the latest
@@ -306,6 +460,61 @@ func (s *Service) Compare(ctx context.Context, productID int64) ([]ShopPrice, er
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Latest < out[j].Latest })
 	if len(out) > 0 {
 		out[0].Cheapest = true
+	}
+	return out
+}
+
+// ProductSummary is what product lists show next to each product.
+type ProductSummary struct {
+	Cheapest     *ShopPrice // best latest price per base unit (ok receipts)
+	LastBoughtAt *time.Time
+	Purchases    int // receipts it was bought on (ok + needs_review)
+}
+
+// ProductSummaries computes summaries for many products in two queries,
+// so a product list doesn't need one compare call per row.
+func (s *Service) ProductSummaries(ctx context.Context, ids []int64) (map[int64]ProductSummary, error) {
+	want := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		want[id] = true
+	}
+	out := make(map[int64]ProductSummary, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := s.q.ProductPricePoints(ctx, db.ProductPricePointsParams{})
+	if err != nil {
+		return nil, err
+	}
+	points := map[int64][]PricePoint{}
+	for _, r := range rows {
+		if !r.ProductID.Valid || !want[r.ProductID.Int64] {
+			continue
+		}
+		if p, ok := toPoint(r); ok {
+			points[r.ProductID.Int64] = append(points[r.ProductID.Int64], p)
+		}
+	}
+	for id, pts := range points {
+		if cmp := compareFrom(pts); len(cmp) > 0 {
+			c := cmp[0]
+			out[id] = ProductSummary{Cheapest: &c}
+		}
+	}
+	sums, err := s.q.ProductPurchaseSummary(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range sums {
+		if !r.ProductID.Valid || !want[r.ProductID.Int64] {
+			continue
+		}
+		ps := out[r.ProductID.Int64]
+		ps.Purchases = int(r.Purchases)
+		if t, err := store.ParseTS(r.LastAt); err == nil {
+			ps.LastBoughtAt = &t
+		}
+		out[r.ProductID.Int64] = ps
 	}
 	return out, nil
 }

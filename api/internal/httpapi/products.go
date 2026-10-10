@@ -148,7 +148,7 @@ func (s *Server) listProducts(w http.ResponseWriter, r *http.Request) {
 		}
 		cat = &n
 	}
-	res, err := s.Products.List(r.Context(), q.Get("q"), cat, limit, offset)
+	res, err := s.Products.List(r.Context(), q.Get("q"), cat, limit, offset, q.Get("sort"))
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -160,6 +160,10 @@ func (s *Server) listProducts(w http.ResponseWriter, r *http.Request) {
 			sc := round3(p.Score)
 			out[i].Score = &sc
 		}
+	}
+	if err := s.withSummaries(r, out); err != nil {
+		s.writeErr(w, r, err)
+		return
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -189,7 +193,40 @@ func (s *Server) getProduct(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toProduct(p.Product, p.Nutrition))
+	out := []apitypes.Product{toProduct(p.Product, p.Nutrition)}
+	if err := s.withSummaries(r, out); err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, out[0])
+}
+
+// withSummaries adds cheapest shop, last purchase and purchase count.
+func (s *Server) withSummaries(r *http.Request, ps []apitypes.Product) error {
+	if s.Stats == nil || len(ps) == 0 {
+		return nil
+	}
+	ids := make([]int64, len(ps))
+	for i, p := range ps {
+		ids[i] = p.Id
+	}
+	sums, err := s.Stats.ProductSummaries(r.Context(), ids)
+	if err != nil {
+		return err
+	}
+	for i := range ps {
+		sm := sums[ps[i].Id]
+		n := sm.Purchases
+		ps[i].Purchases, ps[i].LastBoughtAt = &n, sm.LastBoughtAt
+		if c := sm.Cheapest; c != nil {
+			ps[i].Cheapest = &apitypes.ShopPrice{
+				ShopId: c.ShopID, ShopName: c.ShopName, BaseUnit: apitypes.ShopPriceBaseUnit(c.BaseUnit),
+				LatestUnitCents: c.Latest, LatestAt: c.LatestAt, MinUnitCents: c.Min, MaxUnitCents: c.Max,
+				Purchases: c.Purchases, Cheapest: c.Cheapest,
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Server) updateProduct(w http.ResponseWriter, r *http.Request) {

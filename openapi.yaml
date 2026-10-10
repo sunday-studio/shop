@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.8.0
+  version: 0.9.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -367,6 +367,7 @@ paths:
       parameters:
         - { name: q, in: query, schema: { type: string } }
         - { name: category_id, in: query, schema: { type: integer, format: int64 } }
+        - { name: sort, in: query, description: "without q: name (default), recent (last bought first) or purchases (most bought first)", schema: { type: string, enum: [name, recent, purchases] } }
         - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
         - { name: offset, in: query, schema: { type: integer, default: 0 } }
       responses:
@@ -571,7 +572,9 @@ paths:
       parameters:
         - { name: from, in: query, schema: { type: string, format: date } }
         - { name: to, in: query, schema: { type: string, format: date } }
-        - { name: group_by, in: query, schema: { type: string, enum: [day, week, month, shop, category], default: month } }
+        - { name: group_by, in: query, schema: { type: string, enum: [day, week, month, shop, category, product], default: month } }
+        - { name: split_by, in: query, description: "with a time group_by: category or shop; each bucket carries split[] and its cents is their sum", schema: { type: string, enum: [category, shop] } }
+        - { name: category_id, in: query, description: "group_by=product only", schema: { type: integer, format: int64 } }
         - { name: shop_id, in: query, schema: { type: integer, format: int64 } }
       responses:
         "200":
@@ -1318,6 +1321,9 @@ components:
         has_image: { type: boolean }
         nutrition: { $ref: "#/components/schemas/Nutrition" }
         score: { type: number, format: double, description: "search relevance, only with q" }
+        cheapest: { $ref: "#/components/schemas/ShopPrice" }
+        last_bought_at: { type: string, format: date-time }
+        purchases: { type: integer, description: "receipts it was bought on" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -1391,10 +1397,22 @@ components:
       type: object
       required: [key, label, cents, receipts]
       properties:
-        key: { type: string, description: "2026-10-03 | 2026-W40 | 2026-10 | shop id | category id | none" }
+        key: { type: string, description: "2026-10-03 | 2026-W40 | 2026-10 | shop id | category id | none | product id" }
         label: { type: string }
         cents: { type: integer, format: int64 }
         receipts: { type: integer }
+        qty: { type: number, format: double, description: "group_by=product: quantity bought, in unit" }
+        unit: { type: string, enum: [pc, kg, l], description: "group_by=product" }
+        split:
+          type: array
+          description: "with split_by: parts of this bucket, largest first (absent when the bucket has no spend)"
+          items:
+            type: object
+            required: [key, label, cents]
+            properties:
+              key: { type: string }
+              label: { type: string }
+              cents: { type: integer, format: int64 }
 
     Spend:
       type: object
@@ -1402,7 +1420,8 @@ components:
       properties:
         from: { type: string, format: date-time }
         to: { type: string, format: date-time, description: exclusive }
-        group_by: { type: string, enum: [day, week, month, shop, category] }
+        group_by: { type: string, enum: [day, week, month, shop, category, product] }
+        split_by: { type: string, enum: [category, shop] }
         total_cents: { type: integer, format: int64 }
         receipts: { type: integer }
         buckets:

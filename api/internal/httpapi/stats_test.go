@@ -256,3 +256,91 @@ func TestUnitPrice(t *testing.T) {
 		}
 	}
 }
+
+func TestProductSummariesAndSort(t *testing.T) {
+	f := newStatsFixture(t)
+	e := f.e
+	cheese := e.product(map[string]any{"name": "Kaas"}) // never bought
+
+	recent := decodeAs[[]apitypes.Product](t, e.do("GET", "/v1/products?sort=recent", nil))
+	if len(recent) != 3 || recent[0].Id != f.milk.Id || recent[1].Id != f.bananas.Id || recent[2].Id != cheese.Id {
+		t.Fatalf("recent order: %v", names(recent))
+	}
+	m := recent[0]
+	if m.Purchases == nil || *m.Purchases != 4 || m.LastBoughtAt == nil || m.LastBoughtAt.Format("2006-01-02") != "2026-10-01" {
+		t.Errorf("milk purchases/last: %v %v", m.Purchases, m.LastBoughtAt)
+	}
+	if m.Cheapest == nil || m.Cheapest.ShopName != "Lidl" || m.Cheapest.LatestUnitCents != 79 || !m.Cheapest.Cheapest {
+		t.Errorf("milk cheapest: %+v", m.Cheapest)
+	}
+	if c := recent[2]; *c.Purchases != 0 || c.Cheapest != nil || c.LastBoughtAt != nil {
+		t.Errorf("never bought: %+v", c)
+	}
+	byCount := decodeAs[[]apitypes.Product](t, e.do("GET", "/v1/products?sort=purchases", nil))
+	if byCount[0].Id != f.milk.Id || byCount[1].Id != f.bananas.Id {
+		t.Errorf("purchases order: %v", names(byCount))
+	}
+	if one := decodeAs[apitypes.Product](t, e.do("GET", fmt.Sprintf("/v1/products/%d", f.milk.Id), nil)); one.Cheapest == nil || *one.Purchases != 4 {
+		t.Errorf("single product summary: %+v", one)
+	}
+	if rec := e.do("GET", "/v1/products?sort=price", nil); rec.Code != 400 {
+		t.Errorf("bad sort: %d", rec.Code)
+	}
+}
+
+func TestSpendSplitAndProducts(t *testing.T) {
+	f := newStatsFixture(t)
+	e := f.e
+	get := func(q string) apitypes.Spend {
+		rec := e.do("GET", "/v1/stats/spend?from=2026-09-01&to=2026-10-31&"+q, nil)
+		if rec.Code != 200 {
+			t.Fatalf("%s: %d %s", q, rec.Code, rec.Body)
+		}
+		return decodeAs[apitypes.Spend](t, rec)
+	}
+	parts := func(b apitypes.SpendBucket) map[string]int64 {
+		m := map[string]int64{}
+		var sum int64
+		for _, p := range *b.Split {
+			m[p.Key] = p.Cents
+			sum += p.Cents
+		}
+		if sum != b.Cents {
+			t.Errorf("bucket %s: split sums to %d, cents %d", b.Key, sum, b.Cents)
+		}
+		return m
+	}
+
+	// #10: months stacked by category; stacks add up to the bar.
+	cat := get("group_by=month&split_by=category")
+	z := fmt.Sprint(f.zuivel)
+	if sep := parts(cat.Buckets[0]); cat.Buckets[0].Key != "2026-09" || sep[z] != 387 || sep["none"] != 199 {
+		t.Errorf("september by category: %+v", *cat.Buckets[0].Split)
+	}
+	if oct := parts(cat.Buckets[1]); oct[z] != 139 {
+		t.Errorf("october by category: %+v", oct)
+	}
+	shop := get("group_by=month&split_by=shop")
+	if sep := parts(shop.Buckets[0]); sep[fmt.Sprint(f.ah.Id)] != 467 || sep[fmt.Sprint(f.lidl.Id)] != 119 {
+		t.Errorf("september by shop: %+v", sep)
+	}
+
+	// #11: spend per product with quantity, optionally one category.
+	prod := get("group_by=product")
+	if len(prod.Buckets) != 2 || prod.Buckets[0].Label != "Halfvolle melk" || prod.Buckets[0].Cents != 526 ||
+		*prod.Buckets[0].Qty != 4 || *prod.Buckets[0].Unit != "pc" {
+		t.Fatalf("by product: %+v", prod.Buckets)
+	}
+	if b := prod.Buckets[1]; b.Label != "Bananen" || *b.Qty != 1 || *b.Unit != "kg" || b.Cents != 199 {
+		t.Errorf("bananas: %+v", b)
+	}
+	if only := get(fmt.Sprintf("group_by=product&category_id=%d", f.zuivel)); len(only.Buckets) != 1 || only.Buckets[0].Label != "Halfvolle melk" {
+		t.Errorf("category filter: %+v", only.Buckets)
+	}
+
+	for _, bad := range []string{"group_by=shop&split_by=category", "group_by=month&split_by=product", "group_by=month&category_id=1"} {
+		if rec := e.do("GET", "/v1/stats/spend?"+bad, nil); rec.Code != 400 {
+			t.Errorf("%s: %d", bad, rec.Code)
+		}
+	}
+}
