@@ -10,6 +10,7 @@ struct ReceiptView: View {
         // The model is built before the first frame so the pushed screen opens with the summary
         // Home already has instead of a blank or a placeholder.
         ReceiptScreen(receiptId: receiptId, app: app)
+            .id(receiptId)
     }
 }
 
@@ -39,7 +40,7 @@ private struct ReceiptScreen: View {
         ZStack(alignment: .bottom) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    NavHeader(title: "Receipt") {
+                    NavHeader(title: reviewTitle(model)) {
                         IconButton(icon: .more, label: "More actions") { openActions(model) }
                             .disabled(model.receipt == nil)
                     }
@@ -68,30 +69,25 @@ private struct ReceiptScreen: View {
                             }
                         }
 
+                        // One banner per problem, each with its own single action.
+                        if receipt.shopId == nil && model.suggestion == nil {
+                            Banner(
+                                tone: .amber, lead: "No shop yet.",
+                                message: "Pick one so prices compare across shops.",
+                                action: (title: "Pick a shop", run: { pickShop(model) })
+                            )
+                            .padding(.horizontal, Space.edge)
+                            .padding(.top, 18)
+                        }
                         if let banner = model.banner {
-                            Banner(tone: banner.tone, lead: banner.lead.isEmpty ? nil : banner.lead, message: banner.message)
-                                .padding(.horizontal, Space.edge)
-                                .padding(.top, 18)
-                            if receipt.shopId == nil {
-                                Button("Pick a shop") {
-                                    app.trays.present("edit-details") { EditDetailsTray(model: model) }
-                                }
-                                .textStyle(.label)
-                                .foregroundStyle(Palette.blueText)
-                                .buttonStyle(.press(haptic: .selection))
-                                .padding(.horizontal, Space.edge + Space.lx)
-                                .padding(.top, Space.m)
-                            }
-                            if receipt.reasons.contains(.noDate) {
-                                Button("Set the date") {
-                                    app.trays.present("no-date") { NoDateFixTray(model: model) }
-                                }
-                                .textStyle(.label)
-                                .foregroundStyle(Palette.blueText)
-                                .buttonStyle(.press(haptic: .selection))
-                                .padding(.horizontal, Space.edge + Space.lx)
-                                .padding(.top, Space.m)
-                            }
+                            Banner(
+                                tone: banner.tone, lead: banner.lead.isEmpty ? nil : banner.lead, message: banner.message,
+                                action: banner.lead == ReceiptModel.noDateLead
+                                    ? (title: "Set the date", run: { app.trays.present("no-date") { NoDateFixTray(model: model) } })
+                                    : nil
+                            )
+                            .padding(.horizontal, Space.edge)
+                            .padding(.top, 18)
                         } else if receipt.lines == nil && receipt.status == .needsReview {
                             // The banner needs the lines; hold its space so the rows don't jump.
                             Banner(tone: .amber, lead: "Placeholder amount short.", message: "Check the lines against the photo.")
@@ -134,7 +130,7 @@ private struct ReceiptScreen: View {
                     Task {
                         if await model.confirm() {
                             Haptics.play(.success)
-                            dismiss()
+                            if !app.advanceReview(after: model.receiptId) { dismiss() }
                         }
                     }
                 }
@@ -153,13 +149,25 @@ private struct ReceiptScreen: View {
     private func header(_ model: ReceiptModel, _ receipt: Receipt) -> some View {
         HStack(alignment: .bottom, spacing: Space.l) {
             VStack(alignment: .leading, spacing: Space.m) {
-                HStack(spacing: Space.m) {
-                    ShopMark(name: model.shop?.name ?? "Shop", size: 24)
-                    Text(model.shop?.displayName ?? "Unknown shop")
-                        .textStyle(TypeStyle.rowTitle.sized(14))
-                        .foregroundStyle(Palette.ink)
-                        .lineLimit(1)
+                Button { pickShop(model) } label: {
+                    HStack(spacing: Space.m) {
+                        if receipt.shopId == nil {
+                            UnknownShopMark(size: 22)
+                            Text("Unknown shop").textStyle(TypeStyle.rowTitle.sized(14)).lineLimit(1)
+                        } else {
+                            ShopMark(name: model.shop?.name ?? "Shop", size: 22)
+                            Text(model.shop?.displayName ?? "Shop").textStyle(TypeStyle.rowTitle.sized(14)).lineLimit(1)
+                        }
+                        IconView(.down, size: 10, weight: .bold)
+                            .foregroundStyle(receipt.shopId == nil ? Palette.amberText : Palette.ink3)
+                    }
+                    .foregroundStyle(receipt.shopId == nil ? Palette.amberText : Palette.ink)
+                    .padding(.horizontal, Space.m)
+                    .frame(height: 32)
+                    .background(receipt.shopId == nil ? Palette.amberTint : Palette.sunk, in: RoundedRectangle.continuous(Radius.m))
                 }
+                .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
+                .animation(Motion.fade, value: receipt.shopId)
                 if let total = receipt.totalCents {
                     HeroAmount(cents: total, size: 48)
                 } else {
@@ -183,6 +191,17 @@ private struct ReceiptScreen: View {
     }
 
     // MARK: Lines
+
+    /// "Review 2 of 5" while going through Receipts to review, else "Receipt".
+    private func reviewTitle(_ model: ReceiptModel) -> String {
+        let seq = app.reviewSequence
+        guard let i = seq.firstIndex(of: model.receiptId) else { return "Receipt" }
+        return "Review \(i + 1) of \(seq.count)"
+    }
+
+    private func pickShop(_ model: ReceiptModel) {
+        app.trays.present("receipt-shop") { ReceiptShopTray(model: model) }
+    }
 
     private func editSuggestion(_ suggestion: ShopSuggestion, model: ReceiptModel) {
         app.trays.present("suggestion-edit") {
@@ -317,7 +336,7 @@ private struct ReceiptScreen: View {
 
     private func openActions(_ model: ReceiptModel) {
         app.trays.present("receipt-actions") {
-            ReceiptActionsTray(model: model, onDeleted: { dismiss() })
+            ReceiptActionsTray(model: model, onDeleted: { if !app.advanceReview(after: model.receiptId) { dismiss() } })
         }
     }
 }
@@ -444,6 +463,92 @@ struct NoDateFixTray: View {
         if await model.updateDetails(patch) {
             Haptics.play(.success)
             trays.dismiss()
+        }
+    }
+}
+
+
+/// "Pick a shop" for a receipt: the shop list, then "Other shop" to create a new one.
+struct ReceiptShopTray: View {
+    let model: ReceiptModel
+    @Environment(AppModel.self) private var app
+    @Environment(TrayCoordinator.self) private var trays
+    @State private var working = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.lx) {
+            TrayHeader(title: "Which shop?")
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(orderedShops) { shop in
+                        Button {
+                            Haptics.play(.selection)
+                            Task { await assign(shop.id) }
+                        } label: {
+                            HStack(spacing: Space.l) {
+                                ShopMark(name: shop.name, size: Size.shopMarkHeader)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(shop.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                                    if let branch = shop.branch, !branch.isEmpty {
+                                        Text(branch).textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                                    }
+                                }
+                                Spacer()
+                                if model.receipt?.shopId == shop.id {
+                                    Image(icon: .check).font(.system(size: 13, weight: .bold)).foregroundStyle(Accent.blue)
+                                }
+                            }
+                            .frame(height: 52)
+                            .hairline()
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.press(haptic: nil))
+                        .disabled(working)
+                    }
+                    Button {
+                        trays.present("new-shop") { ShopFormTray(shop: nil) { saved in Task { await assign(saved.id) } } }
+                    } label: {
+                        HStack(spacing: Space.l) {
+                            RoundedRectangle.continuous(Radius.m)
+                                .strokeBorder(Palette.ink3, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                                .frame(width: 34, height: 34)
+                                .overlay(IconView(.plus, size: 15, weight: .semibold))
+                            Text("Other shop").textStyle(.rowTitle)
+                            Spacer()
+                        }
+                        .foregroundStyle(Palette.blueText)
+                        .frame(height: 50)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.press(haptic: .light))
+                }
+                .padding(.horizontal, Space.xs)
+            }
+            .frame(maxHeight: 340)
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+
+    private var orderedShops: [Shop] {
+        let last = app.catalog.lastShopId
+        return app.catalog.shops.sorted { a, b in
+            if a.id == last { return true }
+            if b.id == last { return false }
+            return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        }
+    }
+
+    private func assign(_ shopId: Int64) async {
+        working = true
+        defer { working = false }
+        var patch = ReceiptPatch()
+        patch.shopId = shopId
+        if await model.updateDetails(patch) {
+            app.catalog.lastShopId = shopId
+            trays.dismiss()
+            app.toasts.show("Moved to \(app.catalog.shopName(shopId))")
+        } else {
+            Haptics.play(.error)
         }
     }
 }

@@ -47,7 +47,7 @@ struct HomeView: View {
 
                 if home.attentionCount > 0 && !home.filter.isActive {
                     AttentionCard(count: home.attentionCount, title: "Receipts to review", hint: home.attentionHint) {
-                        if let first = home.attention.first { app.push(.receipt(first.id)) }
+                        app.startReview(home.attention.map(\.id))
                     }
                     .padding(.horizontal, Space.edge)
                     .padding(.top, 18)
@@ -60,6 +60,7 @@ struct HomeView: View {
             .padding(.bottom, Space.tabBarClearance)
         }
         .scrollIndicators(.hidden)
+        .onAppear { app.reviewSequence = [] }
         .transaction(value: home.spendLoaded) { $0.animation = nil }
         .refreshable {
             app.uploads.kick(force: true)
@@ -268,6 +269,50 @@ struct HomeView: View {
     }
 
     private func receiptRow(_ receipt: Receipt) -> some View {
+        let canConfirm = receipt.confirmedAt == nil && (receipt.status == .ok || receipt.status == .needsReview)
+        return SwipeRow(
+            leading: canConfirm ? SwipeAction(title: "Confirm", icon: .check, color: Accent.green) { confirm(receipt) } : nil,
+            trailing: receipt.status == .processing || receipt.status == .pending ? nil
+                : SwipeAction(title: "Delete", icon: .trash, color: Accent.red) { askDelete(receipt) }
+        ) {
+            receiptRowContent(receipt)
+        }
+    }
+
+    private func confirm(_ receipt: Receipt) {
+        Task {
+            do {
+                let confirmed = try await app.api.confirmReceipt(receipt.id)
+                app.home.apply(confirmed)
+                Haptics.play(.success)
+                app.toasts.show("Receipt confirmed", tone: .green)
+                await app.home.refresh()
+            } catch let error as APIError {
+                Haptics.play(.error)
+                app.toasts.error(error.message)
+            } catch {}
+        }
+    }
+
+    private func askDelete(_ receipt: Receipt) {
+        let name = receipt.shopId == nil ? "this receipt" : "the \(app.catalog.shopName(receipt.shopId)) receipt"
+        app.trays.present("delete-receipt") {
+            ConfirmTray(title: "Delete \(name)?", message: "The photo and its lines are removed. This can't be undone.", confirmTitle: "Delete", destructive: true) {
+                do {
+                    try await app.api.deleteReceipt(receipt.id)
+                    app.home.remove(receipt.id)
+                    Haptics.play(.error)
+                    await app.home.refresh()
+                    return true
+                } catch let error as APIError {
+                    app.toasts.error(error.message)
+                    return false
+                } catch { return false }
+            }
+        }
+    }
+
+    private func receiptRowContent(_ receipt: Receipt) -> some View {
         var p = receipt.rowPresentation()
         let unknownShop = receipt.shopId == nil
         if unknownShop && (receipt.status == .ok || receipt.status == .needsReview) {
@@ -280,6 +325,7 @@ struct HomeView: View {
             }
         }
         return Button {
+            guard !app.rowSwipeActive else { return }
             app.push(.receipt(receipt.id))
         } label: {
             ReceiptRow(

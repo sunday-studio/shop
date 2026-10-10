@@ -79,10 +79,27 @@ final class ReceiptModel {
             for line in fresh.lines ?? [] where line.productId != nil && catalog.product(line.productId) == nil {
                 if let p = try? await api.product(line.productId!) { catalog.upsert(p) }
             }
+            if await autoLinkStrongMatches(in: fresh) { return await load() }
         } catch let e as APIError {
             error = e
         } catch {}
         updatePolling()
+    }
+
+    /// Lines the server matched at 80 % or better are linked without asking. Each line is tried
+    /// once per screen so a refused link can't loop. Returns true when something was linked.
+    static let autoLinkScore = 0.8
+    @ObservationIgnored private var autoLinkTried: Set<Int64> = []
+
+    private func autoLinkStrongMatches(in receipt: Receipt) async -> Bool {
+        guard receipt.confirmedAt == nil, receipt.status != .processing, receipt.status != .pending else { return false }
+        var linked = false
+        for line in receipt.lines ?? [] where line.kind == .item && line.productId == nil && !autoLinkTried.contains(line.id) {
+            guard let best = line.suggestions?.first, best.score >= Self.autoLinkScore else { continue }
+            autoLinkTried.insert(line.id)
+            if (try? await api.linkLine(line.id, productId: best.productId, remember: false)) != nil { linked = true }
+        }
+        return linked
     }
 
     private func updatePolling() {
@@ -125,6 +142,8 @@ final class ReceiptModel {
         return parts.joined(separator: " · ")
     }
 
+    static let noDateLead = "No date found."
+
     /// The reason banner (nil when nothing needs saying).
     var banner: (tone: Tone, lead: String, message: String)? {
         guard let r = receipt else { return nil }
@@ -140,9 +159,6 @@ final class ReceiptModel {
         default:
             break
         }
-        if r.shopId == nil {
-            return (.amber, "No shop yet.", suggestion == nil ? "Pick the shop so it counts per shop." : "Add the suggested shop above, or pick another.")
-        }
         if let total = r.totalCents {
             let diff = countedCents - total
             if abs(diff) > 1 {
@@ -152,7 +168,7 @@ final class ReceiptModel {
         } else if r.status == .needsReview {
             return (.amber, "No total found.", "Add the printed total in Edit details.")
         }
-        if r.reasons.contains(.noDate) { return (.amber, "No date found.", "Pick a date so it counts in your totals.") }
+        if r.reasons.contains(.noDate) { return (.amber, Self.noDateLead, "Pick a date so it counts in your totals.") }
         if r.reasons.contains(.lowConf) { return (.amber, "Hard to read.", "Check the marked lines against the photo.") }
         if r.reasons.contains(.lineMath) { return (.amber, "A line doesn't add up.", "Quantity × price differs from the line total.") }
         if unread > 0 { return (.amber, "", unreadNote) }
