@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"shop/internal/apitypes"
+	"shop/internal/autoprod"
 	"shop/internal/backup"
 	"shop/internal/english"
 	"shop/internal/logos"
@@ -38,7 +39,8 @@ type Deps struct {
 	List        *shopping.Service
 	English     *english.Service
 	Search      *search.Service
-	Logos       *logos.Cache // nil or disabled: no logos
+	Auto        *autoprod.Service // automatic products; nil disables those routes' work
+	Logos       *logos.Cache      // nil or disabled: no logos
 	Location    *time.Location
 	Log         *slog.Logger
 	DataDir     string // for backup status and storage size; optional
@@ -96,6 +98,15 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("PATCH /v1/lines/{id}", s.updateLine)
 	api.HandleFunc("DELETE /v1/lines/{id}", s.deleteLine)
 
+	api.HandleFunc("GET /v1/products/review-queue", s.getReviewQueue)
+	api.HandleFunc("GET /v1/products/autopopulate/backfill", s.getBackfill)
+	api.HandleFunc("POST /v1/products/autopopulate/backfill", s.startBackfill)
+	api.HandleFunc("POST /v1/products/{id}/review", s.reviewProduct)
+	api.HandleFunc("POST /v1/products/{id}/merge", s.mergeProduct)
+	api.HandleFunc("POST /v1/products/{id}/refresh", s.refreshProduct)
+	api.HandleFunc("POST /v1/product-merges/{id}/undo", s.undoProductMerge)
+	api.HandleFunc("POST /v1/lines/{id}/split-product", s.splitLineProduct)
+	api.HandleFunc("POST /v1/barcodes/{code}/product", s.createBarcodeProduct)
 	api.HandleFunc("GET /v1/products", s.listProducts)
 	api.HandleFunc("POST /v1/products", s.createProduct)
 	api.HandleFunc("GET /v1/barcodes/{code}", s.lookupBarcode)

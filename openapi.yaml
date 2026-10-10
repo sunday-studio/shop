@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.11.0
+  version: 0.12.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -491,6 +491,189 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/BarcodeLookup" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ---------------------------------------------------------------- automatic products
+  /v1/barcodes/{code}/product:
+    parameters:
+      - { name: code, in: path, required: true, schema: { type: string, pattern: "^[0-9]{8}$|^[0-9]{12,14}$" } }
+    post:
+      operationId: createBarcodeProduct
+      description: |
+        Scan creates the product. Known barcode: 200 `known` (no changes). Unknown: the product is created from
+        Open Food Facts (201 `created`), or as a minimal placeholder when OFF has nothing or is unreachable
+        (201 `created_minimal`, flagged for review; an unreachable OFF queues a retry on the server). Idempotent:
+        a repeat is 200 `known` with `created_now: false`. Open Food Facts failures never fail the request.
+      responses:
+        "200":
+          description: Already known
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BarcodeCreateResult" }
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BarcodeCreateResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/review-queue:
+    get:
+      operationId: getReviewQueue
+      description: |
+        Auto-created products waiting for a decision, ordered by reason (near_match, barcode_name_match,
+        odd_name, no_category, barcode_minimal, barcode_off_unavailable), newest first. `limit=0` returns only
+        `total` and `counts` (a cheap count for the catalog badge).
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50, minimum: 0, maximum: 200 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0, minimum: 0 } }
+        - { name: reason, in: query, schema: { $ref: "#/components/schemas/ReviewReason" } }
+      responses:
+        "200":
+          description: The queue
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewQueue" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/autopopulate/backfill:
+    get:
+      operationId: getBackfill
+      responses:
+        "200":
+          description: State of the last or current backfill
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BackfillState" }
+        default: { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: startBackfill
+      description: Links or creates products for receipts already confirmed (oldest first). 409 when AUTO_PRODUCTS is off or one is running.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run: { type: boolean, default: false, description: "count without writing" }
+      responses:
+        "202":
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [job_id]
+                properties:
+                  job_id: { type: integer, format: int64 }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/{id}/review:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: reviewProduct
+      description: |
+        Decide a product in the queue. `merge`: for near_match the card's product disappears into the suggestion;
+        for barcode_name_match the card's (barcode) product survives and the suggested product is moved into it.
+        The response `product` is always the survivor. `accept` takes `category_id` and `name` together
+        (a chosen category becomes category_source=manual). 409 when the product is no longer in the queue,
+        422 when discarding a manual product.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewInput" }
+      responses:
+        "200":
+          description: Done
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/{id}/merge:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: mergeProduct
+      description: |
+        `{id}` disappears into `into_product_id`: lines and aliases move over, empty fields of the survivor are
+        filled, `{id}` is soft-deleted. Reversible for 30 days with the returned merge_id. 409 (title "These two
+        have different barcodes.") when both have different barcodes, 422 when id == into.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [into_product_id]
+              properties:
+                into_product_id: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Merged
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MergeResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/{id}/refresh:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: refreshProduct
+      description: Retry Open Food Facts now for a product with a barcode. Fills only empty fields; a name the user typed is kept. 422 without a barcode.
+      responses:
+        "200":
+          description: Refreshed (or OFF still unavailable)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [product, off_status]
+                properties:
+                  product: { $ref: "#/components/schemas/Product" }
+                  off_status: { type: string, enum: [found, not_found, unavailable] }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/product-merges/{id}/undo:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: undoProductMerge
+      description: |
+        Reverses a merge, discard or split exactly (lines, aliases, copied fields, review state) within 30 days.
+        Lines relinked since are left alone and counted in `lines_skipped`. 409 if already undone or older than 30 days.
+      responses:
+        "200":
+          description: Undone
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UndoResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/lines/{id}/split-product:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: splitLineProduct
+      description: Gives this line (and lines with the same shop and text) a new product of its own. Undo with the returned merge_id. 404 if the line has no product, 422 if it is not an item.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+      responses:
+        "201":
+          description: Split
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SplitResult" }
         default: { $ref: "#/components/responses/Problem" }
 
   /v1/products/{id}:
@@ -1333,6 +1516,10 @@ components:
       required: [id, status, review_reasons, created_at, updated_at]
       properties:
         photo_taken_at: { type: string, format: date-time, description: "hint from the photo's EXIF; never the purchase date unless the user picks it" }
+        auto_products:
+          nullable: true
+          description: only on the confirm response, when AUTO_PRODUCTS is on
+          allOf: [{ $ref: "#/components/schemas/AutoProductsSummary" }]
         shop_suggestion:
           nullable: true
           description: single-receipt GET only; null/absent when there is nothing to suggest
@@ -1420,6 +1607,16 @@ components:
         net_unit: { type: string, enum: [g, ml, pc] }
         openfoodfacts_code: { type: string }
         has_image: { type: boolean }
+        image_url: { type: string, description: "path of GET /v1/products/{id}/image; absent without a photo" }
+        created_via: { type: string, enum: [manual, receipt, backfill, barcode] }
+        needs_review: { type: boolean }
+        review_reason:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/ReviewReason" }]
+        suggested_merge:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/SuggestedMerge" }]
+        category_source: { type: string, enum: [rule, off, manual], nullable: true }
         nutrition: { $ref: "#/components/schemas/Nutrition" }
         score: { type: number, format: double, description: "search relevance, only with q" }
         cheapest: { $ref: "#/components/schemas/ShopPrice" }
@@ -1427,6 +1624,156 @@ components:
         purchases: { type: integer, description: "receipts it was bought on" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+
+    ReviewReason:
+      type: string
+      enum: [near_match, barcode_name_match, odd_name, no_category, barcode_minimal, barcode_off_unavailable]
+
+    SuggestedMerge:
+      type: object
+      required: [product_id, name, score]
+      properties:
+        product_id: { type: integer, format: int64 }
+        name: { type: string }
+        name_en: { type: string }
+        brand: { type: string }
+        score: { type: number, format: double }
+
+    AutoProductsSummary:
+      type: object
+      required: [linked, created, needs_review]
+      properties:
+        linked: { type: integer }
+        created: { type: integer }
+        needs_review: { type: integer }
+        error: { type: string, nullable: true }
+
+    BarcodeCreateResult:
+      type: object
+      required: [status, created_now, product, unmatched_lines]
+      properties:
+        status: { type: string, enum: [known, created, created_minimal] }
+        created_now: { type: boolean, description: "true only on the 201 that created it; false on every repeat" }
+        off_status: { type: string, enum: [found, not_found, unavailable], description: "absent when status = known" }
+        product: { $ref: "#/components/schemas/Product" }
+        merge_suggestion:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/SuggestedMerge" }]
+        unmatched_lines:
+          type: array
+          maxItems: 5
+          items: { $ref: "#/components/schemas/UnmatchedLine" }
+
+    ReviewSourceLine:
+      type: object
+      required: [line_id, receipt_id, raw_text, shop_name, line_total_cents]
+      properties:
+        line_id: { type: integer, format: int64 }
+        receipt_id: { type: integer, format: int64 }
+        raw_text: { type: string }
+        shop_name: { type: string }
+        purchased_at: { type: string, format: date-time }
+        line_total_cents: { type: integer, format: int64 }
+
+    ReviewItem:
+      type: object
+      required: [product, reason, source_line_count, source_lines]
+      properties:
+        product: { $ref: "#/components/schemas/Product" }
+        reason: { $ref: "#/components/schemas/ReviewReason" }
+        suggested_merge:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/SuggestedMerge" }]
+        source_line_count: { type: integer }
+        source_lines:
+          type: array
+          maxItems: 3
+          items: { $ref: "#/components/schemas/ReviewSourceLine" }
+
+    ReviewQueue:
+      type: object
+      required: [total, counts, items]
+      properties:
+        total: { type: integer }
+        counts:
+          type: object
+          description: per-reason totals for the whole queue (every reason present)
+          additionalProperties: { type: integer }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ReviewItem" }
+
+    ReviewInput:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: [accept, merge, keep_separate, discard] }
+        category_id: { type: integer, format: int64, description: "accept only" }
+        name: { type: string, description: "accept only" }
+        into_product_id: { type: integer, format: int64, description: "merge only; default: the suggested product" }
+
+    ProductRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+
+    ReviewResult:
+      type: object
+      required: [product]
+      properties:
+        product: { $ref: "#/components/schemas/Product" }
+        merge_id: { type: integer, format: int64, description: "merge" }
+        discard_id: { type: integer, format: int64, description: "discard (also usable as the id for undo)" }
+        kind: { type: string, enum: [merge, discard] }
+        merged_away: { $ref: "#/components/schemas/ProductRef" }
+        lines_moved: { type: integer }
+        aliases_moved: { type: integer }
+        lines_unlinked: { type: integer }
+
+    MergeResult:
+      type: object
+      required: [merge_id, kind, product, merged_away, lines_moved, aliases_moved]
+      properties:
+        merge_id: { type: integer, format: int64 }
+        kind: { type: string, enum: [merge] }
+        product: { $ref: "#/components/schemas/Product" }
+        merged_away: { $ref: "#/components/schemas/ProductRef" }
+        lines_moved: { type: integer }
+        aliases_moved: { type: integer }
+
+    SplitResult:
+      type: object
+      required: [merge_id, kind, product, lines_moved]
+      properties:
+        merge_id: { type: integer, format: int64 }
+        kind: { type: string, enum: [split] }
+        product: { $ref: "#/components/schemas/Product" }
+        lines_moved: { type: integer }
+
+    UndoResult:
+      type: object
+      required: [kind, product, into, lines_restored, lines_skipped]
+      properties:
+        kind: { type: string, enum: [merge, discard, split] }
+        product: { $ref: "#/components/schemas/Product", description: "restored product, with its review state" }
+        into: { $ref: "#/components/schemas/Product", description: "the survivor (same as product for discard)" }
+        lines_restored: { type: integer }
+        lines_skipped: { type: integer, description: "lines the user relinked since" }
+
+    BackfillState:
+      type: object
+      required: [state, dry_run, receipts_total, receipts_done, linked, created, needs_review]
+      properties:
+        state: { type: string, enum: [idle, running, done, failed] }
+        dry_run: { type: boolean }
+        receipts_total: { type: integer }
+        receipts_done: { type: integer }
+        linked: { type: integer }
+        created: { type: integer }
+        needs_review: { type: integer }
+        error: { type: string }
 
     OpenFoodFactsPrefill:
       type: object

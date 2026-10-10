@@ -127,7 +127,7 @@ func TestUndoSkipsRelinkedLinesAndExpires(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.now = func() time.Time { return time.Now().Add(31 * 24 * time.Hour) }
+	s.now = func() time.Time { return fixedClock().Add(31 * 24 * time.Hour) }
 	if _, err := s.Undo(ctx, res2.MergeID); !errors.Is(err, ErrGone) {
 		t.Errorf("undo after 31 days err = %v; want gone", err)
 	}

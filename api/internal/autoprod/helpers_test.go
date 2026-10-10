@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+	"time"
 
 	"shop/internal/match"
 	"shop/internal/store"
@@ -41,8 +42,12 @@ func newDB(t *testing.T) *sql.DB {
 
 func newService(t *testing.T, conn *sql.DB, enabled bool) *Service {
 	t.Helper()
-	return New(conn, match.NewMatcher(conn), nil, nil, nil, slog.New(slog.DiscardHandler), enabled)
+	s := New(conn, match.NewMatcher(conn), nil, nil, nil, slog.New(slog.DiscardHandler), enabled)
+	s.now = fixedClock // stable timestamps: "exact undo" comparisons must not depend on the wall clock
+	return s
 }
+
+func fixedClock() time.Time { return time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC) }
 
 // loadReceipts inserts the 13 real receipts (confirmed, in date order) and returns their ids in that order.
 func loadReceipts(t *testing.T, conn *sql.DB) []int64 {

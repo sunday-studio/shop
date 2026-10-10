@@ -82,7 +82,7 @@ func TestMCPTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tools.Tools) != 15 {
+	if len(tools.Tools) != 17 {
 		t.Errorf("tools = %d", len(tools.Tools))
 	}
 

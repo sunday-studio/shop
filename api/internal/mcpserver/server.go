@@ -17,6 +17,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"shop/internal/autoprod"
 	"shop/internal/english"
 	"shop/internal/match"
 	"shop/internal/money"
@@ -39,6 +40,7 @@ type Deps struct {
 	Matcher  *match.Matcher
 	English  *english.Service
 	Location *time.Location
+	Auto     *autoprod.Service // optional: enables the review tools
 }
 
 type server struct {
@@ -98,6 +100,13 @@ func New(d Deps) *mcp.Server {
 	mcp.AddTool(srv, &mcp.Tool{Name: "teach_word",
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
 		Description: "Teach the English for one Dutch word (or keep_as_is for brands/varieties). Re-translates every automatic product name; names the user typed are never changed."}, s.teachWord)
+
+	if s.Auto != nil {
+		mcp.AddTool(srv, &mcp.Tool{Name: "review_new_products", Annotations: ro,
+			Description: "Products created automatically from receipts or barcode scans that wait for a decision (possible duplicates, missing category, odd names), with the receipt text they came from."}, s.reviewNewProducts)
+		mcp.AddTool(srv, &mcp.Tool{Name: "resolve_review",
+			Description: "Decide one product from review_new_products: accept (keep it), merge (same as the suggested or given product), keep_separate, or discard. Merge and discard can be undone in the app for 30 days."}, s.resolveReview)
+	}
 
 	srv.AddResource(&mcp.Resource{URI: "shop://shops", Name: "shops", MIMEType: "application/json",
 		Description: "All shops"}, s.shopsResource)

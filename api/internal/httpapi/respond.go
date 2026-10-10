@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"shop/internal/apitypes"
+	"shop/internal/autoprod"
 	"shop/internal/english"
 	"shop/internal/products"
 	"shop/internal/receipts"
@@ -39,6 +40,14 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.As(err, &bad):
 		writeProblem(w, http.StatusBadRequest, "bad request", bad.Error())
+	case errors.Is(err, autoprod.ErrDifferentBarcodes):
+		writeProblem(w, http.StatusConflict, "These two have different barcodes.", "")
+	case errors.Is(err, autoprod.ErrNotFound):
+		writeProblem(w, http.StatusNotFound, "not found", "")
+	case errors.Is(err, autoprod.ErrInvalid):
+		writeProblem(w, http.StatusUnprocessableEntity, "cannot do that", err.Error())
+	case errors.Is(err, autoprod.ErrConflict), errors.Is(err, autoprod.ErrGone), errors.Is(err, autoprod.ErrDisabled):
+		writeProblem(w, http.StatusConflict, "conflict", err.Error())
 	case errors.Is(err, shopsuggest.ErrNotFound):
 		writeProblem(w, http.StatusNotFound, "not found", "")
 	case errors.Is(err, shopsuggest.ErrInvalid):

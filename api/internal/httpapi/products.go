@@ -67,6 +67,21 @@ func toProduct(p db.Product, n *db.Nutrition) apitypes.Product {
 		OpenfoodfactsCode: store.StrPtr(p.OffCode), HasImage: p.ImagePath.Valid,
 		CreatedAt: created, UpdatedAt: updated,
 	}
+	via := apitypes.ProductCreatedVia(p.CreatedVia)
+	review := p.NeedsReview != 0
+	out.CreatedVia, out.NeedsReview = &via, &review
+	if p.ReviewReason.Valid {
+		rr := apitypes.ReviewReason(p.ReviewReason.String)
+		out.ReviewReason = &rr
+	}
+	if p.CategorySource.Valid {
+		cs := apitypes.ProductCategorySource(p.CategorySource.String)
+		out.CategorySource = &cs
+	}
+	if p.ImagePath.Valid {
+		u := "/v1/products/" + itoa(p.ID) + "/image"
+		out.ImageUrl = &u
+	}
 	if p.NetUnit.Valid {
 		u := apitypes.ProductNetUnit(p.NetUnit.String)
 		out.NetUnit = &u
@@ -194,6 +209,7 @@ func (s *Server) getProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := []apitypes.Product{toProduct(p.Product, p.Nutrition)}
+	out[0].SuggestedMerge = s.suggestedMergeOf(r.Context(), p.Product)
 	if err := s.withSummaries(r, out); err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -440,16 +456,7 @@ func (s *Server) unmatchedLines(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]apitypes.UnmatchedLine, len(rows))
 	for i, u := range rows {
-		out[i] = apitypes.UnmatchedLine{
-			Line: toLine(db.ReceiptLine{
-				ID: u.ID, ReceiptID: u.ReceiptID, LineNo: u.LineNo, RawText: u.RawText, NormText: u.NormText,
-				Kind: u.Kind, Qty: u.Qty, Unit: u.Unit, UnitPriceCents: u.UnitPriceCents,
-				LineTotalCents: u.LineTotalCents, VatCode: u.VatCode, ParentLineID: u.ParentLineID,
-				ProductID: u.ProductID, UserEdited: u.UserEdited,
-			}),
-			ShopId: store.IntPtr(u.ShopID), ShopName: u.ShopName, PurchasedAt: store.TimePtr(u.PurchasedAt),
-			Score: round3(u.Score),
-		}
+		out[i] = unmatchedLineOut(u)
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -474,4 +481,17 @@ func (s *Server) linkLine(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, apitypes.LinkResult{
 		Line: toLine(res.Line), AlsoLinked: res.AlsoLinked, AliasCreated: res.AliasCreated,
 	})
+}
+
+func unmatchedLineOut(u products.UnmatchedLine) apitypes.UnmatchedLine {
+	return apitypes.UnmatchedLine{
+		Line: toLine(db.ReceiptLine{
+			ID: u.ID, ReceiptID: u.ReceiptID, LineNo: u.LineNo, RawText: u.RawText, NormText: u.NormText,
+			Kind: u.Kind, Qty: u.Qty, Unit: u.Unit, UnitPriceCents: u.UnitPriceCents,
+			LineTotalCents: u.LineTotalCents, VatCode: u.VatCode, ParentLineID: u.ParentLineID,
+			ProductID: u.ProductID, UserEdited: u.UserEdited,
+		}),
+		ShopId: store.IntPtr(u.ShopID), ShopName: u.ShopName, PurchasedAt: store.TimePtr(u.PurchasedAt),
+		Score: round3(u.Score),
+	}
 }
