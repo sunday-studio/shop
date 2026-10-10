@@ -393,6 +393,16 @@ struct UploadQueueView: View {
     }
 
     private func itemRow(_ item: UploadItem) -> some View {
+        SwipeRow(
+            leading: item.state == .waiting ? SwipeAction(title: "Retry", icon: .retry, color: Accent.blue, haptic: .medium) { app.uploads.retry(item.id); app.uploads.kick(force: true) } : nil,
+            trailing: SwipeAction(title: "Remove", icon: .trash, color: Accent.red, haptic: .soft) { app.uploads.remove(item.id) }
+        ) {
+            itemRowContent(item)
+        }
+        .accessibilityAction(named: "Remove") { app.uploads.remove(item.id) }
+    }
+
+    private func itemRowContent(_ item: UploadItem) -> some View {
         HStack(spacing: Space.l) {
             thumbnail(item)
             VStack(alignment: .leading, spacing: 1) {

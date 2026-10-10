@@ -163,25 +163,56 @@ struct ProductsView: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(Array(products.enumerated()), id: \.element.id) { index, product in
-                        Button {
-                            app.push(.product(product.id))
-                        } label: {
-                            ProductRow(
-                                name: product.name,
-                                meta: meta(product),
-                                category: app.catalog.category(product.categoryId)?.name,
-                                imageURL: app.api.productImageURL(product),
-                                price: product.cheapest.map { Money.perUnit($0.latestUnitCents, unit: $0.baseUnit) },
-                                priceShop: product.cheapest?.shopName
-                            )
+                        SwipeRow(
+                            leading: SwipeAction(title: "Add to list", icon: .plus, color: Accent.blue, haptic: .medium) { addToList(product) },
+                            trailing: SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: nil) { askDelete(product) }
+                        ) {
+                            Button {
+                                guard !app.rowSwipeActive else { return }
+                                app.push(.product(product.id))
+                            } label: {
+                                ProductRow(
+                                    name: product.name,
+                                    meta: meta(product),
+                                    category: app.catalog.category(product.categoryId)?.name,
+                                    imageURL: app.api.productImageURL(product),
+                                    price: product.cheapest.map { Money.perUnit($0.latestUnitCents, unit: $0.baseUnit) },
+                                    priceShop: product.cheapest?.shopName
+                                )
+                            }
+                            .buttonStyle(.press(haptic: nil))
                         }
-                        .buttonStyle(.press(haptic: nil))
+                        .accessibilityAction(named: "Add to list") { addToList(product) }
+                        .accessibilityAction(named: "Delete") { askDelete(product) }
                         .staggeredAppear(index: index)
                     }
                     if model.isSearching {
                         newProductRow(name: model.query)
                     }
                 }
+            }
+        }
+    }
+
+    private func addToList(_ product: Product) {
+        app.list.add(text: product.name, productId: product.id, qty: 1)
+        app.toasts.show("Added to the list", tone: .green)
+        Task { await app.list.sync() }
+    }
+
+    private func askDelete(_ product: Product) {
+        app.trays.present("delete-product") {
+            ConfirmTray(title: "Delete \(product.name)?", message: "Receipt lines keep their history, but new receipts won't link to it. Its barcode is released.",
+                        confirmTitle: "Delete product", destructive: true) {
+                do {
+                    try await app.api.deleteProduct(product.id)
+                    app.catalog.removeProduct(product.id)
+                    Haptics.play(.error)
+                    return true
+                } catch let error as APIError {
+                    app.toasts.error(error.message)
+                    return false
+                } catch { return false }
             }
         }
     }

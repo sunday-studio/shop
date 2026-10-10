@@ -40,7 +40,11 @@ struct ShopsView: View {
                     .padding(.bottom, Space.xs)
 
                     ForEach(app.catalog.shops) { shop in
-                        Button { openForm(shop) } label: {
+                        SwipeRow(
+                            leading: SwipeAction(title: "Edit", icon: .edit, color: Accent.blue, haptic: nil) { openForm(shop) },
+                            trailing: SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: nil) { askDeleteShop(shop) }
+                        ) {
+                        Button { guard !app.rowSwipeActive else { return }; openForm(shop) } label: {
                             HStack(spacing: Space.l) {
                                 ShopMark(name: shop.name, size: Size.shopMarkHeader)
                                 VStack(alignment: .leading, spacing: 1) {
@@ -59,6 +63,8 @@ struct ShopsView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.press(haptic: nil))
+                        }
+                        .accessibilityAction(named: "Delete") { askDeleteShop(shop) }
                     }
                 }
                 .padding(.horizontal, Space.gutter)
@@ -72,6 +78,23 @@ struct ShopsView: View {
             try? await app.catalog.refreshReference()
             if let spend = try? await app.api.spend(from: Dates.adding(.year, -5, to: .now), to: .now, groupBy: .shop) {
                 counts = Dictionary(spend.buckets.compactMap { b in Int64(b.key).map { ($0, b.receipts) } }, uniquingKeysWith: { a, _ in a })
+            }
+        }
+    }
+
+    private func askDeleteShop(_ shop: Shop) {
+        app.trays.present("delete-shop") {
+            ConfirmTray(title: "Delete \(shop.displayName)?", message: "Its receipts keep it in their history. It won't be offered for new scans.",
+                        confirmTitle: "Delete shop", destructive: true) {
+                do {
+                    try await app.api.deleteShop(shop.id)
+                    app.catalog.removeShop(shop.id)
+                    Haptics.play(.error)
+                    return true
+                } catch let e as APIError {
+                    app.toasts.error(e.message)
+                    return false
+                } catch { return false }
             }
         }
     }

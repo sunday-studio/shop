@@ -19,6 +19,9 @@ final class ProductDraft {
     var barcode: String
     var nutrition: Nutrition?
     var nutritionTouched = false
+    /// Nutrition came from a barcode scan (saved with its Open Food Facts source, not as manual).
+    var nutritionFromScan = false
+    var scannedCode: String?
     var photo: UIImage?
     let prefill: OpenFoodFactsPrefill?
 
@@ -45,6 +48,35 @@ final class ProductDraft {
 
     var existing: Product? {
         if case .edit(let p) = mode { return p }
+        return nil
+    }
+
+    /// What a scanned barcode filled in, for the confirmation line under the field.
+    var scanNote: String?
+
+    /// Barcode scanned or typed in the form: sets the barcode and fills what Open Food Facts knows.
+    /// Typed values stay; empty ones are filled. Nutrition is replaced unless the user edited it.
+    /// Returns a user-facing problem when the barcode belongs to another product.
+    func apply(scan code: String, lookup: BarcodeLookup?) -> String? {
+        if let other = lookup?.product, other.id != existing?.id {
+            return "That barcode belongs to \(other.name)."
+        }
+        barcode = code
+        scannedCode = code
+        guard let prefill = lookup?.prefill else {
+            scanNote = "Barcode saved. Open Food Facts doesn't have this product."
+            return nil
+        }
+        var filled: [String] = []
+        if let n = prefill.nutrition, !n.isEmpty, !nutritionTouched {
+            nutrition = n
+            nutritionFromScan = true
+            filled.append("nutrition")
+        }
+        if name.trimmingCharacters(in: .whitespaces).isEmpty, !prefill.name.isEmpty { name = prefill.name; filled.append("name") }
+        if brand.isEmpty, let b = prefill.brand, !b.isEmpty { brand = b; filled.append("brand") }
+        if size.isEmpty, let q = Quantity.netSize(prefill.netQuantity, unit: prefill.netUnit) { size = q; filled.append("size") }
+        scanNote = filled.isEmpty ? "Barcode saved. Nothing new to fill in." : "Filled in from Open Food Facts: " + filled.joined(separator: ", ") + "."
         return nil
     }
 
@@ -94,8 +126,9 @@ final class ProductDraft {
                 input.nameEnSource = "openfoodfacts"
             }
         }
+        if existing != nil, let code = scannedCode { input.openfoodfactsCode = code }
         if var n = nutrition, !n.isEmpty {
-            if nutritionTouched { n.source = "manual" }
+            if nutritionTouched { n.source = "manual"; nutritionFromScan = false }
             input.nutrition = n
         } else {
             input.nutrition = nil
@@ -114,6 +147,8 @@ struct ProductFormTray: View {
     @Environment(TrayCoordinator.self) private var trays
     @State private var saving = false
     @State private var showCamera = false
+    @State private var scanning = false
+    @State private var lookingUp = false
 
     init(mode: ProductDraft.Mode, onSaved: @escaping (Product) -> Void) {
         _draft = State(initialValue: ProductDraft(mode: mode))
@@ -165,6 +200,8 @@ struct ProductFormTray: View {
                 }
             }
 
+            barcodeRow
+
             VStack(alignment: .leading, spacing: Space.m) {
                 Text("Category").textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
                 FlowLayout(spacing: 6, lineSpacing: 6) {
@@ -207,6 +244,9 @@ struct ProductFormTray: View {
             .buttonStyle(.shop(haptic: .medium))
             .disabled(!draft.isValid || saving)
         }
+        .fullScreenCover(isPresented: $scanning) {
+            BarcodeScanCover(onCode: scanned, onCancel: { scanning = false })
+        }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { image in
                 draft.photo = image
@@ -215,6 +255,63 @@ struct ProductFormTray: View {
                 showCamera = false
             }
             .ignoresSafeArea()
+        }
+    }
+
+    private var barcodeRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button { scanning = true } label: {
+                HStack(spacing: Space.l) {
+                    IconView(.barcode, size: 18, weight: .semibold).foregroundStyle(Palette.ink2)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Barcode").textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                        Text(draft.barcode.isEmpty ? "Scan it to fill in nutrition" : draft.barcode)
+                            .textStyle(draft.barcode.isEmpty ? .rowSub : TypeStyle.mono.sized(13))
+                            .foregroundStyle(Palette.ink2)
+                    }
+                    Spacer()
+                    if lookingUp {
+                        ProgressView().controlSize(.small).tint(Palette.ink2)
+                    } else {
+                        Text(draft.barcode.isEmpty ? "Scan" : "Rescan").textStyle(.label).foregroundStyle(Palette.blueText)
+                    }
+                }
+                .padding(.horizontal, Space.lx)
+                .frame(height: 52)
+                .background(Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
+            }
+            .buttonStyle(.press(haptic: .light))
+            .disabled(lookingUp)
+            if let note = draft.scanNote {
+                Text(note).textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+            }
+        }
+    }
+
+    /// Looks the scanned code up (the product catalogue first, then Open Food Facts) and fills the draft.
+    private func scanned(_ code: String) {
+        scanning = false
+        lookingUp = true
+        Task {
+            defer { lookingUp = false }
+            do {
+                let lookup = try await app.api.lookupBarcode(code)
+                if let problem = draft.apply(scan: code, lookup: lookup) {
+                    Haptics.play(.warning)
+                    app.toasts.error(problem)
+                } else {
+                    Haptics.play(draft.scanNote?.hasPrefix("Filled") == true ? .scanNew : .scanKnown)
+                }
+            } catch let error as APIError {
+                if error.isConnectivity {
+                    // Keep the code; nutrition can be filled later.
+                    _ = draft.apply(scan: code, lookup: nil)
+                    draft.scanNote = "Barcode saved. Couldn't reach the server for nutrition."
+                } else {
+                    Haptics.play(.error)
+                    app.toasts.error(error.message)
+                }
+            } catch {}
         }
     }
 
@@ -255,7 +352,7 @@ struct ProductFormTray: View {
             var product: Product
             if let existing = draft.existing {
                 product = try await app.api.updateProduct(existing.id, draft.input())
-                if draft.nutritionTouched {
+                if draft.nutritionTouched || draft.nutritionFromScan {
                     if let n = draft.nutrition, !n.isEmpty {
                         product = try await app.api.putNutrition(existing.id, n)
                     } else if existing.nutrition != nil {
@@ -446,6 +543,61 @@ struct CameraPicker: UIViewControllerRepresentable {
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.onCancel()
+        }
+    }
+}
+
+
+/// Full-screen barcode scanner for the product form: scan once, or type the code when the
+/// device has no camera.
+struct BarcodeScanCover: View {
+    let onCode: (String) -> Void
+    let onCancel: () -> Void
+    @State private var manual = ""
+    @State private var found = false
+
+    var body: some View {
+        ZStack {
+            Color(hex: 0x111211).ignoresSafeArea()
+            if BarcodeScanner.isAvailable {
+                BarcodeScanner { code in
+                    guard !found else { return }
+                    found = true
+                    onCode(code)
+                }
+                .ignoresSafeArea()
+            }
+            VStack {
+                HStack {
+                    IconButton(icon: .close, label: "Close", foreground: .white, background: .white.opacity(0.14), action: onCancel)
+                    Spacer()
+                }
+                .padding(.horizontal, Space.edge)
+                .padding(.top, Space.l)
+                Spacer()
+                VStack(spacing: Space.l) {
+                    Text(BarcodeScanner.isAvailable ? "Point the camera at the barcode." : "Type the barcode.")
+                        .textStyle(.body).foregroundStyle(Color(hex: 0xF4F4F1))
+                    if !BarcodeScanner.isAvailable {
+                        HStack(spacing: Space.m) {
+                            TextField("", text: $manual, prompt: Text("Barcode").foregroundStyle(Color(hex: 0x8F8F8A)))
+                                .keyboardType(.numberPad)
+                                .textStyle(TypeStyle.mono.sized(16))
+                                .foregroundStyle(Color(hex: 0xF4F4F1))
+                                .padding(.horizontal, Space.lx)
+                                .frame(height: 44)
+                                .background(Color(hex: 0x2A2A27), in: Capsule())
+                            Button("Use") {
+                                let code = manual.filter(\.isNumber)
+                                if !code.isEmpty { onCode(code) }
+                            }
+                            .buttonStyle(.shop(.tinted(text: Color(hex: 0x0C0C0B), tint: Color(hex: 0xF4F4F1)), size: .small, fullWidth: false))
+                        }
+                        .padding(.horizontal, Space.edge)
+                    }
+                }
+                .padding(.bottom, 60)
+            }
         }
     }
 }

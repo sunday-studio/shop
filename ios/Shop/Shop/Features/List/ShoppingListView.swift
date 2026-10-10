@@ -119,22 +119,42 @@ struct ShoppingListView: View {
     }
 
     private func row(_ item: ListItem) -> some View {
-        ListItemRow(
-            title: item.title,
-            hint: hint(item),
-            hintShop: item.cheapest?.shopName,
-            quantity: quantity(item),
-            isChecked: item.isChecked,
-            onToggle: { checked in toggle(item, checked) },
-            onTap: { openEdit(item) }
-        )
+        SwipeRow(
+            leading: SwipeAction(title: item.isChecked ? "Uncheck" : "Check off", icon: .check, color: Accent.green, haptic: .medium) { toggleBySwipe(item) },
+            trailing: SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: .soft) { remove(item) }
+        ) {
+            ListItemRow(
+                title: item.title,
+                hint: hint(item),
+                hintShop: item.cheapest?.shopName,
+                quantity: quantity(item),
+                isChecked: item.isChecked,
+                onToggle: { checked in guard !app.rowSwipeActive else { return }; toggle(item, checked) },
+                onTap: { guard !app.rowSwipeActive else { return }; openEdit(item) }
+            )
+        }
+        .accessibilityAction(named: item.isChecked ? "Uncheck" : "Check off") { toggleBySwipe(item) }
+        .accessibilityAction(named: "Delete") { remove(item) }
         .contextMenu {
             Button("Edit", systemImage: "pencil") { openEdit(item) }
             if let id = item.productId { Button("Open product", systemImage: "shippingbox") { app.push(.product(id)) } }
-            Button("Delete", systemImage: "trash", role: .destructive) {
-                withAnimation(Motion.collapse) { list.delete(item) }
-                Task { await list.sync() }
-            }
+            Button("Delete", systemImage: "trash", role: .destructive) { remove(item) }
+        }
+    }
+
+    /// Check or uncheck straight away (the swipe is the confirmation, no 420 ms tick animation).
+    private func toggleBySwipe(_ item: ListItem) {
+        withAnimation(Motion.collapse) { list.setChecked(item, !item.isChecked) }
+        Task { await list.sync() }
+    }
+
+    /// Removes the item with an Undo toast (the item is added back).
+    private func remove(_ item: ListItem) {
+        withAnimation(Motion.collapse) { list.delete(item) }
+        Task { await list.sync() }
+        app.toasts.undoable("Removed \(item.title)") {
+            list.add(text: item.title, productId: item.productId, qty: item.qty, note: item.note)
+            Task { await list.sync() }
         }
     }
 
