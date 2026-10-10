@@ -71,6 +71,10 @@ struct ImportReceiptRow: View {
     let pages: [UIImage]
     let title: String
     var shopName: String? = nil
+    /// No shop picked and none needed: the server reads it from the receipt. Shows a neutral
+    /// "Shop will find out" chip. With `shopName == nil` and this false the chip is amber
+    /// "Pick a shop" (the user really has to choose).
+    var shopWillFindOut: Bool = false
     /// "Read from receipt" unless the user set a date or a photo date was accepted.
     var dateText: String = "Date from receipt"
     /// Offered only when the photo carries a capture date: "Photo from 3 Oct".
@@ -142,16 +146,17 @@ struct ImportReceiptRow: View {
     }
 
     private var shopChip: some View {
-        Button(action: onShop) {
+        let needsPick = shopName == nil && !shopWillFindOut
+        return Button(action: onShop) {
             HStack(spacing: 5) {
                 if let shopName { ShopMark(name: shopName, size: 16) } else { UnknownShopMark(size: 16) }
-                Text(shopName ?? "Pick a shop").textStyle(.captionMedium).lineLimit(1)
+                Text(shopName ?? (shopWillFindOut ? "Shop will find out" : "Pick a shop")).textStyle(.captionMedium).lineLimit(1)
             }
-            .foregroundStyle(shopName == nil ? Palette.amberText : Palette.ink)
+            .foregroundStyle(needsPick ? Palette.amberText : (shopName == nil ? Palette.ink2 : Palette.ink))
             .padding(.leading, 5)
             .padding(.trailing, 8)
             .frame(height: Size.chipSmall)
-            .background(shopName == nil ? Palette.amberTint : Palette.sunk, in: RoundedRectangle.continuous(Radius.s))
+            .background(needsPick ? Palette.amberTint : Palette.sunk, in: RoundedRectangle.continuous(Radius.s))
         }
         .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
     }
@@ -300,6 +305,11 @@ struct UploadProgressCard: View {
 /// Shown at the top of the receipt and (compact) on Home. Accepting adds the shop and links every
 /// receipt waiting on it in one go.
 struct ShopSuggestionCard: View {
+    /// `new`: the shop isn't in the user's shops yet (button adds it). `existing`: the receipt looks
+    /// like a shop the user already has (button moves the receipt there; nothing is created).
+    enum Kind { case new, existing }
+
+    var kind: Kind = .new
     let name: String
     var detail: String? = nil
     /// Receipts waiting on this shop, including the one on screen.
@@ -321,11 +331,11 @@ struct ShopSuggestionCard: View {
             }
             HStack(spacing: Space.m) {
                 Button(action: onAccept) {
-                    LoadingLabel(title: waiting > 1 ? "Add \(name) · \(waiting) receipts" : "Add \(name)", isLoading: isWorking)
+                    LoadingLabel(title: acceptTitle, isLoading: isWorking)
                 }
                 .buttonStyle(.shop(.solid(Accent.blue), size: .small, fullWidth: true, haptic: .medium))
                 .disabled(isWorking)
-                Button("Edit", action: onEdit)
+                Button(kind == .new ? "Edit" : "Pick another", action: onEdit)
                     .buttonStyle(.shop(.secondary, size: .small, fullWidth: false))
                     .disabled(isWorking)
             }
@@ -341,10 +351,20 @@ struct ShopSuggestionCard: View {
         .accessibilityElement(children: .contain)
     }
 
+    private var acceptTitle: String {
+        switch kind {
+        case .new: waiting > 1 ? "Add \(name) · \(waiting) receipts" : "Add \(name)"
+        case .existing: waiting > 1 ? "Move \(waiting) receipts to \(name)" : "Move to \(name)"
+        }
+    }
+
     private var subtitle: String {
         var parts: [String] = []
         if let detail { parts.append(detail) }
-        parts.append(waiting > 1 ? "\(waiting) receipts are waiting for it" : "Not in your shops yet")
+        switch kind {
+        case .new: parts.append(waiting > 1 ? "\(waiting) receipts are waiting for it" : "Not in your shops yet")
+        case .existing: parts.append(waiting > 1 ? "One of your shops · \(waiting) receipts look like it" : "One of your shops")
+        }
         return parts.joined(separator: " · ")
     }
 }
@@ -367,6 +387,8 @@ struct ShopSuggestionCard: View {
             UploadProgressCard(state: .partial(uploaded: 4, failed: 2))
             UploadProgressCard(state: .done(total: 6))
             ShopSuggestionCard(name: "Aldi", detail: "Utrecht · aldi.nl", waiting: 3, onAccept: {}, onEdit: {}, onNotNow: {})
+            ShopSuggestionCard(kind: .existing, name: "Albert Heijn", detail: "Oudegracht", waiting: 1, onAccept: {}, onEdit: {}, onNotNow: {})
+            ImportReceiptRow(pages: [page], title: "Receipt 3", shopWillFindOut: true, onShop: {}, onDetails: {}, onRemove: {})
         }
         .padding(20)
     }
