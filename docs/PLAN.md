@@ -274,6 +274,67 @@ The same scorer powers `GET /v1/products?q=` and the MCP `search_products`.
 
 ---
 
+## 6a. English names: unknown words and corrections
+
+Products are named in Dutch as sold. The English name (`name_en`) comes from Open Food Facts, from the built-in dictionary (`internal/translate`), or from you. The dictionary will never know every word: brands, regional products, and abbreviations it hasn't seen. **When it doesn't know, it says so, and you can correct it** at two levels: this product, or the word everywhere.
+
+### English status per product
+
+| `name_en_status` | Meaning | Shown in the app |
+|---|---|---|
+| `manual` | You typed it | as is |
+| `openfoodfacts` | From the barcode lookup | as is, with a small source hint |
+| `dictionary` | Every word was known | as is, with a subtle "auto" hint |
+| `partial` | Some words unknown, but ≥ 50 % known | English with the unknown Dutch words **highlighted**; "needs English" badge |
+| `missing` | Too few words known to show a translation | Dutch name only; "needs English" badge |
+
+The API also returns `name_en_unknown`: the Dutch words the dictionary didn't know (e.g. `["Elstar"]`). The app uses it to highlight them and to offer "teach this word".
+
+### Two ways to correct
+
+1. **Fix this product.** Edit the English name. It becomes `manual` and is never overwritten (that already works). "Reset to automatic" sends `name_en: ""`.
+2. **Teach a word.** Give the English for a Dutch word or phrase, e.g. `elstar → Elstar (apple variety)`, `vlkrn → wholemeal`, or mark it **"keep as is"** (brands like `Unox`). The term goes into **your glossary**, which overrides the built-in one. Saving it:
+   - re-translates every `dictionary`/`partial`/`missing` product. Manual and Open Food Facts names are untouched;
+   - updates receipt-line glosses (`text_en` is computed, never stored);
+   - responds with how many products changed, so the app can say "Updated 4 products".
+
+Unknown words that are brand names are expected. Marking them "keep as is" counts them as known, so the product moves to `dictionary`.
+
+### "Needs English" queue
+
+`GET /v1/translations/todo` returns:
+- **words:** unknown Dutch words ranked by how many products (and unmatched receipt lines) use them, with up to 3 example product names each. Teaching the top words fixes the most names.
+- **products:** those in `partial` or `missing`, most recently bought first.
+
+This drives a small review screen: work down the words, and each one fixes several products at once.
+
+### API additions
+
+```
+GET    /v1/glossary                     your terms: [{dutch, english, keep_as_is, updated_at}]
+PUT    /v1/glossary/{dutch}             {english} | {keep_as_is: true} → {term, products_updated}
+DELETE /v1/glossary/{dutch}             back to built-in behaviour → {products_updated}
+GET    /v1/translations/todo?limit=     {words: [{dutch, products, lines, examples[]}], products: [Product]}
+GET    /v1/translate?text=              preview without saving: {english, status, unknown[]} (for live edit forms)
+Product (all reads) gains: name_en_status, name_en_unknown[]
+ReceiptLine gains:         text_en_status, text_en_unknown[]
+```
+
+MCP: `translation_todo` (read) and `teach_word(dutch, english | keep_as_is)` (write), so the assistant can help ("what's Elstar in English?").
+
+### Data
+
+```sql
+CREATE TABLE glossary_terms (
+  dutch TEXT PRIMARY KEY,         -- folded (lowercase, no accents); may be a phrase
+  english TEXT,                   -- NULL when keep_as_is
+  keep_as_is INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL);
+-- products.name_en_source gains nothing new; status is computed from source + translate result.
+```
+
+User terms are loaded over the built-in glossary at start and after each change (a small in-memory map, so translation stays pure and fast). Abbreviations seen on receipts (`halfv`) can be taught the same way. Matching normalises receipt text first, so teaching `halfv → semi-skimmed` also helps glosses.
+
 ## 7. REST API (`/v1`, Bearer auth, `openapi.yaml` is the source of truth)
 
 ```
@@ -538,6 +599,17 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 **Status: done (2026-10-10).** `shop backup` (VACUUM INTO snapshot + integrity check + append-only image mirror + retention), scheduled by the `backup` compose service; `shop restore`; pre-migration snapshot on upgrade; `/healthz` storage + backup checks; container healthcheck; log rotation. Restore drill run on the dev stack (see docs/restore.md). Docs: docs/operations.md, docs/restore.md. Tailscale and the NAS mount are documented, not yet set up on the mini.
 
 **Done when** you can rebuild the Mac mini from scratch using only the NAS backup and the docs, in under 30 min.
+
+### M10 — English corrections (spec §6a)
+- [ ] `glossary_terms` table + user glossary layered over the built-in one
+- [ ] `name_en_status` / `name_en_unknown` on products; `text_en_status` / `text_en_unknown` on lines
+- [ ] Glossary CRUD with re-translation of non-manual products (returns count)
+- [ ] `GET /v1/translations/todo` (unknown words by frequency + products needing English)
+- [ ] `GET /v1/translate` preview endpoint
+- [ ] MCP `translation_todo`, `teach_word`
+- [ ] App: "needs English" badge, highlighted unknown words, teach-a-word sheet, review queue (design: see the request sent to the design thread on 2026-10-10)
+
+**Done when** an unknown word taught once fixes every product that contains it, and manual names are never touched.
 
 ### M9 — Later (unscheduled, opt-in)
 - Per-shop parser profiles, if `needs_review` clusters on one chain
