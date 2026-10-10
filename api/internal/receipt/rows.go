@@ -1,6 +1,7 @@
 package receipt
 
 import (
+	"math"
 	"regexp"
 	"sort"
 	"strings"
@@ -51,6 +52,7 @@ func BuildRows(lines []ocr.Line) []Row {
 		}
 		ps = append(ps, piece{Line: l, y0: l.Box[1], y1: l.Box[3], yc: (l.Box[1] + l.Box[3]) / 2})
 	}
+	deskew(ps)
 	sort.SliceStable(ps, func(i, j int) bool { return ps[i].yc < ps[j].yc })
 
 	var groups [][]piece
@@ -138,4 +140,53 @@ func splitAmount(raw string) Row {
 	r.VAT = vat
 	r.Text = strings.Join(toks[:end], " ")
 	return r
+}
+
+// deskew shifts every piece's vertical extent by the estimated tilt of the photo, so a text line that
+// rises or falls across the page ends up at one y. The slope (dy per dx) is found with a projection
+// profile: the right slope makes the pieces pile up into sharp horizontal bands.
+func deskew(ps []piece) {
+	if len(ps) < 12 {
+		return
+	}
+	hs := make([]float64, len(ps))
+	for i, p := range ps {
+		hs[i] = p.y1 - p.y0
+	}
+	sort.Float64s(hs)
+	bin := hs[len(hs)/2] / 3
+	if bin < 2 {
+		return
+	}
+	score := func(slope float64) float64 {
+		counts := map[int]float64{}
+		for _, p := range ps {
+			counts[int(math.Floor((p.yc-slope*p.Box[0]-slope*(p.Box[2]-p.Box[0])/2)/bin))]++
+		}
+		var sum float64
+		for _, c := range counts {
+			sum += c * c
+		}
+		return sum
+	}
+	base := score(0)
+	best, bestScore := 0.0, base
+	for s := -0.15; s <= 0.1501; s += 0.0025 {
+		if sc := score(s); sc > bestScore {
+			best, bestScore = s, sc
+		}
+	}
+	// Only trust a clear improvement; otherwise leave straight photos untouched.
+	if best == 0 || bestScore < base*1.1 {
+		return
+	}
+	for i := range ps {
+		d := best * (ps[i].Box[0] + ps[i].Box[2]) / 2
+		// A tilted piece's axis-aligned box is taller than its text by |slope|*width; take that back.
+		trim := math.Min(math.Abs(best)*(ps[i].Box[2]-ps[i].Box[0])/2, (ps[i].y1-ps[i].y0)/2-2)
+		trim = math.Max(trim, 0)
+		ps[i].y0 += -d + trim
+		ps[i].y1 += -d - trim
+		ps[i].yc -= d
+	}
 }

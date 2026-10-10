@@ -117,6 +117,67 @@ func Parse(res ocr.Result, opt Options) Result {
 		opt.Now = time.Now()
 	}
 	rows := BuildRows(res.Lines)
+	out := parseRows(res, opt, rows)
+	if out.TotalCents == nil || out.SumCents >= *out.TotalCents {
+		return out
+	}
+	// The sum falls short of the printed total. OCR sometimes loses a price ("20015" for "20,15") or
+	// trails junk after it ("2,49 49"). Repair a row only when doing so makes the sum equal the total
+	// exactly, and only when exactly one row can do it.
+	var fixed *Result
+	for i := range rows {
+		if rows[i].Amount != nil {
+			continue
+		}
+		c, ok := repairAmount(rows[i].Raw)
+		if !ok || out.SumCents+c != *out.TotalCents {
+			continue
+		}
+		alt := append([]Row(nil), rows...)
+		alt[i].Amount, alt[i].Text = &c, repairedText(rows[i].Raw)
+		r := parseRows(res, opt, alt)
+		if r.SumCents == *out.TotalCents {
+			if fixed != nil {
+				return out // ambiguous
+			}
+			fixed = &r
+		}
+	}
+	if fixed != nil {
+		return *fixed
+	}
+	return out
+}
+
+var (
+	repairPriceRe = regexp.MustCompile(`(\d{1,3})[.,](\d{2})(?:\s+\d{1,3})?\s*$`)
+	lostCommaRe   = regexp.MustCompile(`\s(\d{1,3})0(\d{2})\s*$`)
+)
+
+// repairAmount reads a price out of a row the normal split could not.
+func repairAmount(raw string) (int64, bool) {
+	f := strings.TrimSpace(raw)
+	if m := repairPriceRe.FindStringSubmatch(f); m != nil {
+		return ParseAmount(m[1] + "," + m[2])
+	}
+	if m := lostCommaRe.FindStringSubmatch(f); m != nil {
+		return ParseAmount(m[1] + "," + m[2])
+	}
+	return 0, false
+}
+
+func repairedText(raw string) string {
+	f := strings.TrimSpace(raw)
+	if loc := repairPriceRe.FindStringIndex(f); loc != nil {
+		return strings.TrimSpace(f[:loc[0]])
+	}
+	if loc := lostCommaRe.FindStringIndex(f); loc != nil {
+		return strings.TrimSpace(f[:loc[0]])
+	}
+	return f
+}
+
+func parseRows(res ocr.Result, opt Options, rows []Row) Result {
 	out := Result{Rows: rows}
 
 	folded := make([]string, len(rows))
