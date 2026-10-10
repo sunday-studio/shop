@@ -93,6 +93,33 @@ func (e LineUnit) Valid() bool {
 	}
 }
 
+// Defines values for NameEnStatus.
+const (
+	NameEnStatusDictionary    NameEnStatus = "dictionary"
+	NameEnStatusManual        NameEnStatus = "manual"
+	NameEnStatusMissing       NameEnStatus = "missing"
+	NameEnStatusOpenfoodfacts NameEnStatus = "openfoodfacts"
+	NameEnStatusPartial       NameEnStatus = "partial"
+)
+
+// Valid indicates whether the value is a known member of the NameEnStatus enum.
+func (e NameEnStatus) Valid() bool {
+	switch e {
+	case NameEnStatusDictionary:
+		return true
+	case NameEnStatusManual:
+		return true
+	case NameEnStatusMissing:
+		return true
+	case NameEnStatusOpenfoodfacts:
+		return true
+	case NameEnStatusPartial:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for NutritionPer.
 const (
 	N100g  NutritionPer = "100g"
@@ -321,6 +348,27 @@ func (e ReceiptReviewReasons) Valid() bool {
 	}
 }
 
+// Defines values for ReceiptLineTextEnStatus.
+const (
+	ReceiptLineTextEnStatusDictionary ReceiptLineTextEnStatus = "dictionary"
+	ReceiptLineTextEnStatusMissing    ReceiptLineTextEnStatus = "missing"
+	ReceiptLineTextEnStatusPartial    ReceiptLineTextEnStatus = "partial"
+)
+
+// Valid indicates whether the value is a known member of the ReceiptLineTextEnStatus enum.
+func (e ReceiptLineTextEnStatus) Valid() bool {
+	switch e {
+	case ReceiptLineTextEnStatusDictionary:
+		return true
+	case ReceiptLineTextEnStatusMissing:
+		return true
+	case ReceiptLineTextEnStatusPartial:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ReceiptStatus.
 const (
 	ReceiptStatusFailed      ReceiptStatus = "failed"
@@ -519,6 +567,21 @@ type FrequentItem struct {
 	Purchases          int       `json:"purchases"`
 }
 
+// GlossaryTerm defines model for GlossaryTerm.
+type GlossaryTerm struct {
+	Dutch         string    `json:"dutch"`
+	English       *string   `json:"english,omitempty"`
+	KeepAsIs      bool      `json:"keep_as_is"`
+	ProductsCount int       `json:"products_count"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// GlossaryTermInput defines model for GlossaryTermInput.
+type GlossaryTermInput struct {
+	English  *string `json:"english,omitempty"`
+	KeepAsIs *bool   `json:"keep_as_is,omitempty"`
+}
+
 // Health defines model for Health.
 type Health struct {
 	Checks map[string]Check `json:"checks"`
@@ -581,6 +644,25 @@ type ListItemInput struct {
 	Qty       *float64 `json:"qty,omitempty"`
 	Text      *string  `json:"text,omitempty"`
 }
+
+// LoginRequest defines model for LoginRequest.
+type LoginRequest struct {
+	// DeviceName optional label shown in the device list
+	DeviceName *string `json:"device_name,omitempty"`
+	Password   string  `json:"password"`
+}
+
+// LoginResponse defines model for LoginResponse.
+type LoginResponse struct {
+	// ExpiresAt omitted when the token does not expire
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// Token bearer token, st_…
+	Token string `json:"token"`
+}
+
+// NameEnStatus defines model for NameEnStatus.
+type NameEnStatus string
 
 // Nutrition Values per 100 g / 100 ml.
 type Nutrition struct {
@@ -670,17 +752,19 @@ type Problem struct {
 
 // Product defines model for Product.
 type Product struct {
-	Barcode      *string              `json:"barcode,omitempty"`
-	Brand        *string              `json:"brand,omitempty"`
-	CategoryId   *int64               `json:"category_id,omitempty"`
-	CreatedAt    time.Time            `json:"created_at"`
-	HasImage     bool                 `json:"has_image"`
-	Id           int64                `json:"id"`
-	Name         string               `json:"name"`
-	NameEn       *string              `json:"name_en,omitempty"`
-	NameEnSource *ProductNameEnSource `json:"name_en_source,omitempty"`
-	NetQuantity  *float64             `json:"net_quantity,omitempty"`
-	NetUnit      *ProductNetUnit      `json:"net_unit,omitempty"`
+	Barcode       *string              `json:"barcode,omitempty"`
+	Brand         *string              `json:"brand,omitempty"`
+	CategoryId    *int64               `json:"category_id,omitempty"`
+	CreatedAt     time.Time            `json:"created_at"`
+	HasImage      bool                 `json:"has_image"`
+	Id            int64                `json:"id"`
+	Name          string               `json:"name"`
+	NameEn        *string              `json:"name_en,omitempty"`
+	NameEnSource  *ProductNameEnSource `json:"name_en_source,omitempty"`
+	NameEnStatus  *NameEnStatus        `json:"name_en_status,omitempty"`
+	NameEnUnknown *[]Span              `json:"name_en_unknown,omitempty"`
+	NetQuantity   *float64             `json:"net_quantity,omitempty"`
+	NetUnit       *ProductNetUnit      `json:"net_unit,omitempty"`
 
 	// Nutrition Values per 100 g / 100 ml.
 	Nutrition         *Nutrition `json:"nutrition,omitempty"`
@@ -775,12 +859,17 @@ type ReceiptLine struct {
 	Suggestions *[]ProductMatch `json:"suggestions,omitempty"`
 
 	// TextEn dictionary English rendering of raw_text, when good enough
-	TextEn         *string  `json:"text_en,omitempty"`
-	Unit           LineUnit `json:"unit"`
-	UnitPriceCents *int64   `json:"unit_price_cents,omitempty"`
-	UserEdited     bool     `json:"user_edited"`
-	VatCode        *string  `json:"vat_code,omitempty"`
+	TextEn         *string                  `json:"text_en,omitempty"`
+	TextEnStatus   *ReceiptLineTextEnStatus `json:"text_en_status,omitempty"`
+	TextEnUnknown  *[]Span                  `json:"text_en_unknown,omitempty"`
+	Unit           LineUnit                 `json:"unit"`
+	UnitPriceCents *int64                   `json:"unit_price_cents,omitempty"`
+	UserEdited     bool                     `json:"user_edited"`
+	VatCode        *string                  `json:"vat_code,omitempty"`
 }
+
+// ReceiptLineTextEnStatus defines model for ReceiptLine.TextEnStatus.
+type ReceiptLineTextEnStatus string
 
 // ReceiptPage defines model for ReceiptPage.
 type ReceiptPage struct {
@@ -837,6 +926,18 @@ type ShopPrice struct {
 // ShopPriceBaseUnit defines model for ShopPrice.BaseUnit.
 type ShopPriceBaseUnit string
 
+// Span An unknown word. start/end are UTF-16 offsets (end exclusive, = NSRange) into the displayed string: the English for partial, the Dutch for missing.
+type Span struct {
+	End int `json:"end"`
+
+	// Key glossary key
+	Key   string `json:"key"`
+	Start int    `json:"start"`
+
+	// Word as written
+	Word string `json:"word"`
+}
+
 // Spend defines model for Spend.
 type Spend struct {
 	Buckets  []SpendBucket `json:"buckets"`
@@ -892,6 +993,14 @@ type PairDeviceJSONBody struct {
 
 // GetAuthStatus200JSONResponseBodyServer defines parameters for GetAuthStatus.
 type GetAuthStatus200JSONResponseBodyServer string
+
+// PreviewGlossaryTermJSONBody defines parameters for PreviewGlossaryTerm.
+type PreviewGlossaryTermJSONBody struct {
+	Dutch    string  `json:"dutch"`
+	English  *string `json:"english,omitempty"`
+	Examples *int    `json:"examples,omitempty"`
+	KeepAsIs *bool   `json:"keep_as_is,omitempty"`
+}
 
 // GetShoppingListParams defines parameters for GetShoppingList.
 type GetShoppingListParams struct {
@@ -979,6 +1088,19 @@ type GetSpendParams struct {
 // GetSpendParamsGroupBy defines parameters for GetSpend.
 type GetSpendParamsGroupBy string
 
+// PreviewTranslationParams defines parameters for PreviewTranslation.
+type PreviewTranslationParams struct {
+	Text string `form:"text" json:"text"`
+}
+
+// TranslationTodoParams defines parameters for TranslationTodo.
+type TranslationTodoParams struct {
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody = LoginRequest
+
 // PairDeviceJSONRequestBody defines body for PairDevice for application/json ContentType.
 type PairDeviceJSONRequestBody PairDeviceJSONBody
 
@@ -987,6 +1109,12 @@ type CreateCategoryJSONRequestBody = CategoryInput
 
 // UpdateCategoryJSONRequestBody defines body for UpdateCategory for application/json ContentType.
 type UpdateCategoryJSONRequestBody = CategoryInput
+
+// PreviewGlossaryTermJSONRequestBody defines body for PreviewGlossaryTerm for application/json ContentType.
+type PreviewGlossaryTermJSONRequestBody PreviewGlossaryTermJSONBody
+
+// TeachWordJSONRequestBody defines body for TeachWord for application/json ContentType.
+type TeachWordJSONRequestBody = GlossaryTermInput
 
 // UpdateLineJSONRequestBody defines body for UpdateLine for application/json ContentType.
 type UpdateLineJSONRequestBody = LineInput

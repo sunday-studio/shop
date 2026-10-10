@@ -38,6 +38,13 @@ var (
 	}
 )
 
+// ExpandAbbreviation returns the long form of a known receipt abbreviation
+// ("halfv" → "halfvol"); w must already be folded.
+func ExpandAbbreviation(w string) (string, bool) {
+	x, ok := abbreviations[w]
+	return x, ok
+}
+
 // Normalise turns raw receipt or product text into the canonical form used
 // for alias keys and fuzzy scoring.
 func Normalise(s string) string {

@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"shop/internal/apitypes"
+	"shop/internal/english"
 	"shop/internal/products"
 	"shop/internal/receipts"
 	"shop/internal/shopping"
@@ -37,9 +38,9 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.As(err, &bad):
 		writeProblem(w, http.StatusBadRequest, "bad request", bad.Error())
-	case errors.Is(err, receipts.ErrNotFound), errors.Is(err, products.ErrNotFound), errors.Is(err, shopping.ErrNotFound), errors.Is(err, sql.ErrNoRows):
+	case errors.Is(err, receipts.ErrNotFound), errors.Is(err, products.ErrNotFound), errors.Is(err, shopping.ErrNotFound), errors.Is(err, english.ErrNotFound), errors.Is(err, sql.ErrNoRows):
 		writeProblem(w, http.StatusNotFound, "not found", "")
-	case errors.Is(err, receipts.ErrInvalid), errors.Is(err, products.ErrInvalid), errors.Is(err, shopping.ErrInvalid):
+	case errors.Is(err, receipts.ErrInvalid), errors.Is(err, products.ErrInvalid), errors.Is(err, shopping.ErrInvalid), errors.Is(err, english.ErrInvalid):
 		writeProblem(w, http.StatusBadRequest, "invalid input", err.Error())
 	case errors.Is(err, receipts.ErrUnsupported), errors.Is(err, products.ErrBadImage):
 		writeProblem(w, http.StatusUnsupportedMediaType, "unsupported media type", err.Error())

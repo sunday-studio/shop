@@ -24,6 +24,13 @@ type Category struct {
 	DeletedAt sql.NullString `json:"deleted_at"`
 }
 
+type GlossaryTerm struct {
+	Dutch     string         `json:"dutch"`
+	English   sql.NullString `json:"english"`
+	KeepAsIs  int64          `json:"keep_as_is"`
+	UpdatedAt string         `json:"updated_at"`
+}
+
 type Job struct {
 	ID        int64          `json:"id"`
 	Kind      string         `json:"kind"`

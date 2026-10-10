@@ -1,12 +1,12 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.5.0
+  version: 0.6.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
-    All /v1 routes need `Authorization: Bearer <token>`, except /v1/auth/status, /v1/auth/pair and /v1/auth/login.
-    Apps get a token by logging in with the server password (POST /v1/auth/login); scripts/assistants use `shop token create`.
+    All /v1 routes need `Authorization: Bearer <token>`, except /v1/auth/status and /v1/auth/pair.
+    Apps get a token by pairing with the server password (POST /v1/auth/pair) and unpair with DELETE /v1/auth/devices/{id}; scripts/assistants use `shop token create`.
 servers:
   - url: http://localhost:8080
 security:
@@ -761,36 +761,6 @@ paths:
         "409": { $ref: "#/components/responses/Problem" }
         "429": { $ref: "#/components/responses/Problem" }
 
-  /v1/auth/login:
-    post:
-      operationId: login
-      security: []
-      description: >
-        Exchange the server password for a per-client bearer token. The app keeps the token in the
-        Keychain and never stores the password. Wrong password returns 401; repeated failures
-        are rate-limited (429).
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/LoginRequest" }
-      responses:
-        "200":
-          description: Logged in
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/LoginResponse" }
-        "401": { $ref: "#/components/responses/Problem" }
-        "429": { $ref: "#/components/responses/Problem" }
-
-  /v1/auth/logout:
-    post:
-      operationId: logout
-      description: Revoke the token making the request (sign out). Idempotent for the app; a later request with the token gets 401.
-      responses:
-        "204": { description: Signed out }
-        default: { $ref: "#/components/responses/Problem" }
-
   /v1/auth/me:
     get:
       operationId: getMe
@@ -828,6 +798,162 @@ paths:
         "204": { description: Revoked }
         default: { $ref: "#/components/responses/Problem" }
 
+  # ------------------------------------------------------ english names
+  /v1/glossary:
+    get:
+      operationId: listGlossary
+      description: Your taught words (folded keys), with how many products use each.
+      responses:
+        "200":
+          description: Terms
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/GlossaryTerm" }
+
+  /v1/glossary/preview:
+    post:
+      operationId: previewGlossaryTerm
+      description: What teaching a word would change. Nothing is saved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/GlossaryTermInput"
+                - type: object
+                  required: [dutch]
+                  properties:
+                    dutch: { type: string }
+                    examples: { type: integer, default: 3, maximum: 20 }
+      responses:
+        "200":
+          description: Preview
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [products_affected, examples]
+                properties:
+                  products_affected: { type: integer }
+                  examples:
+                    type: array
+                    items:
+                      type: object
+                      required: [product_id, name, status_after]
+                      properties:
+                        product_id: { type: integer, format: int64 }
+                        name: { type: string }
+                        name_en_before: { type: string }
+                        name_en_after: { type: string }
+                        status_after: { $ref: "#/components/schemas/NameEnStatus" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/glossary/{dutch}:
+    parameters:
+      - { name: dutch, in: path, required: true, description: "one word; folded server-side", schema: { type: string } }
+    put:
+      operationId: teachWord
+      description: >
+        Save a word's English (or keep it as is) and re-translate every automatic product name.
+        Undo = PUT `previous` back, or DELETE when `previous` is null.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GlossaryTermInput" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [term, products_updated]
+                properties:
+                  term: { $ref: "#/components/schemas/GlossaryTerm" }
+                  previous: { $ref: "#/components/schemas/GlossaryTermInput" }
+                  products_updated: { type: integer }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: forgetWord
+      responses:
+        "200":
+          description: Removed; names re-translated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [products_updated]
+                properties:
+                  products_updated: { type: integer }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/translations/todo:
+    get:
+      operationId: translationTodo
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 500 } }
+      responses:
+        "200":
+          description: The "needs English" queue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [totals, words, products]
+                properties:
+                  totals:
+                    type: object
+                    required: [words_left, products_left]
+                    properties:
+                      words_left: { type: integer }
+                      products_left: { type: integer }
+                  words:
+                    type: array
+                    items:
+                      type: object
+                      required: [word, key, products, lines, examples]
+                      properties:
+                        word: { type: string, description: display form }
+                        key: { type: string, description: send this when teaching }
+                        products: { type: integer }
+                        lines: { type: integer, description: unmatched receipt lines (180 days) }
+                        examples: { type: array, items: { type: string } }
+                  products:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, name_en_status, name_en_unknown]
+                      properties:
+                        id: { type: integer, format: int64 }
+                        name: { type: string }
+                        name_en: { type: string }
+                        name_en_status: { $ref: "#/components/schemas/NameEnStatus" }
+                        name_en_unknown: { type: array, items: { $ref: "#/components/schemas/Span" } }
+                        shop_name: { type: string, description: shop of the latest purchase }
+                        shop_chain: { type: string }
+
+  /v1/translate:
+    get:
+      operationId: previewTranslation
+      parameters:
+        - { name: text, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Live preview for edit forms
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, unknown]
+                properties:
+                  english: { type: string, description: absent when status is missing }
+                  status: { $ref: "#/components/schemas/NameEnStatus" }
+                  unknown: { type: array, items: { $ref: "#/components/schemas/Span" } }
+
 components:
   securitySchemes:
     bearer:
@@ -842,6 +968,13 @@ components:
       schema: { type: integer, format: int64 }
 
   responses:
+    Problem:
+      description: Error
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
     Problem:
       description: Error
       content:
@@ -977,6 +1110,8 @@ components:
         product_id: { type: integer, format: int64 }
         user_edited: { type: boolean }
         text_en: { type: string, description: "dictionary English rendering of raw_text, when good enough" }
+        text_en_status: { type: string, enum: [dictionary, partial, missing] }
+        text_en_unknown: { type: array, items: { $ref: "#/components/schemas/Span" } }
         suggestions:
           type: array
           description: Up to 3 likely products for unmatched item lines (single-receipt GET only).
@@ -1066,6 +1201,8 @@ components:
         name: { type: string }
         name_en: { type: string }
         name_en_source: { type: string, enum: [manual, openfoodfacts, dictionary] }
+        name_en_status: { $ref: "#/components/schemas/NameEnStatus" }
+        name_en_unknown: { type: array, items: { $ref: "#/components/schemas/Span" } }
         brand: { type: string }
         category_id: { type: integer, format: int64 }
         barcode: { type: string }
@@ -1251,3 +1388,35 @@ components:
         created_at: { type: string, format: date-time }
         last_used_at: { type: string, format: date-time }
         current: { type: boolean, description: "the device making this request" }
+
+    NameEnStatus:
+      type: string
+      enum: [manual, openfoodfacts, dictionary, partial, missing]
+
+    Span:
+      type: object
+      description: >
+        An unknown word. start/end are UTF-16 offsets (end exclusive, = NSRange) into the displayed
+        string: the English for partial, the Dutch for missing.
+      required: [word, key, start, end]
+      properties:
+        word: { type: string, description: as written, e.g. "Calvé" }
+        key: { type: string, description: glossary key, e.g. "calve" }
+        start: { type: integer }
+        end: { type: integer }
+
+    GlossaryTermInput:
+      type: object
+      properties:
+        english: { type: string, maxLength: 80 }
+        keep_as_is: { type: boolean, default: false }
+
+    GlossaryTerm:
+      type: object
+      required: [dutch, keep_as_is, products_count, updated_at]
+      properties:
+        dutch: { type: string }
+        english: { type: string }
+        keep_as_is: { type: boolean }
+        products_count: { type: integer }
+        updated_at: { type: string, format: date-time }

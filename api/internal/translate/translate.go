@@ -8,6 +8,7 @@ import (
 	"bufio"
 	_ "embed"
 	"strings"
+	"sync"
 	"unicode"
 
 	"shop/internal/match"
@@ -41,36 +42,160 @@ func init() {
 	}
 }
 
+// Term is a user glossary entry. KeepAsIs marks words (brands, varieties)
+// that stay as written.
+type Term struct {
+	English  string
+	KeepAsIs bool
+}
+
+var (
+	userMu    sync.RWMutex
+	userTerms = map[string]Term{} // folded single word → term
+)
+
+// SetUserTerms replaces the user glossary, which overrides the built-in one.
+func SetUserTerms(terms map[string]Term) {
+	m := make(map[string]Term, len(terms))
+	for k, v := range terms {
+		m[Key(k)] = v
+	}
+	userMu.Lock()
+	userTerms = m
+	userMu.Unlock()
+}
+
+// Key is the glossary key for a word: folded, no surrounding punctuation.
+func Key(word string) string { return match.Fold(clean(word)) }
+
+// Span marks an unknown word. Start/End are UTF-16 offsets (end exclusive)
+// so they map directly onto NSRange in the app.
+type Span struct {
+	Word  string `json:"word"` // as written
+	Key   string `json:"key"`  // folded glossary key
+	Start int    `json:"start"`
+	End   int    `json:"end"`
+}
+
+// Status of a dictionary translation.
+const (
+	StatusDictionary = "dictionary" // every word known
+	StatusPartial    = "partial"    // usable, some words unknown
+	StatusMissing    = "missing"    // too few words known to show
+)
+
 // Result is a translation with how much of the input it covered.
 type Result struct {
-	Text     string
-	Known    int // words translated
-	Words    int // words that could have been translated (letters only)
-	Complete bool
+	Text         string
+	Known        int // words translated (or kept as is)
+	Words        int // words that could have been translated (letters only)
+	Complete     bool
+	Unknown      []Span // positions in Text
+	UnknownInput []Span // positions in the Dutch input
 }
 
 // MinCoverage is the share of words that must be known for a translation
 // to be used automatically.
 const MinCoverage = 0.5
 
-// OK reports whether the translation is good enough to show.
+// OK reports whether the translation is good enough to show. Names without
+// any translatable word ("7UP 330ml") are fine as they are.
 func (r Result) OK() bool {
+	if r.Words == 0 {
+		return true
+	}
 	return r.Known > 0 && float64(r.Known) >= MinCoverage*float64(r.Words)
 }
 
-// Translate renders a Dutch product name in English.
-func Translate(dutch string) Result {
-	// Commas stay attached: "1,5l" is a size, and clean() strips a trailing one.
-	toks := strings.Fields(strings.NewReplacer("/", " / ", "&", " & ").Replace(dutch))
-	var out []string
+// Status classifies the result for the UI.
+func (r Result) Status() string {
+	switch {
+	case r.Complete:
+		return StatusDictionary
+	case r.OK():
+		return StatusPartial
+	default:
+		return StatusMissing
+	}
+}
+
+type token struct {
+	s          string
+	start, end int // byte offsets in the input
+}
+
+// tokenize splits on whitespace and around "/" and "&", keeping offsets.
+// Commas stay attached: "1,5l" is a size.
+func tokenize(s string) []token {
+	var out []token
+	start := -1
+	flush := func(end int) {
+		if start >= 0 {
+			out = append(out, token{s[start:end], start, end})
+			start = -1
+		}
+	}
+	for i, r := range s {
+		switch {
+		case unicode.IsSpace(r):
+			flush(i)
+		case r == '/' || r == '&':
+			flush(i)
+			out = append(out, token{string(r), i, i + 1})
+		default:
+			if start < 0 {
+				start = i
+			}
+		}
+	}
+	flush(len(s))
+	return out
+}
+
+func utf16Len(s string) int {
+	n := 0
+	for _, r := range s {
+		if r >= 0x10000 {
+			n += 2
+		} else {
+			n++
+		}
+	}
+	return n
+}
+
+// Translate renders a Dutch product name in English using the built-in and
+// user glossaries.
+func Translate(dutch string) Result { return translate(dutch, nil) }
+
+// TranslateWith is Translate with one extra user term applied on top, for
+// previewing a term before saving it.
+func TranslateWith(dutch, key string, t Term) Result {
+	return translate(dutch, map[string]Term{Key(key): t})
+}
+
+func translate(dutch string, extra map[string]Term) Result {
+	userMu.RLock()
+	defer userMu.RUnlock()
+	g := glossaryView{extra: extra}
+
+	toks := tokenize(dutch)
+	type piece struct {
+		text    string
+		unknown *token
+	}
+	var pieces []piece
 	var res Result
 	for i := 0; i < len(toks); {
-		// Longest glossary phrase starting here.
+		// Longest built-in phrase starting here.
 		matched := false
 		for n := min(maxPhrase, len(toks)-i); n >= 2; n-- {
-			key := match.Fold(strings.Join(cleanWords(toks[i:i+n]), " "))
-			if en, ok := glossary[key]; ok {
-				out = append(out, en)
+			words := make([]string, n)
+			for k := range n {
+				words[k] = clean(toks[i+k].s)
+			}
+			if en, ok := glossary[match.Fold(strings.Join(words, " "))]; ok {
+				pieces = append(pieces, piece{text: en + trailingPunct(toks[i+n-1].s)})
 				res.Known += n
 				res.Words += n
 				i += n
@@ -83,22 +208,62 @@ func Translate(dutch string) Result {
 		}
 		tok := toks[i]
 		i++
-		w := clean(tok)
+		w := clean(tok.s)
 		if w == "" || !isWord(w) {
-			out = append(out, tok) // numbers, sizes, symbols
+			pieces = append(pieces, piece{text: tok.s}) // numbers, sizes, symbols
 			continue
 		}
 		res.Words++
-		if en, ok := word(match.Fold(w)); ok {
+		key := match.Fold(w)
+		if t, ok := g.user(key); ok {
 			res.Known++
-			if en != "" {
-				out = append(out, en+trailingPunct(tok))
+			if t.KeepAsIs {
+				pieces = append(pieces, piece{text: tok.s})
+			} else if t.English != "" {
+				pieces = append(pieces, piece{text: t.English + trailingPunct(tok.s)})
 			}
 			continue
 		}
-		out = append(out, tok)
+		en, ok := g.word(key)
+		if !ok {
+			if long, isAbbr := match.ExpandAbbreviation(key); isAbbr {
+				en, ok = g.word(long)
+			}
+		}
+		if ok {
+			res.Known++
+			if en != "" {
+				pieces = append(pieces, piece{text: en + trailingPunct(tok.s)})
+			}
+			continue
+		}
+		t := tok
+		pieces = append(pieces, piece{text: tok.s, unknown: &t})
 	}
-	res.Text = sentenceCase(strings.Join(out, " "))
+
+	var b strings.Builder
+	for i, p := range pieces {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		at := b.Len()
+		text := p.text
+		if i == 0 {
+			text = sentenceCase(text)
+		}
+		b.WriteString(text)
+		if p.unknown != nil {
+			w := clean(p.unknown.s)
+			lead := strings.Index(p.unknown.s, w) // skip leading punctuation
+			outStart := utf16Len(b.String()[:at+lead])
+			res.Unknown = append(res.Unknown, Span{Word: w, Key: match.Fold(w),
+				Start: outStart, End: outStart + utf16Len(w)})
+			inStart := utf16Len(dutch[:p.unknown.start+lead])
+			res.UnknownInput = append(res.UnknownInput, Span{Word: w, Key: match.Fold(w),
+				Start: inStart, End: inStart + utf16Len(w)})
+		}
+	}
+	res.Text = b.String()
 	res.Complete = res.Known == res.Words
 	return res
 }
@@ -110,14 +275,6 @@ func clean(tok string) string {
 // trailingPunct returns punctuation after the word ("jong," → ",").
 func trailingPunct(tok string) string {
 	return tok[len(strings.TrimRightFunc(tok, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })):]
-}
-
-func cleanWords(ts []string) []string {
-	out := make([]string, len(ts))
-	for i, t := range ts {
-		out[i] = clean(t)
-	}
-	return out
 }
 
 func isWord(s string) bool {
@@ -133,23 +290,48 @@ func isWord(s string) bool {
 	return letters >= 2
 }
 
+// glossaryView resolves words: a preview term, then the user glossary,
+// then the built-in glossary. Callers hold userMu (read).
+type glossaryView struct{ extra map[string]Term }
+
+func (g glossaryView) user(key string) (Term, bool) {
+	if t, ok := g.extra[key]; ok {
+		return t, true
+	}
+	t, ok := userTerms[key]
+	return t, ok
+}
+
+// get returns the English for a glossary key ("" for dropped function
+// words; the word itself for keep-as-is user terms).
+func (g glossaryView) get(key string) (string, bool) {
+	if t, ok := g.user(key); ok {
+		if t.KeepAsIs {
+			return key, true
+		}
+		return t.English, true
+	}
+	en, ok := glossary[key]
+	return dropMarker(en), ok
+}
+
 // word translates one folded Dutch word: exact, then inflection, then compound.
-func word(w string) (string, bool) {
-	if en, ok := lookup(w); ok {
+func (g glossaryView) word(w string) (string, bool) {
+	if en, ok := g.lookup(w); ok {
 		return en, true
 	}
-	return compound(w)
+	return g.compound(w)
 }
 
 // lookup tries the word and its inflected stems.
-func lookup(w string) (string, bool) {
-	if en, ok := glossary[w]; ok {
-		return dropMarker(en), true
+func (g glossaryView) lookup(w string) (string, bool) {
+	if en, ok := g.get(w); ok {
+		return en, true
 	}
 	// Diminutives: worteltjes → wortel (+ plural).
 	for _, suf := range []string{"tjes", "jes", "tje", "je"} {
 		if stem, ok := strings.CutSuffix(w, suf); ok && len(stem) >= 3 {
-			if en, ok := glossary[stem]; ok {
+			if en, ok := g.get(stem); ok {
 				if strings.HasSuffix(suf, "s") {
 					return plural(en), true
 				}
@@ -160,19 +342,19 @@ func lookup(w string) (string, bool) {
 	// Plurals: appels → appel, bananen → banaan? (vowel lengthening) → try both.
 	if stem, ok := strings.CutSuffix(w, "en"); ok && len(stem) >= 2 {
 		for _, s := range stems(stem) {
-			if en, ok := glossary[s]; ok {
+			if en, ok := g.get(s); ok {
 				return plural(en), true
 			}
 		}
 	}
 	if stem, ok := strings.CutSuffix(w, "s"); ok && len(stem) >= 3 {
-		if en, ok := glossary[stem]; ok {
+		if en, ok := g.get(stem); ok {
 			return plural(en), true
 		}
 	}
 	// Adjective ending: gerookte → gerookt.
 	if stem, ok := strings.CutSuffix(w, "e"); ok && len(stem) >= 3 {
-		if en, ok := glossary[stem]; ok {
+		if en, ok := g.get(stem); ok {
 			return en, true
 		}
 	}
@@ -195,7 +377,7 @@ func stems(s string) []string {
 // compound splits e.g. "volkorenbrood" into glossary words, allowing the
 // Dutch linking letters -s-, -e-, -en- (and a doubled consonant before -en-).
 // The split with the fewest parts wins; the last part may be inflected.
-func compound(w string) (string, bool) {
+func (g glossaryView) compound(w string) (string, bool) {
 	n := len(w)
 	type step struct {
 		parts int
@@ -213,9 +395,9 @@ func compound(w string) (string, bool) {
 			var en string
 			var ok bool
 			if j == n {
-				en, ok = lookup(part) // the head may be plural etc.
+				en, ok = g.lookup(part) // the head may be plural etc.
 			} else {
-				en, ok = modifier(part)
+				en, ok = g.modifier(part)
 			}
 			if !ok {
 				continue
@@ -255,16 +437,16 @@ func compound(w string) (string, bool) {
 // modifier translates a non-final compound part. English compounds use
 // the singular ("tomato soup", not "tomatoes soup"), so a Dutch plural part
 // is mapped through its singular when the glossary has it.
-func modifier(part string) (string, bool) {
+func (g glossaryView) modifier(part string) (string, bool) {
 	if stem, ok := strings.CutSuffix(part, "en"); ok && len(stem) >= 2 {
 		for _, s := range stems(stem) {
-			if en, ok := glossary[s]; ok {
+			if en, ok := g.get(s); ok {
 				return dropMarker(en), true
 			}
 		}
 	}
-	if en, ok := glossary[part]; ok {
-		return dropMarker(en), true
+	if en, ok := g.get(part); ok {
+		return en, true
 	}
 	return "", false
 }
@@ -278,7 +460,10 @@ func dropMarker(en string) string {
 }
 
 func plural(en string) string {
-	if en == "" || strings.Contains(en, " ") && !strings.HasSuffix(en, "s") {
+	if en == "" {
+		return ""
+	}
+	if strings.Contains(en, " ") && !strings.HasSuffix(en, "s") {
 		// multi-word: pluralise the last word
 		if i := strings.LastIndex(en, " "); i >= 0 {
 			return en[:i+1] + plural(en[i+1:])

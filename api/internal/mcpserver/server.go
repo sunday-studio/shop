@@ -17,6 +17,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"shop/internal/english"
 	"shop/internal/match"
 	"shop/internal/money"
 	"shop/internal/products"
@@ -36,6 +37,7 @@ type Deps struct {
 	Stats    *stats.Service
 	List     *shopping.Service
 	Matcher  *match.Matcher
+	English  *english.Service
 	Location *time.Location
 }
 
@@ -90,6 +92,12 @@ func New(d Deps) *mcp.Server {
 	mcp.AddTool(srv, &mcp.Tool{Name: "shopping_list_remove",
 		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
 		Description: "Remove an item from the shopping list."}, s.listRemove)
+
+	mcp.AddTool(srv, &mcp.Tool{Name: "translation_todo", Annotations: ro,
+		Description: "Dutch words the English translator doesn't know yet, ranked by how many products use them, with example product names."}, s.translationTodo)
+	mcp.AddTool(srv, &mcp.Tool{Name: "teach_word",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+		Description: "Teach the English for one Dutch word (or keep_as_is for brands/varieties). Re-translates every automatic product name; names the user typed are never changed."}, s.teachWord)
 
 	srv.AddResource(&mcp.Resource{URI: "shop://shops", Name: "shops", MIMEType: "application/json",
 		Description: "All shops"}, s.shopsResource)
@@ -772,4 +780,68 @@ func (s *server) categoriesResource(ctx context.Context, req *mcp.ReadResourceRe
 		out[i] = cat{ID: c.ID, Name: c.Name}
 	}
 	return jsonResource(req.Params.URI, out)
+}
+
+// ----------------------------------------------------------- english
+
+type TodoIn struct {
+	Limit int `json:"limit,omitempty" jsonschema:"max words to return, default 20"`
+}
+
+type TodoWord struct {
+	Word     string   `json:"word"`
+	Key      string   `json:"key"`
+	Products int      `json:"products"`
+	Examples []string `json:"examples"`
+}
+
+type TodoOut struct {
+	WordsLeft    int        `json:"words_left"`
+	ProductsLeft int        `json:"products_left"`
+	Words        []TodoWord `json:"words"`
+}
+
+func (s *server) translationTodo(ctx context.Context, _ *mcp.CallToolRequest, in TodoIn) (*mcp.CallToolResult, TodoOut, error) {
+	limit := 20
+	if in.Limit > 0 {
+		limit = min(in.Limit, 200)
+	}
+	t, err := s.English.Todo(ctx, limit, time.Now())
+	if err != nil {
+		return nil, TodoOut{}, err
+	}
+	out := TodoOut{WordsLeft: t.WordsLeft, ProductsLeft: t.ProductsLeft, Words: make([]TodoWord, len(t.Words))}
+	for i, w := range t.Words {
+		out.Words[i] = TodoWord{Word: w.Word, Key: w.Key, Products: w.Products, Examples: w.Examples}
+	}
+	return nil, out, nil
+}
+
+type TeachIn struct {
+	Word     string `json:"word" jsonschema:"one Dutch word, e.g. Elstar"`
+	English  string `json:"english,omitempty" jsonschema:"its English; omit when keep_as_is"`
+	KeepAsIs bool   `json:"keep_as_is,omitempty" jsonschema:"true for brands/varieties that stay as written"`
+}
+
+type TeachOut struct {
+	Word            string `json:"word"`
+	English         string `json:"english,omitempty"`
+	KeepAsIs        bool   `json:"keep_as_is"`
+	ProductsUpdated int    `json:"products_updated"`
+	Replaced        string `json:"replaced,omitempty" jsonschema:"the previous English, if the word was taught before"`
+}
+
+func (s *server) teachWord(ctx context.Context, _ *mcp.CallToolRequest, in TeachIn) (*mcp.CallToolResult, TeachOut, error) {
+	t, prev, n, err := s.English.Teach(ctx, in.Word, english.TermInput{English: in.English, KeepAsIs: in.KeepAsIs})
+	if err != nil {
+		return nil, TeachOut{}, err
+	}
+	out := TeachOut{Word: t.Dutch, English: t.English, KeepAsIs: t.KeepAsIs, ProductsUpdated: n}
+	if prev != nil {
+		out.Replaced = prev.English
+		if prev.KeepAsIs {
+			out.Replaced = "(kept as is)"
+		}
+	}
+	return nil, out, nil
 }

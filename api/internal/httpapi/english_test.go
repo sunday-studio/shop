@@ -73,7 +73,7 @@ func TestEnglishNames(t *testing.T) {
 	shop := e.shop("AH")
 	r := e.receipt(shop.Id, 1, "01-10-2026|", "AH HALFV MELK|1,29", "KIPFILET|5,49", "TOTAAL|6,78")
 	lines := *r.Lines
-	if lines[0].TextEn == nil || *lines[0].TextEn != "Ah semi-skimmed milk" {
+	if lines[0].TextEn == nil || *lines[0].TextEn != "AH semi-skimmed milk" {
 		t.Errorf("text_en: %v", lines[0].TextEn)
 	}
 	item := decodeAs[apitypes.ListItem](t, e.do("POST", "/v1/list", map[string]any{"text": "chicken breast"}))
