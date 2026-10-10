@@ -12,14 +12,19 @@ Live demos: `design/motion.html`. Code: `ios/Shop/Design/{Motion,Haptics,Typogra
 
 | Token | Value | Use |
 |---|---|---|
-| spring | `cubic-bezier(0.32, 1.28, 0.5, 1)` 420ms / `spring(response: 0.42, dampingFraction: 0.78)` | trays, toggles |
+| spring | `cubic-bezier(0.32, 1.28, 0.5, 1)` 420ms / `spring(response: 0.42, dampingFraction: 0.78)` | toggles, pops (not trays) |
 | ease | `cubic-bezier(0.22, 1, 0.36, 1)` 240ms | fades, slides, tray exit |
 | press | 90ms ease-out, scale 0.97 (pills and + 0.94) | every tappable |
-| tray height | 360ms spring, content cross-fade 160ms | tray to tray |
+| sheet | `cubic-bezier(0.32, 0.72, 0, 1)` 450ms in, 350ms out (the iOS sheet / Vaul curve, no overshoot) | tray enter and exit: one translate from the bottom edge, no opacity, no scale |
+| tray swap | same curve 360ms for the height; old content out 80ms, new content in 160ms after a 60ms delay | tray to tray |
 | number roll | 180ms | totals, tallies |
 | list stagger | 8px, 24ms step, max 8 rows, first paint only | lists |
 | check-off | circle 200ms spring, strike after 160ms, collapse 240ms | list rows |
 | tab slide | 12px, 200ms ease, icon pop 120ms | tab bar |
+
+## How a tray moves (built like Vaul)
+
+A tray is **one surface** (background, ring, content) moved with **one transform on one curve**. Nothing inside has its own entrance animation, so text and fields can never drift apart. Rules: enter and exit are a single translate from the bottom edge on the sheet curve, with no opacity and no scale (an opacity fade makes the card see-through for a moment). A tray replacing another overlays old and new content (never stacks them in layout), animates the surface height on the same curve, and crossfades the content (old 80 ms out, new 160 ms in after 60 ms; blur is allowed to mask a layout change). Dragging updates only the transform in a tiny view of its own, never the tray content; down follows the finger 1:1, up is damped (the further you pull the less it moves); release closes on velocity above 400 pt/s or a quarter of the height, otherwise it settles back on the same curve. Do not autofocus a text field before the enter animation has finished (the keyboard would move the tray while it is still moving).
 
 ## Tray or full screen
 

@@ -32,8 +32,8 @@ Flat rows, 44–52px, hairline dividers, no card backgrounds for lists. Group by
 ## Motion
 Springs and curves (use CSS custom properties on the artboard root):
 - `--spring: cubic-bezier(0.32, 1.28, 0.5, 1)` for trays and toggles (about 420ms), `--ease: cubic-bezier(0.22, 1, 0.36, 1)` for fades and slides (240ms), `--press: 90ms ease-out`.
-- Tray enter: translateY(24px) + opacity 0 to rest, 420ms spring, scrim fades 240ms. Tray exit: 240ms ease, reverse.
-- Tray-to-tray inside one artboard: height animates (`transition: height 360ms var(--spring)`) while content cross-fades 160ms. Heights must differ between consecutive trays.
+- Tray enter: one translateY from the bottom edge to rest, `cubic-bezier(0.32, 0.72, 0, 1)` 450ms, no opacity, no scale; scrim fades with it. Tray exit: same translate, 350ms. (See design/MOTION.md "How a tray moves".)
+- Tray-to-tray inside one artboard: height animates (`transition: height 360ms cubic-bezier(0.32, 0.72, 0, 1)`) while content cross-fades (old out 80ms, new in 160ms after 60ms). Heights must differ between consecutive trays.
 - Press: every tappable scales to 0.97 on `:active`, 90ms in, spring back out. Pills and the + button scale 0.94.
 - Numbers morph by tweening digits (roll up/down 180ms) when totals change (Confirm bar sum, tally). Labels morph when a button changes meaning (Continue to Confirm): shared letters stay put.
 - Lists: rows fade+slide in 8px with a 24ms stagger on first paint (max 8 rows). Checking off an item: circle fills with a 200ms spring, row text strikes and fades to ink3 after 160ms, then the row collapses over 240ms.
