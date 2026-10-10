@@ -1,0 +1,474 @@
+<title>Shop Motion</title>
+<style>
+/* Layout: sticky intro, auto-fill grid of demo cards (phone frame + spec), haptics table last.
+   Color: paper, ink, mute, line, accent blue, plus semantic green/amber/red (from DESIGN-RULES).
+   Type: system UI stack (GT America cannot load here), system mono for specs. */
+:root{
+  --bg:#FFFFFF; --sunk:#F4F4F3; --line:#E6E6E3; --ink:#1D1D1B; --ink2:#73736F; --ink3:#B4B4AF;
+  --blue:#0A84FF; --green:#18B663; --red:#FF3B5C; --amber:#FF9500;
+  --tray:#FFFFFF; --scrim:rgba(0,0,0,.32); --code:#F4F4F3; --phone:#0C0C0B;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --spring:cubic-bezier(0.32,1.28,0.5,1); --ease:cubic-bezier(0.22,1,0.36,1);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0C0C0B; --sunk:#1C1C1A; --line:#262624; --ink:#F4F4F1; --ink2:#8F8F8A; --ink3:#5C5C58;
+  --tray:#1C1C1A; --scrim:rgba(0,0,0,.55); --code:#1C1C1A; --phone:#2A2A28; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C0C0B; --sunk:#1C1C1A; --line:#262624; --ink:#F4F4F1; --ink2:#8F8F8A; --ink3:#5C5C58;
+  --tray:#1C1C1A; --scrim:rgba(0,0,0,.55); --code:#1C1C1A; --phone:#2A2A28; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45;
+  padding-inline:16px;padding-block:32px;font-variant-numeric:tabular-nums}
+main{max-width:1180px;margin-inline:auto;display:flex;flex-direction:column;gap:32px}
+h1{font-size:34px;letter-spacing:-.045em;margin:0;font-weight:700}
+h2{font-size:19px;letter-spacing:-.02em;margin:0;font-weight:700}
+p{margin:0}
+.lede{color:var(--ink2);max-width:62ch}
+header{display:flex;flex-direction:column;gap:10px}
+.tokens{display:flex;flex-wrap:wrap;gap:8px;font:12px var(--mono);color:var(--ink2)}
+.tokens span{background:var(--sunk);padding:4px 8px;border-radius:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:20px}
+.card{display:flex;flex-direction:column;gap:12px;min-width:0;border-top:1px solid var(--line);padding-top:16px}
+.card header{flex-direction:row;justify-content:space-between;align-items:center;gap:8px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.replay{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;font-size:13px;
+  font-weight:500;transition:transform 90ms ease-out}
+.replay:active{transform:scale(.94)}
+.spec{font:12px/1.5 var(--mono);color:var(--ink2);display:flex;flex-direction:column;gap:2px}
+.spec b{color:var(--ink);font-weight:500}
+pre{margin:0;background:var(--code);border-radius:8px;padding:10px 12px;font:11.5px/1.5 var(--mono);overflow-x:auto;color:var(--ink)}
+.haptic{font:12px var(--mono);color:var(--ink2);display:flex;align-items:center;gap:8px}
+.hflash{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--ink3);
+  transition:background .5s,color .5s}
+.hflash.on{background:var(--blue);color:#fff;transition:none}
+.hflash.on.warning{background:var(--amber)}.hflash.on.error{background:var(--red)}.hflash.on.success{background:var(--green)}
+/* phone */
+.phone{width:240px;height:400px;margin-inline:auto;border-radius:34px;border:6px solid var(--phone);
+  background:var(--bg);position:relative;overflow:hidden;color:var(--ink);isolation:isolate}
+.stage{position:absolute;inset:0;padding:18px 16px;display:flex;flex-direction:column;gap:8px}
+.ttl{font-size:22px;font-weight:700;letter-spacing:-.04em}
+.row{display:flex;align-items:center;gap:10px;height:44px;border-bottom:1px solid var(--line);font-size:14px}
+.row small{margin-left:auto;color:var(--ink2);font-size:12px}
+.btn{background:var(--ink);color:var(--bg);border:0;border-radius:14px;height:46px;font-weight:500;font-size:15px;
+  transition:transform 90ms ease-out}
+.btn:active{transform:scale(.97)}
+.btn.blue{background:var(--blue);color:#fff}
+.scrim{position:absolute;inset:0;background:var(--scrim);opacity:0;transition:opacity 240ms var(--ease);pointer-events:none;z-index:2}
+.scrim.on{opacity:1;pointer-events:auto}
+.tray{position:absolute;left:8px;right:8px;bottom:8px;background:var(--tray);border-radius:26px;padding:16px;z-index:3;
+  box-shadow:0 8px 30px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:12px;
+  transform:translateY(24px);opacity:0;pointer-events:none;transition:transform 240ms var(--ease),opacity 240ms var(--ease)}
+.tray.on{transform:none;opacity:1;pointer-events:auto;transition:transform 420ms var(--spring),opacity 240ms var(--ease)}
+.tray h3{margin:0;font-size:19px;letter-spacing:-.02em}
+.tray p{color:var(--ink2);font-size:13px}
+/* morph tray */
+.morph{overflow:hidden;transition:height 360ms var(--spring)}
+.morph .pane{position:absolute;left:16px;right:16px;top:16px;display:flex;flex-direction:column;gap:10px;opacity:0;transition:opacity 160ms ease-out;pointer-events:none}
+.morph .pane.on{opacity:1;pointer-events:auto;transition-delay:80ms}
+.chip{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:6px 12px;font-size:13px;transition:transform 90ms ease-out}
+.chip:active{transform:scale(.94)}
+/* label morph */
+.lm{display:inline-flex;overflow:hidden;height:1.3em;line-height:1.3em;vertical-align:bottom}
+.lm .tail{position:relative;display:inline-block;transition:transform 360ms var(--spring),opacity 160ms}
+.lm .tail span{display:block}
+.lm .tail .b{position:absolute;left:0;top:0;opacity:0;transform:translateY(60%)}
+.lm.alt .tail .a{opacity:0;transform:translateY(-60%)}
+.lm.alt .tail .b{opacity:1;transform:none}
+.lm .tail span{transition:transform 360ms var(--spring),opacity 160ms}
+/* odometer */
+.odo{display:flex;align-items:baseline;font-size:54px;font-weight:700;letter-spacing:-.045em;height:1.1em;line-height:1.1em;overflow:hidden}
+.odo .col{display:inline-block;height:1.1em;overflow:hidden;width:.6em}
+.odo .col>div{transition:transform 180ms var(--ease)}
+.odo .col span{display:block;height:1.1em;text-align:center}
+.odo .sep{width:.3em;text-align:center}
+.odo .cur{font-size:.5em;margin-right:.1em;color:var(--ink2)}
+/* check */
+.chk{display:flex;align-items:center;gap:12px;height:48px;border-bottom:1px solid var(--line);font-size:15px;overflow:hidden;
+  background:none;border-inline:0;border-top:0;width:100%;text-align:left;padding:0;
+  transition:height 240ms var(--ease),opacity 240ms var(--ease),border-color 240ms}
+.chk .dot{flex:none;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--ink3);display:grid;place-items:center;
+  transition:background 200ms var(--spring),border-color 200ms,transform 200ms var(--spring)}
+.chk .dot svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.4;opacity:0;transform:scale(.4);transition:opacity 120ms,transform 200ms var(--spring)}
+.chk.done .dot{background:var(--green);border-color:var(--green);transform:scale(1.05)}
+.chk.done .dot svg{opacity:1;transform:none}
+.chk .t{transition:color 160ms 160ms,text-decoration-color 160ms 160ms;text-decoration:line-through transparent}
+.chk.done .t{color:var(--ink3);text-decoration-color:var(--ink3)}
+.chk.gone{height:0;opacity:0;border-color:transparent}
+/* tabs */
+.tabview{position:relative;flex:1;overflow:hidden}
+.tabview .pg{position:absolute;inset:0;opacity:0;pointer-events:none}
+.tabview .pg.on{opacity:1;pointer-events:auto}
+.tabbar{display:flex;border-top:1px solid var(--line);margin-inline:-16px;margin-bottom:-18px;padding:8px 16px 14px}
+.tabbar button{flex:1;background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--ink3);padding:4px}
+.tabbar button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.tabbar button[aria-selected="true"]{color:var(--ink)}
+.tabbar button[aria-selected="true"] svg{fill:currentColor;animation:pop 120ms ease-out}
+@keyframes pop{from{transform:scale(.8)}to{transform:scale(1)}}
+/* pill */
+.pill{align-self:center;display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;
+  background:color-mix(in srgb,var(--amber) 18%,transparent);color:var(--amber);transition:background 240ms var(--ease),color 240ms var(--ease),transform 420ms var(--spring)}
+.pill i{width:8px;height:8px;border-radius:50%;background:currentColor;display:block}
+.pill[data-s="syncing"]{background:var(--sunk);color:var(--ink2)}
+.pill[data-s="syncing"] i{animation:blink 700ms ease-in-out infinite alternate}
+.pill[data-s="ok"]{background:color-mix(in srgb,var(--green) 18%,transparent);color:var(--green);transform:scale(1.06)}
+@keyframes blink{to{opacity:.25}}
+/* shake */
+.field{border:1.5px solid var(--line);background:var(--sunk);border-radius:12px;height:46px;padding:0 12px;font:inherit;color:var(--ink);width:100%;transition:border-color 200ms,background 200ms}
+.field.err{border-color:var(--red);background:color-mix(in srgb,var(--red) 10%,transparent)}
+.field.shake{animation:shake 400ms linear}
+@keyframes shake{0%,100%{transform:none}15%{transform:translateX(-8px)}30%{transform:translateX(7px)}45%{transform:translateX(-5px)}60%{transform:translateX(4px)}80%{transform:translateX(-2px)}}
+.msg{font-size:12.5px;color:var(--red);min-height:1.4em}
+/* table */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:13px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--ink2);font-weight:500;background:var(--sunk)}
+tr:last-child td{border-bottom:0}
+td code{font:12px var(--mono)}
+.theme{align-self:flex-start}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:120ms!important;transition-delay:0s!important;animation-duration:1ms!important;animation-iteration-count:1!important}
+  .tray,.tray.on{transform:none!important}
+  .lm .tail,.lm .tail span,.lm.alt .tail .a,.lm .tail .b{transform:none!important}
+  .btn:active,.chip:active,.replay:active{transform:none}
+  .field.shake{animation:none}
+  .chk.done .dot{transform:none}
+}
+</style>
+
+<main>
+<header>
+  <h1>Shop Motion</h1>
+  <p class="lede">Nine interaction demos with the exact curves, the SwiftUI that matches, and the haptic each one fires. The web cannot vibrate, so a blue badge flashes where the phone would tap. Press Replay, or use the controls inside each phone.</p>
+  <div class="tokens" aria-label="Motion tokens">
+    <span>spring cubic-bezier(0.32, 1.28, 0.5, 1) 420ms</span><span>ease cubic-bezier(0.22, 1, 0.36, 1) 240ms</span><span>press 90ms ease-out, 0.97</span>
+  </div>
+  <button class="replay theme" id="themeBtn" type="button" aria-pressed="false">Toggle theme</button>
+</header>
+
+<section class="grid" aria-label="Demos">
+
+<!-- 1 tray -->
+<article class="card" id="d-tray">
+  <header><h2>Tray enter and exit</h2><button class="replay" type="button" data-replay="tray">Replay</button></header>
+  <div class="phone"><div class="stage">
+    <div class="ttl">Receipts</div>
+    <div class="row">Albert Heijn<small>€42.80</small></div><div class="row">Lidl<small>€18.35</small></div><div class="row">Jumbo<small>€27.10</small></div>
+    <button class="btn" type="button" id="trayOpen" style="margin-top:auto">Review receipt</button>
+    <div class="scrim" id="trayScrim"></div>
+    <div class="tray" id="trayEl" role="dialog" aria-label="Confirm receipt"><h3>Confirm receipt</h3><p>14 items, €42.80 at Albert Heijn.</p>
+      <button class="btn blue" type="button" id="trayClose">Done</button></div>
+  </div></div>
+  <div class="spec"><span><b>enter</b> translateY(24px)+fade, 420ms spring</span><span><b>scrim</b> fade 240ms ease</span><span><b>exit</b> 240ms ease, reverse</span></div>
+  <pre>.sheet(isPresented: $open) { Tray() }   // or
+.tray(isPresented: $open) { ConfirmTray() }
+// transition: .offset(y: 24) + .opacity
+// in: Motion.spring   out: Motion.ease</pre>
+  <div class="haptic">haptic on open: <span class="hflash" data-h></span></div>
+</article>
+
+<!-- 2 morph -->
+<article class="card" id="d-morph">
+  <header><h2>Tray to tray morph</h2><button class="replay" type="button" data-replay="morph">Replay</button></header>
+  <div class="phone"><div class="stage">
+    <div class="ttl">Receipts</div><div class="row">Albert Heijn<small>€42.80</small></div><div class="row">Lidl<small>€18.35</small></div>
+    <div class="scrim on"></div>
+    <div class="tray morph" id="morphEl" style="height:128px">
+      <div class="pane on" id="mA"><h3>Shop</h3><p>Where did you buy this?</p><button class="btn blue" type="button" id="mNext">Continue</button></div>
+      <div class="pane" id="mB"><h3>Category</h3><p>Pick one for the 3 new items.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px"><button class="chip" type="button">Zuivel</button><button class="chip" type="button">Brood</button><button class="chip" type="button">Dranken</button><button class="chip" type="button">Voorraad</button><button class="chip" type="button">Overig</button></div>
+        <button class="btn" type="button" id="mBack">Back</button></div>
+    </div>
+  </div></div>
+  <div class="spec"><span><b>height</b> 360ms spring (keep heights different)</span><span><b>content</b> cross-fade 160ms</span></div>
+  <pre>VStack { step == 0 ? ShopStep() : CategoryStep() }
+  .trayContentMorph(id: step)
+// .animation(Motion.heightSpring, value: step)
+// .transition(.opacity.animation(Motion.fade))</pre>
+  <div class="haptic">haptic on continue: <span class="hflash" data-h></span></div>
+</article>
+
+<!-- 3 label morph -->
+<article class="card" id="d-label">
+  <header><h2>Button label morph</h2><button class="replay" type="button" data-replay="label">Replay</button></header>
+  <div class="phone"><div class="stage" style="justify-content:center">
+    <div class="ttl" style="text-align:center">3 items to check</div>
+    <button class="btn blue" type="button" id="lmBtn" aria-live="polite"><span class="lm" id="lm"><span>Con</span><span class="tail"><span class="a">tinue</span><span class="b">firm</span></span></span></button>
+    <p style="text-align:center;color:var(--ink2);font-size:13px">Tap the button to morph</p>
+  </div></div>
+  <div class="spec"><span><b>shared</b> "Con" stays put</span><span><b>tail</b> swaps, 360ms spring + 160ms fade</span></div>
+  <pre>Text(step == 0 ? "Continue" : "Confirm")
+  .contentTransition(.interpolate)
+  .animation(Motion.spring, value: step)
+// or: Text("Con") + tail with .labelMorph()</pre>
+  <div class="haptic">haptic on tap: <span class="hflash" data-h></span> (medium when it commits)</div>
+</article>
+
+<!-- 4 number roll -->
+<article class="card" id="d-num">
+  <header><h2>Number roll</h2><button class="replay" type="button" data-replay="num">Replay</button></header>
+  <div class="phone"><div class="stage">
+    <div class="ttl">Confirm</div>
+    <div class="odo" id="odo" role="img" aria-label="Total €42.80"></div>
+    <div class="row">Milk 1L<small>€1.29</small></div><div class="row">Bread<small>€2.49</small></div>
+    <div style="display:flex;gap:8px;margin-top:auto"><button class="chip" type="button" id="nDown">- €5.20</button><button class="chip" type="button" id="nUp">+ €15.55</button></div>
+    <button class="btn" type="button" id="nBtn">Confirm</button>
+  </div></div>
+  <div class="spec"><span><b>digits</b> roll up or down 180ms ease</span><span><b>font</b> tabular, so columns never shift</span></div>
+  <pre>Text(total, format: .currency(code: "EUR"))
+  .monospacedDigit()
+  .contentTransition(.numericText(value: total))
+  .animation(Motion.numberRoll, value: total)
+// RollingText(text:value:) wraps this</pre>
+  <div class="haptic">haptic on adjust: <span class="hflash" data-h></span></div>
+</article>
+
+<!-- 5 check -->
+<article class="card" id="d-check">
+  <header><h2>List check-off</h2><button class="replay" type="button" data-replay="check">Replay</button></header>
+  <div class="phone"><div class="stage">
+    <div class="ttl">Boodschappen</div>
+    <div id="chkList"></div>
+  </div></div>
+  <div class="spec"><span><b>circle</b> fill 200ms spring</span><span><b>text</b> strike + ink3 after 160ms</span><span><b>row</b> collapse 240ms</span></div>
+  <pre>Button { Haptics.play(.soft); withAnimation(Motion.pop) { done = true } }
+  // Task: sleep 160ms -> strike (Motion.fade)
+  //       sleep 200ms -> withAnimation(Motion.collapse) { remove }
+CheckRow(title: item.name, isChecked: $item.done) { remove(item) }</pre>
+  <div class="haptic">haptic on check: <span class="hflash" data-h></span></div>
+</article>
+
+<!-- 6 tabs -->
+<article class="card" id="d-tabs">
+  <header><h2>Tab switch</h2><button class="replay" type="button" data-replay="tabs">Replay</button></header>
+  <div class="phone"><div class="stage">
+    <div class="tabview" id="tv">
+      <div class="pg on" data-i="0"><div class="ttl">Home</div><div class="row">This week<small>€212.40</small></div><div class="row">Needs review<small>3</small></div></div>
+      <div class="pg" data-i="1"><div class="ttl">Products</div><div class="row">Halfvolle melk<small>Zuivel</small></div><div class="row">Volkoren<small>Brood</small></div></div>
+      <div class="pg" data-i="2"><div class="ttl">List</div><div class="row">Eieren<small>1</small></div><div class="row">Koffie<small>2</small></div></div>
+    </div>
+    <div class="tabbar" role="tablist" aria-label="Tabs">
+      <button type="button" role="tab" aria-selected="true" data-t="0"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></svg>Home</button>
+      <button type="button" role="tab" aria-selected="false" data-t="1"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/></svg>Products</button>
+      <button type="button" role="tab" aria-selected="false" data-t="2"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>List</button>
+    </div>
+  </div></div>
+  <div class="spec"><span><b>slide</b> 12px toward the tapped side, 200ms ease</span><span><b>icon</b> fills with 120ms scale pop</span></div>
+  <pre>content.transition(tabTransition(from: old, to: new))
+// asymmetric offset(x: ±12) + opacity
+// .animation(Motion.tabSlide, value: tab)</pre>
+  <div class="haptic">haptic on tab: <span class="hflash" data-h></span></div>
+</article>
+
+<!-- 7 press -->
+<article class="card" id="d-press">
+  <header><h2>Press scale</h2><button class="replay" type="button" data-replay="press">Replay</button></header>
+  <div class="phone"><div class="stage" style="justify-content:center;align-items:center;gap:18px">
+    <button class="btn blue" type="button" id="prBtn" style="width:180px">Save product</button>
+    <div style="display:flex;gap:8px"><button class="chip" type="button" id="prChip">Zuivel</button><button class="chip" type="button" id="prPlus" style="width:36px;padding:6px 0">+</button></div>
+    <p style="color:var(--ink2);font-size:13px">Hold down to feel the scale</p>
+  </div></div>
+  <div class="spec"><span><b>buttons</b> 0.97, 90ms in, spring out</span><span><b>pills and +</b> 0.94</span></div>
+  <pre>Button("Save product") { save() }
+  .buttonStyle(.press(haptic: .medium))
+Button { add() } label: { PlusIcon() }
+  .buttonStyle(.pill)   // 0.94, selection</pre>
+  <div class="haptic">haptic on touch-down: <span class="hflash" data-h></span></div>
+</article>
+
+<!-- 8 pill -->
+<article class="card" id="d-pill">
+  <header><h2>Offline to synced pill</h2><button class="replay" type="button" data-replay="pill">Replay</button></header>
+  <div class="phone"><div class="stage">
+    <div class="ttl">Home</div>
+    <span class="pill" id="pill" data-s="offline" role="status"><i></i><span id="pillT">Offline, 2 waiting</span></span>
+    <div class="row">Albert Heijn<small>€42.80</small></div><div class="row">Lidl<small>€18.35</small></div>
+  </div></div>
+  <div class="spec"><span><b>colors</b> 240ms ease, ok state pops to 1.06 on spring</span><span>offline fires <b>warning</b>, synced fires <b>success</b></span></div>
+  <pre>SyncPill(state: sync.state)
+  .animation(Motion.ease, value: sync.state)
+  .scaleEffect(sync.state == .ok ? 1.06 : 1)
+  .animation(Motion.spring, value: sync.state)
+// onChange: Haptics.play(.success / .warning)</pre>
+  <div class="haptic">haptic: <span class="hflash" data-h></span></div>
+</article>
+
+<!-- 9 shake -->
+<article class="card" id="d-shake">
+  <header><h2>Wrong password shake</h2><button class="replay" type="button" data-replay="shake">Replay</button></header>
+  <div class="phone"><div class="stage">
+    <div class="ttl">Password</div>
+    <label for="pw" style="font-size:13px;color:var(--ink2)">Server password</label>
+    <input class="field" id="pw" type="password" value="hunter2" autocomplete="off">
+    <div class="msg" id="pwMsg" role="alert"></div>
+    <button class="btn blue" type="button" id="pwGo" style="margin-top:auto">Connect</button>
+  </div></div>
+  <div class="spec"><span><b>shake</b> 400ms linear, 8px decaying, once</span><span><b>tint</b> red field stays after (reduced motion keeps it)</span></div>
+  <pre>TextField(...).shake(attempts)
+  .modifier(Shake(trigger: attempts))
+// failure: attempts += 1; Haptics.play(.error)
+// reduced motion: keep tint + haptic, no shake</pre>
+  <div class="haptic">haptic on failure: <span class="hflash" data-h></span></div>
+</article>
+</section>
+
+<section aria-labelledby="ht" style="display:flex;flex-direction:column;gap:12px">
+  <h2 id="ht">Haptics map</h2>
+  <p class="lede">One haptic per user action. Never on scroll. Generators are created once and prepared before use.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Event</th><th>UIKit call</th><th>Fires on</th><th>Try</th></tr></thead>
+    <tbody>
+    <tr><td>selection</td><td><code>UISelectionFeedbackGenerator().selectionChanged()</code></td><td>Segmented controls, filter chips, category and shop picks, tab change, pickers, list reorder steps</td><td><button class="replay" data-fire="selection" type="button">selection</button></td></tr>
+    <tr><td>light</td><td><code>UIImpactFeedbackGenerator(style: .light).impactOccurred()</code></td><td>Tap on primary buttons, + button, opening a tray</td><td><button class="replay" data-fire="light" type="button">light</button></td></tr>
+    <tr><td>medium</td><td><code>UIImpactFeedbackGenerator(style: .medium).impactOccurred()</code></td><td>Confirm receipt, Link product, Save product</td><td><button class="replay" data-fire="medium" type="button">medium</button></td></tr>
+    <tr><td>soft</td><td><code>UIImpactFeedbackGenerator(style: .soft).impactOccurred()</code></td><td>Check off a list item, swipe row snaps</td><td><button class="replay" data-fire="soft" type="button">soft</button></td></tr>
+    <tr><td>success</td><td><code>UINotificationFeedbackGenerator().notificationOccurred(.success)</code></td><td>Receipt reaches ok, barcode known, sync finished, pairing succeeded</td><td><button class="replay" data-fire="success" type="button">success</button></td></tr>
+    <tr><td>warning</td><td><code>UINotificationFeedbackGenerator().notificationOccurred(.warning)</code></td><td>Total mismatch appears, duplicate receipt, offline, sync pill turns amber, scanned barcode is new</td><td><button class="replay" data-fire="warning" type="button">warning</button></td></tr>
+    <tr><td>error</td><td><code>UINotificationFeedbackGenerator().notificationOccurred(.error)</code></td><td>Wrong password, delete confirmed, upload failed</td><td><button class="replay" data-fire="error" type="button">error</button></td></tr>
+    </tbody></table></div>
+  <div class="haptic" aria-live="polite">last haptic: <span class="hflash" id="hGlobal"></span></div>
+</section>
+</main>
+
+<script>
+(function(){
+var RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var $=function(s,r){return (r||document).querySelector(s)};
+var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+var timers={};
+function later(key,fn,ms){ (timers[key]=timers[key]||[]).push(setTimeout(fn,ms)); }
+function clear(key){ (timers[key]||[]).forEach(clearTimeout); timers[key]=[]; }
+function haptic(card,name){
+  var f=$('[data-h]',card), g=$('#hGlobal');
+  [f,g].forEach(function(el){ if(!el) return; el.className='hflash on '+name; el.textContent=name;
+    clearTimeout(el._t); el._t=setTimeout(function(){el.className='hflash '+name;},650); });
+}
+$('#themeBtn').addEventListener('click',function(){
+  var r=document.documentElement,dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);
+  r.dataset.theme=dark?'light':'dark'; this.setAttribute('aria-pressed',String(!dark));
+});
+$$('[data-fire]').forEach(function(b){b.addEventListener('click',function(){haptic(document.body,b.dataset.fire)})});
+
+/* 1 tray */
+var tc=$('#d-tray');
+function trayOpen(){ $('#trayScrim').classList.add('on'); $('#trayEl').classList.add('on'); haptic(tc,'light'); }
+function trayClose(){ $('#trayScrim').classList.remove('on'); $('#trayEl').classList.remove('on'); }
+$('#trayOpen').onclick=trayOpen; $('#trayClose').onclick=trayClose; $('#trayScrim').onclick=trayClose;
+var R={};
+R.tray=function(){clear('tray');trayClose();later('tray',trayOpen,400);later('tray',trayClose,2400);};
+
+/* 2 morph */
+var mc=$('#d-morph'),step=0;
+function setStep(n){
+  step=n; $('#mA').classList.toggle('on',n===0); $('#mB').classList.toggle('on',n===1);
+  $('#morphEl').style.height=(n===0?128:230)+'px';
+}
+$('#mNext').onclick=function(){setStep(1);haptic(mc,'light')};
+$('#mBack').onclick=function(){setStep(0);haptic(mc,'selection')};
+$$('.chip',mc).forEach(function(c){c.addEventListener('click',function(){haptic(mc,'selection')})});
+R.morph=function(){clear('morph');setStep(0);later('morph',function(){setStep(1);haptic(mc,'light')},500);later('morph',function(){setStep(0)},2400);};
+
+/* 3 label */
+var lc=$('#d-label');
+function lmToggle(v){ var el=$('#lm'); var alt=v===undefined?!el.classList.contains('alt'):v; el.classList.toggle('alt',alt); if(v===undefined) haptic(lc,alt?'light':'selection'); else if(alt) haptic(lc,'light'); }
+$('#lmBtn').onclick=function(){lmToggle()};
+R.label=function(){clear('label');lmToggle(false);later('label',function(){lmToggle(true)},500);later('label',function(){lmToggle(false)},2200);};
+
+/* 4 number */
+var nc=$('#d-num'),total=4280,odo=$('#odo');
+var cols=[];
+(function build(){
+  odo.innerHTML='<span class="cur">€</span>';
+  var spec=['d','d','sep','d','d'];
+  spec.forEach(function(t){
+    if(t==='sep'){var s=document.createElement('span');s.className='sep';s.textContent='.';odo.appendChild(s);return;}
+    var c=document.createElement('span');c.className='col';var d=document.createElement('div');
+    for(var i=0;i<10;i++){var sp=document.createElement('span');sp.textContent=i;d.appendChild(sp);}
+    c.appendChild(d);odo.appendChild(c);cols.push(d);
+  });
+  setNum(total,true);
+})();
+function setNum(v,instant){
+  var s=('0000'+v).slice(-4).split('');
+  cols.forEach(function(d,i){
+    if(instant){d.style.transition='none';}
+    d.style.transform='translateY(-'+(s[i]*1.1)+'em)';
+    if(instant){void d.offsetWidth;d.style.transition='';}
+  });
+  odo.setAttribute('aria-label','Total €'+(v/100).toFixed(2));
+}
+$('#nUp').onclick=function(){total=Math.min(9999,total+1555);setNum(total);haptic(nc,'selection')};
+$('#nDown').onclick=function(){total=Math.max(0,total-520);setNum(total);haptic(nc,'selection')};
+$('#nBtn').onclick=function(){haptic(nc,'medium')};
+R.num=function(){clear('num');total=4280;setNum(total,true);later('num',function(){total=5835;setNum(total);haptic(nc,'selection')},500);later('num',function(){total=3760;setNum(total);haptic(nc,'selection')},1500);later('num',function(){total=4280;setNum(total)},2500);};
+
+/* 5 check */
+var cc=$('#d-check'),items=['Halfvolle melk','Eieren','Volkoren brood','Koffie'];
+function buildChecks(){
+  var l=$('#chkList');l.innerHTML='';
+  items.forEach(function(n){
+    var b=document.createElement('button');b.type='button';b.className='chk';b.setAttribute('aria-pressed','false');
+    b.innerHTML='<span class="dot"><svg viewBox="0 0 12 12"><path d="M2.5 6.5l2.2 2.2L9.5 3.5"/></svg></span><span class="t">'+n+'</span>';
+    b.style.height='48px';
+    b.onclick=function(){check(b)};l.appendChild(b);
+  });
+}
+function check(b){
+  if(b.classList.contains('done'))return;
+  b.classList.add('done');b.setAttribute('aria-pressed','true');haptic(cc,'soft');
+  setTimeout(function(){b.style.height='0px';b.classList.add('gone');},360);
+}
+buildChecks();
+R.check=function(){clear('check');buildChecks();later('check',function(){check($('.chk',cc))},500);later('check',function(){check($$('.chk',cc)[1])},1500);};
+
+/* 6 tabs */
+var tcard=$('#d-tabs'),cur=0;
+function goTab(n,quiet){
+  if(n===cur)return; var dir=n>cur?1:-1;
+  var pages=$$('.pg',tcard),from=pages[cur],to=pages[n],d=RM?0:12;
+  to.style.transition='none';to.style.transform='translateX('+(dir*d)+'px)';to.style.opacity='0';void to.offsetWidth;
+  to.style.transition='transform 200ms var(--ease),opacity 200ms var(--ease)';to.style.transform='none';to.style.opacity='1';to.classList.add('on');
+  from.style.transition='transform 200ms var(--ease),opacity 200ms var(--ease)';from.style.transform='translateX('+(-dir*d)+'px)';from.style.opacity='0';
+  setTimeout(function(){from.classList.remove('on');from.style.cssText='';to.style.cssText='';},220);
+  $$('.tabbar button',tcard).forEach(function(b,i){b.setAttribute('aria-selected',String(i===n));});
+  cur=n; if(!quiet)haptic(tcard,'selection');
+}
+$$('.tabbar button',tcard).forEach(function(b){b.onclick=function(){goTab(+b.dataset.t)}});
+R.tabs=function(){clear('tabs');goTab(0,true);later('tabs',function(){goTab(1)},500);later('tabs',function(){goTab(2)},1300);later('tabs',function(){goTab(0)},2100);};
+
+/* 7 press */
+var pc=$('#d-press');
+function prs(el,scale,h){
+  var down=function(){el.style.transform=RM?'':'scale('+scale+')';el.style.transition='transform 90ms ease-out';haptic(pc,h)};
+  var up=function(){el.style.transform='';el.style.transition='transform 420ms var(--spring)'};
+  el.addEventListener('pointerdown',down);['pointerup','pointerleave','pointercancel','blur'].forEach(function(e){el.addEventListener(e,up)});
+  el.addEventListener('keydown',function(e){if(e.key===' '||e.key==='Enter')down()});el.addEventListener('keyup',up);
+}
+prs($('#prBtn'),.97,'medium');prs($('#prChip'),.94,'selection');prs($('#prPlus'),.94,'light');
+R.press=function(){clear('press');var b=$('#prBtn');b.style.transform=RM?'':'scale(.97)';b.style.transition='transform 90ms ease-out';haptic(pc,'medium');later('press',function(){b.style.transform='';b.style.transition='transform 420ms var(--spring)'},450);};
+
+/* 8 pill */
+var pl=$('#d-pill');
+function pill(s,t,h){var p=$('#pill');p.dataset.s=s;$('#pillT').textContent=t;if(h)haptic(pl,h);}
+R.pill=function(){clear('pill');pill('offline','Offline, 2 waiting','warning');later('pill',function(){pill('syncing','Syncing 2 receipts')},900);later('pill',function(){pill('ok','Synced','success')},2000);};
+$('#pill').style.cursor='pointer';
+$('#pill').setAttribute('tabindex','0');
+$('#pill').addEventListener('click',function(){R.pill()});
+$('#pill').addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();R.pill()}});
+
+/* 9 shake */
+var sc=$('#d-shake');
+function wrong(){
+  var f=$('#pw');f.classList.remove('shake');void f.offsetWidth;
+  f.classList.add('err');if(!RM)f.classList.add('shake');
+  $('#pwMsg').textContent='Wrong password. Check it and try again.';haptic(sc,'error');
+}
+$('#pwGo').onclick=wrong;
+$('#pw').addEventListener('input',function(){this.classList.remove('err');$('#pwMsg').textContent=''});
+R.shake=function(){clear('shake');$('#pw').classList.remove('err','shake');$('#pwMsg').textContent='';later('shake',wrong,400);};
+
+$$('[data-replay]').forEach(function(b){b.addEventListener('click',function(){R[b.dataset.replay]()})});
+})();
+</script>
