@@ -89,40 +89,33 @@ struct ImportReceiptRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: Space.l) {
             PageStrip(pages: pages)
-                .overlay(alignment: .bottomLeading) {
-                    if let straighten, straighten != .notFound {
-                        Button(action: onToggleStraighten) {
-                            HStack(spacing: 3) {
-                                IconView(.scan, size: 9, weight: .bold)
-                                Text(straighten == .straightened ? "Straightened" : "Original").textStyle(.captionMedium)
-                            }
-                            .font(.system(size: 10))
-                            .foregroundStyle(straighten == .straightened ? Palette.ink : Palette.ink2)
-                            .padding(.horizontal, 6)
-                            .frame(height: 18)
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 1))
-                        }
-                        .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
-                        .offset(x: 2, y: 6)
-                        .accessibilityLabel(straighten == .straightened ? "Straightened, double tap to use the original" : "Original, double tap to straighten")
-                    }
-                }
             VStack(alignment: .leading, spacing: 6) {
                 Text(title).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
-                HStack(spacing: 6) {
-                    shopChip
-                    Button(action: onDetails) {
+                // Shop chip first and never truncated; if the date chip doesn't fit beside it,
+                // it wraps onto its own line instead of squeezing "Shop will find out".
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) {
+                        shopChip.fixedSize()
+                        dateChip
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        shopChip.fixedSize()
+                        dateChip
+                    }
+                }
+                if let straighten, straighten != .notFound {
+                    Button(action: onToggleStraighten) {
                         HStack(spacing: 4) {
-                            IconView(.calendar, size: 11, weight: .semibold)
-                            Text(dateText).textStyle(.caption).lineLimit(1)
+                            IconView(.scan, size: 10, weight: .bold)
+                            Text(straighten == .straightened ? "Straightened" : "Original").textStyle(.captionMedium)
                         }
-                        .foregroundStyle(Palette.ink2)
-                        .padding(.horizontal, 8)
-                        .frame(height: Size.chipSmall)
-                        .background(Palette.sunk, in: RoundedRectangle.continuous(Radius.s))
+                        .foregroundStyle(straighten == .straightened ? Palette.ink : Palette.ink2)
+                        .padding(.horizontal, 7)
+                        .frame(height: 20)
+                        .background(Palette.sunk, in: RoundedRectangle.continuous(6))
                     }
                     .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
+                    .accessibilityLabel(straighten == .straightened ? "Straightened, double tap to use the original" : "Original, double tap to straighten")
                 }
                 if let photoDateHint {
                     Text(photoDateHint).textStyle(.caption).foregroundStyle(Palette.ink3).lineLimit(1)
@@ -137,12 +130,27 @@ struct ImportReceiptRow: View {
                     }
                 }
             }
+            .layoutPriority(1)
             Spacer(minLength: Space.s)
             IconButton(icon: .close, label: "Remove \(title)", size: 30, glyph: 12, foreground: Palette.ink2, background: Palette.sunk, action: onRemove)
         }
         .padding(.vertical, Space.l)
         .hairline()
         .accessibilityElement(children: .contain)
+    }
+
+    private var dateChip: some View {
+        Button(action: onDetails) {
+            HStack(spacing: 4) {
+                IconView(.calendar, size: 11, weight: .semibold)
+                Text(dateText).textStyle(.caption).lineLimit(1)
+            }
+            .foregroundStyle(Palette.ink2)
+            .padding(.horizontal, 8)
+            .frame(height: Size.chipSmall)
+            .background(Palette.sunk, in: RoundedRectangle.continuous(Radius.s))
+        }
+        .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
     }
 
     private var shopChip: some View {
