@@ -45,7 +45,15 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	_, err = p.Up(ctx)
+	dropPooledConns(db)
 	return err
+}
+
+// dropPooledConns closes idle connections. A migration may edit the stored schema in place
+// (00012), which a connection that already parsed the old schema would not notice.
+func dropPooledConns(db *sql.DB) {
+	db.SetMaxIdleConns(0)
+	db.SetMaxIdleConns(2)
 }
 
 // MigrateTo applies migrations up to and including version (for tests).
@@ -55,6 +63,7 @@ func MigrateTo(ctx context.Context, db *sql.DB, version int64) error {
 		return err
 	}
 	_, err = p.UpTo(ctx, version)
+	dropPooledConns(db)
 	return err
 }
 

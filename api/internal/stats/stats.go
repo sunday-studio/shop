@@ -151,7 +151,7 @@ func (s *Service) Spend(ctx context.Context, q SpendQuery) (Spend, error) {
 	switch {
 	case q.GroupBy == ByShop:
 		for _, r := range rows {
-			g.add(strconv.FormatInt(r.ShopID, 10), r.ShopName, r.TotalCents, r.ID)
+			g.add(shopKey(r.ShopID), r.ShopName, r.TotalCents, r.ID)
 		}
 	case q.GroupBy == ByCategory:
 		for _, l := range lines {
@@ -192,7 +192,7 @@ func (s *Service) Spend(ctx context.Context, q SpendQuery) (Spend, error) {
 				p := s.period(t, q.GroupBy)
 				b := g.add(p.Key, p.Label, r.TotalCents, r.ID)
 				if q.SplitBy == ByShop {
-					g.addPart(b, strconv.FormatInt(r.ShopID, 10), r.ShopName, r.TotalCents)
+					g.addPart(b, shopKey(r.ShopID), r.ShopName, r.TotalCents)
 				}
 			}
 		}
@@ -697,4 +697,12 @@ func (s *Service) FrequentItems(ctx context.Context, lookbackDays, minCount int,
 		return overdue(out[i]) > overdue(out[j])
 	})
 	return out, nil
+}
+
+// shopKey is the bucket key of a receipt's shop; receipts without one share "none" ("Unassigned").
+func shopKey(id sql.NullInt64) string {
+	if !id.Valid {
+		return "none"
+	}
+	return strconv.FormatInt(id.Int64, 10)
 }

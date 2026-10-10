@@ -9,3 +9,8 @@ sql:
         out: internal/store/db
         emit_json_tags: true
         emit_empty_slices: true
+        # receipts.shop_id was made nullable by editing the stored schema (migration 00012), which
+        # sqlc cannot see in the migration files.
+        overrides:
+          - column: "receipts.shop_id"
+            go_type: { import: "database/sql", type: "NullInt64" }

@@ -1,6 +1,6 @@
 -- name: CreateReceipt :one
-INSERT INTO receipts (shop_id, purchased_at, date_locked, image_path, image_sha256, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
+INSERT INTO receipts (shop_id, purchased_at, photo_taken_at, date_locked, image_path, image_sha256, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
 RETURNING *;
 
 -- name: GetReceipt :one

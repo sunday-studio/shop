@@ -173,7 +173,9 @@ func (e *env) upload(shopID int64, img []byte, extra map[string]string) *httptes
 	e.t.Helper()
 	var body bytes.Buffer
 	mw := multipart.NewWriter(&body)
-	_ = mw.WriteField("shop_id", fmt.Sprint(shopID))
+	if shopID != 0 { // 0 = no shop: an unassigned upload
+		_ = mw.WriteField("shop_id", fmt.Sprint(shopID))
+	}
 	for k, v := range extra {
 		_ = mw.WriteField(k, v)
 	}

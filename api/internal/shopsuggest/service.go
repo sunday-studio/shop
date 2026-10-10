@@ -83,7 +83,7 @@ func (s *Service) Suggest(ctx context.Context, receiptID int64) (*Suggestion, er
 	sug := &Suggestion{Kind: "new", Name: d.Chain, Chain: d.Chain, Branch: d.Branch, Conf: d.Conf, Evidence: d.Evidence,
 		Domain: logos.GuessDomain(d.Chain, d.Chain)}
 	if sh := findShop(shops, d); sh != nil {
-		if sh.ID == rec.ShopID {
+		if rec.ShopID.Valid && sh.ID == rec.ShopID.Int64 {
 			return nil, nil // already on the right shop
 		}
 		sug.Kind, sug.ShopID, sug.Name = "existing", &sh.ID, sh.Name
@@ -94,7 +94,7 @@ func (s *Service) Suggest(ctx context.Context, receiptID int64) (*Suggestion, er
 		return nil, err
 	}
 	for _, o := range all {
-		if o.ID == rec.ID || o.ConfirmedAt.Valid || (sug.ShopID != nil && o.ShopID == *sug.ShopID) {
+		if o.ID == rec.ID || o.ConfirmedAt.Valid || (sug.ShopID != nil && o.ShopID.Valid && o.ShopID.Int64 == *sug.ShopID) {
 			continue
 		}
 		if SameBranch(d, detectFromJSON(o.RawOcrJson)) {
@@ -209,7 +209,7 @@ func (s *Service) Accept(ctx context.Context, receiptID int64, shopID *int64, na
 			return db.Shop{}, nil, err
 		}
 		for _, o := range all {
-			if o.ID != rec.ID && !o.ConfirmedAt.Valid && o.ShopID != shop.ID && SameBranch(d, detectFromJSON(o.RawOcrJson)) {
+			if o.ID != rec.ID && !o.ConfirmedAt.Valid && (!o.ShopID.Valid || o.ShopID.Int64 != shop.ID) && SameBranch(d, detectFromJSON(o.RawOcrJson)) {
 				ids = append(ids, o.ID)
 			}
 		}
@@ -217,7 +217,7 @@ func (s *Service) Accept(ctx context.Context, receiptID int64, shopID *int64, na
 	now := store.Now()
 	var moved []int64
 	for _, id := range ids {
-		if n, err := s.q.SetReceiptShop(ctx, db.SetReceiptShopParams{ShopID: shop.ID, UpdatedAt: now, ID: id}); err != nil {
+		if n, err := s.q.SetReceiptShop(ctx, db.SetReceiptShopParams{ShopID: sql.NullInt64{Int64: shop.ID, Valid: true}, UpdatedAt: now, ID: id}); err != nil {
 			return db.Shop{}, nil, err
 		} else if n > 0 {
 			moved = append(moved, id)

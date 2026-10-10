@@ -94,7 +94,7 @@ type ProductAlias struct {
 
 type Receipt struct {
 	ID             int64          `json:"id"`
-	ShopID         int64          `json:"shop_id"`
+	ShopID         sql.NullInt64  `json:"shop_id"`
 	PurchasedAt    sql.NullString `json:"purchased_at"`
 	TotalCents     sql.NullInt64  `json:"total_cents"`
 	ParsedSumCents sql.NullInt64  `json:"parsed_sum_cents"`
@@ -113,6 +113,7 @@ type Receipt struct {
 	UpdatedAt      string         `json:"updated_at"`
 	DateLocked     int64          `json:"date_locked"`
 	HeaderEdited   int64          `json:"header_edited"`
+	PhotoTakenAt   sql.NullString `json:"photo_taken_at"`
 }
 
 type ReceiptLine struct {

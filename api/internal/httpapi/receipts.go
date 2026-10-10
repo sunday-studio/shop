@@ -24,7 +24,7 @@ func toReceipt(r db.Receipt, lines []db.ReceiptLine) apitypes.Receipt {
 		_ = json.Unmarshal([]byte(r.ReviewReasons.String), &reasons)
 	}
 	out := apitypes.Receipt{
-		Id: r.ID, ShopId: r.ShopID, PurchasedAt: store.TimePtr(r.PurchasedAt),
+		Id: r.ID, ShopId: store.IntPtr(r.ShopID), PhotoTakenAt: store.TimePtr(r.PhotoTakenAt), PurchasedAt: store.TimePtr(r.PurchasedAt),
 		TotalCents: store.IntPtr(r.TotalCents), ParsedSumCents: store.IntPtr(r.ParsedSumCents),
 		PaymentMethod: store.StrPtr(r.PaymentMethod), Status: apitypes.ReceiptStatus(r.Status),
 		ReviewReasons: reasons, OcrEngine: store.StrPtr(r.OcrEngine), OcrMs: store.IntPtr(r.OcrMs),
@@ -186,10 +186,23 @@ func (s *Server) uploadReceipt(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, badf("invalid multipart form: %v", err))
 		return
 	}
-	shopID, err := strconv.ParseInt(r.FormValue("shop_id"), 10, 64)
-	if err != nil {
-		s.writeErr(w, r, badf("shop_id is required"))
-		return
+	var shopID *int64
+	if v := r.FormValue("shop_id"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			s.writeErr(w, r, badf("shop_id must be an integer"))
+			return
+		}
+		shopID = &n
+	}
+	var photoTaken *time.Time
+	if v := r.FormValue("photo_taken_at"); v != "" {
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			s.writeErr(w, r, badf("photo_taken_at must be RFC3339"))
+			return
+		}
+		photoTaken = &t
 	}
 	var purchased *time.Time
 	if v := r.FormValue("purchased_at"); v != "" {
@@ -216,7 +229,7 @@ func (s *Server) uploadReceipt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rec, err := s.Receipts.Ingest(r.Context(), shopID, purchased, img)
+	rec, err := s.Receipts.Ingest(r.Context(), shopID, purchased, photoTaken, img)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -252,7 +265,7 @@ func (s *Server) getReceipt(w http.ResponseWriter, r *http.Request) {
 			if l.Kind != apitypes.Item || l.ProductId != nil {
 				continue
 			}
-			cands, err := s.Products.Suggest(r.Context(), rec.ShopID, l.RawText)
+			cands, err := s.Products.Suggest(r.Context(), rec.ShopID.Int64, l.RawText)
 			if err != nil {
 				s.writeErr(w, r, err)
 				return
