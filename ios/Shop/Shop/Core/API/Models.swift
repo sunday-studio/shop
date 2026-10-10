@@ -216,6 +216,8 @@ nonisolated struct Receipt: Codable, Sendable, Hashable, Identifiable {
     var lineCount: Int?
     /// Backend need #1.
     var unlinkedCount: Int?
+    /// Confirm only, and only with AUTO_PRODUCTS on: what auto-population did for this receipt.
+    var autoProducts: AutoProductsSummary?
     /// Single-receipt GET only: the shop this receipt header looks like (openapi 0.10.0).
     var shopSuggestion: ShopSuggestion?
     /// Hint from the photo's EXIF; never the purchase date unless the user picks it.
@@ -280,6 +282,16 @@ nonisolated struct Product: Codable, Sendable, Hashable, Identifiable {
     var purchases: Int?
     var createdAt: Date
     var updatedAt: Date
+    // Auto-population (openapi 0.12.0)
+    /// manual | receipt | backfill | barcode
+    var createdVia: String?
+    var needsReview: Bool?
+    var reviewReason: String?
+    var suggestedMerge: SuggestedMerge?
+    /// rule | off | manual
+    var categorySource: String?
+    /// Path of /v1/products/{id}/image when the product has a photo.
+    var imageUrl: String?
 
     var sizeText: String? { Quantity.netSize(netQuantity, unit: netUnit) }
 
@@ -562,4 +574,108 @@ nonisolated struct AcceptShopSuggestionBody: Codable, Sendable {
 nonisolated struct AcceptedShopSuggestion: Codable, Sendable {
     var shop: Shop
     var linkedReceiptIds: [Int64]
+}
+
+
+// MARK: - Product auto-population (openapi 0.12.0)
+
+nonisolated struct AutoProductsSummary: Codable, Sendable, Hashable {
+    var linked: Int
+    var created: Int
+    var needsReview: Int
+    var error: String?
+}
+
+nonisolated struct SuggestedMerge: Codable, Sendable, Hashable {
+    var productId: Int64
+    var name: String
+    var nameEn: String?
+    var brand: String?
+    var score: Double
+}
+
+nonisolated struct BarcodeCreateResponse: Codable, Sendable {
+    /// known | created | created_minimal
+    var status: String
+    var createdNow: Bool
+    /// found | not_found | unavailable; absent when the product was already known.
+    var offStatus: String?
+    var product: Product
+    var mergeSuggestion: SuggestedMerge?
+    var unmatchedLines: [UnmatchedLine]
+}
+
+nonisolated struct ReviewSourceLine: Codable, Sendable, Hashable {
+    var lineId: Int64
+    var receiptId: Int64
+    var rawText: String
+    var shopName: String?
+    var purchasedAt: Date?
+    var lineTotalCents: Int64
+}
+
+nonisolated struct ReviewItem: Codable, Sendable, Hashable, Identifiable {
+    var product: Product
+    var reason: String
+    var suggestedMerge: SuggestedMerge?
+    var sourceLineCount: Int
+    var sourceLines: [ReviewSourceLine]
+
+    var id: Int64 { product.id }
+    var kind: ReviewReasonKind? { ReviewReasonKind(rawValue: reason) }
+}
+
+nonisolated struct ReviewQueueResponse: Codable, Sendable {
+    var total: Int
+    var counts: [String: Int]
+    var items: [ReviewItem]
+}
+
+nonisolated struct ReviewBody: Codable, Sendable {
+    /// accept | merge | keep_separate | discard
+    var action: String
+    var categoryId: Int64?
+    var name: String?
+    var intoProductId: Int64?
+}
+
+nonisolated struct MergedAway: Codable, Sendable, Hashable {
+    var id: Int64
+    var name: String
+}
+
+/// Answer of a review action or a plain merge. Which fields are set depends on the action.
+nonisolated struct ReviewResult: Codable, Sendable {
+    var product: Product
+    var mergeId: Int64?
+    var discardId: Int64?
+    var kind: String?
+    var mergedAway: MergedAway?
+    var linesMoved: Int?
+    var aliasesMoved: Int?
+    var linesUnlinked: Int?
+
+    /// Id to pass to `product-merges/{id}/undo`.
+    var undoId: Int64? { mergeId ?? discardId }
+}
+
+nonisolated struct UndoResult: Codable, Sendable {
+    /// merge | discard | split
+    var kind: String
+    var product: Product
+    var into: Product?
+    var linesRestored: Int
+    var linesSkipped: Int
+}
+
+nonisolated struct SplitResult: Codable, Sendable {
+    var mergeId: Int64
+    var kind: String
+    var product: Product
+    var linesMoved: Int
+}
+
+nonisolated struct ProductRefreshResult: Codable, Sendable {
+    var product: Product
+    var offStatus: String?
 }

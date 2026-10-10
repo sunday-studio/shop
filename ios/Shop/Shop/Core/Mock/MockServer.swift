@@ -163,7 +163,12 @@ final class MockServer: HTTPTransport {
             guard let i = receipts.firstIndex(where: { $0.id == id(2) }) else { return notFound() }
             receipts[i].status = .ok
             receipts[i].confirmedAt = .now
-            return ok(receipts[i])
+            var confirmed = receipts[i]
+            // Simulator aid: pretend AUTO_PRODUCTS is on so the confirm toast can be tried.
+            if ProcessInfo.processInfo.arguments.contains("-mock-auto") {
+                confirmed.autoProducts = AutoProductsSummary(linked: 2, created: 3, needsReview: 2, error: nil)
+            }
+            return ok(confirmed)
         case ("POST", "v1/receipts/:id/reparse"), ("POST", "v1/receipts/:id/reocr"):
             guard let i = receipts.firstIndex(where: { $0.id == id(2) }) else { return notFound() }
             if receipts[i].confirmedAt != nil && q["force"] != "true" {
@@ -296,6 +301,29 @@ final class MockServer: HTTPTransport {
                 }
             }
             return ok(out)
+        // Product auto-population
+        case ("GET", "v1/products/review-queue"):
+            return reviewQueueResponse(q)
+        case ("POST", "v1/products/:id/review"):
+            return review(id(2), body)
+        case ("POST", "v1/products/:id/merge"):
+            return mergePlain(id(2), body)
+        case ("POST", "v1/product-merges/:id/undo"):
+            return undo(id(2))
+        case ("POST", "v1/products/:id/refresh"):
+            guard let i = products.firstIndex(where: { $0.id == id(2) }) else { return notFound() }
+            if products[i].barcode == nil { return problem(422, "No barcode", "Only barcode products can be refreshed.") }
+            products[i].name = "Chocomel Vol 1 l"
+            products[i].needsReview = false
+            products[i].reviewReason = nil
+            return ok(ProductRefreshResult(product: products[i], offStatus: "found"))
+        case ("POST", "v1/lines/:id/split-product"):
+            let new = MockData.product(newId(), "AH GRIEKS YOGH", en: "Greek yoghurt", cat: 1, size: nil, unit: nil)
+            products.append(new)
+            let mid = newId()
+            return ok(SplitResult(mergeId: mid, kind: "split", product: new, linesMoved: 2), status: 201)
+        case ("POST", "v1/barcodes/:id/product"):
+            return createBarcodeProduct(p[2])
         case ("GET", "v1/barcodes/:id"):
             let code = p[2]
             if let pr = products.first(where: { $0.barcode == code }) {
@@ -550,6 +578,164 @@ final class MockServer: HTTPTransport {
     }
 
     private func shopName(_ id: Int64?) -> String { id == nil ? "Unassigned" : (shops.first { $0.id == id }?.name ?? "Shop") }
+
+    // MARK: Product auto-population state
+
+    private var reviewItems: [ReviewItem]?
+    private struct UndoRecord { var kind: String; var removed: Product; var survivor: Product?; var item: ReviewItem? }
+    private var undoRecords: [Int64: UndoRecord] = [:]
+
+    private func reviewProduct(_ id: Int64, _ name: String, cat: Int64?, barcode: String? = nil, via: String, reason: String) -> Product {
+        var pr = MockData.product(id, name, en: name, cat: cat ?? 0, size: nil, unit: nil, barcode: barcode)
+        pr.categoryId = cat
+        pr.nameEn = nil
+        pr.createdVia = via
+        pr.needsReview = true
+        pr.reviewReason = reason
+        pr.createdAt = .now.addingTimeInterval(-3600)
+        return pr
+    }
+
+    private func seedReviewItems() -> [ReviewItem] {
+        func line(_ id: Int64, _ raw: String, _ shop: String, cents: Int64) -> ReviewSourceLine {
+            ReviewSourceLine(lineId: id, receiptId: 104, rawText: raw, shopName: shop, purchasedAt: .now.addingTimeInterval(-86400 * 3), lineTotalCents: cents)
+        }
+        let melk = SuggestedMerge(productId: 1, name: "Halfvolle melk", nameEn: nil, brand: nil, score: 0.88)
+        let yog = SuggestedMerge(productId: 2, name: "Griekse yoghurt 0%", nameEn: nil, brand: nil, score: 0.82)
+        return [
+            ReviewItem(product: reviewProduct(201, "Arla bio halfvolle melk", cat: 1, via: "receipt", reason: "near_match"), reason: "near_match", suggestedMerge: melk,
+                       sourceLineCount: 3, sourceLines: [line(901, "ARLA BIO HALFV. MELK", "Albert Heijn", cents: 189)]),
+            ReviewItem(product: reviewProduct(202, "Griekse yoghurt", cat: 1, barcode: "8718452390010", via: "barcode", reason: "barcode_name_match"), reason: "barcode_name_match", suggestedMerge: yog,
+                       sourceLineCount: 1, sourceLines: [line(902, "AH GRIEKS YOGH", "Albert Heijn", cents: 219)]),
+            ReviewItem(product: reviewProduct(203, "ST#TIEG&LD", cat: nil, via: "receipt", reason: "odd_name"), reason: "odd_name", suggestedMerge: nil,
+                       sourceLineCount: 1, sourceLines: [line(903, "ST#TIEG&LD", "Lidl", cents: 25)]),
+            ReviewItem(product: reviewProduct(204, "Hummus naturel", cat: nil, via: "receipt", reason: "no_category"), reason: "no_category", suggestedMerge: nil,
+                       sourceLineCount: 1, sourceLines: [line(904, "HUMMUS NATUREL", "Lidl", cents: 149)]),
+            ReviewItem(product: reviewProduct(205, "Unknown product 2345", cat: nil, barcode: "8710400012345", via: "barcode", reason: "barcode_minimal"), reason: "barcode_minimal", suggestedMerge: nil,
+                       sourceLineCount: 0, sourceLines: []),
+            ReviewItem(product: reviewProduct(206, "Unknown product 9876", cat: nil, barcode: "8710400019876", via: "barcode", reason: "barcode_off_unavailable"), reason: "barcode_off_unavailable", suggestedMerge: nil,
+                       sourceLineCount: 0, sourceLines: []),
+        ]
+    }
+
+    private func queue() -> [ReviewItem] {
+        if reviewItems == nil {
+            if ProcessInfo.processInfo.arguments.contains("-mock-empty-queue") { reviewItems = [] } else { reviewItems = seedReviewItems() }
+        }
+        return reviewItems ?? []
+    }
+
+    private func reviewQueueResponse(_ q: [String: String]) -> (Int, Data) {
+        var items = queue()
+        var counts: [String: Int] = [:]
+        for r in ["near_match", "barcode_name_match", "odd_name", "no_category", "barcode_minimal", "barcode_off_unavailable"] { counts[r] = items.filter { $0.reason == r }.count }
+        let total = items.count
+        if let reason = q["reason"], !reason.isEmpty { items = items.filter { $0.reason == reason } }
+        let limit = Int(q["limit"] ?? "") ?? 50
+        let offset = Int(q["offset"] ?? "") ?? 0
+        let page = limit == 0 ? [] : Array(items.dropFirst(offset).prefix(limit))
+        return ok(ReviewQueueResponse(total: total, counts: counts, items: page))
+    }
+
+    private func review(_ pid: Int64?, _ body: Data) -> (Int, Data) {
+        guard let pid, let req = try? decoder.decode(ReviewBody.self, from: body) else { return bad() }
+        var items = queue()
+        guard let i = items.firstIndex(where: { $0.id == pid }) else { return problem(409, "Not in the queue", "This product was already handled.") }
+        let item = items[i]
+        var product = item.product
+        switch req.action {
+        case "accept", "keep_separate":
+            if let name = req.name { product.name = name }
+            if let c = req.categoryId { product.categoryId = c; product.categorySource = "manual" }
+            product.needsReview = false; product.reviewReason = nil
+            items.remove(at: i); reviewItems = items
+            return ok(ReviewResult(product: product))
+        case "merge":
+            guard let target = req.intoProductId ?? item.suggestedMerge?.productId else { return bad() }
+            let targetProduct = products.first { $0.id == target } ?? product
+            // near_match: the card disappears into the suggestion. barcode_name_match: the card survives.
+            let survivor = item.reason == "barcode_name_match" ? product : targetProduct
+            let away = item.reason == "barcode_name_match" ? targetProduct : product
+            let mid = newId()
+            undoRecords[mid] = UndoRecord(kind: "merge", removed: away, survivor: survivor, item: item)
+            items.remove(at: i); reviewItems = items
+            return ok(ReviewResult(product: survivor, mergeId: mid, kind: "merge", mergedAway: MergedAway(id: away.id, name: away.name), linesMoved: 3, aliasesMoved: 1))
+        case "discard":
+            if product.createdVia == "manual" { return problem(422, "Can't discard", "Manual products can't be discarded.") }
+            let did = newId()
+            undoRecords[did] = UndoRecord(kind: "discard", removed: product, survivor: nil, item: item)
+            items.remove(at: i); reviewItems = items
+            return ok(ReviewResult(product: product, discardId: did, kind: "discard", linesUnlinked: item.sourceLineCount))
+        default:
+            return bad()
+        }
+    }
+
+    private func mergePlain(_ pid: Int64?, _ body: Data) -> (Int, Data) {
+        guard let pid, let into = (try? decoder.decode(MergeIntoBody.self, from: body))?.intoProductId, pid != into else { return problem(422, "Invalid merge", nil) }
+        let away = products.first { $0.id == pid } ?? MockData.product(pid, "Merged product", en: "Merged product", cat: 1, size: nil, unit: nil)
+        let survivor = products.first { $0.id == into } ?? away
+        let mid = newId()
+        undoRecords[mid] = UndoRecord(kind: "merge", removed: away, survivor: survivor, item: nil)
+        return ok(ReviewResult(product: survivor, mergeId: mid, kind: "merge", mergedAway: MergedAway(id: away.id, name: away.name), linesMoved: 1, aliasesMoved: 0))
+    }
+
+    private struct MergeIntoBody: Codable { var intoProductId: Int64 }
+
+    private func undo(_ mid: Int64?) -> (Int, Data) {
+        guard let mid, let record = undoRecords.removeValue(forKey: mid) else { return problem(409, "Can't undo", "Already undone or too old.") }
+        if let item = record.item, var items = reviewItems {
+            var restored = item
+            restored.product.needsReview = true
+            items.insert(restored, at: min(items.count, 0))
+            reviewItems = items
+            // keep the original reason order: near_match first
+            reviewItems = items.sorted { Self.reasonRank($0.reason) < Self.reasonRank($1.reason) }
+        }
+        var restoredProduct = record.item?.product ?? record.removed
+        restoredProduct.needsReview = record.item != nil
+        return ok(UndoResult(kind: record.kind, product: restoredProduct, into: record.survivor, linesRestored: 3, linesSkipped: 0))
+    }
+
+    private static func reasonRank(_ r: String) -> Int {
+        ["near_match", "barcode_name_match", "odd_name", "no_category", "barcode_minimal", "barcode_off_unavailable"].firstIndex(of: r) ?? 99
+    }
+
+    /// Codes: a known barcode → 200; 87… → OFF data; 40… → not on OFF; 99… → OFF down;
+    /// …0010 also suggests a merge with "Griekse yoghurt 0%"; short codes → 400.
+    private func createBarcodeProduct(_ code: String) -> (Int, Data) {
+        guard code.count >= 8, code.allSatisfy(\.isNumber) else { return problem(400, "Not a valid barcode", nil) }
+        if let known = products.first(where: { $0.barcode == code }) {
+            return ok(BarcodeCreateResponse(status: "known", createdNow: false, offStatus: nil, product: known, mergeSuggestion: nil, unmatchedLines: []))
+        }
+        let id = newId()
+        var product: Product
+        let status: String
+        let off: String
+        var merge: SuggestedMerge?
+        if code.hasPrefix("99") {
+            product = reviewProduct(id, "Unknown product \(code.suffix(4))", cat: nil, barcode: code, via: "barcode", reason: "barcode_off_unavailable")
+            status = "created_minimal"; off = "unavailable"
+        } else if code.hasPrefix("40") || !code.hasPrefix("87") {
+            product = reviewProduct(id, "Unknown product \(code.suffix(4))", cat: nil, barcode: code, via: "barcode", reason: "barcode_minimal")
+            status = "created_minimal"; off = "not_found"
+        } else {
+            product = reviewProduct(id, "AH Volle yoghurt", cat: 1, barcode: code, via: "barcode", reason: "barcode_name_match")
+            product.needsReview = false; product.reviewReason = nil
+            status = "created"; off = "found"
+            if code.hasSuffix("0010") {
+                merge = SuggestedMerge(productId: 2, name: "Griekse yoghurt 0%", nameEn: nil, brand: nil, score: 0.84)
+                product.needsReview = true; product.reviewReason = "barcode_name_match"; product.suggestedMerge = merge
+            }
+        }
+        products.append(product)
+        if product.needsReview == true, var items = reviewItems ?? Optional(queue()) {
+            items.append(ReviewItem(product: product, reason: product.reviewReason ?? "", suggestedMerge: merge, sourceLineCount: 0, sourceLines: []))
+            reviewItems = items.sorted { Self.reasonRank($0.reason) < Self.reasonRank($1.reason) }
+        }
+        let lines: [UnmatchedLine] = status == "created" ? [UnmatchedLine(line: MockData.line(950 + id, receipt: 104, 1, "AH VOLLE YOGH", total: 119), shopId: 1, shopName: "Albert Heijn", purchasedAt: .now.addingTimeInterval(-86400 * 2), score: 0.8)] : []
+        return ok(BarcodeCreateResponse(status: status, createdNow: true, offStatus: off, product: product, mergeSuggestion: merge, unmatchedLines: lines), status: 201)
+    }
 
     private var acceptedSuggestions: Set<Int64> = []
 
