@@ -19,7 +19,11 @@ server:
   migrate                       apply database migrations and exit
 
 admin (run where the database lives, e.g. docker compose exec api shop ...):
-  token create <name>           create an API token (printed once)
+  password generate             create a random pairing password (printed once) for the app
+  password set                  choose the pairing password (prompted, or one line on stdin)
+  password status               is pairing set up; paired devices
+                                (add -revoke-devices to generate/set to unpair every device)
+  token create <name>           create an API token (printed once), e.g. for the assistant
   token list                    list tokens
   token revoke <name>           delete a token
   reparse [-status S]           re-parse unedited receipts from stored OCR output
@@ -52,6 +56,8 @@ func main() {
 		err = serve(ctx, log)
 	case "migrate":
 		err = migrate(ctx, log)
+	case "password":
+		err = passwordCmd(ctx, args)
 	case "token":
 		err = tokenCmd(ctx, args)
 	case "reparse":

@@ -14,6 +14,7 @@ type ApiToken struct {
 	TokenHash  string         `json:"token_hash"`
 	CreatedAt  string         `json:"created_at"`
 	LastUsedAt sql.NullString `json:"last_used_at"`
+	Kind       string         `json:"kind"`
 }
 
 type Category struct {
@@ -127,6 +128,12 @@ type SearchFt struct {
 	RefID  string `json:"ref_id"`
 	ShopID string `json:"shop_id"`
 	Text   string `json:"text"`
+}
+
+type Setting struct {
+	Key       string `json:"key"`
+	Value     string `json:"value"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 type Shop struct {

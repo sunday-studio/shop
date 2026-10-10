@@ -31,10 +31,11 @@ func generate() string {
 	return prefix + strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b))
 }
 
-// Create stores a new named token and returns the plain token.
+// Create stores a new named token (for the assistant or scripts) and
+// returns the plain token.
 func Create(ctx context.Context, q *db.Queries, name string) (string, error) {
 	tok := generate()
-	_, err := q.CreateToken(ctx, db.CreateTokenParams{Name: name, TokenHash: Hash(tok), CreatedAt: store.Now()})
+	_, err := q.CreateToken(ctx, db.CreateTokenParams{Name: name, TokenHash: Hash(tok), Kind: "manual", CreatedAt: store.Now()})
 	return tok, err
 }
 

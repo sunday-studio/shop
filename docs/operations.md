@@ -13,12 +13,32 @@ Everything runs in Docker from `deploy/docker-compose.yml`:
 ```bash
 git clone <repo> shop && cd shop
 export SHOP_BACKUP_DIR=/Volumes/nas/shop   # see "NAS" below
-make up
-make token NAME=phone       # one token per client; printed once
-make token NAME=assistant
+make setup                  # starts the stack and prints the app pairing password once
+make token NAME=assistant   # token for your AI assistant (MCP), printed once
 ```
 
 Check it: `curl localhost:8080/healthz`. Every check should be `ok`.
+
+## Pairing the app
+
+In the app, enter the **server URL** (e.g. `http://mini.<tailnet>.ts.net:8080`) and the **pairing password**:
+
+1. The app calls `GET /v1/auth/status` to check the URL really is a Shop server.
+2. It sends the password and the phone's name to `POST /v1/auth/pair`.
+3. It gets back its own device token and stores it in the Keychain. The password is not kept.
+
+Each phone gets its own token. Unpair one from the app (Settings → Devices) or with the API (`DELETE /v1/auth/devices/{id}`).
+
+```bash
+docker compose -f deploy/docker-compose.yml exec api shop password status                        # set? which devices?
+docker compose -f deploy/docker-compose.yml exec api shop password generate                      # new random password
+docker compose -f deploy/docker-compose.yml exec -it api shop password set                       # choose your own (≥10 chars)
+docker compose -f deploy/docker-compose.yml exec api shop password generate -revoke-devices      # new password + unpair all phones
+```
+
+Changing the password does not unpair existing devices unless you add `-revoke-devices`.
+
+Guessing is rate-limited: 5 wrong passwords from one address lock it out for 15 minutes, and 30 failures in an hour pause pairing for everyone. Over Tailscale the password travels encrypted. On a plain LAN it's plain HTTP, so pair at home, or use `tailscale serve` for HTTPS.
 
 ## Configuration
 
@@ -80,7 +100,7 @@ On start, the API applies any new database migrations. If there are migrations t
 - `GET /healthz` (no auth) reports `db`, `ocr`, `jobs` (pending/failed), `storage` (DB size) and `backup`.
 - `GET /version` (no auth) reports the build and schema version.
 
-## Tokens
+## Tokens (assistant, scripts)
 
 ```bash
 docker compose -f deploy/docker-compose.yml exec api shop token list

@@ -8,7 +8,8 @@ Self-hosted grocery receipt tracker. You photograph **paper receipts (NL/EN)**, 
 
 | Area | Decision |
 |---|---|
-| Users | One user per install. Bearer tokens per client (phone, assistant). No accounts. |
+| Users | One user per install. No accounts. |
+| Auth | A **pairing password** is created at setup (`make setup`). The app sends URL + password once (`POST /v1/auth/pair`) and gets its own device token (revocable). The assistant uses a CLI-created token. Pairing attempts are rate-limited. |
 | Input | Paper receipts only, captured with the iOS document scanner. |
 | Models | **OCR only**, using small weights. No LLMs for structuring, categorising, or suggestions. |
 | Parsing | Deterministic Go: row reconstruction from boxes, regex classification, and arithmetic validation. |

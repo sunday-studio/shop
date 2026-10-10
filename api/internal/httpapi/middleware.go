@@ -60,10 +60,10 @@ func (s *Server) recoverer(next http.Handler) http.Handler {
 
 type tokenKey struct{}
 
-// TokenName returns the name of the API token that authenticated the request.
-func TokenName(ctx context.Context) string {
-	name, _ := ctx.Value(tokenKey{}).(string)
-	return name
+// currentToken returns the API token that authenticated the request.
+func currentToken(ctx context.Context) (db.ApiToken, bool) {
+	t, ok := ctx.Value(tokenKey{}).(db.ApiToken)
+	return t, ok
 }
 
 func (s *Server) requireToken(next http.Handler) http.Handler {
@@ -84,6 +84,6 @@ func (s *Server) requireToken(next http.Handler) http.Handler {
 		if last, err := store.ParseTS(tok.LastUsedAt.String); !tok.LastUsedAt.Valid || err != nil || time.Since(last) > time.Minute {
 			_ = s.q.TouchToken(r.Context(), db.TouchTokenParams{LastUsedAt: store.Str(store.Now()), ID: tok.ID})
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), tokenKey{}, tok.Name)))
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), tokenKey{}, tok)))
 	})
 }
