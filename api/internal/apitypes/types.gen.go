@@ -9,6 +9,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for BarcodeLookupSource.
+const (
+	BarcodeLookupSourceLocal         BarcodeLookupSource = "local"
+	BarcodeLookupSourceOpenfoodfacts BarcodeLookupSource = "openfoodfacts"
+)
+
+// Valid indicates whether the value is a known member of the BarcodeLookupSource enum.
+func (e BarcodeLookupSource) Valid() bool {
+	switch e {
+	case BarcodeLookupSourceLocal:
+		return true
+	case BarcodeLookupSourceOpenfoodfacts:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatus.
 const (
 	HealthStatusDegraded HealthStatus = "degraded"
@@ -56,19 +74,115 @@ func (e LineKind) Valid() bool {
 
 // Defines values for LineUnit.
 const (
-	Kg LineUnit = "kg"
-	L  LineUnit = "l"
-	Pc LineUnit = "pc"
+	LineUnitKg LineUnit = "kg"
+	LineUnitL  LineUnit = "l"
+	LineUnitPc LineUnit = "pc"
 )
 
 // Valid indicates whether the value is a known member of the LineUnit enum.
 func (e LineUnit) Valid() bool {
 	switch e {
-	case Kg:
+	case LineUnitKg:
 		return true
-	case L:
+	case LineUnitL:
 		return true
-	case Pc:
+	case LineUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NutritionPer.
+const (
+	N100g  NutritionPer = "100g"
+	N100ml NutritionPer = "100ml"
+)
+
+// Valid indicates whether the value is a known member of the NutritionPer enum.
+func (e NutritionPer) Valid() bool {
+	switch e {
+	case N100g:
+		return true
+	case N100ml:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NutritionSource.
+const (
+	NutritionSourceManual        NutritionSource = "manual"
+	NutritionSourceOpenfoodfacts NutritionSource = "openfoodfacts"
+)
+
+// Valid indicates whether the value is a known member of the NutritionSource enum.
+func (e NutritionSource) Valid() bool {
+	switch e {
+	case NutritionSourceManual:
+		return true
+	case NutritionSourceOpenfoodfacts:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OpenFoodFactsPrefillNetUnit.
+const (
+	OpenFoodFactsPrefillNetUnitG  OpenFoodFactsPrefillNetUnit = "g"
+	OpenFoodFactsPrefillNetUnitMl OpenFoodFactsPrefillNetUnit = "ml"
+)
+
+// Valid indicates whether the value is a known member of the OpenFoodFactsPrefillNetUnit enum.
+func (e OpenFoodFactsPrefillNetUnit) Valid() bool {
+	switch e {
+	case OpenFoodFactsPrefillNetUnitG:
+		return true
+	case OpenFoodFactsPrefillNetUnitMl:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductNetUnit.
+const (
+	ProductNetUnitG  ProductNetUnit = "g"
+	ProductNetUnitMl ProductNetUnit = "ml"
+	ProductNetUnitPc ProductNetUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the ProductNetUnit enum.
+func (e ProductNetUnit) Valid() bool {
+	switch e {
+	case ProductNetUnitG:
+		return true
+	case ProductNetUnitMl:
+		return true
+	case ProductNetUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductInputNetUnit.
+const (
+	ProductInputNetUnitG  ProductInputNetUnit = "g"
+	ProductInputNetUnitMl ProductInputNetUnit = "ml"
+	ProductInputNetUnitPc ProductInputNetUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the ProductInputNetUnit enum.
+func (e ProductInputNetUnit) Valid() bool {
+	switch e {
+	case ProductInputNetUnitG:
+		return true
+	case ProductInputNetUnitMl:
+		return true
+	case ProductInputNetUnitPc:
 		return true
 	default:
 		return false
@@ -132,6 +246,28 @@ func (e ReceiptStatus) Valid() bool {
 	}
 }
 
+// Alias defines model for Alias.
+type Alias struct {
+	CreatedAt time.Time `json:"created_at"`
+	Id        int64     `json:"id"`
+	ProductId int64     `json:"product_id"`
+	ShopId    *int64    `json:"shop_id,omitempty"`
+	ShopName  *string   `json:"shop_name,omitempty"`
+
+	// Text normalised receipt text
+	Text string `json:"text"`
+}
+
+// BarcodeLookup defines model for BarcodeLookup.
+type BarcodeLookup struct {
+	Prefill *OpenFoodFactsPrefill `json:"prefill,omitempty"`
+	Product *Product              `json:"product,omitempty"`
+	Source  BarcodeLookupSource   `json:"source"`
+}
+
+// BarcodeLookupSource defines model for BarcodeLookup.Source.
+type BarcodeLookupSource string
+
 // Category defines model for Category.
 type Category struct {
 	Id   int64  `json:"id"`
@@ -178,12 +314,117 @@ type LineKind string
 // LineUnit defines model for LineUnit.
 type LineUnit string
 
+// LinkInput defines model for LinkInput.
+type LinkInput struct {
+	ProductId *int64 `json:"product_id,omitempty"`
+	Remember  *bool  `json:"remember,omitempty"`
+}
+
+// LinkResult defines model for LinkResult.
+type LinkResult struct {
+	AliasCreated bool `json:"alias_created"`
+
+	// AlsoLinked other lines linked through the alias
+	AlsoLinked int64       `json:"also_linked"`
+	Line       ReceiptLine `json:"line"`
+}
+
+// Nutrition Values per 100 g / 100 ml.
+type Nutrition struct {
+	Carbs        *float64         `json:"carbs,omitempty"`
+	EnergyKcal   *float64         `json:"energy_kcal,omitempty"`
+	Fat          *float64         `json:"fat,omitempty"`
+	Fibre        *float64         `json:"fibre,omitempty"`
+	Per          *NutritionPer    `json:"per,omitempty"`
+	Protein      *float64         `json:"protein,omitempty"`
+	Salt         *float64         `json:"salt,omitempty"`
+	SaturatedFat *float64         `json:"saturated_fat,omitempty"`
+	Source       *NutritionSource `json:"source,omitempty"`
+	Sugars       *float64         `json:"sugars,omitempty"`
+}
+
+// NutritionPer defines model for Nutrition.Per.
+type NutritionPer string
+
+// NutritionSource defines model for Nutrition.Source.
+type NutritionSource string
+
+// OpenFoodFactsPrefill defines model for OpenFoodFactsPrefill.
+type OpenFoodFactsPrefill struct {
+	Brand       *string                      `json:"brand,omitempty"`
+	Code        string                       `json:"code"`
+	ImageUrl    *string                      `json:"image_url,omitempty"`
+	Name        string                       `json:"name"`
+	NetQuantity *float64                     `json:"net_quantity,omitempty"`
+	NetUnit     *OpenFoodFactsPrefillNetUnit `json:"net_unit,omitempty"`
+
+	// Nutrition Values per 100 g / 100 ml.
+	Nutrition *Nutrition `json:"nutrition,omitempty"`
+}
+
+// OpenFoodFactsPrefillNetUnit defines model for OpenFoodFactsPrefill.NetUnit.
+type OpenFoodFactsPrefillNetUnit string
+
 // Problem defines model for Problem.
 type Problem struct {
 	Detail *string `json:"detail,omitempty"`
 	Status int     `json:"status"`
 	Title  string  `json:"title"`
 	Type   *string `json:"type,omitempty"`
+}
+
+// Product defines model for Product.
+type Product struct {
+	Barcode     *string         `json:"barcode,omitempty"`
+	Brand       *string         `json:"brand,omitempty"`
+	CategoryId  *int64          `json:"category_id,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
+	HasImage    bool            `json:"has_image"`
+	Id          int64           `json:"id"`
+	Name        string          `json:"name"`
+	NetQuantity *float64        `json:"net_quantity,omitempty"`
+	NetUnit     *ProductNetUnit `json:"net_unit,omitempty"`
+
+	// Nutrition Values per 100 g / 100 ml.
+	Nutrition         *Nutrition `json:"nutrition,omitempty"`
+	OpenfoodfactsCode *string    `json:"openfoodfacts_code,omitempty"`
+
+	// Score search relevance, only with q
+	Score     *float64  `json:"score,omitempty"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ProductNetUnit defines model for Product.NetUnit.
+type ProductNetUnit string
+
+// ProductInput defines model for ProductInput.
+type ProductInput struct {
+	Barcode    *string `json:"barcode,omitempty"`
+	Brand      *string `json:"brand,omitempty"`
+	CategoryId *int64  `json:"category_id,omitempty"`
+
+	// ImageUrl https Open Food Facts image to download (create only)
+	ImageUrl *string `json:"image_url,omitempty"`
+	Name     string  `json:"name"`
+
+	// NetQuantity package size, with net_unit
+	NetQuantity *float64             `json:"net_quantity,omitempty"`
+	NetUnit     *ProductInputNetUnit `json:"net_unit,omitempty"`
+
+	// Nutrition Values per 100 g / 100 ml.
+	Nutrition         *Nutrition `json:"nutrition,omitempty"`
+	OpenfoodfactsCode *string    `json:"openfoodfacts_code,omitempty"`
+}
+
+// ProductInputNetUnit defines model for ProductInput.NetUnit.
+type ProductInputNetUnit string
+
+// ProductMatch defines model for ProductMatch.
+type ProductMatch struct {
+	Brand     *string `json:"brand,omitempty"`
+	Name      string  `json:"name"`
+	ProductId int64   `json:"product_id"`
+	Score     float64 `json:"score"`
 }
 
 // Receipt defines model for Receipt.
@@ -219,10 +460,13 @@ type ReceiptLine struct {
 	Qty            float64  `json:"qty"`
 	RawText        string   `json:"raw_text"`
 	ReceiptId      int64    `json:"receipt_id"`
-	Unit           LineUnit `json:"unit"`
-	UnitPriceCents *int64   `json:"unit_price_cents,omitempty"`
-	UserEdited     bool     `json:"user_edited"`
-	VatCode        *string  `json:"vat_code,omitempty"`
+
+	// Suggestions Up to 3 likely products for unmatched item lines (single-receipt GET only).
+	Suggestions    *[]ProductMatch `json:"suggestions,omitempty"`
+	Unit           LineUnit        `json:"unit"`
+	UnitPriceCents *int64          `json:"unit_price_cents,omitempty"`
+	UserEdited     bool            `json:"user_edited"`
+	VatCode        *string         `json:"vat_code,omitempty"`
 }
 
 // ReceiptPage defines model for ReceiptPage.
@@ -264,6 +508,15 @@ type ShopInput struct {
 	Notes   *string `json:"notes,omitempty"`
 }
 
+// UnmatchedLine defines model for UnmatchedLine.
+type UnmatchedLine struct {
+	Line        ReceiptLine `json:"line"`
+	PurchasedAt *time.Time  `json:"purchased_at,omitempty"`
+	Score       float64     `json:"score"`
+	ShopId      int64       `json:"shop_id"`
+	ShopName    string      `json:"shop_name"`
+}
+
 // Version defines model for Version.
 type Version struct {
 	Commit        string `json:"commit"`
@@ -273,6 +526,24 @@ type Version struct {
 
 // ID defines model for ID.
 type ID = int64
+
+// ListProductsParams defines parameters for ListProducts.
+type ListProductsParams struct {
+	Q          *string `form:"q,omitempty" json:"q,omitempty"`
+	CategoryId *int64  `form:"category_id,omitempty" json:"category_id,omitempty"`
+	Limit      *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset     *int    `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// PutProductImageMultipartBody defines parameters for PutProductImage.
+type PutProductImageMultipartBody struct {
+	Image openapi_types.File `json:"image"`
+}
+
+// UnmatchedLinesForProductParams defines parameters for UnmatchedLinesForProduct.
+type UnmatchedLinesForProductParams struct {
+	Days *int `form:"days,omitempty" json:"days,omitempty"`
+}
 
 // ListReceiptsParams defines parameters for ListReceipts.
 type ListReceiptsParams struct {
@@ -316,6 +587,21 @@ type UpdateCategoryJSONRequestBody = CategoryInput
 
 // UpdateLineJSONRequestBody defines body for UpdateLine for application/json ContentType.
 type UpdateLineJSONRequestBody = LineInput
+
+// LinkLineProductJSONRequestBody defines body for LinkLineProduct for application/json ContentType.
+type LinkLineProductJSONRequestBody = LinkInput
+
+// CreateProductJSONRequestBody defines body for CreateProduct for application/json ContentType.
+type CreateProductJSONRequestBody = ProductInput
+
+// UpdateProductJSONRequestBody defines body for UpdateProduct for application/json ContentType.
+type UpdateProductJSONRequestBody = ProductInput
+
+// PutProductImageMultipartRequestBody defines body for PutProductImage for multipart/form-data ContentType.
+type PutProductImageMultipartRequestBody PutProductImageMultipartBody
+
+// PutNutritionJSONRequestBody defines body for PutNutrition for application/json ContentType.
+type PutNutritionJSONRequestBody = Nutrition
 
 // UploadReceiptMultipartRequestBody defines body for UploadReceipt for multipart/form-data ContentType.
 type UploadReceiptMultipartRequestBody UploadReceiptMultipartBody

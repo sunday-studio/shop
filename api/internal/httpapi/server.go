@@ -10,6 +10,7 @@ import (
 
 	"pantry/internal/apitypes"
 	"pantry/internal/ocr"
+	"pantry/internal/products"
 	"pantry/internal/receipts"
 	"pantry/internal/store"
 	"pantry/internal/store/db"
@@ -21,6 +22,7 @@ type Deps struct {
 	OCR         *ocr.Client
 	OCRFallback *ocr.Client // nil when not configured
 	Receipts    *receipts.Service
+	Products    *products.Service
 	Location    *time.Location
 	Log         *slog.Logger
 	// Extra routes mounted behind auth (e.g. MCP), keyed by pattern.
@@ -65,6 +67,21 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("POST /v1/receipts/{id}/lines", s.createLine)
 	api.HandleFunc("PATCH /v1/lines/{id}", s.updateLine)
 	api.HandleFunc("DELETE /v1/lines/{id}", s.deleteLine)
+
+	api.HandleFunc("GET /v1/products", s.listProducts)
+	api.HandleFunc("POST /v1/products", s.createProduct)
+	api.HandleFunc("GET /v1/barcodes/{code}", s.lookupBarcode)
+	api.HandleFunc("GET /v1/products/{id}", s.getProduct)
+	api.HandleFunc("PATCH /v1/products/{id}", s.updateProduct)
+	api.HandleFunc("DELETE /v1/products/{id}", s.deleteProduct)
+	api.HandleFunc("GET /v1/products/{id}/image", s.productImage)
+	api.HandleFunc("PUT /v1/products/{id}/image", s.putProductImage)
+	api.HandleFunc("PUT /v1/products/{id}/nutrition", s.putNutrition)
+	api.HandleFunc("DELETE /v1/products/{id}/nutrition", s.deleteNutrition)
+	api.HandleFunc("GET /v1/products/{id}/aliases", s.listAliases)
+	api.HandleFunc("GET /v1/products/{id}/unmatched-lines", s.unmatchedLines)
+	api.HandleFunc("DELETE /v1/aliases/{id}", s.deleteAlias)
+	api.HandleFunc("PUT /v1/lines/{id}/product", s.linkLine)
 
 	for pattern, h := range s.Authed {
 		api.Handle(pattern, h)

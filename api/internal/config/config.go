@@ -10,13 +10,13 @@ import (
 )
 
 type Config struct {
-	DataDir        string
-	Addr           string
-	OCRURL         string
-	OCRFallbackURL string
-	OFFUserAgent   string
-	Workers        int
-	Location       *time.Location
+	DataDir            string
+	Addr               string
+	OCRURL             string
+	OCRFallbackURL     string
+	FoodFactsUserAgent string
+	Workers            int
+	Location           *time.Location
 }
 
 func (c Config) DBPath() string    { return filepath.Join(c.DataDir, "pantry.db") }
@@ -24,11 +24,11 @@ func (c Config) ImagesDir() string { return filepath.Join(c.DataDir, "images") }
 
 func Load() (Config, error) {
 	c := Config{
-		DataDir:        env("PANTRY_DATA_DIR", "./data"),
-		Addr:           env("PANTRY_ADDR", ":8080"),
-		OCRURL:         env("OCR_URL", "http://localhost:8000"),
-		OCRFallbackURL: env("OCR_FALLBACK_URL", ""),
-		OFFUserAgent:   env("OFF_USER_AGENT", "Pantry/0.1 (self-hosted)"),
+		DataDir:            env("PANTRY_DATA_DIR", "./data"),
+		Addr:               env("PANTRY_ADDR", ":8080"),
+		OCRURL:             env("OCR_URL", "http://localhost:8000"),
+		OCRFallbackURL:     env("OCR_FALLBACK_URL", ""),
+		FoodFactsUserAgent: env("OFF_USER_AGENT", "Pantry/0.1 (self-hosted)"),
 	}
 
 	workers, err := strconv.Atoi(env("PANTRY_WORKERS", "1"))

@@ -178,7 +178,21 @@ func (s *Server) getReceipt(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toReceipt(rec, lines))
+	out := toReceipt(rec, lines)
+	if s.Products != nil {
+		for i, l := range *out.Lines {
+			if l.Kind != apitypes.Item || l.ProductId != nil {
+				continue
+			}
+			cands, err := s.Products.Suggest(r.Context(), rec.ShopID, l.RawText)
+			if err != nil {
+				s.writeErr(w, r, err)
+				return
+			}
+			(*out.Lines)[i].Suggestions = toMatches(cands)
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *Server) updateReceipt(w http.ResponseWriter, r *http.Request) {
