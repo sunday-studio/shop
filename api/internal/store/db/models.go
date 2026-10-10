@@ -24,6 +24,12 @@ type Category struct {
 	DeletedAt sql.NullString `json:"deleted_at"`
 }
 
+type CategoryKeyword struct {
+	Keyword    string `json:"keyword"`
+	CategoryID int64  `json:"category_id"`
+	UpdatedAt  string `json:"updated_at"`
+}
+
 type GlossaryTerm struct {
 	Dutch     string         `json:"dutch"`
 	English   sql.NullString `json:"english"`
@@ -68,20 +74,26 @@ type PricePoint struct {
 }
 
 type Product struct {
-	ID           int64           `json:"id"`
-	Name         string          `json:"name"`
-	Brand        sql.NullString  `json:"brand"`
-	CategoryID   sql.NullInt64   `json:"category_id"`
-	Barcode      sql.NullString  `json:"barcode"`
-	NetQuantity  sql.NullFloat64 `json:"net_quantity"`
-	NetUnit      sql.NullString  `json:"net_unit"`
-	ImagePath    sql.NullString  `json:"image_path"`
-	OffCode      sql.NullString  `json:"off_code"`
-	CreatedAt    string          `json:"created_at"`
-	UpdatedAt    string          `json:"updated_at"`
-	DeletedAt    sql.NullString  `json:"deleted_at"`
-	NameEn       sql.NullString  `json:"name_en"`
-	NameEnSource sql.NullString  `json:"name_en_source"`
+	ID               int64           `json:"id"`
+	Name             string          `json:"name"`
+	Brand            sql.NullString  `json:"brand"`
+	CategoryID       sql.NullInt64   `json:"category_id"`
+	Barcode          sql.NullString  `json:"barcode"`
+	NetQuantity      sql.NullFloat64 `json:"net_quantity"`
+	NetUnit          sql.NullString  `json:"net_unit"`
+	ImagePath        sql.NullString  `json:"image_path"`
+	OffCode          sql.NullString  `json:"off_code"`
+	CreatedAt        string          `json:"created_at"`
+	UpdatedAt        string          `json:"updated_at"`
+	DeletedAt        sql.NullString  `json:"deleted_at"`
+	NameEn           sql.NullString  `json:"name_en"`
+	NameEnSource     sql.NullString  `json:"name_en_source"`
+	CreatedVia       string          `json:"created_via"`
+	NeedsReview      int64           `json:"needs_review"`
+	ReviewReason     sql.NullString  `json:"review_reason"`
+	SuggestedMergeID sql.NullInt64   `json:"suggested_merge_id"`
+	MergedIntoID     sql.NullInt64   `json:"merged_into_id"`
+	CategorySource   sql.NullString  `json:"category_source"`
 }
 
 type ProductAlias struct {
@@ -90,6 +102,26 @@ type ProductAlias struct {
 	NormText  string        `json:"norm_text"`
 	ProductID int64         `json:"product_id"`
 	CreatedAt string        `json:"created_at"`
+}
+
+type ProductDistinct struct {
+	AID       int64  `json:"a_id"`
+	BID       int64  `json:"b_id"`
+	CreatedAt string `json:"created_at"`
+}
+
+type ProductMerge struct {
+	ID               int64          `json:"id"`
+	FromProductID    int64          `json:"from_product_id"`
+	IntoProductID    sql.NullInt64  `json:"into_product_id"`
+	LineIds          string         `json:"line_ids"`
+	AliasIds         string         `json:"alias_ids"`
+	AliasRows        string         `json:"alias_rows"`
+	IntoFieldsBefore string         `json:"into_fields_before"`
+	FromReviewBefore string         `json:"from_review_before"`
+	Kind             string         `json:"kind"`
+	CreatedAt        string         `json:"created_at"`
+	UndoneAt         sql.NullString `json:"undone_at"`
 }
 
 type Receipt struct {

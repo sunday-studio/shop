@@ -1,0 +1,678 @@
+[
+ {
+  "file": "1463",
+  "shop": "Albert Heijn",
+  "date": "2026-05-16T22:00:00Z",
+  "lines": [
+   {
+    "raw": "2 COCA-COLA 2,99",
+    "kind": "item",
+    "cents": 598
+   },
+   {
+    "raw": "+STATIEGELD",
+    "kind": "deposit",
+    "cents": 50
+   },
+   {
+    "raw": "AH BIO SAP",
+    "kind": "item",
+    "cents": 209
+   },
+   {
+    "raw": "COCONUT",
+    "kind": "item",
+    "cents": 259
+   },
+   {
+    "raw": "ARLA MELK",
+    "kind": "item",
+    "cents": 239
+   },
+   {
+    "raw": "HMHMNTT STARB COFFEE 4,99",
+    "kind": "item",
+    "cents": 1497
+   },
+   {
+    "raw": "AH HAVERMOUT",
+    "kind": "item",
+    "cents": 145
+   },
+   {
+    "raw": "MELV HONING",
+    "kind": "item",
+    "cents": 329
+   },
+   {
+    "raw": "BOOMGAARDSAP",
+    "kind": "item",
+    "cents": 199
+   },
+   {
+    "raw": "+STATIEGELD",
+    "kind": "deposit",
+    "cents": 25
+   },
+   {
+    "raw": "2 KIWI SUNGOLD 6,59",
+    "kind": "item",
+    "cents": 1318
+   },
+   {
+    "raw": "BONUS BOX",
+    "kind": "discount",
+    "cents": 0
+   }
+  ]
+ },
+ {
+  "file": "1464",
+  "shop": "Dirk",
+  "date": "2026-04-28T10:00:00Z",
+  "lines": [
+   {
+    "raw": "1 ARLA BIO HALFV. MELK 1,69",
+    "kind": "item",
+    "cents": 169
+   },
+   {
+    "raw": "1 KEWPIE MAYONAISE 5,15",
+    "kind": "item",
+    "cents": 515
+   },
+   {
+    "raw": "2 TIJM 0,99",
+    "kind": "item",
+    "cents": 198
+   },
+   {
+    "raw": "KIKKOMAN SOJASAUS 3,89",
+    "kind": "item",
+    "cents": 389
+   },
+   {
+    "raw": "1 GOCHUJANG PEPP PASTE 2,69",
+    "kind": "item",
+    "cents": 269
+   },
+   {
+    "raw": "1 INDOMIE SHRIMP 3,15",
+    "kind": "item",
+    "cents": 315
+   },
+   {
+    "raw": "1 CITROENGRAS 2,29",
+    "kind": "item",
+    "cents": 229
+   }
+  ]
+ },
+ {
+  "file": "1465",
+  "shop": "Dirk",
+  "date": "2026-04-12T10:00:00Z",
+  "lines": [
+   {
+    "raw": "2 PRINCES MAKREELFILET 1,99",
+    "kind": "item",
+    "cents": 398
+   },
+   {
+    "raw": "2 PRINCES MAKREELFILET 1,99",
+    "kind": "item",
+    "cents": 398
+   },
+   {
+    "raw": "1 KIWI GREEN VERPAKT 3,89",
+    "kind": "item",
+    "cents": 389
+   },
+   {
+    "raw": "1 BOSUI 0,89",
+    "kind": "item",
+    "cents": 178
+   },
+   {
+    "raw": "MUNT 1.69",
+    "kind": "item",
+    "cents": 169
+   },
+   {
+    "raw": "2 TIJM 0,99",
+    "kind": "item",
+    "cents": 198
+   },
+   {
+    "raw": "1 ROZEMARIJN 0,99",
+    "kind": "item",
+    "cents": 99
+   }
+  ]
+ },
+ {
+  "file": "1466",
+  "shop": "Albert Heijn",
+  "date": "2026-07-02T22:00:00Z",
+  "lines": [
+   {
+    "raw": "2 COCA-COLA 2,99",
+    "kind": "item",
+    "cents": 598
+   },
+   {
+    "raw": "+STATIEGELD",
+    "kind": "deposit",
+    "cents": 50
+   },
+   {
+    "raw": "ARLA MELK",
+    "kind": "item",
+    "cents": 239
+   },
+   {
+    "raw": "GO-TAN SOY",
+    "kind": "item",
+    "cents": 499
+   },
+   {
+    "raw": "HHTHN AH ZALMFILET",
+    "kind": "item",
+    "cents": 2183
+   },
+   {
+    "raw": "AH ZALMFILET",
+    "kind": "item",
+    "cents": 2015
+   },
+   {
+    "raw": "AH ZALMFILET",
+    "kind": "item",
+    "cents": 2138
+   },
+   {
+    "raw": "AHKEUKENZOUT",
+    "kind": "item",
+    "cents": 85
+   },
+   {
+    "raw": "1 MAGGI HOT",
+    "kind": "item",
+    "cents": 229
+   },
+   {
+    "raw": "2 EUROMA JB",
+    "kind": "item",
+    "cents": 329
+   },
+   {
+    "raw": "EUROMA JB",
+    "kind": "item",
+    "cents": 329
+   },
+   {
+    "raw": "NMN ZK OREGANO 1,49",
+    "kind": "item",
+    "cents": 298
+   },
+   {
+    "raw": "AH BROCCOLI 2,49",
+    "kind": "item",
+    "cents": 747
+   },
+   {
+    "raw": "LIMOENEN",
+    "kind": "item",
+    "cents": 129
+   },
+   {
+    "raw": "1 KIWI SUNGOLD",
+    "kind": "item",
+    "cents": 669
+   },
+   {
+    "raw": "BONUS BOX",
+    "kind": "discount",
+    "cents": 0
+   }
+  ]
+ },
+ {
+  "file": "1467",
+  "shop": "Slager",
+  "date": "2026-07-03T10:00:00Z",
+  "lines": [
+   {
+    "raw": "TESTSTAD KIPFILF",
+    "kind": "item",
+    "cents": 1585
+   },
+   {
+    "raw": "3,170 kg x 5",
+    "kind": "item",
+    "cents": 801
+   },
+   {
+    "raw": "KIP POTEN",
+    "kind": "item",
+    "cents": 998
+   },
+   {
+    "raw": "ALKOEN-LJVL 110",
+    "kind": "item",
+    "cents": 1791
+   },
+   {
+    "raw": "D LET KILO",
+    "kind": "item",
+    "cents": 733
+   }
+  ]
+ },
+ {
+  "file": "1468",
+  "shop": "Albert Heijn",
+  "date": "2026-06-27T22:00:00Z",
+  "lines": [
+   {
+    "raw": "2 COCA-COLA 2,49",
+    "kind": "item",
+    "cents": 498
+   },
+   {
+    "raw": "+STATIEGELD",
+    "kind": "deposit",
+    "cents": 50
+   },
+   {
+    "raw": "AH BIO MELK 1,39",
+    "kind": "item",
+    "cents": 278
+   },
+   {
+    "raw": "GRANOLA",
+    "kind": "item",
+    "cents": 329
+   },
+   {
+    "raw": "CAMP YOGHURT",
+    "kind": "item",
+    "cents": 379
+   },
+   {
+    "raw": "FIT PIGGY",
+    "kind": "item",
+    "cents": 499
+   },
+   {
+    "raw": "FIT PIGGY",
+    "kind": "item",
+    "cents": 499
+   },
+   {
+    "raw": "NUNNUNONNTT BIO ZON OLIE 2,19",
+    "kind": "item",
+    "cents": 438
+   },
+   {
+    "raw": "STARB COFFEE 4,99",
+    "kind": "item",
+    "cents": 1497
+   },
+   {
+    "raw": "BIO KOMKOM 1,65",
+    "kind": "item",
+    "cents": 330
+   },
+   {
+    "raw": "AH ELSTAR",
+    "kind": "item",
+    "cents": 399
+   },
+   {
+    "raw": "MANDARIJNEN",
+    "kind": "item",
+    "cents": 259
+   },
+   {
+    "raw": "AARDAPPEL",
+    "kind": "item",
+    "cents": 349
+   },
+   {
+    "raw": "2 AH PEPERMIX 2,29",
+    "kind": "item",
+    "cents": 458
+   },
+   {
+    "raw": "BONUS BOX",
+    "kind": "discount",
+    "cents": 0
+   }
+  ]
+ },
+ {
+  "file": "1469",
+  "shop": "Albert Heijn",
+  "date": "2025-05-19T22:00:00Z",
+  "lines": [
+   {
+    "raw": "-- AH SPRUITJES 2,59",
+    "kind": "item",
+    "cents": 518
+   },
+   {
+    "raw": "DODONI YOGH",
+    "kind": "item",
+    "cents": 119
+   },
+   {
+    "raw": "DRAAGTAS",
+    "kind": "bag",
+    "cents": 89
+   },
+   {
+    "raw": "BONUS BOX",
+    "kind": "discount",
+    "cents": 0
+   }
+  ]
+ },
+ {
+  "file": "1470",
+  "shop": "Dirk",
+  "date": "2026-07-03T10:00:00Z",
+  "lines": [
+   {
+    "raw": "2 DILLE 0,85",
+    "kind": "item",
+    "cents": 170
+   },
+   {
+    "raw": "2 TIJM 0.99",
+    "kind": "item",
+    "cents": 198
+   },
+   {
+    "raw": "1 KOKKI DJAWA HOISINSA",
+    "kind": "item",
+    "cents": 249
+   },
+   {
+    "raw": "1 UCHIBORI RICE VINEG",
+    "kind": "item",
+    "cents": 325
+   },
+   {
+    "raw": "CITROENGRAS",
+    "kind": "item",
+    "cents": 229
+   },
+   {
+    "raw": "6 KOMKOMMER 0,69",
+    "kind": "item",
+    "cents": 414
+   },
+   {
+    "raw": "GEMBER LOS 5,98",
+    "kind": "item",
+    "cents": 245
+   }
+  ]
+ },
+ {
+  "file": "1471",
+  "shop": "Albert Heijn",
+  "date": "2026-06-19T22:00:00Z",
+  "lines": [
+   {
+    "raw": "FANTA",
+    "kind": "item",
+    "cents": 325
+   },
+   {
+    "raw": "+STATIEGELD",
+    "kind": "deposit",
+    "cents": 60
+   },
+   {
+    "raw": "AH BIO SAP",
+    "kind": "item",
+    "cents": 209
+   },
+   {
+    "raw": "COCA-COLA",
+    "kind": "item",
+    "cents": 649
+   },
+   {
+    "raw": "+STATIEGELD",
+    "kind": "deposit",
+    "cents": 120
+   },
+   {
+    "raw": "COCA-COLA",
+    "kind": "item",
+    "cents": 299
+   },
+   {
+    "raw": "+STATIEGELD",
+    "kind": "deposit",
+    "cents": 25
+   },
+   {
+    "raw": "AH PLUOT",
+    "kind": "item",
+    "cents": 449
+   },
+   {
+    "raw": "- MANDARIJNEN",
+    "kind": "item",
+    "cents": 259
+   },
+   {
+    "raw": "WINTERPEEN",
+    "kind": "item",
+    "cents": 139
+   },
+   {
+    "raw": "BAR-LE-DUC 1,09",
+    "kind": "item",
+    "cents": 218
+   },
+   {
+    "raw": "LOUs AHMANDARIJNE",
+    "kind": "discount",
+    "cents": -60
+   },
+   {
+    "raw": "BONUS BOX",
+    "kind": "discount",
+    "cents": 0
+   }
+  ]
+ },
+ {
+  "file": "1472",
+  "shop": "Slager",
+  "date": "2026-05-23T10:00:00Z",
+  "lines": [
+   {
+    "raw": "LAMS SCHOUDER KILO",
+    "kind": "item",
+    "cents": 1868
+   },
+   {
+    "raw": "KALFSPOTEN GEBRADEN",
+    "kind": "item",
+    "cents": 916
+   },
+   {
+    "raw": "=/kg",
+    "kind": "item",
+    "cents": 1912
+   },
+   {
+    "raw": "KIP LOPPOOT",
+    "kind": "item",
+    "cents": 739
+   },
+   {
+    "raw": "KIP DIJFILET KILO",
+    "kind": "item",
+    "cents": 906
+   },
+   {
+    "raw": "KALKOEN DIJVLEES KILO",
+    "kind": "item",
+    "cents": 1999
+   }
+  ]
+ },
+ {
+  "file": "1473",
+  "shop": "Albert Heijn",
+  "date": "2026-06-14T22:00:00Z",
+  "lines": [
+   {
+    "raw": "1 LIPTON SPARK",
+    "kind": "item",
+    "cents": 299
+   },
+   {
+    "raw": "+STATIEGELD",
+    "kind": "deposit",
+    "cents": 25
+   },
+   {
+    "raw": "AH GRANOLA",
+    "kind": "item",
+    "cents": 329
+   },
+   {
+    "raw": "AH HAVERMOUT",
+    "kind": "item",
+    "cents": 119
+   },
+   {
+    "raw": "TTNN FIT PIGGY",
+    "kind": "item",
+    "cents": 499
+   },
+   {
+    "raw": "AH BIO MELK 1,39",
+    "kind": "item",
+    "cents": 278
+   },
+   {
+    "raw": "COCA-COLA 2,99",
+    "kind": "item",
+    "cents": 598
+   },
+   {
+    "raw": "+STATIEGELD",
+    "kind": "deposit",
+    "cents": 50
+   },
+   {
+    "raw": "CAMP YOGHURT",
+    "kind": "item",
+    "cents": 369
+   },
+   {
+    "raw": "HNNN NECTARINES 3,79",
+    "kind": "item",
+    "cents": 758
+   },
+   {
+    "raw": "AH PLUOT 4,49",
+    "kind": "item",
+    "cents": 898
+   },
+   {
+    "raw": "MANDARIJNEN 2,59",
+    "kind": "item",
+    "cents": 518
+   },
+   {
+    "raw": "BONUS BOX",
+    "kind": "discount",
+    "cents": 0
+   }
+  ]
+ },
+ {
+  "file": "1474",
+  "shop": "Albert Heijn",
+  "date": "2026-06-07T22:00:00Z",
+  "lines": [
+   {
+    "raw": "12 ZK LAURIERBL",
+    "kind": "item",
+    "cents": 199
+   },
+   {
+    "raw": "ZAKJE KERRIE 1,89",
+    "kind": "item",
+    "cents": 378
+   },
+   {
+    "raw": "1 AHKEUKENZOUT",
+    "kind": "item",
+    "cents": 85
+   },
+   {
+    "raw": "BONUS BOX",
+    "kind": "discount",
+    "cents": 0
+   }
+  ]
+ },
+ {
+  "file": "1475",
+  "shop": "Dirk",
+  "date": "2026-05-23T10:00:00Z",
+  "lines": [
+   {
+    "raw": "2 AVOCADO VERPAKT 1,99",
+    "kind": "item",
+    "cents": 398
+   },
+   {
+    "raw": "1 RAWORGANIC CHTAZ WIT 1.29",
+    "kind": "item",
+    "cents": 129
+   },
+   {
+    "raw": "1 BLEEKSELDERIJ 1,99",
+    "kind": "item",
+    "cents": 199
+   },
+   {
+    "raw": "1 PETERSELIE KRUL 1,18",
+    "kind": "item",
+    "cents": 118
+   },
+   {
+    "raw": "1 BIESLOOK 0,85",
+    "kind": "item",
+    "cents": 170
+   },
+   {
+    "raw": "2 DILLE 2,29",
+    "kind": "item",
+    "cents": 229
+   },
+   {
+    "raw": "1 CITROENGRAS 0.99",
+    "kind": "item",
+    "cents": 99
+   },
+   {
+    "raw": "1 TIJM",
+    "kind": "item",
+    "cents": 4504
+   }
+  ]
+ }
+]

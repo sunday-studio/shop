@@ -1,0 +1,150 @@
+# keyword<TAB>category (folded, lowercase). Matching rule is in docs/PRODUCT-AUTOPOPULATE.md §3.4.
+melk	Dairy
+yoghurt	Dairy
+yogh	Dairy
+kwark	Dairy
+kaas	Dairy
+boter	Dairy
+room	Dairy
+slagroom	Dairy
+vla	Dairy
+karnemelk	Dairy
+eieren	Dairy
+ei	Dairy
+appel	Produce
+peer	Produce
+banaan	Produce
+kiwi	Produce
+mandarijn	Produce
+mandarijnen	Produce
+sinaasappel	Produce
+citroen	Produce
+limoen	Produce
+limoenen	Produce
+nectarine	Produce
+nectarines	Produce
+avocado	Produce
+tomaat	Produce
+tomaten	Produce
+komkommer	Produce
+komkom	Produce
+paprika	Produce
+uien	Produce
+ui	Produce
+bosui	Produce
+knoflook	Produce
+aardappel	Produce
+aardappelen	Produce
+wortel	Produce
+peen	Produce
+broccoli	Produce
+bloemkool	Produce
+spinazie	Produce
+sla	Produce
+spruitjes	Produce
+spruit	Produce
+gember	Produce
+selderij	Produce
+peterselie	Produce
+bieslook	Produce
+dille	Produce
+tijm	Produce
+munt	Produce
+rozemarijn	Produce
+basilicum	Produce
+koriander	Produce
+citroengras	Produce
+pluot	Produce
+elstar	Produce
+druiven	Produce
+aardbeien	Produce
+bessen	Produce
+mango	Produce
+ananas	Produce
+courgette	Produce
+aubergine	Produce
+champignons	Produce
+prei	Produce
+kool	Produce
+coconut	Produce
+kip	Meat & fish
+kalkoen	Meat & fish
+lam	Meat & fish
+lams	Meat & fish
+kalfs	Meat & fish
+rund	Meat & fish
+varken	Meat & fish
+gehakt	Meat & fish
+worst	Meat & fish
+ham	Meat & fish
+spek	Meat & fish
+filet	Meat & fish
+zalm	Meat & fish
+tonijn	Meat & fish
+garnalen	Meat & fish
+vis	Meat & fish
+schouder	Meat & fish
+poten	Meat & fish
+poot	Meat & fish
+brood	Bakery
+broodje	Bakery
+croissant	Bakery
+stokbrood	Bakery
+taart	Bakery
+koek	Bakery
+gebak	Bakery
+havermout	Pantry
+granola	Pantry
+muesli	Pantry
+honing	Pantry
+mayonaise	Pantry
+mayonnaise	Pantry
+saus	Pantry
+pasta	Pantry
+rijst	Pantry
+olie	Pantry
+zout	Pantry
+oregano	Pantry
+kerrie	Pantry
+laurier	Pantry
+azijn	Pantry
+suiker	Pantry
+meel	Pantry
+bloem	Pantry
+kruiden	Pantry
+peper	Pantry
+noodles	Pantry
+soep	Pantry
+bouillon	Pantry
+jam	Pantry
+pindakaas	Pantry
+chocolade	Pantry
+diepvries	Frozen
+ijs	Frozen
+pizza	Frozen
+friet	Frozen
+cola	Drinks
+fanta	Drinks
+sap	Drinks
+limonade	Drinks
+thee	Drinks
+koffie	Drinks
+coffee	Drinks
+water	Drinks
+bier	Drinks
+wijn	Drinks
+frisdrank	Drinks
+spark	Drinks
+afwas	Household
+wasmiddel	Household
+schoonmaak	Household
+toiletpapier	Household
+keukenrol	Household
+vuilniszak	Household
+spons	Household
+shampoo	Personal care
+tandpasta	Personal care
+deodorant	Personal care
+zeep	Personal care
+douche	Personal care
+luiers	Personal care

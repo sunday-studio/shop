@@ -23,9 +23,17 @@ type Candidate struct {
 
 // Matcher finds products for free text using the search_fts trigram
 // index for candidates and Score for ranking.
-type Matcher struct{ db *sql.DB }
+// Querier is what the matcher needs from a database handle (*sql.DB or *sql.Tx).
+type Querier interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
+type Matcher struct{ db Querier }
 
 func NewMatcher(db *sql.DB) *Matcher { return &Matcher{db: db} }
+
+// On returns a matcher reading through q, e.g. an open transaction that has uncommitted products.
+func (m *Matcher) On(q Querier) *Matcher { return &Matcher{db: q} }
 
 // Search ranks products for text. shopID (0 = any) gives aliases learned
 // at that shop a small bonus. Results with score < minScore are dropped.
