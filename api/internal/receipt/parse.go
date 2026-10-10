@@ -78,10 +78,10 @@ const (
 )
 
 var (
-	totalRe    = regexp.MustCompile(`^(?:\S{1,3}\s+)?(totaal|te betalen|total|te voldoen|totaalbedrag)\b`)
+	totalRe    = regexp.MustCompile(`^(?:\S{1,3}\s+)?(t?otaal|te betalen|total|te voldoen|totaalbedrag)\b`)
 	subtotalRe = regexp.MustCompile(`^(?:\S{1,3}\s+)?sub\s*-?\s*tota`)
 	paymentRe  = regexp.MustCompile(`\b(pin|pinnen|pinbetaling|maestro|v ?pay|visa|mastercard|contant|contactloos|creditcard|debit|betaald)\b`)
-	ignoreRe   = regexp.MustCompile(`^((?:\d{1,3}\s+)?artikelen|btw|b\.t\.w|vat|aantal|bonuskaart|air ?miles|klantenkaart|van \d+[.,]\d{2} voor)\b`)
+	ignoreRe   = regexp.MustCompile(`^((?:\d{1,3}\s+)?artikelen|waarvan|btw|b\.t\.w|vat|aantal|bonuskaart|air ?miles|klantenkaart|van \d+[.,]\d{2} voor)\b`)
 	// A row holding only a price ("2,29", "7 3,49"): the unit-price column of a skewed photo, not an item.
 	// "JOUW VOORDEEL -0,60" sums the bonus rows above it; OCR garbles the first word ("IOLJW").
 	savingsSummaryRe = regexp.MustCompile(`^(\S+\s+)?voordeel$`)

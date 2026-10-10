@@ -2,6 +2,7 @@ package receipt
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"slices"
 	"strings"
@@ -398,3 +399,102 @@ func TestCurledPhotoIsFlaggedNotGuessed(t *testing.T) {
 		t.Errorf("reasons = %v; want total_mismatch so the receipt goes to review", r.Reasons)
 	}
 }
+
+// The first real batch imported from the app (receipt ids as in that database). These must keep
+// reconciling; ids 4, 8 and 17 used to fail (see the tests below).
+func TestLiveBatchReconciles(t *testing.T) {
+	want := map[int]int64{ // printed total in cents; 0 = known unreconcilable (curled photo)
+		1: 8468, 2: 9980, 3: 0, 4: 8468, 5: 3197, 6: 5932, 7: 10238, 8: 9980, 10: 6626, 12: 1829, 13: 10537,
+		14: 6262, 16: 726, 17: 1830, 19: 4740, 20: 662, 21: 4868, 23: 2084,
+	}
+	for id, total := range want {
+		b, err := os.ReadFile(fmt.Sprintf("testdata/live/receipt_%d.json", id))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var res ocr.Result
+		if err := json.Unmarshal(b, &res); err != nil {
+			t.Fatal(err)
+		}
+		r := Parse(res, Options{Location: ams, Now: now})
+		if total == 0 { // receipt 3 / IMG_1475: stays flagged, never guessed
+			if !slices.Contains(r.Reasons, ReasonTotalMismatch) {
+				t.Errorf("receipt %d: reasons %v; want total_mismatch", id, r.Reasons)
+			}
+			continue
+		}
+		if r.TotalCents == nil || *r.TotalCents != total || r.SumCents != total {
+			t.Errorf("receipt %d: total %v sum %d; want both %d (reasons %v)", id, r.TotalCents, r.SumCents, total, r.Reasons)
+		}
+	}
+}
+
+func liveLines(t *testing.T, id int) Result {
+	t.Helper()
+	b, err := os.ReadFile(fmt.Sprintf("testdata/live/receipt_%d.json", id))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var res ocr.Result
+	if err := json.Unmarshal(b, &res); err != nil {
+		t.Fatal(err)
+	}
+	return Parse(res, Options{Location: ams, Now: now})
+}
+
+// Receipt 4: the amounts of "SUBTOTAAL" and "TOTAAL" sit on blank-text rows below the labels. They used
+// to become items (empty name, PINNEN) and the total was read from the BTW block (3,77 instead of 84,68).
+func TestBlankTextAmountRowsBelongToTheLabelAbove(t *testing.T) {
+	r := liveLines(t, 4)
+	for _, l := range r.Lines {
+		if l.RawText == "" || strings.Contains(strings.ToLower(l.RawText), "pinnen") || strings.Contains(strings.ToLower(l.RawText), "waarvan") {
+			t.Errorf("not an item: %+v", l)
+		}
+	}
+	got := map[string]int64{}
+	for _, l := range r.Lines {
+		got[l.RawText] = l.LineTotalCents
+	}
+	if got["1 SPELTWAFELS"] != 129 || got["1 MANDARIJNEN"] != 279 {
+		t.Errorf("a name whose price OCR put on the next row lost it: %v", got)
+	}
+	if r.TotalCents == nil || *r.TotalCents != 8468 || len(r.Reasons) != 0 {
+		t.Errorf("total = %v reasons %v; want 8468 and none", r.TotalCents, r.Reasons)
+	}
+}
+
+// Receipt 8: "OTAAL" (the T was not read) is still the total.
+func TestTotalWithMissingFirstLetter(t *testing.T) {
+	r := liveLines(t, 8)
+	if r.TotalCents == nil || *r.TotalCents != 9980 || r.SumCents != 9980 {
+		t.Errorf("total %v sum %d; want 9980", r.TotalCents, r.SumCents)
+	}
+}
+
+// Receipt 17: the 1,70 line total of "2 DILLE" landed next to a fragment ("Nt") while the row below kept
+// only the 0,85 unit price: one line, not two. Only merged because 2 x 0,85 = 1,70 exactly.
+func TestSplitQuantityRowIsOneLine(t *testing.T) {
+	r := liveLines(t, 17)
+	if r.TotalCents == nil || *r.TotalCents != 1830 || r.SumCents != 1830 {
+		t.Fatalf("total %v sum %d; want 1830", r.TotalCents, r.SumCents)
+	}
+	n := 0
+	for _, l := range r.Lines {
+		if strings.Contains(l.RawText, "DILLE") {
+			n++
+			if l.LineTotalCents != 170 {
+				t.Errorf("dille = %d; want 170", l.LineTotalCents)
+			}
+		}
+	}
+	if n != 1 {
+		t.Errorf("%d dille lines; want 1", n)
+	}
+	// no arithmetic fit: left alone
+	rows := mergeSplitQtyRows([]Row{{Text: "Nt", Amount: i64(170)}, {Text: "2 DILLE", Amount: i64(90)}})
+	if len(rows) != 2 {
+		t.Error("rows were merged although 2 x 0,90 != 1,70")
+	}
+}
+
+func i64(v int64) *int64 { return &v }
