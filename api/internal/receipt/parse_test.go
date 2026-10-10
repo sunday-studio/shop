@@ -340,3 +340,34 @@ func TestDirkCountAndPriceRows(t *testing.T) {
 		t.Errorf("total = %v; want 129", r.TotalCents)
 	}
 }
+
+// Photographed receipts whose sum fell short of the printed total because of an OCR price glitch:
+// 1466 reads "20,15" as "20015"; 1470 reads "2,49" followed by a stray "49". The repair is only
+// applied when it makes the sum equal the printed total.
+func TestRealReceiptPriceRepair(t *testing.T) {
+	for _, c := range []struct {
+		file  string
+		total int64
+	}{{"real_1466.json", 10537}, {"real_1470.json", 1830}} {
+		b, err := os.ReadFile("testdata/" + c.file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var res ocr.Result
+		if err := json.Unmarshal(b, &res); err != nil {
+			t.Fatal(err)
+		}
+		r := Parse(res, Options{Location: ams, Now: now})
+		if r.TotalCents == nil || *r.TotalCents != c.total || r.SumCents != c.total || len(r.Reasons) != 0 {
+			t.Errorf("%s: total=%v sum=%d reasons=%v; want %d and no reasons", c.file, r.TotalCents, r.SumCents, r.Reasons, c.total)
+		}
+	}
+}
+
+func TestPriceRepairNeedsExactReconciliation(t *testing.T) {
+	// The unreadable row would repair to 2,49 but the total says otherwise: leave it alone.
+	r := parse("01-10-2026|", "MELK|1,29", "KAAS 2,49 49|", "TOTAAL|9,99")
+	if r.SumCents != 129 {
+		t.Errorf("sum = %d; the repair must not apply when it does not reconcile", r.SumCents)
+	}
+}
