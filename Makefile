@@ -19,14 +19,14 @@ vet: ## go vet + gofmt check
 lint: ## golangci-lint (via go run, no install needed)
 	cd api && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0 run
 
-build: ## build the pantry binary into api/bin
-	cd api && go build -ldflags "-X pantry/internal/version.Version=$(VERSION) -X pantry/internal/version.Commit=$(COMMIT)" -o bin/pantry ./cmd/pantry
+build: ## build the shop binary into api/bin
+	cd api && go build -ldflags "-X shop/internal/version.Version=$(VERSION) -X shop/internal/version.Commit=$(COMMIT)" -o bin/shop ./cmd/shop
 
 run: build ## run the API locally against ./data (OCR at localhost:8000)
-	cd api && PANTRY_DATA_DIR=./data ./bin/pantry serve
+	cd api && SHOP_DATA_DIR=./data ./bin/shop serve
 
 up: ## build + start the docker stack
-	PANTRY_VERSION=$(VERSION) PANTRY_COMMIT=$(COMMIT) $(COMPOSE) up -d --build
+	SHOP_VERSION=$(VERSION) SHOP_COMMIT=$(COMMIT) $(COMPOSE) up -d --build
 
 down: ## stop the docker stack
 	$(COMPOSE) down

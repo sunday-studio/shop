@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"pantry/internal/store/db"
+	"shop/internal/store/db"
 )
 
 // InTx runs fn inside a transaction, committing on nil error.

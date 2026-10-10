@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 func TestMigrateFreshDB(t *testing.T) {
 	ctx := context.Background()
-	conn, err := store.Open(filepath.Join(t.TempDir(), "pantry.db"))
+	conn, err := store.Open(filepath.Join(t.TempDir(), "shop.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestMigrateFreshDB(t *testing.T) {
 // bundled SQLite supports it and substring matches work.
 func TestTrigramSearch(t *testing.T) {
 	ctx := context.Background()
-	conn, err := store.Open(filepath.Join(t.TempDir(), "pantry.db"))
+	conn, err := store.Open(filepath.Join(t.TempDir(), "shop.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestTrigramSearch(t *testing.T) {
 
 func TestShopsCRUD(t *testing.T) {
 	ctx := context.Background()
-	conn, err := store.Open(filepath.Join(t.TempDir(), "pantry.db"))
+	conn, err := store.Open(filepath.Join(t.TempDir(), "shop.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"pantry/internal/apitypes"
-	"pantry/internal/stats"
+	"shop/internal/apitypes"
+	"shop/internal/stats"
 )
 
 // statsFixture: two shops, milk bought 4× (3 AH, 1 Lidl), bananas once.

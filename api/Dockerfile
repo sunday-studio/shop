@@ -6,16 +6,16 @@ COPY . .
 ARG VERSION=dev
 ARG COMMIT=none
 RUN CGO_ENABLED=0 go build -trimpath \
-    -ldflags "-s -w -X pantry/internal/version.Version=${VERSION} -X pantry/internal/version.Commit=${COMMIT}" \
-    -o /out/pantry ./cmd/pantry \
+    -ldflags "-s -w -X shop/internal/version.Version=${VERSION} -X shop/internal/version.Commit=${COMMIT}" \
+    -o /out/shop ./cmd/shop \
  && mkdir -p /out/data
 
 FROM gcr.io/distroless/static-debian12:nonroot
-COPY --from=build /out/pantry /usr/local/bin/pantry
+COPY --from=build /out/shop /usr/local/bin/shop
 # Named volumes inherit this ownership, so the nonroot user can write the DB.
 COPY --from=build --chown=65532:65532 /out/data /data
-ENV PANTRY_DATA_DIR=/data PANTRY_ADDR=:8080
+ENV SHOP_DATA_DIR=/data SHOP_ADDR=:8080
 VOLUME /data
 EXPOSE 8080
-ENTRYPOINT ["/usr/local/bin/pantry"]
+ENTRYPOINT ["/usr/local/bin/shop"]
 CMD ["serve"]

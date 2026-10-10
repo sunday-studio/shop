@@ -1,20 +1,20 @@
-# Pantry MCP server
+# Shop MCP server
 
-Pantry exposes its data to an AI assistant over the [Model Context Protocol](https://modelcontextprotocol.io), using the **streamable HTTP** transport. It is served by the same Go binary and port as the REST API.
+Shop exposes its data to an AI assistant over the [Model Context Protocol](https://modelcontextprotocol.io), using the **streamable HTTP** transport. It is served by the same Go binary and port as the REST API.
 
 | | |
 |---|---|
-| Endpoint | `http://<pantry-host>:8080/mcp` (e.g. `http://pantry.<tailnet>.ts.net:8080/mcp`) |
+| Endpoint | `http://<shop-host>:8080/mcp` (e.g. `http://shop.<tailnet>.ts.net:8080/mcp`) |
 | Auth | `Authorization: Bearer <token>`. The same tokens as the REST API |
 | Mode | Stateless and JSON responses. No sessions to keep alive, so restarts are harmless |
 
 ## 1. Create a token for the assistant
 
 ```bash
-docker compose -f deploy/docker-compose.yml exec api pantry token create assistant
+docker compose -f deploy/docker-compose.yml exec api shop token create assistant
 ```
 
-The token is printed once. Store it in your assistant's config, and revoke it with `pantry token revoke assistant`.
+The token is printed once. Store it in your assistant's config, and revoke it with `shop token revoke assistant`.
 
 ## 2. Point the assistant at it
 
@@ -23,10 +23,10 @@ Most MCP clients accept a JSON config like this:
 ```json
 {
   "mcpServers": {
-    "pantry": {
+    "shop": {
       "type": "http",
       "url": "http://localhost:8080/mcp",
-      "headers": { "Authorization": "Bearer pt_..." }
+      "headers": { "Authorization": "Bearer st_..." }
     }
   }
 }
@@ -35,7 +35,7 @@ Most MCP clients accept a JSON config like this:
 For Claude Code:
 
 ```bash
-claude mcp add --transport http pantry http://localhost:8080/mcp --header "Authorization: Bearer pt_..."
+claude mcp add --transport http shop http://localhost:8080/mcp --header "Authorization: Bearer st_..."
 ```
 
 ## Tools
@@ -58,7 +58,7 @@ Product and shop arguments take an **id or a name**. Names are fuzzy-matched, an
 | `shopping_list_check(id, checked?)` | ✓ | Tick an item off (or back on) |
 | `shopping_list_remove(id)` | ✓ | |
 
-Resources: `pantry://shops` and `pantry://categories`.
+Resources: `shop://shops` and `shop://categories`.
 
 ## Example prompts
 
@@ -75,7 +75,7 @@ Resources: `pantry://shops` and `pantry://categories`.
 - Smoke test from a shell:
 
   ```bash
-  curl -s localhost:8080/mcp -H "Authorization: Bearer $PANTRY_TOKEN" \
+  curl -s localhost:8080/mcp -H "Authorization: Bearer $SHOP_TOKEN" \
     -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
     -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
   ```

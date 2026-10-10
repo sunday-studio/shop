@@ -1,28 +1,28 @@
-name: pantry
+name: shop
 
 services:
   api:
-    image: pantry-api:latest
+    image: shop-api:latest
     build:
       context: ../api
       args:
-        VERSION: ${PANTRY_VERSION:-dev}
-        COMMIT: ${PANTRY_COMMIT:-none}
+        VERSION: ${SHOP_VERSION:-dev}
+        COMMIT: ${SHOP_COMMIT:-none}
     restart: unless-stopped
-    ports: ["${PANTRY_PORT:-8080}:8080"]
-    volumes: ["pantry-data:/data"]
+    ports: ["${SHOP_PORT:-8080}:8080"]
+    volumes: ["shop-data:/data"]
     environment:
-      PANTRY_DATA_DIR: /data
+      SHOP_DATA_DIR: /data
       OCR_URL: http://ocr:8000
       OCR_FALLBACK_URL: ${OCR_FALLBACK_URL:-}
-      OFF_USER_AGENT: "Pantry/0.1 (self-hosted)"
-      PANTRY_TZ: Europe/Amsterdam
+      OFF_USER_AGENT: "Shop/0.1 (self-hosted)"
+      SHOP_TZ: Europe/Amsterdam
     depends_on:
       ocr:
         condition: service_started
 
   ocr:
-    image: pantry-ocr:ppocrv5
+    image: shop-ocr:ppocrv5
     build:
       context: ../ocr
       args:
@@ -31,4 +31,4 @@ services:
     mem_limit: 3g
 
 volumes:
-  pantry-data: {}
+  shop-data: {}

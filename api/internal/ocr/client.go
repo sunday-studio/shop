@@ -1,4 +1,4 @@
-// Package ocr talks to an OCR sidecar implementing the Pantry OCR contract:
+// Package ocr talks to an OCR sidecar implementing the Shop OCR contract:
 //
 //	POST /ocr     multipart "image" → Result
 //	GET  /healthz → Health

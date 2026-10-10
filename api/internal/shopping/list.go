@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"strings"
 
-	"pantry/internal/match"
-	"pantry/internal/stats"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/match"
+	"shop/internal/stats"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 var (

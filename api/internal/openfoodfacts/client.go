@@ -23,7 +23,7 @@ var eanRe = regexp.MustCompile(`^\d{8}$|^\d{12,14}$`)
 // ValidBarcode reports whether s looks like an EAN-8/UPC-A/EAN-13/GTIN-14.
 func ValidBarcode(s string) bool { return eanRe.MatchString(s) }
 
-// Product is the subset of OFF data Pantry uses.
+// Product is the subset of OFF data Shop uses.
 type Product struct {
 	Code        string     `json:"code"`
 	Name        string     `json:"name"`

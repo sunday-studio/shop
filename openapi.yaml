@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
-  title: Pantry API
+  title: Shop API
   version: 0.4.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
-    All /v1 routes need `Authorization: Bearer <token>` (create with `pantry token create`).
+    All /v1 routes need `Authorization: Bearer <token>` (create with `shop token create`).
 servers:
   - url: http://localhost:8080
 security:

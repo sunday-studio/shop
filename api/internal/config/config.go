@@ -19,27 +19,27 @@ type Config struct {
 	Location           *time.Location
 }
 
-func (c Config) DBPath() string    { return filepath.Join(c.DataDir, "pantry.db") }
+func (c Config) DBPath() string    { return filepath.Join(c.DataDir, "shop.db") }
 func (c Config) ImagesDir() string { return filepath.Join(c.DataDir, "images") }
 
 func Load() (Config, error) {
 	c := Config{
-		DataDir:            env("PANTRY_DATA_DIR", "./data"),
-		Addr:               env("PANTRY_ADDR", ":8080"),
+		DataDir:            env("SHOP_DATA_DIR", "./data"),
+		Addr:               env("SHOP_ADDR", ":8080"),
 		OCRURL:             env("OCR_URL", "http://localhost:8000"),
 		OCRFallbackURL:     env("OCR_FALLBACK_URL", ""),
-		FoodFactsUserAgent: env("OFF_USER_AGENT", "Pantry/0.1 (self-hosted)"),
+		FoodFactsUserAgent: env("OFF_USER_AGENT", "Shop/0.1 (self-hosted)"),
 	}
 
-	workers, err := strconv.Atoi(env("PANTRY_WORKERS", "1"))
+	workers, err := strconv.Atoi(env("SHOP_WORKERS", "1"))
 	if err != nil || workers < 1 {
-		return c, fmt.Errorf("PANTRY_WORKERS must be a positive integer")
+		return c, fmt.Errorf("SHOP_WORKERS must be a positive integer")
 	}
 	c.Workers = workers
 
-	loc, err := time.LoadLocation(env("PANTRY_TZ", "Europe/Amsterdam"))
+	loc, err := time.LoadLocation(env("SHOP_TZ", "Europe/Amsterdam"))
 	if err != nil {
-		return c, fmt.Errorf("PANTRY_TZ: %w", err)
+		return c, fmt.Errorf("SHOP_TZ: %w", err)
 	}
 	c.Location = loc
 

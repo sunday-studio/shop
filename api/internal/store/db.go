@@ -11,7 +11,7 @@ import (
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 
-	"pantry/internal/migrations"
+	"shop/internal/migrations"
 )
 
 // Open opens (creating if needed) the SQLite database at path with the

@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"pantry/internal/match"
-	"pantry/internal/openfoodfacts"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/match"
+	"shop/internal/openfoodfacts"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 var (

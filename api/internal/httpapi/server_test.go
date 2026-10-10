@@ -21,20 +21,20 @@ import (
 	"testing"
 	"time"
 
-	"pantry/internal/apitypes"
-	"pantry/internal/auth"
-	"pantry/internal/httpapi"
-	"pantry/internal/jobs"
-	"pantry/internal/match"
-	"pantry/internal/mcpserver"
-	"pantry/internal/ocr"
-	"pantry/internal/openfoodfacts"
-	"pantry/internal/products"
-	"pantry/internal/receipts"
-	"pantry/internal/shopping"
-	"pantry/internal/stats"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/apitypes"
+	"shop/internal/auth"
+	"shop/internal/httpapi"
+	"shop/internal/jobs"
+	"shop/internal/match"
+	"shop/internal/mcpserver"
+	"shop/internal/ocr"
+	"shop/internal/openfoodfacts"
+	"shop/internal/products"
+	"shop/internal/receipts"
+	"shop/internal/shopping"
+	"shop/internal/stats"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 // env is a full in-process stack: SQLite, fake OCR sidecar, job queue, API.
@@ -90,7 +90,7 @@ func newFakeOCR() *fakeOCR {
 func newEnv(t *testing.T) *env {
 	t.Helper()
 	dir := t.TempDir()
-	conn, err := store.Open(filepath.Join(dir, "pantry.db"))
+	conn, err := store.Open(filepath.Join(dir, "shop.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

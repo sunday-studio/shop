@@ -13,7 +13,7 @@ func TestLookup(t *testing.T) {
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		if r.Header.Get("User-Agent") != "Pantry/test" {
+		if r.Header.Get("User-Agent") != "Shop/test" {
 			t.Errorf("user agent = %q", r.Header.Get("User-Agent"))
 		}
 		switch r.URL.Path {
@@ -29,7 +29,7 @@ func TestLookup(t *testing.T) {
 		}
 	}))
 	defer srv.Close()
-	c := New("Pantry/test").WithBaseURL(srv.URL)
+	c := New("Shop/test").WithBaseURL(srv.URL)
 
 	p, err := c.Lookup(context.Background(), "8710400000000")
 	if err != nil {

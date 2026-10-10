@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 const (

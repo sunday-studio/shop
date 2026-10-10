@@ -10,8 +10,8 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"pantry/internal/auth"
-	"pantry/internal/store/db"
+	"shop/internal/auth"
+	"shop/internal/store/db"
 )
 
 func quietApp(ctx context.Context) (*app, error) {
@@ -20,7 +20,7 @@ func quietApp(ctx context.Context) (*app, error) {
 
 func tokenCmd(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: pantry token create|list|revoke [name]")
+		return errors.New("usage: shop token create|list|revoke [name]")
 	}
 	a, err := quietApp(ctx)
 	if err != nil {
@@ -32,7 +32,7 @@ func tokenCmd(ctx context.Context, args []string) error {
 	switch args[0] {
 	case "create":
 		if len(args) != 2 {
-			return errors.New("usage: pantry token create <name>")
+			return errors.New("usage: shop token create <name>")
 		}
 		tok, err := auth.Create(ctx, q, args[1])
 		if err != nil {
@@ -57,7 +57,7 @@ func tokenCmd(ctx context.Context, args []string) error {
 		return tw.Flush()
 	case "revoke":
 		if len(args) != 2 {
-			return errors.New("usage: pantry token revoke <name>")
+			return errors.New("usage: shop token revoke <name>")
 		}
 		n, err := q.DeleteToken(ctx, args[1])
 		if err != nil {

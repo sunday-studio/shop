@@ -1,4 +1,4 @@
-module pantry
+module shop
 
 go 1.26.0
 

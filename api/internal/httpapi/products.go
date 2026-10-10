@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"pantry/internal/apitypes"
-	"pantry/internal/match"
-	"pantry/internal/openfoodfacts"
-	"pantry/internal/products"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/apitypes"
+	"shop/internal/match"
+	"shop/internal/openfoodfacts"
+	"shop/internal/products"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 // The database stores nutrition source as 'off'; the API spells it out.

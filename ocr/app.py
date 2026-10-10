@@ -1,4 +1,4 @@
-"""Pantry OCR sidecar.
+"""Shop OCR sidecar.
 
 Implements the OCR contract the Go API expects:
 
@@ -23,7 +23,7 @@ from engines import load_engine
 ENGINE_NAME = os.environ.get("OCR_ENGINE", "ppocrv5")
 MAX_SIDE = int(os.environ.get("OCR_MAX_SIDE", "2400"))
 
-app = FastAPI(title="pantry-ocr")
+app = FastAPI(title="shop-ocr")
 _engine = None
 _lock = threading.Lock()  # engines are not thread-safe; one image at a time
 

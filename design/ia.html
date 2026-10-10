@@ -1,4 +1,4 @@
-<title>Pantry Information Architecture</title>
+<title>Shop Information Architecture</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
@@ -204,9 +204,9 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 <div class="wrap">
 
 <header>
-  <span class="eyebrow">Pantry · iOS app · Information architecture v0.3</span>
+  <span class="eyebrow">Shop · iOS app · Information architecture v0.3</span>
   <h1>Information architecture</h1>
-  <p class="lede">How the Pantry iPhone app is organised: what lives where, how you move between screens, and what each screen carries. Built from docs/PLAN.md (§0, §5–§10) and openapi.yaml; this is the skeleton the wireframes are drawn on.</p>
+  <p class="lede">How the Shop iPhone app is organised: what lives where, how you move between screens, and what each screen carries. Built from docs/PLAN.md (§0, §5–§10) and openapi.yaml; this is the skeleton the wireframes are drawn on.</p>
   <div class="meta"><span>10 Oct 2026</span><span>Source: docs/PLAN.md</span><span>Single user</span><span>Paper receipts only</span><span>Tabs: 4 + Add</span></div>
   <div class="strip" aria-label="Example of the core problem: a receipt line mapped to a product">
     <div class="row"><span>AH HALFV MELK 1,5L</span><span>1,79</span></div>
@@ -222,7 +222,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   </div>
   <div class="changes">
     <div><span class="q">Finding the server</span><span class="a"><b>Typed URL.</b> One field, then Test connection. Works the same for LAN and Tailscale addresses.</span></div>
-    <div><span class="q">Pairing</span><span class="a"><b>Via the server.</b> Create a token on the Mac mini (<code>pantry token create iphone</code>) and paste it into the app. Stored in the Keychain.</span></div>
+    <div><span class="q">Pairing</span><span class="a"><b>Via the server.</b> Create a token on the Mac mini (<code>shop token create iphone</code>) and paste it into the app. Stored in the Keychain.</span></div>
     <div><span class="q">Home</span><span class="a"><b>Shows spending this month</b> above the receipts inbox. Tapping it opens Analytics.</span></div>
     <div><span class="q">Phases</span><span class="a"><b>Removed.</b> Every screen here ships. M9 items in the plan (widgets, bank import, label OCR) stay out until you opt in.</span></div>
     <div><span class="q">Input (plan §0)</span><span class="a"><b>Paper receipts only, via the document scanner.</b> Screenshot import and the share sheet are gone, so Add has one receipt path: Scan → pick shop → queued.</span></div>
@@ -283,7 +283,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
     <span><i class="sw dash"></i>Sheet / modal</span>
   </div>
   <div class="sitemap-scroll">
-    <div class="root">Pantry <small>app root · server connection gate</small></div>
+    <div class="root">Shop <small>app root · server connection gate</small></div>
     <div class="sitemap">
       <div class="col">
         <div class="col-head"><span class="sid">H</span><span class="name">Home</span><span class="what">This month + receipts inbox</span></div>
@@ -349,9 +349,9 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
     <div class="panel">
       <h3>Setting up</h3>
       <div class="dir">
-        <div><span>Type the server URL (LAN or <code>pantry.&lt;tailnet&gt;.ts.net:8080</code>)</span><span>O.2</span></div>
+        <div><span>Type the server URL (LAN or <code>shop.&lt;tailnet&gt;.ts.net:8080</code>)</span><span>O.2</span></div>
         <div><span>Test connection: <code>/healthz</code> and <code>/version</code></span><span>O.2</span></div>
-        <div><span>On the server, run <code>pantry token create iphone</code></span><span>O.3</span></div>
+        <div><span>On the server, run <code>shop token create iphone</code></span><span>O.3</span></div>
         <div><span>Paste the token; the app checks it and saves it to the Keychain</span><span>O.3</span></div>
         <div><span>First sync downloads shops, categories, products and the list</span><span>O.4</span></div>
       </div>
@@ -426,7 +426,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
         <div class="step"><div class="box">Welcome <span class="sid">O.1</span></div></div>
         <div class="step"><div class="box hl">Type server URL <span class="sid">O.2</span></div></div>
         <div class="step"><div class="box sys">Test /healthz</div></div>
-        <div class="step"><div class="box sys">Run <code>pantry token create</code> on server</div></div>
+        <div class="step"><div class="box sys">Run <code>shop token create</code> on server</div></div>
         <div class="step"><div class="box hl">Paste token <span class="sid">O.3</span></div></div>
         <div class="step"><div class="box">First sync + camera <span class="sid">O.4</span></div></div>
         <div class="step"><div class="box">Home, empty state</div></div>
@@ -509,7 +509,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
       <thead><tr><th>ID</th><th>Screen</th><th>Primary content</th><th>Primary action</th><th>Reached from</th></tr></thead>
       <tbody>
         <tr class="grp"><td colspan="5">Onboarding</td></tr>
-        <tr><td>O.1</td><td class="n">Welcome</td><td class="d">What Pantry does; your receipts stay on your own server</td><td class="d">Connect server</td><td class="d">First launch</td></tr>
+        <tr><td>O.1</td><td class="n">Welcome</td><td class="d">What Shop does; your receipts stay on your own server</td><td class="d">Connect server</td><td class="d">First launch</td></tr>
         <tr><td>O.2</td><td class="n">Server address</td><td class="d">URL field, examples (LAN, Tailscale), test result with OCR engine and version</td><td class="d">Test connection</td><td class="d">O.1, S.1</td></tr>
         <tr><td>O.3</td><td class="n">Access token</td><td class="d">Command to run on the server with copy button, token field with Paste, check result</td><td class="d">Connect</td><td class="d">O.2, token rejected</td></tr>
         <tr><td>O.4</td><td class="n">Ready</td><td class="d">First sync progress (shops, categories, products, list), camera permission</td><td class="d">Scan first receipt</td><td class="d">O.3</td></tr>
@@ -556,7 +556,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   <div class="sec-head">
     <span class="eyebrow">References</span>
     <h2>What we take from each reference</h2>
-    <p>These set the visual and interaction language for the wireframes. Pantry borrows patterns, not branding.</p>
+    <p>These set the visual and interaction language for the wireframes. Shop borrows patterns, not branding.</p>
   </div>
   <div class="refs">
     <div class="ref"><a href="https://mobbin.com/apps/moon-pay-ios-fb491862-9742-4a18-a145-2197e3a9c446/f47364ed-f260-4104-a08c-6e212a8fc9ed/screens">MoonPay</a><span class="use">→ H, A, H.1, S</span><ul><li>Oversized total as the hero number</li><li>Monochrome base, pill buttons pinned to the bottom</li><li>Inset grouped settings rows with icon tiles</li><li>Detail card with label / value rows</li></ul></div>

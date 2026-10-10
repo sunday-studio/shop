@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"pantry/internal/apitypes"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/apitypes"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 func toShop(s db.Shop) apitypes.Shop {

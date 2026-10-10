@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"pantry/internal/apitypes"
-	"pantry/internal/products"
-	"pantry/internal/receipts"
-	"pantry/internal/shopping"
+	"shop/internal/apitypes"
+	"shop/internal/products"
+	"shop/internal/receipts"
+	"shop/internal/shopping"
 )
 
 func writeJSON(w http.ResponseWriter, code int, v any) {

@@ -9,10 +9,10 @@ import (
 	"slices"
 	"time"
 
-	"pantry/internal/match"
-	"pantry/internal/receipt"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/match"
+	"shop/internal/receipt"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 // HeaderPatch carries optional header changes; nil means unchanged.

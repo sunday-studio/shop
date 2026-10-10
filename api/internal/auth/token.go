@@ -12,11 +12,11 @@ import (
 	"errors"
 	"strings"
 
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
-const prefix = "pt_"
+const prefix = "st_"
 
 var ErrInvalidToken = errors.New("invalid token")
 
