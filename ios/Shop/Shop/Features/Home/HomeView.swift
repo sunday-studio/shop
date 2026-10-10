@@ -255,17 +255,28 @@ struct HomeView: View {
     }
 
     private func receiptRow(_ receipt: Receipt) -> some View {
-        let p = receipt.rowPresentation()
+        var p = receipt.rowPresentation()
+        let unknownShop = receipt.shopId == nil
+        if unknownShop && (receipt.status == .ok || receipt.status == .needsReview) {
+            if let suggestion = home.suggestions[receipt.id] {
+                p.subtitle = "Looks like \(suggestion.name) · tap to add"
+                p.subtitleColor = Palette.blueText
+            } else {
+                p.subtitle = "Pick a shop"
+                p.subtitleColor = Palette.amberText
+            }
+        }
         return Button {
             app.push(.receipt(receipt.id))
         } label: {
             ReceiptRow(
-                shopName: app.catalog.shop(receipt.shopId)?.name ?? "Shop",
+                shopName: app.catalog.shop(receipt.shopId)?.name ?? (unknownShop ? "Unknown shop" : "Shop"),
                 subtitle: p.subtitle,
                 subtitleColor: p.subtitleColor,
                 amount: p.amount,
                 amountColor: p.amountColor,
-                showsSpinner: p.spinner
+                showsSpinner: p.spinner,
+                isUnknownShop: unknownShop
             )
         }
         .buttonStyle(.press(haptic: nil))

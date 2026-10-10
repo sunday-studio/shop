@@ -15,9 +15,9 @@ enum ImportSource: String, Identifiable {
 /// Switches from `docs/DESIGN-UPLOAD-FLOW.md` that depend on the backend.
 enum ImportFlags {
     /// "Let Shop find out": upload without a shop. Off until the server accepts that (§13.1).
-    static let letShopFindOut = false
+    static let letShopFindOut = true
     /// Send `photo_taken_at` with an upload. Off until the server has the field (§13.3).
-    static let sendPhotoTakenAt = false
+    static let sendPhotoTakenAt = true
 }
 
 /// State of the Import screen (S3): the picked pictures, how they are grouped into receipts,
@@ -383,7 +383,7 @@ final class ImportModel: Identifiable {
 
     /// Drafts for the upload queue, one per receipt.
     func drafts(catalog: Catalog) -> [UploadQueue.ImportDraft] {
-        let fallback = receipts.count == 1 ? catalog.lastShop?.id : nil
+        let fallback = ImportFlags.letShopFindOut || receipts.count != 1 ? nil : catalog.lastShop?.id
         return receipts.compactMap { receipt in
             let shopId = effectiveShopId(receipt, fallback: fallback)
             guard shopId != nil || ImportFlags.letShopFindOut else { return nil }

@@ -42,7 +42,7 @@ struct ImportScreen: View {
         var id: UUID { pageId }
     }
 
-    private var fallbackShopId: Int64? { model.receipts.count == 1 ? app.catalog.lastShop?.id : nil }
+    private var fallbackShopId: Int64? { ImportFlags.letShopFindOut || model.receipts.count != 1 ? nil : app.catalog.lastShop?.id }
     private var displayedBatchShop: Int64? { model.batchShopId ?? fallbackShopId }
     private var missing: Int { ImportFlags.letShopFindOut ? 0 : model.missingShops(fallbackShopId) }
 
@@ -59,7 +59,6 @@ struct ImportScreen: View {
         .onChange(of: model.isEmpty) { _, empty in
             if empty { close() }
         }
-        .onAppear { if model.receipts.count == 1 && model.batchShopId == nil { model.setBatchShop(app.catalog.lastShop?.id) } }
     }
 
     /// Full-screen covers can arrive with no safe-area inset; add what the window has and the
@@ -129,6 +128,7 @@ struct ImportScreen: View {
                         ShopMark(name: shop.name, size: 20)
                         Text(shop.displayName).textStyle(.body).foregroundStyle(Palette.ink2).lineLimit(1)
                     } else if ImportFlags.letShopFindOut {
+                        UnknownShopMark(size: 20)
                         Text("Let Shop find out").textStyle(.body).foregroundStyle(Palette.ink2)
                     } else {
                         Text("Pick a shop").textStyle(.body).foregroundStyle(Palette.amberText)
@@ -162,7 +162,7 @@ struct ImportScreen: View {
                         ImportReceiptRow(
                             pages: receipt.pages.map(\.thumbnail),
                             title: model.title(at: index),
-                            shopName: app.catalog.shop(model.effectiveShopId(receipt, fallback: fallbackShopId))?.name,
+                            shopName: app.catalog.shop(model.effectiveShopId(receipt, fallback: fallbackShopId))?.name ?? (ImportFlags.letShopFindOut ? "Let Shop find out" : nil),
                             dateText: model.dateText(receipt),
                             photoDateHint: model.photoHint(for: receipt),
                             onShop: { trays.present("import-shop") { ImportShopTray(model: model, target: receipt.id, fallbackShopId: fallbackShopId) } },

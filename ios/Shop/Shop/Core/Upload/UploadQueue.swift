@@ -363,7 +363,7 @@ final class UploadQueue {
     private func foregroundUpload(_ item: UploadItem) async {
         do {
             let jpeg = try Data(contentsOf: DiskStore.url(item.imageFile))
-            let receipt = try await api.uploadReceipt(image: jpeg, shopId: item.shopId, purchasedAt: item.purchasedAt)
+            let receipt = try await api.uploadReceipt(image: jpeg, shopId: item.shopId, purchasedAt: item.purchasedAt, photoTakenAt: item.photoTakenAt)
             succeed(item.id, receiptId: receipt.id, duplicate: false)
         } catch APIError.conflict(let problem) {
             succeed(item.id, receiptId: Self.receiptId(from: problem), duplicate: true)
