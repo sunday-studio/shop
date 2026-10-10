@@ -163,9 +163,9 @@ struct IconTile: View {
             ShopMark(name: "Albert Heijn", size: 28)
         }
         HStack {
-            ProductTile(name: "Halfvolle melk", category: "Zuivel")
-            ProductTile(name: "Bananen", category: "Groente & fruit")
-            ProductTile(name: "Kipfilet", category: "Vlees & vis")
+            ProductTile(name: "Halfvolle melk", category: "Dairy")
+            ProductTile(name: "Bananen", category: "Produce")
+            ProductTile(name: "Kipfilet", category: "Meat & fish")
             CountBadge(count: 2, ring: Palette.tray)
             CountBadge(count: 2, size: 22)
             GlyphBadge()

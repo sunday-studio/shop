@@ -102,7 +102,7 @@ struct ProductHero: View {
             StatCard(caption: "Cheapest at Lidl", value: "€0,85", unit: "/l", footnote: "Seen Mon 5 Oct", style: .highlight(Accent.yellow))
             StatCard(caption: "You usually pay", value: "€0,89", unit: "/l", footnote: "Mostly at Albert Heijn")
         }
-        ProductHero(name: "Halfvolle melk", category: "Zuivel")
+        ProductHero(name: "Halfvolle melk", category: "Dairy")
     }
     .padding(16)
     .background(Palette.bg)

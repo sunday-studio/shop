@@ -130,7 +130,7 @@ struct LineRow: View {
 
 // MARK: - Product row
 
-/// Catalog row: tile, name, meta ("1,5 l · Zuivel"), best per-unit price with the shop mark.
+/// Catalog row: tile, name, meta ("1,5 l · Dairy"), best per-unit price with the shop mark.
 struct ProductRow: View {
     let name: String
     var meta: String? = nil
@@ -361,10 +361,10 @@ struct NavRow: View {
             ReceiptRow(shopName: "Albert Heijn", subtitle: "Total doesn’t match · 18:42", subtitleColor: Palette.amberText, amount: "€38,12")
             ReceiptRow(shopName: "Dirk", subtitle: "12:08 · 9 items", amount: "€12,40")
             SectionLabel("Lines").padding(.top, 16)
-            LineRow(title: "Halfvolle melk", subtitle: "AH HALFV MELK 1,5L · Zuivel", amount: "1,79", dot: Accent.blue)
+            LineRow(title: "Halfvolle melk", subtitle: "AH HALFV MELK 1,5L · Dairy", amount: "1,79", dot: Accent.blue)
             LineRow(title: "Bonus", subtitle: "on Halfvolle melk", amount: "−0,45", titleColor: Palette.greenText, amountColor: Palette.greenText, dot: Accent.blue, indented: true)
             LineRow(title: "AH GRIEKS YOGH 0%", isRaw: true, subtitle: "Link to Griekse yoghurt 0%? 92% match", subtitleColor: Palette.amberText, amount: "2,19", dot: Accent.amber)
-            ProductRow(name: "Halfvolle melk", meta: "1,5 l · Zuivel", category: "Zuivel", price: "€0,85/l", priceShop: "Lidl")
+            ProductRow(name: "Halfvolle melk", meta: "1,5 l · Dairy", category: "Dairy", price: "€0,85/l", priceShop: "Lidl")
             ListItemRow(title: "Halfvolle melk", hint: "Cheapest at Lidl · €0,85/l", hintShop: "Lidl", quantity: "× 2", isChecked: checked) { checked = $0 }
             SettingsRow(icon: .upload, color: Accent.blue, title: "Upload queue", value: "Empty")
             KeyValueRow(key: "Database", value: "Healthy", dot: Accent.green)

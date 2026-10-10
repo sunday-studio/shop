@@ -66,7 +66,7 @@ enum Palette {
     static let blueText = Color.dynamic(light: 0x0071E3, dark: 0x4DA3FF)
     static let blueTint = Color.dynamic(light: 0xE5F1FF, dark: 0x0E2236)
 
-    /// Neutral grey used for "Overig" / "everything else" swatches.
+    /// Neutral grey used for "Other" / "everything else" swatches.
     static let neutral = Color.dynamic(light: 0xD6D6D2, dark: 0x3A3A37)
 }
 
