@@ -8,11 +8,10 @@ import (
 	"time"
 
 	"shop/internal/apitypes"
-	"shop/internal/match"
+	"shop/internal/english"
 	"shop/internal/receipts"
 	"shop/internal/store"
 	"shop/internal/store/db"
-	"shop/internal/translate"
 )
 
 const maxUpload = 20 << 20
@@ -53,9 +52,11 @@ func toLine(l db.ReceiptLine) apitypes.ReceiptLine {
 		VatCode: store.StrPtr(l.VatCode), ParentLineId: store.IntPtr(l.ParentLineID),
 		ProductId: store.IntPtr(l.ProductID), UserEdited: l.UserEdited != 0,
 	}
-	// Receipt text is abbreviated; expand it (Normalise) before translating.
-	if t := translate.Translate(match.Normalise(l.RawText)); t.OK() && l.Kind == "item" {
-		out.TextEn = &t.Text
+	if l.Kind == "item" {
+		g := english.Gloss(l.RawText)
+		status := apitypes.ReceiptLineTextEnStatus(g.Status)
+		spans := toSpans(g.Unknown)
+		out.TextEn, out.TextEnStatus, out.TextEnUnknown = g.TextEN, &status, &spans
 	}
 	return out
 }

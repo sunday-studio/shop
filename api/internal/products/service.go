@@ -208,27 +208,6 @@ func englishName(in Input, cur *db.Product) (sql.NullString, sql.NullString) {
 	return sql.NullString{}, sql.NullString{}
 }
 
-// BackfillEnglish fills English names for products that have none (e.g.
-// created before translation existed, or after the glossary grew).
-func (s *Service) BackfillEnglish(ctx context.Context) (int, error) {
-	rows, err := s.q.ProductsMissingEnglish(ctx)
-	if err != nil {
-		return 0, err
-	}
-	n := 0
-	for _, r := range rows {
-		if t := translate.Translate(r.Name); t.OK() {
-			if err := s.q.SetProductEnglish(ctx, db.SetProductEnglishParams{
-				NameEn: store.Str(t.Text), NameEnSource: store.Str("dictionary"), ID: r.ID,
-			}); err != nil {
-				return n, err
-			}
-			n++
-		}
-	}
-	return n, nil
-}
-
 func upsertNutrition(ctx context.Context, q *db.Queries, id int64, n Nutrition) error {
 	_, err := q.UpsertNutrition(ctx, db.UpsertNutritionParams{
 		ProductID: id, Per: n.Per, EnergyKcal: floatNull(n.EnergyKcal), Fat: floatNull(n.Fat),

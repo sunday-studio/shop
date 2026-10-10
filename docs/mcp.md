@@ -57,6 +57,8 @@ Product and shop arguments take an **id or a name**, in Dutch or English. Names 
 | `shopping_list_add(text, qty?, note?, product?)` | ✓ | Text close to a known product links to it. Re-adding an open product bumps its qty |
 | `shopping_list_check(id, checked?)` | ✓ | Tick an item off (or back on) |
 | `shopping_list_remove(id)` | ✓ | |
+| `translation_todo(limit?)` | | Dutch words the English translator doesn't know, ranked by how many products use them |
+| `teach_word(word, english? \| keep_as_is?)` | ✓ | "Elstar is an apple variety, keep it." Re-translates automatic names; never touches names you typed |
 
 Resources: `shop://shops` and `shop://categories`.
 

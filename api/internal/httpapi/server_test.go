@@ -23,6 +23,7 @@ import (
 
 	"shop/internal/apitypes"
 	"shop/internal/auth"
+	"shop/internal/english"
 	"shop/internal/httpapi"
 	"shop/internal/jobs"
 	"shop/internal/match"
@@ -121,9 +122,13 @@ func newEnv(t *testing.T) *env {
 		filepath.Join(dir, "images"), log)
 	st := stats.New(conn, ams)
 	list := shopping.New(conn, match.NewMatcher(conn), st)
+	eng := english.New(conn)
+	if err := eng.Load(context.Background()); err != nil { // resets the global user glossary per test
+		t.Fatal(err)
+	}
 	mcpSrv := mcpserver.New(mcpserver.Deps{DB: conn, Receipts: svc, Products: prods, Stats: st, List: list,
-		Matcher: match.NewMatcher(conn), Location: ams})
-	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Stats: st, List: list,
+		Matcher: match.NewMatcher(conn), English: eng, Location: ams})
+	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Stats: st, List: list, English: eng,
 		Location: ams, Log: log, DataDir: dir, Authed: map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)}})
 
 	q := db.New(conn)

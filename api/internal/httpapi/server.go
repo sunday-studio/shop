@@ -14,6 +14,7 @@ import (
 
 	"shop/internal/apitypes"
 	"shop/internal/backup"
+	"shop/internal/english"
 	"shop/internal/ocr"
 	"shop/internal/products"
 	"shop/internal/receipts"
@@ -32,6 +33,7 @@ type Deps struct {
 	Products    *products.Service
 	Stats       *stats.Service
 	List        *shopping.Service
+	English     *english.Service
 	Location    *time.Location
 	Log         *slog.Logger
 	DataDir     string // for backup status and storage size; optional
@@ -111,6 +113,13 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("DELETE /v1/list/{id}", s.deleteListItem)
 	api.HandleFunc("POST /v1/list/{id}/check", s.setListItemChecked(true))
 	api.HandleFunc("POST /v1/list/{id}/uncheck", s.setListItemChecked(false))
+
+	api.HandleFunc("GET /v1/glossary", s.listGlossary)
+	api.HandleFunc("POST /v1/glossary/preview", s.previewGlossary)
+	api.HandleFunc("PUT /v1/glossary/{dutch}", s.teachWord)
+	api.HandleFunc("DELETE /v1/glossary/{dutch}", s.forgetWord)
+	api.HandleFunc("GET /v1/translations/todo", s.translationTodo)
+	api.HandleFunc("GET /v1/translate", s.previewTranslation)
 
 	for pattern, h := range s.Authed {
 		api.Handle(pattern, h)

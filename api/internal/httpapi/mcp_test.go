@@ -82,7 +82,7 @@ func TestMCPTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tools.Tools) != 13 {
+	if len(tools.Tools) != 15 {
 		t.Errorf("tools = %d", len(tools.Tools))
 	}
 
@@ -214,6 +214,22 @@ func TestMCPTools(t *testing.T) {
 	}
 	if _, res := call[struct{}](t, cs, "spend_summary", map[string]any{"from": "september"}); !strings.Contains(errText(res), "invalid date") {
 		t.Errorf("bad date error: %q", errText(res))
+	}
+
+	// English names: teach a word through the assistant.
+	f.e.product(map[string]any{"name": "Appels Elstar"})
+	todo, _ := call[struct {
+		WordsLeft int                    `json:"words_left"`
+		Words     []struct{ Key string } `json:"words"`
+	}](t, cs, "translation_todo", nil)
+	if todo.WordsLeft != 1 || todo.Words[0].Key != "elstar" {
+		t.Errorf("translation_todo: %+v", todo)
+	}
+	taught, _ := call[struct {
+		ProductsUpdated int `json:"products_updated"`
+	}](t, cs, "teach_word", map[string]any{"word": "Elstar", "keep_as_is": true})
+	if taught.ProductsUpdated != 1 {
+		t.Errorf("teach_word: %+v", taught)
 	}
 
 	// Resources.

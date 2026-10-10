@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"shop/internal/apitypes"
+	"shop/internal/english"
 	"shop/internal/match"
 	"shop/internal/openfoodfacts"
 	"shop/internal/products"
@@ -74,6 +75,10 @@ func toProduct(p db.Product, n *db.Nutrition) apitypes.Product {
 		src := apitypes.ProductNameEnSource(p.NameEnSource.String)
 		out.NameEnSource = &src
 	}
+	st := english.ProductStatus(p)
+	status := apitypes.NameEnStatus(st.Status)
+	spans := toSpans(st.Unknown)
+	out.NameEnStatus, out.NameEnUnknown = &status, &spans
 	if n != nil {
 		nu := toNutrition(*n)
 		out.Nutrition = &nu

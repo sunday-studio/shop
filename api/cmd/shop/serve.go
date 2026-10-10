@@ -12,6 +12,7 @@ import (
 
 	"shop/internal/backup"
 	"shop/internal/config"
+	"shop/internal/english"
 	"shop/internal/httpapi"
 	"shop/internal/jobs"
 	"shop/internal/match"
@@ -38,6 +39,7 @@ type app struct {
 	stats    *stats.Service
 	list     *shopping.Service
 	matcher  *match.Matcher
+	english  *english.Service
 }
 
 func openApp(ctx context.Context, log *slog.Logger) (*app, error) {
@@ -74,10 +76,17 @@ func openApp(ctx context.Context, log *slog.Logger) (*app, error) {
 		receipts.Config{ImagesDir: cfg.ImagesDir(), Location: cfg.Location}, log)
 	a.matcher = match.NewMatcher(conn)
 	a.products = products.New(conn, a.matcher, openfoodfacts.New(cfg.FoodFactsUserAgent), cfg.ImagesDir(), log)
-	if n, err := a.products.BackfillEnglish(ctx); err != nil {
-		log.Warn("english name backfill", "err", err)
+	// Install the user's glossary, then bring automatic English names up to
+	// date (new products, a grown built-in glossary).
+	a.english = english.New(conn)
+	if err := a.english.Load(ctx); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("load glossary: %w", err)
+	}
+	if n, err := a.english.Retranslate(ctx); err != nil {
+		log.Warn("english names", "err", err)
 	} else if n > 0 {
-		log.Info("english names added", "products", n)
+		log.Info("english names updated", "products", n)
 	}
 	a.stats = stats.New(conn, cfg.Location)
 	a.list = shopping.New(conn, a.matcher, a.stats)
@@ -107,11 +116,11 @@ func serve(ctx context.Context, log *slog.Logger) error {
 
 	mcpSrv := mcpserver.New(mcpserver.Deps{
 		DB: a.db, Receipts: a.receipts, Products: a.products, Stats: a.stats, List: a.list,
-		Matcher: a.matcher, Location: a.cfg.Location,
+		Matcher: a.matcher, English: a.english, Location: a.cfg.Location,
 	})
 	api := httpapi.New(httpapi.Deps{
 		DB: a.db, OCR: a.ocr, OCRFallback: a.fallback, Receipts: a.receipts,
-		Products: a.products, Stats: a.stats, List: a.list, Location: a.cfg.Location, Log: log,
+		Products: a.products, Stats: a.stats, List: a.list, English: a.english, Location: a.cfg.Location, Log: log,
 		DataDir: a.cfg.DataDir,
 		Authed:  map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)},
 	})

@@ -371,38 +371,6 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]P
 	return items, nil
 }
 
-const productsMissingEnglish = `-- name: ProductsMissingEnglish :many
-SELECT id, name FROM products WHERE deleted_at IS NULL AND name_en IS NULL
-`
-
-type ProductsMissingEnglishRow struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-}
-
-func (q *Queries) ProductsMissingEnglish(ctx context.Context) ([]ProductsMissingEnglishRow, error) {
-	rows, err := q.db.QueryContext(ctx, productsMissingEnglish)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ProductsMissingEnglishRow{}
-	for rows.Next() {
-		var i ProductsMissingEnglishRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const recentUnmatchedLines = `-- name: RecentUnmatchedLines :many
 SELECT l.id, l.receipt_id, l.line_no, l.raw_text, l.norm_text, l.kind, l.qty, l.unit, l.unit_price_cents, l.line_total_cents, l.vat_code, l.parent_line_id, l.product_id, l.user_edited, r.shop_id, r.purchased_at, s.name AS shop_name
 FROM receipt_lines l

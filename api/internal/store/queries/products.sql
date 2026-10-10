@@ -97,8 +97,5 @@ WHERE l.product_id IS NULL
 ORDER BY COALESCE(r.purchased_at, r.created_at) DESC, l.line_no
 LIMIT 500;
 
--- name: ProductsMissingEnglish :many
-SELECT id, name FROM products WHERE deleted_at IS NULL AND name_en IS NULL;
-
 -- name: SetProductEnglish :exec
 UPDATE products SET name_en = ?, name_en_source = ? WHERE id = ?;
