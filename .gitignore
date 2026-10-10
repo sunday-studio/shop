@@ -24,3 +24,7 @@ ios/**/DerivedData/
 
 # local backups (dev default for SHOP_BACKUP_DIR)
 backups/
+
+# local secrets (LOGO_DEV_TOKEN etc.); see deploy/.env.example
+deploy/.env
+.env

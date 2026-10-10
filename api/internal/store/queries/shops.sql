@@ -8,13 +8,13 @@ SELECT * FROM shops
 WHERE id = ? AND deleted_at IS NULL;
 
 -- name: CreateShop :one
-INSERT INTO shops (name, chain, branch, address, city, notes, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO shops (name, chain, branch, address, city, notes, domain, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateShop :one
 UPDATE shops
-SET name = ?, chain = ?, branch = ?, address = ?, city = ?, notes = ?, updated_at = ?
+SET name = ?, chain = ?, branch = ?, address = ?, city = ?, notes = ?, domain = ?, updated_at = ?
 WHERE id = ? AND deleted_at IS NULL
 RETURNING *;
 

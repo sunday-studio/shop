@@ -157,6 +157,7 @@ type Shop struct {
 	CreatedAt     string         `json:"created_at"`
 	UpdatedAt     string         `json:"updated_at"`
 	DeletedAt     sql.NullString `json:"deleted_at"`
+	Domain        sql.NullString `json:"domain"`
 }
 
 type ShoppingListClientID struct {

@@ -15,6 +15,7 @@ import (
 	"shop/internal/english"
 	"shop/internal/httpapi"
 	"shop/internal/jobs"
+	"shop/internal/logos"
 	"shop/internal/match"
 	"shop/internal/mcpserver"
 	"shop/internal/ocr"
@@ -122,7 +123,8 @@ func serve(ctx context.Context, log *slog.Logger) error {
 	api := httpapi.New(httpapi.Deps{
 		DB: a.db, OCR: a.ocr, OCRFallback: a.fallback, Receipts: a.receipts,
 		Products: a.products, Stats: a.stats, List: a.list, English: a.english,
-		Search: search.New(a.db, a.products, a.matcher), Location: a.cfg.Location, Log: log,
+		Search: search.New(a.db, a.products, a.matcher), Logos: logos.New(a.cfg.LogoDevToken, a.cfg.ImagesDir()),
+		Location: a.cfg.Location, Log: log,
 		DataDir: a.cfg.DataDir,
 		Authed:  map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)},
 	})

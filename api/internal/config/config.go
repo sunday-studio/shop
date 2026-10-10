@@ -16,6 +16,7 @@ type Config struct {
 	OCRFallbackURL     string
 	FoodFactsUserAgent string
 	Workers            int
+	LogoDevToken       string // logo.dev publishable key; logos are off without it
 	BackupDir          string
 	BackupKeepDays     int
 	BackupAt           string // HH:MM local time for scheduled backups
@@ -34,6 +35,7 @@ func Load() (Config, error) {
 		FoodFactsUserAgent: env("OFF_USER_AGENT", "Shop/0.1 (self-hosted)"),
 	}
 
+	c.LogoDevToken = env("LOGO_DEV_TOKEN", "")
 	c.BackupDir = env("BACKUP_DIR", "/backup")
 	c.BackupAt = env("BACKUP_AT", "03:30")
 	keep, err := strconv.Atoi(env("BACKUP_KEEP_DAYS", "30"))
