@@ -207,7 +207,7 @@ func TestBarcodeCreateOverHTTP(t *testing.T) {
 	if rec.Code != 201 || m["status"] != "created_minimal" || m["off_status"] != "not_found" {
 		t.Errorf("minimal: %d %v", rec.Code, m)
 	}
-	if rec := e.do("POST", "/v1/barcodes/123/product", nil); rec.Code != 422 && rec.Code != 400 {
+	if rec := e.do("POST", "/v1/barcodes/123/product", nil); rec.Code != 400 {
 		t.Errorf("bad code: %d", rec.Code)
 	}
 	// the queue shows it, and refresh on a product without OFF data keeps it minimal

@@ -9,6 +9,7 @@ import (
 
 	"shop/internal/apitypes"
 	"shop/internal/autoprod"
+	"shop/internal/openfoodfacts"
 	"shop/internal/store"
 	"shop/internal/store/db"
 )
@@ -228,6 +229,10 @@ func (s *Server) splitLineProduct(w http.ResponseWriter, r *http.Request) {
 func (s *Server) createBarcodeProduct(w http.ResponseWriter, r *http.Request) {
 	a := s.auto(w, r)
 	if a == nil {
+		return
+	}
+	if !openfoodfacts.ValidBarcode(r.PathValue("code")) {
+		s.writeErr(w, r, badf("barcode must be 8 or 12-14 digits"))
 		return
 	}
 	o, err := a.CreateFromBarcode(r.Context(), r.PathValue("code"))
