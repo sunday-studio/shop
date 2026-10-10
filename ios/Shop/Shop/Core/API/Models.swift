@@ -555,7 +555,10 @@ nonisolated struct ShopSuggestion: Codable, Sendable, Hashable {
     }
 
     /// Same suggestion for several receipts → one Home card.
-    var groupKey: String { "\(kind.rawValue)|\(shopId ?? 0)|\(name)|\(branch ?? "")" }
+    var groupKey: String {
+        let normalized = name.trimmingCharacters(in: .whitespaces).lowercased()
+        return shopId.map { "\(kind.rawValue)|id\($0)" } ?? "\(kind.rawValue)|\(normalized)"
+    }
 }
 
 nonisolated struct ShopSuggestionAnswer: Codable, Sendable {
