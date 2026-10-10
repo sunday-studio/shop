@@ -307,7 +307,7 @@ func TestSubtotalWithLeadingCount(t *testing.T) {
 }
 
 // Real photographed Albert Heijn receipts (OCR output from the spike). OCR garbles the count in front
-// of SUBTOTAAL ("i1", "C"); it must still not become an item. Dates are not asserted (unverified).
+// of SUBTOTAAL ("i1", "C"); it must still not become an item. 1469's date is asserted (confirmed on paper).
 func TestRealReceiptSubtotal(t *testing.T) {
 	for _, c := range []struct {
 		file  string
@@ -329,6 +329,12 @@ func TestRealReceiptSubtotal(t *testing.T) {
 		}
 		if r.TotalCents == nil || *r.TotalCents != c.total || r.SumCents != c.total {
 			t.Errorf("%s: total=%v sum=%d; want both %d (reasons %v)", c.file, r.TotalCents, r.SumCents, c.total, r.Reasons)
+		}
+		// 1469's date was confirmed against the paper receipt (20-05-2025).
+		if c.file == "ah_subtotal_1469.json" {
+			if r.PurchasedAt == nil || r.PurchasedAt.In(ams).Format("2006-01-02") != "2025-05-20" {
+				t.Errorf("1469 purchased_at = %v; want 2025-05-20", r.PurchasedAt)
+			}
 		}
 	}
 }
