@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppModel.self) private var app
     @State private var hapticsOn = Haptics.isEnabled
+    @State private var straightenOn = Straightener.isEnabled
 
     var body: some View {
         ScrollView {
@@ -52,9 +53,25 @@ struct SettingsView: View {
                         Toggle("", isOn: $hapticsOn)
                             .labelsHidden()
                             .tint(Accent.blue)
+                            .padding(.trailing, 2) // the switch overhangs the row hairlines by ~2 pt
                             .onChange(of: hapticsOn) { _, on in
                                 Haptics.isEnabled = on
                                 if on { Haptics.play(.selection) }
+                            }
+                    }
+                    .frame(minHeight: Size.rowProduct)
+                    .hairline()
+                    HStack(spacing: Space.lx) {
+                        IconTile(icon: .scan, color: Accent.blue)
+                        Text("Straighten imported photos").textStyle(TypeStyle.rowTitle.sized(15.5)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.85)
+                        Spacer()
+                        Toggle("", isOn: $straightenOn)
+                            .labelsHidden()
+                            .tint(Accent.blue)
+                            .padding(.trailing, 2)
+                            .onChange(of: straightenOn) { _, on in
+                                Straightener.isEnabled = on
+                                Haptics.play(.selection)
                             }
                     }
                     .frame(minHeight: Size.rowProduct)
@@ -285,14 +302,37 @@ struct ServerView: View {
 struct UploadQueueView: View {
     @Environment(AppModel.self) private var app
 
-    private var waiting: [UploadItem] { app.uploads.items.filter { $0.state == .waiting || $0.state == .uploading } }
+    private var waiting: [UploadItem] { app.uploads.items.filter { $0.state == .preparing || $0.state == .waiting || $0.state == .uploading } }
+
+    /// Waiting items in queue order; imports of two or more get a batch header.
+    private var waitingGroups: [(batch: UUID?, items: [UploadItem])] {
+        var groups: [(batch: UUID?, items: [UploadItem])] = []
+        for item in waiting {
+            if let batch = item.batchId, let i = groups.firstIndex(where: { $0.batch == batch }) {
+                groups[i].items.append(item)
+            } else {
+                groups.append((item.batchId, [item]))
+            }
+        }
+        return groups
+    }
+
+    private func batchTitle(_ items: [UploadItem]) -> String {
+        let first = items.map(\.createdAt).min() ?? .now
+        let from = items.first?.source == .files ? "Files" : "Photos"
+        return "Imported from \(from) · \(Dates.shortDay(first)), \(Dates.time(first))"
+    }
     private var failed: [UploadItem] { app.uploads.items.filter { $0.state == .failed } }
     private var duplicates: [UploadItem] { app.uploads.items.filter { $0.state == .done && $0.wasDuplicate } }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                NavHeader(title: "Upload queue")
+                NavHeader(title: "Upload queue") {
+                    if !waiting.isEmpty || !failed.isEmpty {
+                        IconButton(icon: .plus, label: "Import receipts") { app.openImportSources() }
+                    }
+                }
 
                 if !app.network.isOnline {
                     HStack(spacing: Space.ml) {
@@ -309,7 +349,13 @@ struct UploadQueueView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if !waiting.isEmpty {
                         DaySectionHeader(title: "Waiting · \(waiting.count)", trailing: "On this iPhone")
-                        ForEach(waiting) { item in itemRow(item) }
+                        ForEach(Array(waitingGroups.enumerated()), id: \.offset) { _, group in
+                            if group.batch != nil, group.items.count >= 2 {
+                                DaySectionHeader(title: batchTitle(group.items), trailing: "\(group.items.count) receipts")
+                                    .padding(.top, Space.m)
+                            }
+                            ForEach(group.items) { item in itemRow(item) }
+                        }
                     }
                     if !failed.isEmpty || !duplicates.isEmpty {
                         DaySectionHeader(title: "Didn't upload · \(failed.count + duplicates.count)")
@@ -318,7 +364,8 @@ struct UploadQueueView: View {
                         ForEach(duplicates) { item in problemRow(item, duplicate: true) }
                     }
                     if waiting.isEmpty && failed.isEmpty && duplicates.isEmpty {
-                        EmptyState(title: "All uploaded", message: "Scans wait here when you're offline or the server can't be reached, and upload on their own.") {
+                        EmptyState(title: "All uploaded", message: "Scans wait here when you're offline or the server can't be reached, and upload on their own.",
+                                   action: (title: "Import receipts", run: { app.openImportSources() })) {
                             GlyphIllustration(icon: .upload, color: Accent.blue)
                         }
                         .padding(.top, 60)
@@ -349,12 +396,12 @@ struct UploadQueueView: View {
         HStack(spacing: Space.l) {
             thumbnail(item)
             VStack(alignment: .leading, spacing: 1) {
-                Text(item.shopName).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                Text("\(item.pages == 1 ? "1 page" : "\(item.pages) pages") · scanned \(Dates.time(item.createdAt))\(item.lastError.map { " · \($0)" } ?? "")")
+                Text(item.shopId == nil ? "Shop to be found out" : item.shopName).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                Text(itemSubtitle(item))
                     .textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1)
             }
             Spacer()
-            if item.state == .uploading {
+            if item.state == .uploading || item.state == .preparing {
                 ProgressView().controlSize(.small).tint(Palette.ink2)
             } else {
                 IconView(.upload, size: 18).foregroundStyle(Palette.ink3)
@@ -367,12 +414,21 @@ struct UploadQueueView: View {
         }
     }
 
+    private func itemSubtitle(_ item: UploadItem) -> String {
+        let pages = item.pages == 1 ? "1 page" : "\(item.pages) pages"
+        switch item.state {
+        case .preparing: return "\(pages) · Preparing…"
+        case .waiting: return "\(pages) · \(item.lastError ?? "Waiting")"
+        default: return "\(pages) · \(item.source == .scanner || item.source == nil ? "scanned" : "imported") \(Dates.time(item.createdAt))"
+        }
+    }
+
     private func problemRow(_ item: UploadItem, duplicate: Bool) -> some View {
         HStack(alignment: .top, spacing: Space.l) {
             thumbnail(item)
             VStack(alignment: .leading, spacing: Space.m) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(item.shopName).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                    Text(item.shopId == nil ? "Shop to be found out" : item.shopName).textStyle(.rowTitle).foregroundStyle(Palette.ink)
                     Text(duplicate ? "Same receipt was already uploaded" : (item.lastError ?? "Upload failed"))
                         .textStyle(.rowSub)
                         .foregroundStyle(duplicate ? Palette.amberText : Palette.redText)

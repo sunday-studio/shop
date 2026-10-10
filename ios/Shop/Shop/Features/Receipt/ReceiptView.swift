@@ -5,25 +5,33 @@ import SwiftUI
 struct ReceiptView: View {
     let receiptId: Int64
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
-    @State private var model: ReceiptModel?
 
     var body: some View {
-        Group {
-            if let model {
-                content(model)
-            } else {
-                Palette.bg
-            }
-        }
-        .background(Palette.bg)
-        .onAppear {
-            if model == nil { model = ReceiptModel(receiptId: receiptId, app: app) }
-        }
-        .task(id: model == nil) {
-            await model?.load()
-        }
-        .onDisappear { model?.stop() }
+        // The model is built before the first frame so the pushed screen opens with the summary
+        // Home already has instead of a blank or a placeholder.
+        ReceiptScreen(receiptId: receiptId, app: app)
+    }
+}
+
+private struct ReceiptScreen: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.dismiss) private var dismiss
+    @State private var model: ReceiptModel
+    /// The screen opened on a summary (no lines): its first fill swaps skeleton rows for real
+    /// ones in place, without the stagger.
+    @State private var openedOnSummary: Bool
+
+    init(receiptId: Int64, app: AppModel) {
+        let model = ReceiptModel(receiptId: receiptId, app: app)
+        _model = State(initialValue: model)
+        _openedOnSummary = State(initialValue: model.receipt != nil && model.receipt?.lines == nil)
+    }
+
+    var body: some View {
+        content(model)
+            .background(Palette.bg)
+            .task { await model.load() }
+            .onDisappear { model.stop() }
     }
 
     @ViewBuilder
@@ -41,14 +49,45 @@ struct ReceiptView: View {
                             .padding(.horizontal, Space.gutter)
                             .padding(.top, Space.xxl)
 
+                        if let suggestion = model.suggestion {
+                            ShopSuggestionCard(
+                                name: suggestion.name, detail: suggestion.detail, waiting: suggestion.receiptCount,
+                                isWorking: model.isAcceptingSuggestion,
+                                onAccept: { Task { await model.acceptSuggestion() } },
+                                onEdit: { editSuggestion(suggestion, model: model) },
+                                onNotNow: { model.dismissSuggestion() }
+                            )
+                            .disabled(!app.network.isOnline)
+                            .padding(.horizontal, Space.edge)
+                            .padding(.top, 18)
+                            .transition(.opacity)
+                            if !app.network.isOnline {
+                                Text("Needs a connection").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                                    .padding(.horizontal, Space.edge + Space.xs).padding(.top, Space.s)
+                            }
+                        }
+
                         if let banner = model.banner {
                             Banner(tone: banner.tone, lead: banner.lead.isEmpty ? nil : banner.lead, message: banner.message)
+                                .padding(.horizontal, Space.edge)
+                                .padding(.top, 18)
+                        } else if receipt.lines == nil && receipt.status == .needsReview {
+                            // The banner needs the lines; hold its space so the rows don't jump.
+                            Banner(tone: .amber, lead: "Placeholder amount short.", message: "Check the lines against the photo.")
+                                .redacted(reason: .placeholder)
+                                .accessibilityHidden(true)
                                 .padding(.horizontal, Space.edge)
                                 .padding(.top, 18)
                         }
 
                         if receipt.status == .processing || receipt.status == .pending {
                             processing
+                        } else if receipt.lines == nil {
+                            // Summary only: placeholder rows until the refresh brings the lines,
+                            // swapped in place with no cross-fade.
+                            linesSkeleton
+                                .padding(.horizontal, Space.gutter)
+                                .padding(.top, Space.xl)
                         } else if receipt.status == .failed && model.lines.isEmpty {
                             failedActions(model)
                         } else {
@@ -70,7 +109,7 @@ struct ReceiptView: View {
             .refreshable { await model.load() }
 
             if let receipt = model.receipt, receipt.status == .needsReview {
-                ConfirmBar(linesCents: model.countedCents, totalCents: receipt.totalCents, isWorking: model.isConfirming) {
+                ConfirmBar(linesCents: model.countedCents, totalCents: receipt.totalCents, isWorking: model.isConfirming, isLoading: receipt.lines == nil) {
                     Task {
                         if await model.confirm() {
                             Haptics.play(.success)
@@ -84,6 +123,7 @@ struct ReceiptView: View {
             }
         }
         .animation(Motion.ease, value: model.receipt?.status)
+        .animation(nil, value: model.receipt?.lines == nil)
         .toolbar(.hidden, for: .navigationBar)
     }
 
@@ -123,6 +163,28 @@ struct ReceiptView: View {
 
     // MARK: Lines
 
+    private func editSuggestion(_ suggestion: ShopSuggestion, model: ReceiptModel) {
+        app.trays.present("suggestion-edit") {
+            SuggestionEditTray(suggestion: suggestion) { name, branch, domain in
+                Task { await model.acceptSuggestion(name: name, branch: branch, domain: domain) }
+            }
+        }
+    }
+
+    private var linesSkeleton: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionLabel(title: "Lines") {
+                Chip(title: "All 00", isSelected: true, size: .small) {}
+            }
+            ForEach(0..<6, id: \.self) { _ in
+                LineRow(title: "Placeholder product name", amount: "€0,00")
+                    .hairline()
+            }
+        }
+        .redacted(reason: .placeholder)
+        .accessibilityHidden(true)
+    }
+
     private func lineList(_ model: ReceiptModel) -> some View {
         @Bindable var model = model
         return VStack(alignment: .leading, spacing: 0) {
@@ -155,7 +217,7 @@ struct ReceiptView: View {
                             titleColor: p.titleColor, amountColor: p.amountColor, dot: p.dot, indented: p.indented)
                 }
                 .buttonStyle(.press(haptic: nil))
-                .staggeredAppear(index: index)
+                .staggeredAppear(index: openedOnSummary ? Motion.staggerMax : index)
                 .contextMenu {
                     Button("Edit line", systemImage: "pencil") { openEdit(line, model: model) }
                     if line.kind == .item {
@@ -253,4 +315,59 @@ struct ReceiptView: View {
     .trayHost(app.trays)
     .task { try? await app.catalog.refreshReference(); try? await app.catalog.refreshProducts() }
     .preferredColorScheme(.dark)
+}
+
+
+/// "Edit" on the suggestion card: fix the name, branch or website, then add the shop.
+struct SuggestionEditTray: View {
+    let suggestion: ShopSuggestion
+    let onAdd: (String, String?, String?) -> Void
+
+    @Environment(TrayCoordinator.self) private var trays
+    @State private var name = ""
+    @State private var branch = ""
+    @State private var website = ""
+    @State private var loaded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.lx) {
+            TrayHeader(title: "Add shop", subtitle: suggestion.kind == .existing ? "Moves to \(suggestion.name)" : nil)
+            HStack(spacing: Space.l) {
+                ShopMark(name: name.isEmpty ? "?" : name, size: 32)
+                Text("The logo comes from the website once the shop is added.")
+                    .textStyle(.rowSub).foregroundStyle(Palette.ink2)
+            }
+            .padding(.horizontal, Space.xs)
+            Grid(horizontalSpacing: Space.m, verticalSpacing: Space.m) {
+                GridRow {
+                    FieldTile(label: "Name", text: $name, placeholder: "Aldi", background: Palette.trayField)
+                    FieldTile(label: "Branch", text: $branch, placeholder: "Hoofdstraat 12", background: Palette.trayField)
+                }
+                GridRow {
+                    FieldTile(label: "Website", text: $website, placeholder: "aldi.nl", mono: true, background: Palette.trayField)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .gridCellColumns(2)
+                }
+            }
+            Button("Add \(name.isEmpty ? "shop" : name)") {
+                func clean(_ s: String) -> String? {
+                    let t = s.trimmingCharacters(in: .whitespaces)
+                    return t.isEmpty ? nil : t
+                }
+                trays.dismiss()
+                onAdd(name.trimmingCharacters(in: .whitespaces), clean(branch), clean(website))
+            }
+            .buttonStyle(.shop(haptic: .medium))
+            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        .onAppear {
+            guard !loaded else { return }
+            loaded = true
+            name = suggestion.name
+            branch = suggestion.branch ?? ""
+            website = suggestion.domain ?? ""
+        }
+    }
 }

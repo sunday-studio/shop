@@ -1,16 +1,15 @@
 import UIKit
 
 /// Multi-page scans become one long receipt, stitched vertically on the phone (PLAN §9).
-@MainActor
-enum Stitcher {
+nonisolated enum Stitcher {
     /// Scales pages to a common width (≤ maxWidth), stacks them, and encodes a JPEG under
     /// the server's 20 MB limit (lowering quality, then width, if needed).
-    static func stitch(_ pages: [UIImage], maxWidth: CGFloat = 1600, maxBytes: Int = 19_000_000) -> Data? {
+    static func stitch(_ pages: [UIImage], maxWidth: CGFloat = 2400, maxBytes: Int = 19_000_000) -> Data? {
         guard !pages.isEmpty else { return nil }
         var width = min(maxWidth, pages.map { $0.size.width * $0.scale }.max() ?? maxWidth)
         for _ in 0..<3 {
             let image = render(pages, width: width)
-            for quality in [0.82, 0.7, 0.55] {
+            for quality in [0.88, 0.8, 0.7] {
                 if let data = image.jpegData(compressionQuality: quality), data.count <= maxBytes {
                     return data
                 }

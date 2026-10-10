@@ -17,6 +17,9 @@ struct AddTray: View {
                     app.startCapture(.unpack)
                 }
             }
+            FeatureCard(icon: .image, title: "Import receipts", caption: "From Photos or Files, old ones too", color: Accent.orange, height: 96) {
+                app.openImportSources()
+            }
             if let last = lastScan {
                 Text(last)
                     .textStyle(.rowSub)
@@ -54,6 +57,8 @@ struct CaptureCover: View {
 // MARK: - C.1 + C.2 · Scan, then shop & date
 
 struct ReceiptCaptureView: View {
+    private static let maxPages = 5
+
     @Environment(AppModel.self) private var app
     @State private var pages: [UIImage] = []
     @State private var preview: UIImage?
@@ -107,7 +112,8 @@ struct ReceiptCaptureView: View {
         }
         .onAppear {
             if shopId == nil { shopId = app.catalog.lastShop?.id }
-            if pages.isEmpty && DocumentScanner.isAvailable { scanning = true }
+            guard pages.isEmpty else { return }
+            if DocumentScanner.isAvailable { scanning = true }
         }
         .animation(Motion.spring, value: pages.isEmpty)
     }
@@ -133,7 +139,7 @@ struct ReceiptCaptureView: View {
                     Button("Open scanner") { scanning = true }
                         .buttonStyle(.shop(.solid(Accent.blue)))
                 }
-                PhotosPicker(selection: $photoItems, maxSelectionCount: 5, matching: .images) {
+                PhotosPicker(selection: $photoItems, maxSelectionCount: Self.maxPages, matching: .images) {
                     Text("Choose a photo")
                 }
                 .buttonStyle(.shop(.tinted(text: Color(hex: 0xF4F4F1), tint: Color(hex: 0x2A2A27))))
@@ -170,7 +176,7 @@ struct ReceiptCaptureView: View {
                 .padding(.trailing, 12)
                 .frame(height: 30)
                 .background(Palette.trayField, in: Capsule())
-                if DocumentScanner.isAvailable {
+                if DocumentScanner.isAvailable && pages.count < Self.maxPages {
                     Button("+ Page") {
                         appendNext = true
                         scanning = true
@@ -215,7 +221,7 @@ struct ReceiptCaptureView: View {
                         .frame(height: 50)
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.press(haptic: .light))
+                    .buttonStyle(.press(haptic: nil))
                 }
                 .padding(.horizontal, Space.xs)
             }
@@ -239,14 +245,14 @@ struct ReceiptCaptureView: View {
                 .frame(height: 48)
                 .background(Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
             }
-            .buttonStyle(.press(haptic: .light))
+            .buttonStyle(.press(haptic: nil))
 
             Button {
                 add()
             } label: {
                 LoadingLabel(title: "Add receipt", isLoading: adding)
             }
-            .buttonStyle(.shop())
+            .buttonStyle(.shop(haptic: nil))
             .disabled(shopId == nil || adding)
         }
         .padding(.top, 22)
@@ -300,7 +306,7 @@ struct ReceiptCaptureView: View {
 
     private func receive(_ newPages: [UIImage]) {
         guard !newPages.isEmpty else { return }
-        if appendNext { pages += newPages } else { pages = newPages }
+        if appendNext { pages = Array((pages + newPages).prefix(Self.maxPages)) } else { pages = Array(newPages.prefix(Self.maxPages)) }
         appendNext = false
         preview = pages.first.map { Stitcher.thumbnail($0) }
         Haptics.play(.light)
@@ -314,6 +320,7 @@ struct ReceiptCaptureView: View {
             }
         }
         photoItems = []
+        if images.isEmpty && !items.isEmpty { app.toasts.error("Couldn't read that photo.") }
         receive(images)
     }
 
@@ -327,7 +334,7 @@ struct ReceiptCaptureView: View {
         }
         app.uploads.enqueue(jpeg: jpeg, shop: shop, purchasedAt: date, pages: pages.count)
         app.catalog.lastShopId = shop.id
-        Haptics.play(.light)
+        Haptics.play(.uploadQueued)
         app.capture = nil
         app.tab = .home
         app.toasts.show(app.network.isOnline ? "Receipt added · uploading" : "Saved · uploads when you're online")

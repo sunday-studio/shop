@@ -7,6 +7,11 @@ struct HomeView: View {
 
     private var home: HomeModel { app.home }
 
+    /// A typical bar: six categories, two legend rows.
+    private static let placeholderShares = ["Zuivel", "Groente", "Vlees", "Voorraad", "Brood", "Other"].map {
+        CategoryShare(name: $0, cents: 2_000, color: Palette.neutral)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -25,7 +30,20 @@ struct HomeView: View {
                     CategoryBar(shares: home.categoryShares)
                         .padding(.horizontal, Space.gutter)
                         .padding(.top, Space.xxl)
+                } else if !home.spendLoaded {
+                    // Holds the bar and legend's height until the first stats land, so the
+                    // review card and list don't drop when they arrive.
+                    CategoryBar(shares: Self.placeholderShares)
+                        .hidden()
+                        .padding(.horizontal, Space.gutter)
+                        .padding(.top, Space.xxl)
                 }
+
+                progressCards
+                    .padding(.horizontal, Space.edge)
+
+                suggestionCards
+                    .padding(.horizontal, Space.edge)
 
                 if home.attentionCount > 0 && !home.filter.isActive {
                     AttentionCard(count: home.attentionCount, title: "Receipts to review", hint: home.attentionHint) {
@@ -42,6 +60,7 @@ struct HomeView: View {
             .padding(.bottom, Space.tabBarClearance)
         }
         .scrollIndicators(.hidden)
+        .transaction(value: home.spendLoaded) { $0.animation = nil }
         .refreshable {
             app.uploads.kick(force: true)
             await home.refresh()
@@ -60,18 +79,29 @@ struct HomeView: View {
                 Text("Spent in \(Dates.month(.now))")
                     .textStyle(TypeStyle.rowTitle)
                     .foregroundStyle(Palette.ink2)
-                HeroAmount(cents: home.monthSpend?.totalCents ?? 0, color: hasSpend ? Palette.ink : Palette.ink3)
-                Group {
-                    if let delta = home.monthDeltaCents, hasSpend {
-                        DeltaChip(deltaCents: delta, caption: "\(delta <= 0 ? "less" : "more") than this time in \(Dates.month(Dates.adding(.month, -1, to: .now)))")
-                    } else {
-                        Text("Totals show up once a receipt is read.")
-                            .textStyle(TypeStyle.body.sized(13.5))
-                            .foregroundStyle(Palette.ink2)
+                if home.spendLoaded {
+                    HeroAmount(cents: home.monthSpend?.totalCents ?? 0, color: hasSpend ? Palette.ink : Palette.ink3)
+                    Group {
+                        if let delta = home.monthDeltaCents, hasSpend {
+                            DeltaChip(deltaCents: delta, caption: "\(delta <= 0 ? "less" : "more") than this time in \(Dates.month(Dates.adding(.month, -1, to: .now)))")
+                        } else {
+                            Text("Totals show up once a receipt is read.")
+                                .textStyle(TypeStyle.body.sized(13.5))
+                                .foregroundStyle(Palette.ink2)
+                        }
                     }
+                    .padding(.top, Space.xs)
+                } else {
+                    // Keeps the layout while the first stats load, so the real total appears
+                    // without a €0,00 flash or a number roll.
+                    HeroAmount(cents: 0).hidden()
+                    Text("Totals show up once a receipt is read.")
+                        .textStyle(TypeStyle.body.sized(13.5))
+                        .hidden()
+                        .padding(.top, Space.xs)
                 }
-                .padding(.top, Space.xs)
             }
+            .animation(nil, value: home.spendLoaded)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
@@ -82,14 +112,71 @@ struct HomeView: View {
 
     private var hasSpend: Bool { (home.monthSpend?.totalCents ?? 0) > 0 }
 
+    // MARK: Shop suggestions
+
+    @ViewBuilder
+    private var suggestionCards: some View {
+        let groups = home.suggestionGroups
+        VStack(spacing: Space.m) {
+            ForEach(groups) { group in
+                AttentionCard(
+                    count: group.count,
+                    title: group.suggestion.kind == .new ? "New shop: \(group.suggestion.name)" : "Looks like \(group.suggestion.name)",
+                    hint: group.suggestion.kind == .new ? "Add" : "Move",
+                    tone: .blue
+                ) { app.push(.receipt(group.firstReceiptId)) }
+                .transition(.opacity)
+            }
+        }
+        .padding(.top, groups.isEmpty ? 0 : 18)
+        .animation(Motion.ease, value: groups.map(\.id))
+    }
+
+    // MARK: Upload progress
+
+    private var onlineNow: Bool { app.network.isOnline }
+
+    @ViewBuilder
+    private var progressCards: some View {
+        let batches = app.uploads.summaries(online: onlineNow)
+        VStack(spacing: Space.m) {
+            ForEach(batches) { batch in
+                UploadProgressCard(state: cardState(batch), onOpen: { open(batch) }, onRetry: { app.uploads.retryFailed(in: batch.id) })
+                    .transition(.opacity.combined(with: .offset(y: -8)))
+            }
+        }
+        .padding(.top, batches.isEmpty ? 0 : 18)
+        .animation(Motion.ease, value: batches.map(\.id))
+    }
+
+    private func cardState(_ batch: UploadQueue.BatchSummary) -> UploadProgressCard.State {
+        switch batch.phase {
+        case .preparing: .preparing(done: batch.prepared, total: batch.total)
+        case .uploading: .uploading(done: batch.uploaded, total: batch.total)
+        case .offline: .offline(waiting: batch.total - batch.uploaded)
+        case .partial: .partial(uploaded: batch.uploaded, failed: batch.failed)
+        case .done: .done(total: batch.total)
+        }
+    }
+
+    private func open(_ batch: UploadQueue.BatchSummary) {
+        if batch.phase == .done {
+            home.setFilter(.init(status: .processing))
+        } else {
+            app.push(.uploadQueue)
+        }
+    }
+
     // MARK: Inbox
 
     @ViewBuilder
     private var inbox: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if !app.uploads.pending.isEmpty {
+            let carded = app.uploads.cardBatchIds(online: onlineNow)
+            let pendingRows = app.uploads.pending.filter { $0.batchId == nil || !carded.contains($0.batchId!) }
+            if !pendingRows.isEmpty {
                 DaySectionHeader(title: "Today", trailing: "On this iPhone")
-                ForEach(app.uploads.pending) { item in
+                ForEach(pendingRows) { item in
                     Button { app.push(.uploadQueue) } label: {
                         ReceiptRow(
                             shopName: item.shopName,
@@ -192,6 +279,7 @@ struct HomeView: View {
     private func uploadSubtitle(_ item: UploadItem) -> String {
         let pages = item.pages == 1 ? "1 page" : "\(item.pages) pages"
         switch item.state {
+        case .preparing: return "\(pages) · preparing"
         case .waiting:
             return app.network.isOnline ? "\(pages) · waiting to upload" : "\(pages) · uploads when online"
         case .uploading: return "\(pages) · uploading"
@@ -215,6 +303,12 @@ struct HomeView: View {
                 message: "Thermal paper fades in weeks. Scan now and review whenever you like. Scans upload as soon as you're back online."
             )
             .padding(.top, 40)
+            Button("Import receipts from Photos") { app.openImportSources() }
+                .textStyle(.label)
+                .foregroundStyle(Palette.blueText)
+                .buttonStyle(.press(haptic: .selection))
+                .frame(maxWidth: .infinity)
+                .padding(.top, Space.m)
         }
     }
 }

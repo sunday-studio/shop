@@ -90,6 +90,12 @@ final class AppModel {
     var paths: [AppTab: [Route]] = [:]
     /// Presented camera flow (document scanner + shop picker, or barcode unpacking).
     var capture: CaptureMode?
+    /// Which system picker the root view should show for "Import receipts".
+    var importPicker: ImportSource?
+    /// The Import screen (full screen) while receipts are being arranged.
+    var importFlow: ImportModel?
+    /// True between picking and the Import screen appearing, so a cancelled picker can tell.
+    var isStartingImport = false
     private(set) var appearance: Appearance
     private(set) var health: Health?
     private(set) var version: VersionInfo?
@@ -234,6 +240,16 @@ final class AppModel {
 
     func popToRoot(_ tab: AppTab? = nil) {
         paths[tab ?? self.tab] = []
+    }
+
+    /// Add tray / empty state / queue: dismiss the tray and show the chosen system picker.
+    func beginImport(_ source: ImportSource) {
+        trays.dismiss()
+        importPicker = source
+    }
+
+    func openImportSources() {
+        trays.present("import-source") { ImportSourceTray() }
     }
 
     func startCapture(_ mode: CaptureMode) {
