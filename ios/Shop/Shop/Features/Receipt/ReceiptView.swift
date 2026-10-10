@@ -250,13 +250,23 @@ private struct ReceiptScreen: View {
 
             ForEach(Array(model.visibleLines.enumerated()), id: \.element.id) { index, line in
                 let p = model.present(line)
-                Button {
-                    tap(line, model: model)
-                } label: {
-                    LineRow(title: p.title, isRaw: p.isRaw, subtitle: p.subtitle, subtitleColor: p.subtitleColor, amount: p.amount,
-                            titleColor: p.titleColor, amountColor: p.amountColor, dot: p.dot, indented: p.indented)
+                SwipeRow(
+                    leading: line.kind == .item
+                        ? SwipeAction(title: line.productId == nil ? "Link" : "Change", icon: .link, color: Accent.blue, haptic: nil) { openLink(line, model: model) }
+                        : nil,
+                    trailing: SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: nil) { askDeleteLine(line, model: model) }
+                ) {
+                    Button {
+                        guard !app.rowSwipeActive else { return }
+                        tap(line, model: model)
+                    } label: {
+                        LineRow(title: p.title, isRaw: p.isRaw, subtitle: p.subtitle, subtitleColor: p.subtitleColor, amount: p.amount,
+                                titleColor: p.titleColor, amountColor: p.amountColor, dot: p.dot, indented: p.indented)
+                    }
+                    .buttonStyle(.press(haptic: nil))
                 }
-                .buttonStyle(.press(haptic: nil))
+                .accessibilityAction(named: "Edit") { openEdit(line, model: model) }
+                .accessibilityAction(named: "Delete") { askDeleteLine(line, model: model) }
                 .staggeredAppear(index: openedOnSummary ? Motion.staggerMax : index)
                 .contextMenu {
                     Button("Edit line", systemImage: "pencil") { openEdit(line, model: model) }
@@ -313,6 +323,15 @@ private struct ReceiptScreen: View {
     }
 
     // MARK: Trays
+
+    private func askDeleteLine(_ line: ReceiptLine, model: ReceiptModel) {
+        app.trays.present("delete-line") {
+            ConfirmTray(title: "Delete this line?", message: "\(model.present(line).title) · \(model.present(line).amount)", confirmTitle: "Delete line", destructive: true) {
+                await model.deleteLine(line.id)
+                return true
+            }
+        }
+    }
 
     private func tap(_ line: ReceiptLine, model: ReceiptModel) {
         if line.kind == .item && line.productId == nil {
