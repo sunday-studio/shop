@@ -10,6 +10,14 @@ struct SwipeAction {
     var run: () -> Void
 }
 
+/// Haptics (docs: design agent's taxonomy). A swipe has two moments:
+/// - "Armed": crossing the 190 pt commit line plays `selection`, once per change of side.
+/// - "Committed": the action plays its own haptic, the same one its button or tap equivalent
+///   plays (set per action in `SwipeAction.haptic`; nil when the action opens a tray, which
+///   plays its own `trayOpen`). A tap on the revealed button plays only that action haptic.
+/// Nothing removes data instantly: a removal either opens a confirmation tray or shows an
+/// Undo toast.
+///
 /// Swipe a list row sideways to reveal an action (right → `leading`, left → `trailing`). The rows
 /// live in a plain ScrollView, so this is a small drag gesture that only wins when the move is
 /// clearly horizontal. A long swipe runs the action; a short one leaves the button open.
@@ -25,6 +33,7 @@ struct SwipeRow<Content: View>: View {
     @State private var pastCommit = false
     @Environment(\.accessibilityReduceMotion) private var reduce
     @Environment(AppModel.self) private var app
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
 
     private let reveal: CGFloat = 92
     private let commit: CGFloat = 190
@@ -44,6 +53,7 @@ struct SwipeRow<Content: View>: View {
             if let trailing, offset < 0 { button(trailing, alignment: .trailing).zIndex(2) }
         }
         .clipped()
+        .onAppear { nudgeOnce() }
         .simultaneousGesture(
             DragGesture(minimumDistance: 18)
                 .onChanged { value in
@@ -76,6 +86,21 @@ struct SwipeRow<Content: View>: View {
                     else { close() }
                 }
         )
+    }
+
+    /// Once per install, on the first swipeable row that shows: slide it 40 pt and back so the
+    /// gesture is discoverable. Skipped with VoiceOver or Reduce Motion.
+    private func nudgeOnce() {
+        let key = "swipe.nudged"
+        guard !UserDefaults.standard.bool(forKey: key), !reduce, !voiceOver, leading != nil || trailing != nil else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        Task {
+            try? await Task.sleep(for: .milliseconds(900))
+            guard !dragging, offset == 0 else { return }
+            withAnimation(Motion.spring) { offset = leading != nil ? 40 : -40 }
+            try? await Task.sleep(for: .milliseconds(450))
+            if !dragging { close() }
+        }
     }
 
     private func button(_ action: SwipeAction, alignment: Alignment) -> some View {

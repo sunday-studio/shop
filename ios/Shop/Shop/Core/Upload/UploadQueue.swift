@@ -103,7 +103,18 @@ final class UploadQueue {
         }
         reconcile()
         pruneDone()
+        sweepOrphans()
         pumpPreparing()
+    }
+
+    /// Files of items that were removed (and not restored) before the app stopped.
+    private func sweepOrphans() {
+        let known = Set(items.map { $0.id.uuidString })
+        let dir = DiskStore.url("uploads")
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return }
+        for name in names where !known.contains(String(name.prefix(36))) {
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(name))
+        }
     }
 
     // MARK: Enqueue
@@ -310,6 +321,42 @@ final class UploadQueue {
         items[i].lastError = nil
         save()
         start(id)
+    }
+
+    // MARK: Undoable removal
+
+    /// Removed from the queue but not from disk yet; `undoRemove` brings it back.
+    @ObservationIgnored private var trash: [UUID: (item: UploadItem, purge: Task<Void, Never>)] = [:]
+
+    /// Takes the item off the queue and cancels its upload, keeping its files for 8 s.
+    func softRemove(_ id: UUID) {
+        guard let i = index(id) else { return }
+        let item = items[i]
+        session?.getAllTasks { tasks in
+            for t in tasks where t.taskDescription == item.id.uuidString { t.cancel() }
+        }
+        items.remove(at: i)
+        save()
+        let purge = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(9))
+            guard !Task.isCancelled, let self else { return }
+            self.deleteFiles(item)
+            self.trash[id] = nil
+        }
+        trash[id] = (item, purge)
+    }
+
+    func undoRemove(_ id: UUID) {
+        guard let entry = trash.removeValue(forKey: id) else { return }
+        entry.purge.cancel()
+        var item = entry.item
+        if item.state == .uploading { item.state = .waiting }
+        if item.state == .done { return }
+        item.nextAttemptAt = nil
+        let at = items.firstIndex { $0.createdAt < item.createdAt } ?? items.count
+        items.insert(item, at: at)
+        save()
+        if item.state == .waiting { start(id) } else if item.state == .preparing { pumpPreparing() }
     }
 
     func remove(_ id: UUID) {

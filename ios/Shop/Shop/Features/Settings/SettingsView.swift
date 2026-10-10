@@ -394,12 +394,18 @@ struct UploadQueueView: View {
 
     private func itemRow(_ item: UploadItem) -> some View {
         SwipeRow(
-            leading: item.state == .waiting ? SwipeAction(title: "Retry", icon: .retry, color: Accent.blue, haptic: .medium) { app.uploads.retry(item.id); app.uploads.kick(force: true) } : nil,
-            trailing: SwipeAction(title: "Remove", icon: .trash, color: Accent.red, haptic: .soft) { app.uploads.remove(item.id) }
+            leading: item.state == .waiting ? SwipeAction(title: "Retry", icon: .retry, color: Accent.blue, haptic: .light) { app.uploads.retry(item.id); app.uploads.kick(force: true) } : nil,
+            trailing: SwipeAction(title: "Remove", icon: .trash, color: Accent.red, haptic: .soft) { removeWithUndo(item) }
         ) {
             itemRowContent(item)
         }
-        .accessibilityAction(named: "Remove") { app.uploads.remove(item.id) }
+        .accessibilityAction(named: "Remove") { removeWithUndo(item) }
+    }
+
+    /// Takes the item off the queue but keeps its files for the 8 s the Undo toast is up.
+    private func removeWithUndo(_ item: UploadItem) {
+        app.uploads.softRemove(item.id)
+        app.toasts.undoable("Removed from the queue") { app.uploads.undoRemove(item.id) }
     }
 
     private func itemRowContent(_ item: UploadItem) -> some View {
@@ -420,7 +426,7 @@ struct UploadQueueView: View {
         .frame(height: 60)
         .hairline()
         .contextMenu {
-            Button("Remove", systemImage: "trash", role: .destructive) { app.uploads.remove(item.id) }
+            Button("Remove", systemImage: "trash", role: .destructive) { removeWithUndo(item) }
         }
     }
 
