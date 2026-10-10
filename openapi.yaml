@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.12.0
+  version: 0.12.1
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -557,6 +557,7 @@ paths:
               type: object
               properties:
                 dry_run: { type: boolean, default: false, description: "count without writing" }
+                skip_receipt_ids: { type: array, items: { type: integer, format: int64 }, description: "receipts to leave out (e.g. one that still needs fixing)" }
       responses:
         "202":
           description: Queued
@@ -1773,6 +1774,7 @@ components:
         linked: { type: integer }
         created: { type: integer }
         needs_review: { type: integer }
+        skipped_receipt_ids: { type: array, items: { type: integer, format: int64 }, description: "receipts left out on request" }
         error: { type: string }
 
     OpenFoodFactsPrefill:
