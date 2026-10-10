@@ -147,6 +147,69 @@ func (e OpenFoodFactsPrefillNetUnit) Valid() bool {
 	}
 }
 
+// Defines values for PriceChangeBaseUnit.
+const (
+	PriceChangeBaseUnitKg PriceChangeBaseUnit = "kg"
+	PriceChangeBaseUnitL  PriceChangeBaseUnit = "l"
+	PriceChangeBaseUnitPc PriceChangeBaseUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the PriceChangeBaseUnit enum.
+func (e PriceChangeBaseUnit) Valid() bool {
+	switch e {
+	case PriceChangeBaseUnitKg:
+		return true
+	case PriceChangeBaseUnitL:
+		return true
+	case PriceChangeBaseUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PricePointBaseUnit.
+const (
+	PricePointBaseUnitKg PricePointBaseUnit = "kg"
+	PricePointBaseUnitL  PricePointBaseUnit = "l"
+	PricePointBaseUnitPc PricePointBaseUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the PricePointBaseUnit enum.
+func (e PricePointBaseUnit) Valid() bool {
+	switch e {
+	case PricePointBaseUnitKg:
+		return true
+	case PricePointBaseUnitL:
+		return true
+	case PricePointBaseUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PricePointUnit.
+const (
+	PricePointUnitKg PricePointUnit = "kg"
+	PricePointUnitL  PricePointUnit = "l"
+	PricePointUnitPc PricePointUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the PricePointUnit enum.
+func (e PricePointUnit) Valid() bool {
+	switch e {
+	case PricePointUnitKg:
+		return true
+	case PricePointUnitL:
+		return true
+	case PricePointUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProductNetUnit.
 const (
 	ProductNetUnitG  ProductNetUnit = "g"
@@ -246,6 +309,81 @@ func (e ReceiptStatus) Valid() bool {
 	}
 }
 
+// Defines values for ShopPriceBaseUnit.
+const (
+	ShopPriceBaseUnitKg ShopPriceBaseUnit = "kg"
+	ShopPriceBaseUnitL  ShopPriceBaseUnit = "l"
+	ShopPriceBaseUnitPc ShopPriceBaseUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the ShopPriceBaseUnit enum.
+func (e ShopPriceBaseUnit) Valid() bool {
+	switch e {
+	case ShopPriceBaseUnitKg:
+		return true
+	case ShopPriceBaseUnitL:
+		return true
+	case ShopPriceBaseUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SpendGroupBy.
+const (
+	SpendGroupByCategory SpendGroupBy = "category"
+	SpendGroupByDay      SpendGroupBy = "day"
+	SpendGroupByMonth    SpendGroupBy = "month"
+	SpendGroupByShop     SpendGroupBy = "shop"
+	SpendGroupByWeek     SpendGroupBy = "week"
+)
+
+// Valid indicates whether the value is a known member of the SpendGroupBy enum.
+func (e SpendGroupBy) Valid() bool {
+	switch e {
+	case SpendGroupByCategory:
+		return true
+	case SpendGroupByDay:
+		return true
+	case SpendGroupByMonth:
+		return true
+	case SpendGroupByShop:
+		return true
+	case SpendGroupByWeek:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSpendParamsGroupBy.
+const (
+	GetSpendParamsGroupByCategory GetSpendParamsGroupBy = "category"
+	GetSpendParamsGroupByDay      GetSpendParamsGroupBy = "day"
+	GetSpendParamsGroupByMonth    GetSpendParamsGroupBy = "month"
+	GetSpendParamsGroupByShop     GetSpendParamsGroupBy = "shop"
+	GetSpendParamsGroupByWeek     GetSpendParamsGroupBy = "week"
+)
+
+// Valid indicates whether the value is a known member of the GetSpendParamsGroupBy enum.
+func (e GetSpendParamsGroupBy) Valid() bool {
+	switch e {
+	case GetSpendParamsGroupByCategory:
+		return true
+	case GetSpendParamsGroupByDay:
+		return true
+	case GetSpendParamsGroupByMonth:
+		return true
+	case GetSpendParamsGroupByShop:
+		return true
+	case GetSpendParamsGroupByWeek:
+		return true
+	default:
+		return false
+	}
+}
+
 // Alias defines model for Alias.
 type Alias struct {
 	CreatedAt time.Time `json:"created_at"`
@@ -285,6 +423,17 @@ type CategoryInput struct {
 type Check struct {
 	Detail *string `json:"detail,omitempty"`
 	Ok     bool    `json:"ok"`
+}
+
+// FrequentItem defines model for FrequentItem.
+type FrequentItem struct {
+	DaysSince          float64   `json:"days_since"`
+	Due                bool      `json:"due"`
+	LastBought         time.Time `json:"last_bought"`
+	MedianIntervalDays float64   `json:"median_interval_days"`
+	ProductId          int64     `json:"product_id"`
+	ProductName        string    `json:"product_name"`
+	Purchases          int       `json:"purchases"`
 }
 
 // Health defines model for Health.
@@ -329,6 +478,27 @@ type LinkResult struct {
 	Line       ReceiptLine `json:"line"`
 }
 
+// ListItem defines model for ListItem.
+type ListItem struct {
+	Cheapest    *ShopPrice `json:"cheapest,omitempty"`
+	CheckedAt   *time.Time `json:"checked_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	Id          int64      `json:"id"`
+	Note        *string    `json:"note,omitempty"`
+	ProductId   *int64     `json:"product_id,omitempty"`
+	ProductName *string    `json:"product_name,omitempty"`
+	Qty         *float64   `json:"qty,omitempty"`
+	Text        string     `json:"text"`
+}
+
+// ListItemInput defines model for ListItemInput.
+type ListItemInput struct {
+	Note      *string  `json:"note,omitempty"`
+	ProductId *int64   `json:"product_id,omitempty"`
+	Qty       *float64 `json:"qty,omitempty"`
+	Text      *string  `json:"text,omitempty"`
+}
+
 // Nutrition Values per 100 g / 100 ml.
 type Nutrition struct {
 	Carbs        *float64         `json:"carbs,omitempty"`
@@ -364,6 +534,45 @@ type OpenFoodFactsPrefill struct {
 
 // OpenFoodFactsPrefillNetUnit defines model for OpenFoodFactsPrefill.NetUnit.
 type OpenFoodFactsPrefillNetUnit string
+
+// PriceChange defines model for PriceChange.
+type PriceChange struct {
+	BaseUnit     PriceChangeBaseUnit `json:"base_unit"`
+	LatestAt     time.Time           `json:"latest_at"`
+	NewUnitCents int64               `json:"new_unit_cents"`
+	OldUnitCents int64               `json:"old_unit_cents"`
+	Pct          float64             `json:"pct"`
+	ProductId    int64               `json:"product_id"`
+	ProductName  string              `json:"product_name"`
+	ShopId       int64               `json:"shop_id"`
+	ShopName     string              `json:"shop_name"`
+}
+
+// PriceChangeBaseUnit defines model for PriceChange.BaseUnit.
+type PriceChangeBaseUnit string
+
+// PricePoint defines model for PricePoint.
+type PricePoint struct {
+	At       time.Time          `json:"at"`
+	BaseUnit PricePointBaseUnit `json:"base_unit"`
+	LineId   int64              `json:"line_id"`
+
+	// PaidCents after linked discounts
+	PaidCents int64          `json:"paid_cents"`
+	Qty       float64        `json:"qty"`
+	ShopId    int64          `json:"shop_id"`
+	ShopName  string         `json:"shop_name"`
+	Unit      PricePointUnit `json:"unit"`
+
+	// UnitCents per base unit
+	UnitCents int64 `json:"unit_cents"`
+}
+
+// PricePointBaseUnit defines model for PricePoint.BaseUnit.
+type PricePointBaseUnit string
+
+// PricePointUnit defines model for PricePoint.Unit.
+type PricePointUnit string
 
 // Problem defines model for Problem.
 type Problem struct {
@@ -508,6 +717,47 @@ type ShopInput struct {
 	Notes   *string `json:"notes,omitempty"`
 }
 
+// ShopPrice defines model for ShopPrice.
+type ShopPrice struct {
+	BaseUnit        ShopPriceBaseUnit `json:"base_unit"`
+	Cheapest        bool              `json:"cheapest"`
+	LatestAt        time.Time         `json:"latest_at"`
+	LatestUnitCents int64             `json:"latest_unit_cents"`
+	MaxUnitCents    int64             `json:"max_unit_cents"`
+	MinUnitCents    int64             `json:"min_unit_cents"`
+	Purchases       int               `json:"purchases"`
+	ShopId          int64             `json:"shop_id"`
+	ShopName        string            `json:"shop_name"`
+}
+
+// ShopPriceBaseUnit defines model for ShopPrice.BaseUnit.
+type ShopPriceBaseUnit string
+
+// Spend defines model for Spend.
+type Spend struct {
+	Buckets  []SpendBucket `json:"buckets"`
+	From     time.Time     `json:"from"`
+	GroupBy  SpendGroupBy  `json:"group_by"`
+	Receipts int           `json:"receipts"`
+
+	// To exclusive
+	To         time.Time `json:"to"`
+	TotalCents int64     `json:"total_cents"`
+}
+
+// SpendGroupBy defines model for Spend.GroupBy.
+type SpendGroupBy string
+
+// SpendBucket defines model for SpendBucket.
+type SpendBucket struct {
+	Cents int64 `json:"cents"`
+
+	// Key 2026-10-03 | 2026-W40 | 2026-10 | shop id | category id | none
+	Key      string `json:"key"`
+	Label    string `json:"label"`
+	Receipts int    `json:"receipts"`
+}
+
 // UnmatchedLine defines model for UnmatchedLine.
 type UnmatchedLine struct {
 	Line        ReceiptLine `json:"line"`
@@ -526,6 +776,11 @@ type Version struct {
 
 // ID defines model for ID.
 type ID = int64
+
+// GetShoppingListParams defines parameters for GetShoppingList.
+type GetShoppingListParams struct {
+	IncludeChecked *bool `form:"include_checked,omitempty" json:"include_checked,omitempty"`
+}
 
 // ListProductsParams defines parameters for ListProducts.
 type ListProductsParams struct {
@@ -579,6 +834,35 @@ type ReparseReceiptParams struct {
 	Force *bool `form:"force,omitempty" json:"force,omitempty"`
 }
 
+// GetFrequentItemsParams defines parameters for GetFrequentItems.
+type GetFrequentItemsParams struct {
+	LookbackDays *int `form:"lookback_days,omitempty" json:"lookback_days,omitempty"`
+	MinCount     *int `form:"min_count,omitempty" json:"min_count,omitempty"`
+}
+
+// GetPriceChangesParams defines parameters for GetPriceChanges.
+type GetPriceChangesParams struct {
+	// Since local date; default 90 days ago
+	Since  *openapi_types.Date `form:"since,omitempty" json:"since,omitempty"`
+	MinPct *float64            `form:"min_pct,omitempty" json:"min_pct,omitempty"`
+}
+
+// GetPriceHistoryParams defines parameters for GetPriceHistory.
+type GetPriceHistoryParams struct {
+	ShopId *int64 `form:"shop_id,omitempty" json:"shop_id,omitempty"`
+}
+
+// GetSpendParams defines parameters for GetSpend.
+type GetSpendParams struct {
+	From    *openapi_types.Date    `form:"from,omitempty" json:"from,omitempty"`
+	To      *openapi_types.Date    `form:"to,omitempty" json:"to,omitempty"`
+	GroupBy *GetSpendParamsGroupBy `form:"group_by,omitempty" json:"group_by,omitempty"`
+	ShopId  *int64                 `form:"shop_id,omitempty" json:"shop_id,omitempty"`
+}
+
+// GetSpendParamsGroupBy defines parameters for GetSpend.
+type GetSpendParamsGroupBy string
+
 // CreateCategoryJSONRequestBody defines body for CreateCategory for application/json ContentType.
 type CreateCategoryJSONRequestBody = CategoryInput
 
@@ -590,6 +874,12 @@ type UpdateLineJSONRequestBody = LineInput
 
 // LinkLineProductJSONRequestBody defines body for LinkLineProduct for application/json ContentType.
 type LinkLineProductJSONRequestBody = LinkInput
+
+// AddListItemJSONRequestBody defines body for AddListItem for application/json ContentType.
+type AddListItemJSONRequestBody = ListItemInput
+
+// UpdateListItemJSONRequestBody defines body for UpdateListItem for application/json ContentType.
+type UpdateListItemJSONRequestBody = ListItemInput
 
 // CreateProductJSONRequestBody defines body for CreateProduct for application/json ContentType.
 type CreateProductJSONRequestBody = ProductInput

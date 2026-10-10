@@ -11,6 +11,7 @@ import (
 	"pantry/internal/apitypes"
 	"pantry/internal/products"
 	"pantry/internal/receipts"
+	"pantry/internal/shopping"
 )
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
@@ -36,9 +37,9 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.As(err, &bad):
 		writeProblem(w, http.StatusBadRequest, "bad request", bad.Error())
-	case errors.Is(err, receipts.ErrNotFound), errors.Is(err, products.ErrNotFound), errors.Is(err, sql.ErrNoRows):
+	case errors.Is(err, receipts.ErrNotFound), errors.Is(err, products.ErrNotFound), errors.Is(err, shopping.ErrNotFound), errors.Is(err, sql.ErrNoRows):
 		writeProblem(w, http.StatusNotFound, "not found", "")
-	case errors.Is(err, receipts.ErrInvalid), errors.Is(err, products.ErrInvalid):
+	case errors.Is(err, receipts.ErrInvalid), errors.Is(err, products.ErrInvalid), errors.Is(err, shopping.ErrInvalid):
 		writeProblem(w, http.StatusBadRequest, "invalid input", err.Error())
 	case errors.Is(err, receipts.ErrUnsupported), errors.Is(err, products.ErrBadImage):
 		writeProblem(w, http.StatusUnsupportedMediaType, "unsupported media type", err.Error())

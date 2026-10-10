@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Pantry API
-  version: 0.3.0
+  version: 0.4.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -525,6 +525,190 @@ paths:
               schema: { $ref: "#/components/schemas/LinkResult" }
         default: { $ref: "#/components/responses/Problem" }
 
+  # ---------------------------------------------------------------- stats
+  /v1/stats/spend:
+    get:
+      operationId: getSpend
+      description: >
+        Spend over receipts with status ok or needs_review. from/to are inclusive local dates
+        (default: the last 30 days). Time groupings include empty periods.
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: group_by, in: query, schema: { type: string, enum: [day, week, month, shop, category], default: month } }
+        - { name: shop_id, in: query, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: Spend
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Spend" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/stats/products/{id}/prices:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+      - { name: shop_id, in: query, schema: { type: integer, format: int64 } }
+    get:
+      operationId: getPriceHistory
+      description: Every purchase of the product on ok receipts, oldest first, with price per base unit.
+      responses:
+        "200":
+          description: Price points
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PricePoint" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/stats/products/{id}/compare:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      operationId: comparePrices
+      responses:
+        "200":
+          description: Per-shop prices, cheapest latest price first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ShopPrice" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/stats/price-changes:
+    get:
+      operationId: getPriceChanges
+      parameters:
+        - { name: since, in: query, description: "local date; default 90 days ago", schema: { type: string, format: date } }
+        - { name: min_pct, in: query, schema: { type: number, format: double, default: 5 } }
+      responses:
+        "200":
+          description: Biggest changes first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PriceChange" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/stats/frequent-items:
+    get:
+      operationId: getFrequentItems
+      parameters:
+        - { name: lookback_days, in: query, schema: { type: integer, default: 180, maximum: 730 } }
+        - { name: min_count, in: query, schema: { type: integer, default: 3 } }
+      responses:
+        "200":
+          description: Frequently bought products; due ones first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FrequentItem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ----------------------------------------------------------------- list
+  /v1/list:
+    get:
+      operationId: getShoppingList
+      parameters:
+        - { name: include_checked, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: Items (open first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ListItem" }
+    post:
+      operationId: addListItem
+      description: >
+        Free text is linked to a product automatically when it matches one closely (score >= 0.9).
+        Adding a product that is already open on the list increases its qty instead (200).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListItemInput" }
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListItem" }
+        "200":
+          description: Merged into an existing open item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListItem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/checked:
+    delete:
+      operationId: clearCheckedItems
+      responses:
+        "200":
+          description: Removed count
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [removed]
+                properties:
+                  removed: { type: integer, format: int64 }
+
+  /v1/list/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    patch:
+      operationId: updateListItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListItemInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListItem" }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteListItem
+      responses:
+        "204": { description: Deleted }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/{id}/check:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: checkListItem
+      responses:
+        "200":
+          description: Checked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListItem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/{id}/uncheck:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: uncheckListItem
+      responses:
+        "200":
+          description: Unchecked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListItem" }
+        default: { $ref: "#/components/responses/Problem" }
+
 components:
   securitySchemes:
     bearer:
@@ -817,3 +1001,101 @@ components:
         line: { $ref: "#/components/schemas/ReceiptLine" }
         also_linked: { type: integer, format: int64, description: "other lines linked through the alias" }
         alias_created: { type: boolean }
+
+    SpendBucket:
+      type: object
+      required: [key, label, cents, receipts]
+      properties:
+        key: { type: string, description: "2026-10-03 | 2026-W40 | 2026-10 | shop id | category id | none" }
+        label: { type: string }
+        cents: { type: integer, format: int64 }
+        receipts: { type: integer }
+
+    Spend:
+      type: object
+      required: [from, to, group_by, total_cents, receipts, buckets]
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time, description: exclusive }
+        group_by: { type: string, enum: [day, week, month, shop, category] }
+        total_cents: { type: integer, format: int64 }
+        receipts: { type: integer }
+        buckets:
+          type: array
+          items: { $ref: "#/components/schemas/SpendBucket" }
+
+    PricePoint:
+      type: object
+      required: [line_id, shop_id, shop_name, at, qty, unit, paid_cents, unit_cents, base_unit]
+      properties:
+        line_id: { type: integer, format: int64 }
+        shop_id: { type: integer, format: int64 }
+        shop_name: { type: string }
+        at: { type: string, format: date-time }
+        qty: { type: number, format: double }
+        unit: { type: string, enum: [pc, kg, l] }
+        paid_cents: { type: integer, format: int64, description: after linked discounts }
+        unit_cents: { type: integer, format: int64, description: per base unit }
+        base_unit: { type: string, enum: [kg, l, pc] }
+
+    ShopPrice:
+      type: object
+      required: [shop_id, shop_name, base_unit, latest_unit_cents, latest_at, min_unit_cents, max_unit_cents, purchases, cheapest]
+      properties:
+        shop_id: { type: integer, format: int64 }
+        shop_name: { type: string }
+        base_unit: { type: string, enum: [kg, l, pc] }
+        latest_unit_cents: { type: integer, format: int64 }
+        latest_at: { type: string, format: date-time }
+        min_unit_cents: { type: integer, format: int64 }
+        max_unit_cents: { type: integer, format: int64 }
+        purchases: { type: integer }
+        cheapest: { type: boolean }
+
+    PriceChange:
+      type: object
+      required: [product_id, product_name, shop_id, shop_name, base_unit, old_unit_cents, new_unit_cents, pct, latest_at]
+      properties:
+        product_id: { type: integer, format: int64 }
+        product_name: { type: string }
+        shop_id: { type: integer, format: int64 }
+        shop_name: { type: string }
+        base_unit: { type: string, enum: [kg, l, pc] }
+        old_unit_cents: { type: integer, format: int64 }
+        new_unit_cents: { type: integer, format: int64 }
+        pct: { type: number, format: double }
+        latest_at: { type: string, format: date-time }
+
+    FrequentItem:
+      type: object
+      required: [product_id, product_name, purchases, last_bought, median_interval_days, days_since, due]
+      properties:
+        product_id: { type: integer, format: int64 }
+        product_name: { type: string }
+        purchases: { type: integer }
+        last_bought: { type: string, format: date-time }
+        median_interval_days: { type: number, format: double }
+        days_since: { type: number, format: double }
+        due: { type: boolean }
+
+    ListItemInput:
+      type: object
+      properties:
+        text: { type: string }
+        product_id: { type: integer, format: int64 }
+        qty: { type: number, format: double }
+        note: { type: string }
+
+    ListItem:
+      type: object
+      required: [id, text, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        text: { type: string }
+        product_id: { type: integer, format: int64 }
+        product_name: { type: string }
+        qty: { type: number, format: double }
+        note: { type: string }
+        checked_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        cheapest: { $ref: "#/components/schemas/ShopPrice" }

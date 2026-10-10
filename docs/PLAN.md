@@ -486,11 +486,13 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 **Done when** linking a line once makes the same text from the same shop auto-link on the next receipt, and an EAN scan of an AH/Jumbo/Lidl product returns an OFF prefill.
 
 ### M4 — Stats & shopping list (3 d)
-- [ ] `stats.Spend` (group by day/week/month/shop/category, Europe/Amsterdam buckets)
-- [ ] Price points + base-unit normalisation + `compare` + `price-changes` (median of the last 3 vs the previous 3 points)
-- [ ] `frequent_items`
-- [ ] Shopping list CRUD/check
-- [ ] Endpoints + tests with fixture data (hand-computed expected totals)
+- [x] `stats.Spend` (group by day/week/month/shop/category, Europe/Amsterdam buckets)
+- [x] Price points + base-unit normalisation + `compare` + `price-changes` (median of the last 3 vs the previous 3 points)
+- [x] `frequent_items`
+- [x] Shopping list CRUD/check
+- [x] Endpoints + tests with fixture data (hand-computed expected totals)
+
+**Status: done (2026-10-10).** Spend counts `ok` + `needs_review` receipts; price analytics use `ok` receipts only. Shopping-list text auto-links to a product at fuzzy score ≥ 0.9 and re-adding an open product bumps its qty. Tests assert bucket sums equal totals for every grouping.
 
 **Done when** the spend totals for each month equal the sum of the confirmed receipts (property test), and the compare output is correct on fixtures.
 
