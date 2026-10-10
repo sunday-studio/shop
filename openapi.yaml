@@ -1,0 +1,271 @@
+openapi: 3.0.3
+info:
+  title: Pantry API
+  version: 0.1.0
+  description: >
+    Self-hosted grocery receipt tracker. Money is always integer cents.
+    Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
+servers:
+  - url: http://localhost:8080
+security:
+  - bearer: []
+
+paths:
+  /healthz:
+    get:
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: All dependencies healthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: One or more dependencies unhealthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  /version:
+    get:
+      operationId: getVersion
+      security: []
+      responses:
+        "200":
+          description: Build info
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Version" }
+
+  /v1/shops:
+    get:
+      operationId: listShops
+      responses:
+        "200":
+          description: Shops (excluding deleted)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Shop" }
+    post:
+      operationId: createShop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ShopInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Shop" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/shops/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      operationId: getShop
+      responses:
+        "200":
+          description: Shop
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Shop" }
+        default: { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateShop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ShopInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Shop" }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteShop
+      responses:
+        "204": { description: Soft-deleted }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts:
+    get:
+      operationId: listReceipts
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: shop_id, in: query, schema: { type: integer, format: int64 } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/ReceiptStatus" } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Page of receipts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Receipt" }
+                  next_cursor: { type: string }
+    post:
+      operationId: uploadReceipt
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image, shop_id]
+              properties:
+                image: { type: string, format: binary }
+                shop_id: { type: integer, format: int64 }
+                purchased_at: { type: string, format: date-time }
+      responses:
+        "202":
+          description: Accepted for processing
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Receipt" }
+        "409":
+          description: Same image already uploaded
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      operationId: getReceipt
+      responses:
+        "200":
+          description: Receipt with lines
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Receipt" }
+        default: { $ref: "#/components/responses/Problem" }
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+
+  responses:
+    Problem:
+      description: Error
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+    Problem:
+      type: object
+      required: [title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    Health:
+      type: object
+      required: [status, checks]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        checks:
+          type: object
+          additionalProperties: { $ref: "#/components/schemas/Check" }
+
+    Check:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        detail: { type: string }
+
+    Version:
+      type: object
+      required: [version, commit, schema_version]
+      properties:
+        version: { type: string }
+        commit: { type: string }
+        schema_version: { type: integer, format: int64 }
+
+    ShopInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        chain: { type: string }
+        branch: { type: string }
+        address: { type: string }
+        city: { type: string }
+        notes: { type: string }
+
+    Shop:
+      allOf:
+        - $ref: "#/components/schemas/ShopInput"
+        - type: object
+          required: [id, created_at, updated_at]
+          properties:
+            id: { type: integer, format: int64 }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+
+    ReceiptStatus:
+      type: string
+      enum: [pending, processing, needs_review, ok, failed]
+
+    LineKind:
+      type: string
+      enum: [item, discount, deposit, bag, other]
+
+    ReceiptLine:
+      type: object
+      required: [id, line_no, raw_text, kind, qty, unit, line_total_cents]
+      properties:
+        id: { type: integer, format: int64 }
+        line_no: { type: integer }
+        raw_text: { type: string }
+        kind: { $ref: "#/components/schemas/LineKind" }
+        qty: { type: number, format: double }
+        unit: { type: string, enum: [pc, kg, l] }
+        unit_price_cents: { type: integer, format: int64 }
+        line_total_cents: { type: integer, format: int64 }
+        vat_code: { type: string }
+        parent_line_id: { type: integer, format: int64 }
+        product_id: { type: integer, format: int64 }
+
+    Receipt:
+      type: object
+      required: [id, shop_id, status, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        shop_id: { type: integer, format: int64 }
+        purchased_at: { type: string, format: date-time }
+        total_cents: { type: integer, format: int64 }
+        parsed_sum_cents: { type: integer, format: int64 }
+        status: { $ref: "#/components/schemas/ReceiptStatus" }
+        review_reasons:
+          type: array
+          items: { type: string }
+        ocr_engine: { type: string }
+        confirmed_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/ReceiptLine" }

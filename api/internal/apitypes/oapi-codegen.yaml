@@ -1,0 +1,4 @@
+package: apitypes
+output: types.gen.go
+generate:
+  models: true
