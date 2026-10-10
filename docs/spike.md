@@ -92,7 +92,13 @@ After those fixes (parser v2):
 | `ppocrv5-server` | 100 % | 94 % | 88 % | 81 % | 0 | 0.78 | 23 s | see report |
 | `tesseract` | 100 % | 69 % | 81 % | 44 % | 0 | 0.96 | 0.3 s | see report |
 | `doctr` | 94 % | 62 % | 88 % | 56 % | 0 | 0.89 | 3.2 s | see report |
+| `paddleocr-vl` | 69 % | 69 % | 88 % | 56 % | 0 | 0.74 | 78 s | 6.4 GB |
 
 ¹ Two of the 16 samples had future dates (a generator bug, since fixed), which the parser correctly rejects. Excluding them, date accuracy is 93–100 %.
 
-PaddleOCR-VL read the first sample perfectly but took about 67 s per receipt on CPU. It returns whole rows per line.
+What this suggests, before real data:
+
+- **Recommendation on this set:** `ppocrv5` as default, `ppocrv5-server` as fallback. The server variant clears more receipts without review (81 % vs 75 %), but at about 23 s per receipt it's too slow to be the default.
+- **Tesseract** gets totals right and is about 20× faster, but it misreads more lines, so about half its receipts would need review. It's a reasonable cheap baseline; on clean digital fonts it's not obviously worse. Real thermal paper is where it's expected to fall behind.
+- **PaddleOCR-VL** reads text well but returns layout *blocks*, not lines. The adapter spreads block lines evenly over the block's height, which loses the price column, so its 69 % reflects the adapter more than the model. It's also about 78 s and 6.4 GB per receipt on CPU. Only worth more work if the line-based engines fail on real receipts.
+- No engine produced a silent error (a wrong total that passed every check).
