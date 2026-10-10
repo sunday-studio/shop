@@ -74,7 +74,7 @@ private struct ReceiptScreen: View {
                             Banner(
                                 tone: .amber, lead: "No shop yet.",
                                 message: "Pick one so prices compare across shops.",
-                                action: (title: "Pick a shop", run: { pickShop(model) })
+                                action: (title: "Pick a shop ›", run: { pickShop(model) })
                             )
                             .padding(.horizontal, Space.edge)
                             .padding(.top, 18)
@@ -83,7 +83,7 @@ private struct ReceiptScreen: View {
                             Banner(
                                 tone: banner.tone, lead: banner.lead.isEmpty ? nil : banner.lead, message: banner.message,
                                 action: banner.lead == ReceiptModel.noDateLead
-                                    ? (title: "Set the date", run: { app.trays.present("no-date") { NoDateFixTray(model: model) } })
+                                    ? (title: "Set the date ›", run: { app.trays.present("no-date") { NoDateFixTray(model: model) } })
                                     : nil
                             )
                             .padding(.horizontal, Space.edge)

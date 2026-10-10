@@ -8,6 +8,15 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
 
+    /// Toasts sit above the tab bar, and above the floating Confirm bar on a receipt screen.
+    private var toastInset: CGFloat {
+        guard model.phase == .ready else { return 24 }
+        let path = model.paths[model.tab, default: []]
+        if path.isEmpty { return 100 }
+        if case .receipt = path.last { return 150 }
+        return 24
+    }
+
     var body: some View {
         ZStack {
             Palette.bg.ignoresSafeArea()
@@ -25,7 +34,7 @@ struct RootView: View {
         }
         .shopTypography()
         .tint(Accent.blue)
-        .toastHost(model.toasts, bottomInset: model.phase == .ready && model.paths[model.tab, default: []].isEmpty ? 100 : 24)
+        .toastHost(model.toasts, bottomInset: toastInset)
         .trayHost(model.trays)
         .preferredColorScheme(model.appearance.colorScheme)
         .onChange(of: scenePhase) { _, phase in

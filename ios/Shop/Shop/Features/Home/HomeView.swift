@@ -271,12 +271,14 @@ struct HomeView: View {
     private func receiptRow(_ receipt: Receipt) -> some View {
         let canConfirm = receipt.confirmedAt == nil && (receipt.status == .ok || receipt.status == .needsReview)
         return SwipeRow(
-            leading: canConfirm ? SwipeAction(title: "Confirm", icon: .check, color: Accent.green) { confirm(receipt) } : nil,
+            leading: canConfirm ? SwipeAction(title: "Confirm", icon: .check, color: Accent.green, haptic: .medium) { confirm(receipt) } : nil,
             trailing: receipt.status == .processing || receipt.status == .pending ? nil
-                : SwipeAction(title: "Delete", icon: .trash, color: Accent.red) { askDelete(receipt) }
+                : SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: nil) { askDelete(receipt) }
         ) {
             receiptRowContent(receipt)
         }
+        .accessibilityAction(named: "Confirm") { if canConfirm { confirm(receipt) } }
+        .accessibilityAction(named: "Delete") { askDelete(receipt) }
     }
 
     private func confirm(_ receipt: Receipt) {
@@ -342,6 +344,12 @@ struct HomeView: View {
         .contextMenu {
             if receipt.status == .needsReview {
                 Button("Review", systemImage: "checkmark.circle") { app.push(.receipt(receipt.id)) }
+            }
+            if receipt.confirmedAt == nil && (receipt.status == .ok || receipt.status == .needsReview) {
+                Button("Confirm", systemImage: "checkmark") { confirm(receipt) }
+            }
+            if receipt.status != .processing && receipt.status != .pending {
+                Button("Delete", systemImage: "trash", role: .destructive) { askDelete(receipt) }
             }
         }
     }
