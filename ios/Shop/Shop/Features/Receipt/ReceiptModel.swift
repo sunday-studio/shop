@@ -220,7 +220,7 @@ final class ReceiptModel {
         }
     }
 
-    /// "0,842 kg × €1,99/kg · Groente", "500 g · Vlees", "AH HALFV MELK 1,5L · Zuivel".
+    /// "0,842 kg × €1,99/kg · Produce", "500 g · Meat & fish", "AH HALFV MELK 1,5L · Dairy".
     private func itemDetail(_ line: ReceiptLine, product: Product?, category: String?) -> String {
         var first: String
         if line.unit != .pc, let up = line.unitPriceCents {

@@ -96,10 +96,10 @@ private struct WelcomeIllustration: View {
 
     var body: some View {
         ZStack {
-            card(title: "Zuivel", amount: "€78,40", color: Accent.pink, width: 170, height: 112)
+            card(title: "Dairy", amount: "€78,40", color: Accent.pink, width: 170, height: 112)
                 .rotationEffect(.degrees(-12))
                 .offset(x: -70, y: -24)
-            card(title: "Groente & fruit", amount: "€71,20", color: Accent.green, width: 160, height: 106)
+            card(title: "Produce", amount: "€71,20", color: Accent.green, width: 160, height: 106)
                 .rotationEffect(.degrees(9))
                 .offset(x: 70, y: -50)
             VStack(alignment: .leading) {

@@ -27,7 +27,7 @@ enum MockData {
     }
 
     static let categories: [Category] = [
-        "Zuivel", "Groente & fruit", "Vlees & vis", "Brood", "Voorraad", "Diepvries", "Dranken", "Huishouden", "Verzorging", "Overig",
+        "Dairy", "Produce", "Meat & fish", "Bakery", "Pantry", "Frozen", "Drinks", "Household", "Personal care", "Other",
     ].enumerated().map { Category(id: Int64($0.offset + 1), name: $0.element, sort: $0.offset) }
 
     static let products: [Product] = [
@@ -199,12 +199,12 @@ enum MockData {
 
     static var categoryShares: [CategoryShare] {
         [
-            CategoryShare(name: "Zuivel", cents: 7840, color: Accent.blue),
-            CategoryShare(name: "Groente", cents: 7120, color: Accent.green),
-            CategoryShare(name: "Vlees", cents: 6690, color: Accent.red),
-            CategoryShare(name: "Voorraad", cents: 5830, color: Accent.yellow),
-            CategoryShare(name: "Brood", cents: 4160, color: Accent.orange),
-            CategoryShare(name: "Overig", cents: 9600, color: Palette.neutral),
+            CategoryShare(name: "Dairy", cents: 7840, color: Accent.blue),
+            CategoryShare(name: "Produce", cents: 7120, color: Accent.green),
+            CategoryShare(name: "Meat", cents: 6690, color: Accent.red),
+            CategoryShare(name: "Pantry", cents: 5830, color: Accent.yellow),
+            CategoryShare(name: "Bakery", cents: 4160, color: Accent.orange),
+            CategoryShare(name: "Other", cents: 9600, color: Palette.neutral),
         ]
     }
 
