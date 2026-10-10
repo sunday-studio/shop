@@ -9,6 +9,7 @@ Docs live in [`docs/`](docs/):
 - [Operations](docs/operations.md): install, NAS backups, Tailscale, upgrades
 - [Restore](docs/restore.md)
 - [MCP](docs/mcp.md): connecting your assistant
+- [Design status](docs/DESIGN-STATUS.md): where the iOS design lives, what is final, open questions
 
 ```bash
 make up        # build + start api and ocr containers
