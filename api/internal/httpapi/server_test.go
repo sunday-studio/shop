@@ -3,6 +3,7 @@ package httpapi_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -29,6 +30,8 @@ import (
 	"pantry/internal/openfoodfacts"
 	"pantry/internal/products"
 	"pantry/internal/receipts"
+	"pantry/internal/shopping"
+	"pantry/internal/stats"
 	"pantry/internal/store"
 	"pantry/internal/store/db"
 )
@@ -42,6 +45,7 @@ type env struct {
 	dataDir string
 	ocr     *fakeOCR
 	q       *db.Queries
+	conn    *sql.DB
 }
 
 type fakeOCR struct {
@@ -114,14 +118,16 @@ func newEnv(t *testing.T) *env {
 	t.Cleanup(foodFacts.Close)
 	prods := products.New(conn, match.NewMatcher(conn), openfoodfacts.New("test").WithBaseURL(foodFacts.URL),
 		filepath.Join(dir, "images"), log)
-	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Location: ams, Log: log})
+	st := stats.New(conn, ams)
+	list := shopping.New(conn, match.NewMatcher(conn), st)
+	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Stats: st, List: list, Location: ams, Log: log})
 
 	q := db.New(conn)
 	tok, err := auth.Create(context.Background(), q, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &env{t: t, h: api.Handler(), queue: queue, token: tok, dataDir: dir, ocr: f, q: q}
+	return &env{t: t, h: api.Handler(), queue: queue, token: tok, dataDir: dir, ocr: f, q: q, conn: conn}
 }
 
 func (e *env) do(method, path string, body any) *httptest.ResponseRecorder {

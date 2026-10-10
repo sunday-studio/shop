@@ -17,6 +17,8 @@ import (
 	"pantry/internal/openfoodfacts"
 	"pantry/internal/products"
 	"pantry/internal/receipts"
+	"pantry/internal/shopping"
+	"pantry/internal/stats"
 	"pantry/internal/store"
 	"pantry/internal/version"
 )
@@ -30,6 +32,8 @@ type app struct {
 	fallback *ocr.Client
 	receipts *receipts.Service
 	products *products.Service
+	stats    *stats.Service
+	list     *shopping.Service
 }
 
 func openApp(ctx context.Context, log *slog.Logger) (*app, error) {
@@ -51,7 +55,10 @@ func openApp(ctx context.Context, log *slog.Logger) (*app, error) {
 	}
 	a.receipts = receipts.New(conn, a.ocr, a.fallback, a.queue,
 		receipts.Config{ImagesDir: cfg.ImagesDir(), Location: cfg.Location}, log)
-	a.products = products.New(conn, match.NewMatcher(conn), openfoodfacts.New(cfg.FoodFactsUserAgent), cfg.ImagesDir(), log)
+	matcher := match.NewMatcher(conn)
+	a.products = products.New(conn, matcher, openfoodfacts.New(cfg.FoodFactsUserAgent), cfg.ImagesDir(), log)
+	a.stats = stats.New(conn, cfg.Location)
+	a.list = shopping.New(conn, matcher, a.stats)
 	return a, nil
 }
 
@@ -78,7 +85,7 @@ func serve(ctx context.Context, log *slog.Logger) error {
 
 	api := httpapi.New(httpapi.Deps{
 		DB: a.db, OCR: a.ocr, OCRFallback: a.fallback, Receipts: a.receipts,
-		Products: a.products, Location: a.cfg.Location, Log: log,
+		Products: a.products, Stats: a.stats, List: a.list, Location: a.cfg.Location, Log: log,
 	})
 
 	srv := &http.Server{

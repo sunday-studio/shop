@@ -12,6 +12,8 @@ import (
 	"pantry/internal/ocr"
 	"pantry/internal/products"
 	"pantry/internal/receipts"
+	"pantry/internal/shopping"
+	"pantry/internal/stats"
 	"pantry/internal/store"
 	"pantry/internal/store/db"
 	"pantry/internal/version"
@@ -23,6 +25,8 @@ type Deps struct {
 	OCRFallback *ocr.Client // nil when not configured
 	Receipts    *receipts.Service
 	Products    *products.Service
+	Stats       *stats.Service
+	List        *shopping.Service
 	Location    *time.Location
 	Log         *slog.Logger
 	// Extra routes mounted behind auth (e.g. MCP), keyed by pattern.
@@ -82,6 +86,20 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("GET /v1/products/{id}/unmatched-lines", s.unmatchedLines)
 	api.HandleFunc("DELETE /v1/aliases/{id}", s.deleteAlias)
 	api.HandleFunc("PUT /v1/lines/{id}/product", s.linkLine)
+
+	api.HandleFunc("GET /v1/stats/spend", s.getSpend)
+	api.HandleFunc("GET /v1/stats/products/{id}/prices", s.getPriceHistory)
+	api.HandleFunc("GET /v1/stats/products/{id}/compare", s.comparePrices)
+	api.HandleFunc("GET /v1/stats/price-changes", s.getPriceChanges)
+	api.HandleFunc("GET /v1/stats/frequent-items", s.getFrequentItems)
+
+	api.HandleFunc("GET /v1/list", s.getShoppingList)
+	api.HandleFunc("POST /v1/list", s.addListItem)
+	api.HandleFunc("DELETE /v1/list/checked", s.clearCheckedItems)
+	api.HandleFunc("PATCH /v1/list/{id}", s.updateListItem)
+	api.HandleFunc("DELETE /v1/list/{id}", s.deleteListItem)
+	api.HandleFunc("POST /v1/list/{id}/check", s.setListItemChecked(true))
+	api.HandleFunc("POST /v1/list/{id}/uncheck", s.setListItemChecked(false))
 
 	for pattern, h := range s.Authed {
 		api.Handle(pattern, h)
