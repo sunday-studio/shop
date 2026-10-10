@@ -136,7 +136,7 @@ confirm receipt
 
 **How a barcode product later links to receipt lines**
 - Receipt lines never carry barcodes. Linking is by name/alias: when a line is linked to the barcode product (via the C.3.3 sheet, the review card, or `PUT /v1/lines/{id}/product` with `remember` true) the alias `(shop, norm)` is written, and future receipts link to it automatically.
-- Right after creation, the app offers the unmatched lines from the last 14 days (`unmatched_lines` in the response, C.3.3). Choosing one links it and writes the alias.
+- The response carries the unmatched lines from the last 14 days (`unmatched_lines`, C.3.3). Per the design, the app does **not** pop a sheet after each scan: the scanner row shows an "N on receipts" link and the Done summary offers the same list, so scanning is never interrupted. Choosing a line links it and writes the alias.
 - Limitation: OFF names (`Halfvolle melk`) often score below 0.75 against receipt text (`AH HALFV MELK`). That is why C.3.3 exists: the user links once, the alias handles the rest.
 
 **How it avoids duplicating a product receipts already created**
@@ -175,6 +175,7 @@ CREATE TABLE product_merges (
   into_product_id INTEGER NOT NULL REFERENCES products(id),
   line_ids TEXT NOT NULL,            -- JSON array of receipt_lines moved
   alias_ids TEXT NOT NULL,           -- JSON array of product_aliases moved
+  from_review_before TEXT NOT NULL,  -- JSON of the `from` product's needs_review, review_reason, suggested_merge_id, so undo restores its queue card
   into_fields_before TEXT NOT NULL,  -- JSON of the `into` fields that were empty and got filled (barcode, brand, image_path, net_quantity, net_unit, off_code, category_id, nutrition)
   kind TEXT NOT NULL DEFAULT 'merge' CHECK (kind IN ('merge','discard','split')),
   created_at TEXT NOT NULL,
@@ -200,7 +201,7 @@ Existing rows: `created_via` defaults to `manual`, nothing is flagged.
 
 All under `/v1`, Bearer auth, errors as `application/problem+json` as in `openapi.yaml`. Dates are RFC 3339. New schema pieces must be added to `openapi.yaml` (it is the source of truth) and the MCP tools.
 
-`Product` gains: `created_via`, `needs_review` (bool), `review_reason` (nullable), `suggested_merge_id` (nullable), `category_source` (nullable).
+`Product` gains: `created_via`, `needs_review` (bool), `review_reason` (nullable), `suggested_merge` (nullable object `{product_id, name, name_en, brand, score}`; `suggested_merge_id` stays in the database), `category_source` (nullable), and `image_url` (nullable; the path of `GET /v1/products/{id}/image` when `has_image`). `barcode`, `net_quantity`, `net_unit`, `category_id`, `created_at` already exist. The app resolves the category name from `/v1/categories`.
 
 ### 6.1 Receipt confirm (changed)
 
@@ -218,12 +219,18 @@ All under `/v1`, Bearer auth, errors as `application/problem+json` as in `openap
 // 200 known | 201 created | 201 created_minimal
 {
   "status": "known" | "created" | "created_minimal",
+  "created_now": true | false,                            // false on every 200 (repeat or known); true only on the 201 that created it
   "off_status": "found" | "not_found" | "unavailable",   // omitted when status = known
   "product": { ...Product },
   "merge_suggestion": {"product_id": 41, "name": "AH BIO MELK", "name_en": "AH organic milk", "score": 0.84} | null,
   "unmatched_lines": [ ...UnmatchedLine ]                  // max 5, last 14 days, ranked
 }
 ```
+When `status` is `known`, `merge_suggestion` is explicitly `null` and `unmatched_lines` is `[]`.
+
+The call is idempotent. The app may send it hours later and more than once (offline queue): a repeat returns `200 known` with `created_now:false`. A client that lost the original `201` can tell "I just created this" from "already known" by `product.created_at` (a product created via `barcode` in the last 24 h that the client has queued is its own), or by sending the optional header `Idempotency-Key: <uuid>`: with the header, the server stores the first response for 24 h and replays it (same status and body) on repeats. The header is nice to have; `created_now` is required.
+
+`POST /v1/products/{id}/refresh` (optional): retry Open Food Facts now for a product with `review_reason='barcode_off_unavailable'` or `'barcode_minimal'`. Fills only empty fields. `200 {product, off_status}`; `422` if the product has no barcode.
 Errors: `400` bad code, `503` only when the database write fails (OFF failures never fail the request).
 
 ### 6.3 Review queue
@@ -233,15 +240,17 @@ Errors: `400` bad code, `503` only when the database write fails (OFF failures n
 ```json
 {
   "total": 12,
+  "counts": {"near_match": 3, "barcode_name_match": 1, "odd_name": 2, "no_category": 5, "barcode_minimal": 1, "barcode_off_unavailable": 0},
   "items": [{
     "product": { ...Product },
     "reason": "near_match",
     "suggested_merge": {"product_id": 7, "name": "ARLA MELK", "name_en": "ARLA milk", "brand": null, "score": 0.87} | null,
+    "source_line_count": 3,
     "source_lines": [{"line_id": 310, "receipt_id": 12, "raw_text": "ARLA BIO HALFV. MELK", "shop_name": "Albert Heijn", "purchased_at": "2026-06-27T12:00:00Z", "line_total_cents": 189}]
   }]
 }
 ```
-`limit=0` returns only `total` (the app uses it for the catalog badge). Sorted per §4.4.
+`source_lines` has at most 3 entries; `source_line_count` is the full count (the card shows "+2 more receipts"). `counts` are per-reason totals for the whole queue (not the page). `limit=0` returns `total` and `counts` only, from a count query (the app uses it for the catalog badge, so it must be cheap). Sorted per §4.4.
 
 `POST /v1/products/{id}/review`
 
@@ -251,13 +260,16 @@ Errors: `400` bad code, `503` only when the database write fails (OFF failures n
  "name": "Arla halfvolle melk",   // optional, accept only
  "into_product_id": 7}            // merge only (default: suggested_merge_id)
 ```
-Responses: `accept`/`keep_separate` → `200 {product}`. `merge` → `200 {merge_id, product (the survivor), lines_moved, aliases_moved}`. `discard` → `200 {discard_id, lines_unlinked}`. `409` if the product is no longer in the queue; `422` if `discard` on a manual product.
+**Merge direction.** The card's product is the one the queue is about. For `near_match` the card's product disappears into the suggestion (`into` = the suggestion). For `barcode_name_match` the card's product is the barcode product and it **survives**: the suggested receipt-created product is moved into it (`from` = the suggestion, `into` = the card's product). In both cases the response `product` is the survivor.
+`accept` takes `category_id` and `name` together (both optional, either or both); setting a category sets `category_source='manual'`.
+
+Responses: `accept`/`keep_separate` → `200 {product}`. `merge` → `200 {merge_id, kind:"merge", product (the survivor), merged_away: {id, name}, lines_moved, aliases_moved}`. `discard` → `200 {discard_id, kind:"discard", lines_unlinked}`. `409` if the product is no longer in the queue; `422` if `discard` on a manual product.
 
 ### 6.4 Merge, undo, split
 
-`POST /v1/products/{id}/merge` body `{"into_product_id": 7}` — `{id}` is the product that disappears. Moves lines and aliases; copies empty fields (barcode, brand, image, net quantity, off code, category, nutrition) to `into`; keeps `into`'s name and any `manual` name_en; soft-deletes `{id}` with `merged_into_id`. Search index refreshed. Response `200 {merge_id, product, lines_moved, aliases_moved}`. `409` when both products have different barcodes, `422` when `id == into`.
+`POST /v1/products/{id}/merge` body `{"into_product_id": 7}` — `{id}` is the product that disappears. Moves lines and aliases; copies empty fields (barcode, brand, image, net quantity, off code, category, nutrition) to `into`; keeps `into`'s name and any `manual` name_en; soft-deletes `{id}` with `merged_into_id`. Search index refreshed. Response `200 {merge_id, product, lines_moved, aliases_moved}`. `409` when both products have different barcodes (title: "These two have different barcodes.", user-safe text; the app never offers such a pair), `422` when `id == into`.
 
-`POST /v1/product-merges/{id}/undo` → `200 {product (restored), into (survivor), lines_restored, lines_skipped}`. Restores the lines and aliases recorded in the merge, clears the `into` fields it filled, un-deletes the product. `lines_skipped` counts lines the user has relinked since. `409` if already undone or older than 30 days. Works for `kind` merge and discard.
+`POST /v1/product-merges/{id}/undo` → `200 {kind, product (restored), into (survivor), lines_restored, lines_skipped}`. The restored `product` keeps its review state (`needs_review`, `review_reason`, `suggested_merge`), so the app can put the card back in the queue without another fetch. `kind` is `merge`, `discard` or `split`. Restores the lines and aliases recorded in the merge, clears the `into` fields it filled, un-deletes the product. `lines_skipped` counts lines the user has relinked since. `409` if already undone or older than 30 days. Works for `kind` merge and discard.
 
 `POST /v1/lines/{id}/split-product` body `{"name": "optional"}`. Creates a new product from the line (`created_via='manual'`, category via §3.4), moves the alias for this line's `(shop, norm)` to the new product and relinks every line with the same shop and text that points at the old product. Response `201 {product, lines_moved, merge_id}` (`kind='split'`, so it can be undone with the undo endpoint). `404` if the line has no product, `422` if it is not `kind='item'`.
 
@@ -283,7 +295,7 @@ Deliver as updates to the wireframes/mockups the project already has (same canva
 1. **Review queue screen** ("New products"): list of cards with the product, why it is here (the six reasons in plain words), and the actions: Accept, Same as X (merge), Keep separate, Discard, pick a category, edit the name. Show the receipt line it came from (shop, date, raw text). States: loading, empty ("All caught up"), one item, many, error/offline, and after an action (the card leaves, count updates). Barcode cards show the scanned code and the OFF photo.
 2. **Undo toast** after merge and discard: text ("Merged into X"), Undo button, duration (proposed 8 s), where it sits above the tab bar, what happens if the user navigates away.
 3. **Catalog badge**: count of products waiting, and where it appears (tab bar and/or catalog header). Empty = no badge.
-4. **Scan creates a product (Unpack)**: in the continuous scanner, three outcomes: *known* (as today: success haptic, "✓ name"), *created with data* (proposed: success haptic and "Added X · Dairy"), *created minimal* (proposed: warning haptic and "New product, add a name"). Haptic types and timing are the design agent's call (IOS-PLAN C.3 currently says "new → warning haptic"; this spec changes that for products that were created with data). Include the merge prompt ("Same as AH BIO MELK?"), the unmatched-lines sheet (C.3.3) shown right after creation, and the session tally.
+4. **Scan creates a product (Unpack)**: in the continuous scanner, three outcomes: *known* (as today: success haptic, "✓ name"), *created with data* (proposed: success haptic and "Added X · Dairy"), *created minimal* (proposed: warning haptic and "New product, add a name"). Haptic types and timing are the design agent's call. **Decided in `docs/DESIGN-PRODUCT-AUTOPOPULATE.md`:** known plays `scanKnown`, created with data, or created minimal because OFF was unreachable (`status:"created_minimal"` with `off_status:"unavailable"`; the app chooses by `off_status`), plays `scanNew` (two quick ticks), created minimal with `off_status:"not_found"` plays `warning`; this replaces IOS-PLAN C.3 "new → warning haptic". The unmatched-lines sheet (C.3.3) does not pop after creation: an "N on receipts" link on the scanner row and the Done summary offer it. The inline merge prompt ("Same as AH BIO MELK?") and the session tally stay.
 5. **Empty and failed OFF states**: OFF has nothing (ask for a name, take a photo), OFF unavailable (product created, "Details will fill in later", retry happens on the server), offline scanning (barcode queued on the phone, sent when online), duplicate scan of the same code (just "known").
 6. Copy for the review reasons and statuses.
 
@@ -310,7 +322,7 @@ Done when: each state above exists as a frame in light and dark, the handoff nam
 
 1. API client types and calls for §6; queue count for the badge (`review-queue?limit=0`).
 2. Review queue screen from the design, actions, undo toast wired to the undo endpoints.
-3. Unpack: call `POST /v1/barcodes/{code}/product` for unknown scans (known scans keep the existing path), haptics and feedback per the design table, merge prompt, C.3.3 sheet from `unmatched_lines`, minimal-product name prompt, offline queue for scans.
+3. Unpack: call `POST /v1/barcodes/{code}/product` for unknown scans (known scans keep the existing path), haptics and feedback per the design table, merge prompt, C.3.3 list from `unmatched_lines` via the "N on receipts" link and the Done summary, minimal-product name prompt, offline queue for scans.
 4. Catalog badge.
 5. Confirm flow: show a small "3 new products" note from `auto_products`, linking to the queue.
 
