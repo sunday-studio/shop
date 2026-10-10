@@ -2,7 +2,7 @@ import SwiftUI
 
 // Trays (design/MOTION.md "Tray or full screen"): short, self-contained decisions that return
 // to where the user was. A tray never hosts navigation and never stacks: presenting while one
-// is open replaces it, the container height springs and the content cross-fades (160ms).
+// is open replaces it: the surface height and the content swap share one curve (Motion.sheetSwap).
 
 @MainActor
 @Observable
@@ -28,7 +28,7 @@ final class TrayCoordinator {
         let replacing = current != nil
         let next = Presented(id: id, content: AnyView(content()), dismissible: dismissible)
         if !replacing { Haptics.play(.trayOpen) }
-        withAnimation(replacing ? Motion.heightSpring : Motion.spring) {
+        withAnimation(replacing ? Motion.sheetSwap : Motion.sheet) {
             current = next
         }
         self.onDismiss = onDismiss
@@ -38,14 +38,13 @@ final class TrayCoordinator {
         guard current != nil else { return }
         let callback = onDismiss
         onDismiss = nil
-        withAnimation(Motion.ease) { current = nil }
+        withAnimation(Motion.sheetExit) { current = nil }
         callback?()
     }
 }
 
 private struct TrayHost: ViewModifier {
     let coordinator: TrayCoordinator
-    @State private var drag: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduce
 
     func body(content: Content) -> some View {
@@ -60,51 +59,92 @@ private struct TrayHost: ViewModifier {
                             .accessibilityAddTraits(.isButton)
                             .accessibilityLabel("Close")
 
-                        VStack(spacing: 0) {
-                            tray.content
-                                .id(tray.id)
-                                .transition(.opacity.animation(Motion.fade))
-                        }
-                        .padding(.top, 22)
-                        .padding(.horizontal, Space.xl)
-                        .padding(.bottom, Space.xl)
-                        .frame(maxWidth: .infinity)
-                        .background(Palette.tray, in: RoundedRectangle.continuous(Radius.tray))
-                        .elevationRing(RoundedRectangle.continuous(Radius.tray))
-                        .padding(.horizontal, Space.trayInset)
-                        .padding(.bottom, Space.trayInset)
-                        .padding(.top, 54)
-                        .offset(y: max(0, drag))
-                        .gesture(dragGesture(dismissible: tray.dismissible))
-                        .transition(reduce ? .opacity : .tray)
-                        .environment(coordinator)
+                        TraySurface(tray: tray, coordinator: coordinator)
+                            .transition(reduce ? .opacity : .tray)
+                            .environment(coordinator)
                     }
                 }
                 .ignoresSafeArea(.container, edges: .bottom)
             }
-            .onChange(of: coordinator.current?.id) { _, id in
-                if id != nil { drag = 0 }
-            }
+    }
+}
+
+/// The tray itself, built like a Vaul drawer: ONE surface (background, ring, content) that is
+/// moved as a whole with a single transform. The content never has its own entrance animation, so
+/// text and fields can't drift apart. Content swaps (tray replaced by tray) overlay the old and
+/// new content in a ZStack so the two never stack in layout, and the height change rides
+/// `Motion.sheetSwap`.
+private struct TraySurface: View {
+    let tray: TrayCoordinator.Presented
+    let coordinator: TrayCoordinator
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            tray.content
+                .id(tray.id)
+                .transition(.traySwap)
+        }
+        .padding(.top, 22)
+        .padding(.horizontal, Space.xl)
+        .padding(.bottom, Space.xl)
+        .frame(maxWidth: .infinity)
+        .background(Palette.tray, in: RoundedRectangle.continuous(Radius.tray))
+        .elevationRing(RoundedRectangle.continuous(Radius.tray))
+        .modifier(TrayDrag(resetKey: tray.id, dismissible: tray.dismissible, onDismiss: { coordinator.dismiss() }))
+        .padding(.horizontal, Space.trayInset)
+        .padding(.bottom, Space.trayInset)
+        .padding(.top, 54)
+    }
+}
+
+/// Drag to dismiss. Drag state lives here, in a modifier, so moving the finger invalidates only
+/// this tiny body and never re-evaluates the tray content (Vaul: updating shared state per frame
+/// made big drawers drop frames). The tray follows the finger 1:1 downwards, resists upwards
+/// (the further you pull the less it moves), and on release closes if it is flicked (velocity) or
+/// dragged a quarter of its height.
+private struct TrayDrag: ViewModifier {
+    let resetKey: String
+    let dismissible: Bool
+    let onDismiss: () -> Void
+
+    @State private var drag: CGFloat = 0
+    @State private var height: CGFloat = 400
+
+    func body(content: Content) -> some View {
+        content
+            .background(GeometryReader { geo in
+                Color.clear.onAppear { height = geo.size.height }
+                    .onChange(of: geo.size.height) { _, new in height = new }
+            })
+            .offset(y: drag)
+            .gesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { value in
+                        let dy = value.translation.height
+                        if dy >= 0 {
+                            drag = dismissible ? dy : Self.rubber(dy, limit: 40)
+                        } else {
+                            drag = -Self.rubber(-dy, limit: 24)
+                        }
+                    }
+                    .onEnded { value in
+                        let velocity = value.velocity.height
+                        let shouldClose = dismissible && (velocity > 400 || value.translation.height > height * 0.25)
+                        if shouldClose {
+                            Haptics.play(.trayDismiss)
+                            // Keep `drag` where the finger left it: the exit slides on from there.
+                            onDismiss()
+                        } else {
+                            withAnimation(Motion.sheetExit) { drag = 0 }
+                        }
+                    }
+            )
+            .onChange(of: resetKey) { _, _ in drag = 0 }
     }
 
-    private func dragGesture(dismissible: Bool) -> some Gesture {
-        DragGesture(minimumDistance: 12)
-            .onChanged { value in
-                let dy = value.translation.height
-                // Resist upward drags; follow downward ones.
-                drag = dy > 0 ? (dismissible ? dy : dy * 0.2) : dy * 0.1
-            }
-            .onEnded { value in
-                let shouldClose = dismissible && (value.translation.height > 120 || value.predictedEndTranslation.height > 260)
-                if shouldClose {
-                    Haptics.play(.trayDismiss)
-                    // Leave `drag` where the finger left it so the tray fades out from there;
-                    // resetting it here snapped the tray back up before the exit transition.
-                    coordinator.dismiss()
-                } else {
-                    withAnimation(Motion.spring) { drag = 0 }
-                }
-            }
+    /// Diminishing movement: the first points follow, later ones barely move.
+    private static func rubber(_ x: CGFloat, limit: CGFloat) -> CGFloat {
+        limit * (1 - 1 / (x / limit + 1))
     }
 }
 

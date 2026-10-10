@@ -21,6 +21,13 @@ enum Motion {
     static let tabSlide = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.2)
     static let fade = Animation.easeOut(duration: 0.16)
     static let trayFade = Animation.easeOut(duration: 0.1)
+    /// The sheet curve (iOS sheet / Vaul): fast start, long soft landing, no overshoot.
+    /// One curve for the whole tray surface so nothing inside it moves on its own timing.
+    static let sheetCurve = (0.32, 0.72, 0.0, 1.0)
+    static let sheet = Animation.timingCurve(0.32, 0.72, 0, 1, duration: 0.45)
+    static let sheetExit = Animation.timingCurve(0.32, 0.72, 0, 1, duration: 0.35)
+    /// Tray-to-tray: height and content swap on the same curve.
+    static let sheetSwap = Animation.timingCurve(0.32, 0.72, 0, 1, duration: 0.36)
     static let reducedFade = Animation.easeOut(duration: 0.12)
     static let press = Animation.easeOut(duration: 0.09)
     static let numberRoll = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.18)
@@ -83,14 +90,18 @@ extension ButtonStyle where Self == PressStyle {
 // MARK: - Tray
 
 extension AnyTransition {
-    /// Tray enters 24pt below and faded, 420ms spring. Exits with 240ms ease.
-    static var tray: AnyTransition {
+    /// The tray is one surface that slides in from the bottom edge and out the same way: a single
+    /// translate, no opacity, no scale. The animation comes from the `withAnimation` that changes
+    /// the state (`Motion.sheet` / `Motion.sheetExit`).
+    static var tray: AnyTransition { .move(edge: .bottom) }
+
+    /// Content swap inside a tray that is replaced by another one: the old content leaves quickly
+    /// and the new content fades in a beat later with a touch of blur (masks the layout change),
+    /// while the surface height animates on `Motion.sheetSwap`.
+    static var traySwap: AnyTransition {
         .asymmetric(
-            // Opacity runs on its own quick fade: on the 420ms spring the tray stayed see-through
-            // long enough for the list behind it to show through the card.
-            insertion: AnyTransition.offset(y: 24).animation(Motion.spring)
-                .combined(with: .opacity.animation(Motion.trayFade)),
-            removal: .offset(y: 24).combined(with: .opacity).animation(Motion.ease)
+            insertion: .opacity.animation(.easeOut(duration: 0.16).delay(0.06)),
+            removal: .opacity.animation(.easeOut(duration: 0.08))
         )
     }
     static var scrim: AnyTransition { .opacity.animation(Motion.ease) }
