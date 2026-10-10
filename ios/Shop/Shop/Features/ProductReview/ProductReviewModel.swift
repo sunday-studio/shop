@@ -149,6 +149,40 @@ final class ProductReviewModel {
         }
     }
 
+    /// "Try now" on a card whose Open Food Facts lookup failed: the server fills only empty fields.
+    func tryNow(_ item: ReviewItem) async {
+        guard !workingIds.contains(item.id) else { return }
+        workingIds.insert(item.id)
+        defer { workingIds.remove(item.id) }
+        do {
+            let result = try await api.refreshProduct(item.id)
+            app.catalog.upsert(result.product)
+            if let i = items.firstIndex(where: { $0.id == item.id }) {
+                // Found: the card can be accepted as usual (name/category now filled).
+                if result.offStatus == "found" {
+                    items[i].product = result.product
+                    app.toasts.show("Found it on Open Food Facts · \(result.product.name)", tone: .green)
+                } else {
+                    app.toasts.show(result.offStatus == "not_found" ? "Not on Open Food Facts" : "Still can't reach Open Food Facts")
+                }
+            }
+        } catch {
+            Haptics.play(.error)
+            app.toasts.error("Couldn't try now. Try again.")
+        }
+    }
+
+    func setPhoto(_ jpeg: Data, for item: ReviewItem) async {
+        do {
+            let product = try await api.putProductImage(item.id, jpeg: jpeg)
+            app.catalog.upsert(product)
+            if let i = items.firstIndex(where: { $0.id == item.id }) { items[i].product = product }
+        } catch {
+            Haptics.play(.error)
+            app.toasts.error("Couldn't save the photo.")
+        }
+    }
+
     func discard(_ item: ReviewItem) async {
         let body = ReviewBody(action: "discard", categoryId: nil, name: nil, intoProductId: nil)
         await run(item, failure: "Couldn't discard") { try await $0.api.reviewProduct(item.id, body) } done: { [self] result in

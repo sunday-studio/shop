@@ -1,4 +1,6 @@
+import PhotosUI
 import SwiftUI
+import UIKit
 
 /// "New products": products Shop created that it isn't sure about (docs/DESIGN-PRODUCT-AUTOPOPULATE.md §2).
 struct ProductReviewView: View {
@@ -111,6 +113,13 @@ struct ProductReviewView: View {
                     onCategory: { pickCategory(item) },
                     onMore: { options(item) }
                 )
+                if reason == .barcodeOffUnavailable {
+                    Button("Try now") { Task { await model.tryNow(item) } }
+                        .textStyle(.label).foregroundStyle(Palette.blueText)
+                        .buttonStyle(.press(haptic: .selection))
+                        .disabled(model.workingIds.contains(item.id) || model.isOffline)
+                        .padding(.horizontal, Space.lx)
+                }
                 if item.sourceLineCount > 1 {
                     Text("+\(item.sourceLineCount - 1) more receipts")
                         .textStyle(.caption).foregroundStyle(Palette.ink3).padding(.horizontal, Space.lx)
@@ -134,7 +143,9 @@ struct ProductReviewView: View {
 
     private func nameTray(_ item: ReviewItem, accept: Bool) {
         app.trays.present("review-name") {
-            ReviewNameTray(item: item, startEmpty: item.kind == .barcodeMinimal) { name in
+            ReviewNameTray(item: item, startEmpty: item.kind == .barcodeMinimal, onPhoto: { data in
+                Task { await model.setPhoto(data, for: item) }
+            }) { name in
                 if accept { Task { await model.accept(item, name: name) } } else { model.set(name: name, for: item) }
             }
         }
@@ -185,15 +196,33 @@ private struct ReviewOptionsTray: View {
 private struct ReviewNameTray: View {
     let item: ReviewItem
     let startEmpty: Bool
+    let onPhoto: (Data) -> Void
     let onSave: (String) -> Void
     @Environment(TrayCoordinator.self) private var trays
     @State private var name = ""
     @State private var loaded = false
+    @State private var photoItem: PhotosPickerItem?
+    @State private var camera = false
+    @State private var photoTaken = false
+
+    /// Barcode-born products without a picture can get one here.
+    private var canAddPhoto: Bool { item.product.createdVia == "barcode" && item.product.imageUrl == nil && !photoTaken }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xl) {
             TrayHeader(title: "Name this product", subtitle: item.product.barcode)
             FieldTile(label: "Name", text: $name, placeholder: startEmpty ? "What is it?" : "Name", background: Palette.trayField)
+            if canAddPhoto {
+                HStack(spacing: Space.xl) {
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        Button("Take a photo") { camera = true }
+                            .buttonStyle(.press(haptic: .selection))
+                    }
+                    PhotosPicker(selection: $photoItem, matching: .images) { Text("Choose a photo") }
+                }
+                .textStyle(.label).foregroundStyle(Palette.blueText)
+                .padding(.horizontal, Space.xs)
+            }
             Button("Save") {
                 let trimmed = name.trimmingCharacters(in: .whitespaces)
                 trays.dismiss()
@@ -210,6 +239,22 @@ private struct ReviewNameTray: View {
             guard !loaded else { return }
             loaded = true
             if !startEmpty { name = item.product.name }
+        }
+        .onChange(of: photoItem) { _, picked in
+            guard let picked else { return }
+            Task {
+                if let data = try? await picked.loadTransferable(type: Data.self), let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) {
+                    photoTaken = true
+                    onPhoto(jpeg)
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $camera) {
+            CameraPicker(onImage: { image in
+                camera = false
+                if let jpeg = image.jpegData(compressionQuality: 0.85) { photoTaken = true; onPhoto(jpeg) }
+            }, onCancel: { camera = false })
+            .ignoresSafeArea()
         }
     }
 }

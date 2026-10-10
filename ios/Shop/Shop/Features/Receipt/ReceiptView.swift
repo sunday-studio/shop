@@ -244,6 +244,11 @@ private struct ReceiptScreen: View {
                     if line.kind == .item {
                         Button(line.productId == nil ? "Link product" : "Change product", systemImage: "link") { openLink(line, model: model) }
                     }
+                    if line.kind == .item && line.productId != nil {
+                        Button("This isn't the same product", systemImage: "square.split.2x1") {
+                            Task { await model.splitProduct(of: line) }
+                        }
+                    }
                     Button("Delete line", systemImage: "trash", role: .destructive) {
                         Task { await model.deleteLine(line.id) }
                     }

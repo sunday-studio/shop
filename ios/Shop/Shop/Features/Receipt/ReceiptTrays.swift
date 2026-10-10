@@ -243,6 +243,13 @@ struct LinkProductTray: View {
             }
             .buttonStyle(.shop(haptic: .medium))
             .disabled(selected == nil || linking)
+
+            if line.kind == .item && line.productId != nil {
+                OptionRow(icon: .unlink, title: "This isn't the same product", hint: "Moves other lines with this text too") {
+                    trays.dismiss()
+                    Task { await model.splitProduct(of: line) }
+                }
+            }
         }
         .onAppear {
             if selected == nil { selected = line.suggestions?.first.flatMap { $0.score >= 0.75 ? $0.productId : nil } ?? line.productId }

@@ -328,6 +328,38 @@ final class ReceiptModel {
         } catch { return false }
     }
 
+    /// "This isn't the same product": the line (and others with the same text) gets its own new product.
+    func splitProduct(of line: ReceiptLine) async {
+        do {
+            let result = try await api.splitLineProduct(line.id)
+            catalog.upsert(result.product)
+            let n = result.linesMoved
+            let text = "New product \(result.product.name) · \(n == 1 ? "1 line" : "\(n) lines") moved"
+            let mergeId = result.mergeId
+            app.toasts.undoable(text) { [weak self] in
+                Task { await self?.undoSplit(mergeId) }
+            }
+            await load()
+        } catch let error as APIError {
+            Haptics.play(.error)
+            app.toasts.error(error.message)
+        } catch {}
+    }
+
+    private func undoSplit(_ id: Int64) async {
+        do {
+            let result = try await api.undoProductChange(id)
+            app.toasts.show("Restored \(result.into?.name ?? result.product.name)")
+            await load()
+        } catch APIError.conflict(_) {
+            Haptics.play(.warning)
+            app.toasts.show("Can't undo this one anymore")
+        } catch {
+            Haptics.play(.error)
+            app.toasts.error("Couldn't undo. Try again.")
+        }
+    }
+
     func deleteLine(_ id: Int64) async {
         do {
             try await api.deleteLine(id)
