@@ -1,4 +1,4 @@
-# Pantry
+# Shop
 
 Self-hosted grocery receipt tracker: paper receipts → local OCR → SQLite → spend & price comparisons, via an iOS app and an MCP server.
 

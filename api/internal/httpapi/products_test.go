@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"pantry/internal/apitypes"
+	"shop/internal/apitypes"
 )
 
 func (e *env) product(body map[string]any) apitypes.Product {

@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"pantry/internal/apitypes"
-	"pantry/internal/receipts"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/apitypes"
+	"shop/internal/receipts"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 const maxUpload = 20 << 20

@@ -22,14 +22,14 @@ import (
 // any machine without touching the database directly.
 func importCmd(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("import", flag.ContinueOnError)
-	url := flags.String("url", envOr("PANTRY_URL", "http://localhost:8080"), "server URL (env PANTRY_URL)")
-	token := flags.String("token", os.Getenv("PANTRY_TOKEN"), "API token (env PANTRY_TOKEN)")
+	url := flags.String("url", envOr("SHOP_URL", "http://localhost:8080"), "server URL (env SHOP_URL)")
+	token := flags.String("token", os.Getenv("SHOP_TOKEN"), "API token (env SHOP_TOKEN)")
 	shop := flags.Int64("shop", 0, "shop id for all images (required)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if *shop == 0 || *token == "" || flags.NArg() == 0 {
-		return errors.New("usage: pantry import -shop ID [-url U] [-token T] <dir|file>...")
+		return errors.New("usage: shop import -shop ID [-url U] [-token T] <dir|file>...")
 	}
 
 	var files []string

@@ -1,4 +1,4 @@
-// Command pantry is the Pantry backend: API server and admin CLI.
+// Command shop is the Shop backend: API server and admin CLI.
 package main
 
 import (
@@ -9,16 +9,16 @@ import (
 	"os/signal"
 	"syscall"
 
-	"pantry/internal/version"
+	"shop/internal/version"
 )
 
-const usage = `usage: pantry <command> [flags]
+const usage = `usage: shop <command> [flags]
 
 server:
   serve                         run the API server + job worker (applies migrations)
   migrate                       apply database migrations and exit
 
-admin (run where the database lives, e.g. docker compose exec api pantry ...):
+admin (run where the database lives, e.g. docker compose exec api shop ...):
   token create <name>           create an API token (printed once)
   token list                    list tokens
   token revoke <name>           delete a token
@@ -55,7 +55,7 @@ func main() {
 	case "import":
 		err = importCmd(ctx, args)
 	case "version":
-		fmt.Printf("pantry %s (%s)\n", version.Version, version.Commit)
+		fmt.Printf("shop %s (%s)\n", version.Version, version.Commit)
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:

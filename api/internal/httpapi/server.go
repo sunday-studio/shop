@@ -8,15 +8,15 @@ import (
 	"net/http"
 	"time"
 
-	"pantry/internal/apitypes"
-	"pantry/internal/ocr"
-	"pantry/internal/products"
-	"pantry/internal/receipts"
-	"pantry/internal/shopping"
-	"pantry/internal/stats"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
-	"pantry/internal/version"
+	"shop/internal/apitypes"
+	"shop/internal/ocr"
+	"shop/internal/products"
+	"shop/internal/receipts"
+	"shop/internal/shopping"
+	"shop/internal/stats"
+	"shop/internal/store"
+	"shop/internal/store/db"
+	"shop/internal/version"
 )
 
 type Deps struct {

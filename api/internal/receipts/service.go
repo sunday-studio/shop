@@ -17,12 +17,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"pantry/internal/jobs"
-	"pantry/internal/match"
-	"pantry/internal/ocr"
-	"pantry/internal/receipt"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/jobs"
+	"shop/internal/match"
+	"shop/internal/ocr"
+	"shop/internal/receipt"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 const JobProcess = "process_receipt"

@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"pantry/internal/apitypes"
-	"pantry/internal/shopping"
-	"pantry/internal/stats"
-	"pantry/internal/store"
+	"shop/internal/apitypes"
+	"shop/internal/shopping"
+	"shop/internal/stats"
+	"shop/internal/store"
 )
 
 // Stats handlers serialise the stats structs directly; their JSON tags

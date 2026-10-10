@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"pantry/internal/match"
-	"pantry/internal/ocr"
+	"shop/internal/match"
+	"shop/internal/ocr"
 )
 
 // ParserVersion is stored on each receipt; bump it whenever rules change so

@@ -64,7 +64,7 @@ func errText(res *mcp.CallToolResult) string {
 
 func TestMCPRequiresToken(t *testing.T) {
 	e := newEnv(t)
-	if _, err := connectMCP(t, e, "pt_wrong"); err == nil {
+	if _, err := connectMCP(t, e, "st_wrong"); err == nil {
 		t.Fatal("connect with a bad token should fail")
 	}
 }
@@ -217,7 +217,7 @@ func TestMCPTools(t *testing.T) {
 	}
 
 	// Resources.
-	r, err := cs.ReadResource(ctx, &mcp.ReadResourceParams{URI: "pantry://shops"})
+	r, err := cs.ReadResource(ctx, &mcp.ReadResourceParams{URI: "shop://shops"})
 	if err != nil || len(r.Contents) != 1 || !strings.Contains(r.Contents[0].Text, `"Lidl"`) {
 		t.Errorf("shops resource: %v %+v", err, r)
 	}

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"pantry/internal/auth"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
+	"shop/internal/auth"
+	"shop/internal/store"
+	"shop/internal/store/db"
 )
 
 type statusRecorder struct {
@@ -70,13 +70,13 @@ func (s *Server) requireToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if !ok {
-			w.Header().Set("WWW-Authenticate", `Bearer realm="pantry"`)
+			w.Header().Set("WWW-Authenticate", `Bearer realm="shop"`)
 			writeProblem(w, http.StatusUnauthorized, "missing bearer token", "")
 			return
 		}
 		tok, err := auth.Verify(r.Context(), s.q, strings.TrimSpace(raw))
 		if err != nil {
-			w.Header().Set("WWW-Authenticate", `Bearer realm="pantry", error="invalid_token"`)
+			w.Header().Set("WWW-Authenticate", `Bearer realm="shop", error="invalid_token"`)
 			writeProblem(w, http.StatusUnauthorized, "invalid token", "")
 			return
 		}

@@ -1,4 +1,4 @@
-// Package mcpserver exposes Pantry to an AI assistant over MCP
+// Package mcpserver exposes Shop to an AI assistant over MCP
 // (streamable HTTP). Tools are thin wrappers over the same services the
 // REST API uses, and return compact results to keep the assistant's
 // context small.
@@ -17,15 +17,15 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"pantry/internal/match"
-	"pantry/internal/money"
-	"pantry/internal/products"
-	"pantry/internal/receipts"
-	"pantry/internal/shopping"
-	"pantry/internal/stats"
-	"pantry/internal/store"
-	"pantry/internal/store/db"
-	"pantry/internal/version"
+	"shop/internal/match"
+	"shop/internal/money"
+	"shop/internal/products"
+	"shop/internal/receipts"
+	"shop/internal/shopping"
+	"shop/internal/stats"
+	"shop/internal/store"
+	"shop/internal/store/db"
+	"shop/internal/version"
 )
 
 type Deps struct {
@@ -43,7 +43,7 @@ type server struct {
 	q *db.Queries
 }
 
-const instructions = `Pantry tracks grocery receipts (Dutch/English), products, prices per shop and a shopping list.
+const instructions = `Shop tracks grocery receipts (Dutch/English), products, prices per shop and a shopping list.
 Money is given both as integer cents and formatted euros. Dates are local (Europe/Amsterdam), YYYY-MM-DD.
 Product and shop arguments accept an id or a name; names are fuzzy-matched and the result says which one was used.
 Unit prices are per base unit (kg, l or piece). Prices come from receipts with status ok.`
@@ -54,7 +54,7 @@ func New(d Deps) *mcp.Server {
 		d.Location = time.UTC
 	}
 	s := &server{Deps: d, q: db.New(d.DB)}
-	srv := mcp.NewServer(&mcp.Implementation{Name: "pantry", Title: "Pantry", Version: version.Version},
+	srv := mcp.NewServer(&mcp.Implementation{Name: "shop", Title: "Shop", Version: version.Version},
 		&mcp.ServerOptions{Instructions: instructions})
 
 	ro := &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true}
@@ -89,9 +89,9 @@ func New(d Deps) *mcp.Server {
 		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
 		Description: "Remove an item from the shopping list."}, s.listRemove)
 
-	srv.AddResource(&mcp.Resource{URI: "pantry://shops", Name: "shops", MIMEType: "application/json",
+	srv.AddResource(&mcp.Resource{URI: "shop://shops", Name: "shops", MIMEType: "application/json",
 		Description: "All shops"}, s.shopsResource)
-	srv.AddResource(&mcp.Resource{URI: "pantry://categories", Name: "categories", MIMEType: "application/json",
+	srv.AddResource(&mcp.Resource{URI: "shop://categories", Name: "categories", MIMEType: "application/json",
 		Description: "Product categories"}, s.categoriesResource)
 	return srv
 }

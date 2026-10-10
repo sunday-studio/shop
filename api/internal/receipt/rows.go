@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"pantry/internal/ocr"
+	"shop/internal/ocr"
 )
 
 // Row is one visual line of the receipt, rebuilt from OCR boxes.

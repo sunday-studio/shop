@@ -1,4 +1,4 @@
-# Pantry — End-to-End Build Plan
+# Shop — End-to-End Build Plan
 
 Self-hosted grocery receipt tracker. You photograph **paper receipts (NL/EN)**, they are OCR'd locally, and a deterministic parser turns them into line items stored in SQLite. You get spend and price-comparison reports, a product catalog with nutrition, and a shopping list. It is used from an **iOS app (Swift)** and by your personal assistant over **MCP (HTTP)**. The backend is **Go** in **Docker** on a home **Mac mini (16 GB)**, it must run CPU-only, and backups go to a **NAS**.
 
@@ -38,7 +38,7 @@ Self-hosted grocery receipt tracker. You photograph **paper receipts (NL/EN)**, 
 │   ├─ jobs worker (SQLite-backed queue)                            │
 │   ├─ preprocess → OCR client → rows → parser → validator → match  │
 │   ├─ Open Food Facts client (barcode → product/nutrition)         │
-│   └─ /data/pantry.db (WAL) · /data/images/{receipts,products}     │
+│   └─ /data/shop.db (WAL) · /data/images/{receipts,products}     │
 │                                                                   │
 │  ocr  (Python FastAPI sidecar, CPU) — engine picked by env:       │
 │        ppocrv5 (default) | doctr | tesseract | paddleocr-vl       │
@@ -46,7 +46,7 @@ Self-hosted grocery receipt tracker. You photograph **paper receipts (NL/EN)**, 
 │  backup (cron container) → NAS mount                              │
 └───────────────────────────────────────────────────────────────────┘
         ▲ optional, outside Docker: ocr-mac (Swift, Apple Vision) on :8010
-        ▲ assistant → http://pantry:8080/mcp
+        ▲ assistant → http://shop:8080/mcp
 ```
 
 **OCR contract** (every engine returns the same thing):
@@ -64,9 +64,9 @@ GET  /healthz → { "engine": "...", "ready": true }
 ## 2. Repository layout
 
 ```
-pantry/
-├─ api/                      Go module github.com/<you>/pantry
-│  ├─ cmd/pantry/            main: `serve`, `migrate`, `import`, `reparse`, `token`, `backup`
+shop/
+├─ api/                      Go module github.com/<you>/shop
+│  ├─ cmd/shop/            main: `serve`, `migrate`, `import`, `reparse`, `token`, `backup`
 │  ├─ internal/
 │  │  ├─ config/             env parsing
 │  │  ├─ store/              sqlc-generated queries + tx helpers
@@ -85,14 +85,14 @@ pantry/
 │  └─ sqlc.yaml
 ├─ ocr/                      Python sidecar (FastAPI), Dockerfile per engine target
 ├─ ocr-mac/                  Swift package: Apple Vision HTTP helper (optional)
-├─ ios/Pantry/               Xcode project
+├─ ios/Shop/               Xcode project
 ├─ spike/                    harness, truth.csv, lines/*.json (images git-ignored)
 ├─ docs/                     all documentation (PLAN.md, spike-report.md, mcp.md, restore.md)
 ├─ openapi.yaml              shared contract (Go server + Swift client)
 ├─ deploy/
 │  ├─ docker-compose.yml
 │  ├─ backup/                backup.sh, restore.sh, crontab
-│  └─ launchd/               com.pantry.ocr-mac.plist (optional)
+│  └─ launchd/               com.shop.ocr-mac.plist (optional)
 ├─ Makefile
 └─ .github/workflows/ci.yml  go test, sqlc diff, lint, docker build, xcodebuild test
 ```
@@ -110,7 +110,7 @@ pantry/
 - **Soft delete** (`deleted_at`) for shops, products, and categories, so history is never orphaned. Receipts are hard-deleted, image included.
 - **Errors:** RFC 7807 `application/problem+json`.
 - **Logging:** `log/slog` JSON. One line per request and one per job.
-- **Config (env):** `PANTRY_DATA_DIR`, `PANTRY_ADDR`, `OCR_URL`, `OCR_FALLBACK_URL`, `OFF_USER_AGENT`, `PANTRY_WORKERS` (default 1), `PANTRY_TZ=Europe/Amsterdam`.
+- **Config (env):** `SHOP_DATA_DIR`, `SHOP_ADDR`, `OCR_URL`, `OCR_FALLBACK_URL`, `OFF_USER_AGENT`, `SHOP_WORKERS` (default 1), `SHOP_TZ=Europe/Amsterdam`.
 - **Tests:** table-driven Go tests. The parser regression corpus has to pass in CI. Handler tests use a temp SQLite DB.
 
 ---
@@ -334,8 +334,8 @@ Product arguments accept an ID or text. Text is resolved through the fuzzy match
 **Structure**
 
 ```
-Pantry/
-├─ App/            PantryApp, RootTabView, Settings (server URL, token in Keychain)
+Shop/
+├─ App/            ShopApp, RootTabView, Settings (server URL, token in Keychain)
 ├─ API/            generated client (swift-openapi-generator) + APIClient wrapper
 ├─ Sync/           UploadQueue (files in Application Support + SwiftData records, retries w/ backoff)
 ├─ Cache/          SwiftData models: CachedProduct, CachedListItem, CachedShop
@@ -367,31 +367,31 @@ Pantry/
 ```yaml
 services:
   api:
-    image: pantry-api:latest
+    image: shop-api:latest
     build: ../api
     restart: unless-stopped
     ports: ["8080:8080"]
-    volumes: ["pantry-data:/data"]
+    volumes: ["shop-data:/data"]
     environment:
-      PANTRY_DATA_DIR: /data
+      SHOP_DATA_DIR: /data
       OCR_URL: http://ocr:8000
       OCR_FALLBACK_URL: ${OCR_FALLBACK_URL:-}
-      OFF_USER_AGENT: "Pantry/0.1 (self-hosted)"
+      OFF_USER_AGENT: "Shop/0.1 (self-hosted)"
     depends_on: [ocr]
   ocr:
-    image: pantry-ocr:ppocrv5
+    image: shop-ocr:ppocrv5
     build: { context: ../ocr, args: { ENGINE: ppocrv5 } }
     restart: unless-stopped
     mem_limit: 3g
   # ocr-vl:      # optional accurate fallback, enabled after the spike if it earns its place
-  #   image: pantry-ocr:paddleocr-vl
+  #   image: shop-ocr:paddleocr-vl
   #   mem_limit: 10g
   backup:
-    image: pantry-api:latest
+    image: shop-api:latest
     entrypoint: ["/usr/local/bin/backup-cron"]
-    volumes: ["pantry-data:/data:ro", "/Volumes/nas/pantry:/backup"]
+    volumes: ["shop-data:/data:ro", "/Volumes/nas/shop:/backup"]
     environment: { BACKUP_KEEP_DAYS: "30", BACKUP_AT: "03:30" }
-volumes: { pantry-data: {} }
+volumes: { shop-data: {} }
 ```
 
 - **Docker Desktop memory:** raise the VM to **10–12 GB** if PaddleOCR-VL is used. PP-OCRv5 alone fits in about 2 GB.
@@ -400,9 +400,9 @@ volumes: { pantry-data: {} }
 
 ### 10.2 Backups to the NAS
 
-1. Mount the NAS share on the Mac mini at `/Volumes/nas/pantry` (SMB, auto-mounted at login). Docker Desktop has to have that path shared.
-2. Nightly `pantry backup` does:
-   - an `sqlite3` online backup API → `pantry-YYYYMMDD.db` (consistent with WAL), then `PRAGMA integrity_check` on the copy;
+1. Mount the NAS share on the Mac mini at `/Volumes/nas/shop` (SMB, auto-mounted at login). Docker Desktop has to have that path shared.
+2. Nightly `shop backup` does:
+   - an `sqlite3` online backup API → `shop-YYYYMMDD.db` (consistent with WAL), then `PRAGMA integrity_check` on the copy;
    - `rsync -a --delete-after /data/images/ /backup/images/` (images are content-addressed, so only new files move);
    - deletion of DB snapshots older than `BACKUP_KEEP_DAYS`;
    - writing `last_backup.json`, which `/healthz` exposes.
@@ -411,7 +411,7 @@ volumes: { pantry-data: {} }
 
 ### 10.3 Remote access
 
-Tailscale on the Mac mini and the iPhone. The app's server URL is `http://pantry.<tailnet>.ts.net:8080`, or use `tailscale serve` for HTTPS. The assistant uses the same URL.
+Tailscale on the Mac mini and the iPhone. The app's server URL is `http://shop.<tailnet>.ts.net:8080`, or use `tailscale serve` for HTTPS. The assistant uses the same URL.
 
 ---
 
@@ -422,8 +422,8 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 ### M0 — Foundations (1.5 d)
 - [x] Monorepo, Makefile (`make run`, `make test`, `make gen`, `make up`), `.editorconfig`
 - [ ] Licence (pick one)
-- [x] Go module skeleton, `cmd/pantry serve` with `/healthz`, slog, config
-- [x] goose + `0001_init.sql`, sqlc wired up, `pantry migrate`
+- [x] Go module skeleton, `cmd/shop serve` with `/healthz`, slog, config
+- [x] goose + `0001_init.sql`, sqlc wired up, `shop migrate`
 - [x] `openapi.yaml` v0 (shops + receipts + healthz), oapi-codegen types
 - [x] Python `ocr/` FastAPI skeleton implementing the OCR contract with **PP-OCRv5**
 - [x] `docker-compose.yml` (api + ocr)
@@ -457,14 +457,14 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 
 ### M2 — Backend core (6 d)
 - [x] `store`: sqlc queries for all tables, tx helper, `PRAGMA` setup, `busy_timeout`
-- [x] Auth middleware + `pantry token create|list|revoke`
+- [x] Auth middleware + `shop token create|list|revoke`
 - [x] Shops & categories CRUD (+ seed categories)
 - [x] `POST /receipts`: sha256 dedupe (409 with the existing id), store the image, enqueue a job
 - [x] `jobs`: polling worker (claim with `UPDATE … RETURNING`), retries with backoff, crash-safe (`running` > 10 min → requeue)
 - [x] `ocr` client with timeout/retry/fallback. Preprocessing (EXIF orientation, resize ≤2400 px) lives in the OCR sidecar, not Go
 - [x] `receipt` parser promoted from the spike, `parser_version` constant, full validator
 - [x] Receipts GET/PATCH/DELETE/confirm/reparse/reocr, lines CRUD
-- [x] `pantry import -shop ID <dir>` (uploads over HTTP, so it runs from any machine) and `pantry reparse [-status S]`
+- [x] `shop import -shop ID <dir>` (uploads over HTTP, so it runs from any machine) and `shop reparse [-status S]`
 - [x] Parser table tests on synthetic layouts + full-stack handler tests (temp DB, fake OCR, queue)
 - [ ] Golden corpus from real receipts (comes from the spike)
 
@@ -527,7 +527,7 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 **Done when** a full grocery haul can be unpacked with every new product added and linked, and the list works in airplane mode and syncs afterwards.
 
 ### M8 — Ops hardening (2 d)
-- [ ] `pantry backup` + backup container, NAS mount docs, retention, `/healthz` staleness
+- [ ] `shop backup` + backup container, NAS mount docs, retention, `/healthz` staleness
 - [ ] Restore drill executed and documented (`docs/restore.md`)
 - [ ] Tailscale setup docs; optional `tailscale serve` HTTPS
 - [ ] Image + DB size check in `/healthz`; log rotation
@@ -558,7 +558,7 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 | 23–27 | M7 iOS catalog/charts/list |
 | 28 | M8 ops |
 
-Total ≈ **37–38 working days** (~7 months part-time, ~8 weeks full-time). M5 deliberately comes before the app: once M2–M5 are done, the `pantry import` CLI plus the assistant are already useful while the iOS app is being built.
+Total ≈ **37–38 working days** (~7 months part-time, ~8 weeks full-time). M5 deliberately comes before the app: once M2–M5 are done, the `shop import` CLI plus the assistant are already useful while the iOS app is being built.
 
 ---
 

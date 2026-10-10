@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"pantry/internal/ocr"
+	"shop/internal/ocr"
 )
 
 var (
