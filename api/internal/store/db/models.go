@@ -101,6 +101,8 @@ type Receipt struct {
 	ConfirmedAt    sql.NullString `json:"confirmed_at"`
 	CreatedAt      string         `json:"created_at"`
 	UpdatedAt      string         `json:"updated_at"`
+	DateLocked     int64          `json:"date_locked"`
+	HeaderEdited   int64          `json:"header_edited"`
 }
 
 type ReceiptLine struct {

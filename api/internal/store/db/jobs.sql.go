@@ -7,7 +7,37 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
+
+const claimJob = `-- name: ClaimJob :one
+UPDATE jobs
+SET status = 'running', attempts = attempts + 1, updated_at = ?1
+WHERE id = (
+  SELECT id FROM jobs
+  WHERE status = 'queued' AND run_after <= ?1
+  ORDER BY id
+  LIMIT 1
+)
+RETURNING id, kind, payload, status, attempts, run_after, last_error, created_at, updated_at
+`
+
+func (q *Queries) ClaimJob(ctx context.Context, now string) (Job, error) {
+	row := q.db.QueryRowContext(ctx, claimJob, now)
+	var i Job
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Payload,
+		&i.Status,
+		&i.Attempts,
+		&i.RunAfter,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
 
 const countJobsByStatus = `-- name: CountJobsByStatus :many
 SELECT status, COUNT(*) AS n
@@ -41,4 +71,121 @@ func (q *Queries) CountJobsByStatus(ctx context.Context) ([]CountJobsByStatusRow
 		return nil, err
 	}
 	return items, nil
+}
+
+const enqueueJob = `-- name: EnqueueJob :one
+INSERT INTO jobs (kind, payload, status, run_after, created_at, updated_at)
+VALUES (?, ?, 'queued', ?, ?, ?)
+RETURNING id, kind, payload, status, attempts, run_after, last_error, created_at, updated_at
+`
+
+type EnqueueJobParams struct {
+	Kind      string `json:"kind"`
+	Payload   string `json:"payload"`
+	RunAfter  string `json:"run_after"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) (Job, error) {
+	row := q.db.QueryRowContext(ctx, enqueueJob,
+		arg.Kind,
+		arg.Payload,
+		arg.RunAfter,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	var i Job
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Payload,
+		&i.Status,
+		&i.Attempts,
+		&i.RunAfter,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const failJob = `-- name: FailJob :exec
+UPDATE jobs SET status = 'failed', last_error = ?, updated_at = ? WHERE id = ?
+`
+
+type FailJobParams struct {
+	LastError sql.NullString `json:"last_error"`
+	UpdatedAt string         `json:"updated_at"`
+	ID        int64          `json:"id"`
+}
+
+func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) error {
+	_, err := q.db.ExecContext(ctx, failJob, arg.LastError, arg.UpdatedAt, arg.ID)
+	return err
+}
+
+const finishJob = `-- name: FinishJob :exec
+UPDATE jobs SET status = 'done', last_error = NULL, updated_at = ? WHERE id = ?
+`
+
+type FinishJobParams struct {
+	UpdatedAt string `json:"updated_at"`
+	ID        int64  `json:"id"`
+}
+
+func (q *Queries) FinishJob(ctx context.Context, arg FinishJobParams) error {
+	_, err := q.db.ExecContext(ctx, finishJob, arg.UpdatedAt, arg.ID)
+	return err
+}
+
+const pruneDoneJobs = `-- name: PruneDoneJobs :execrows
+DELETE FROM jobs WHERE status = 'done' AND updated_at < ?
+`
+
+func (q *Queries) PruneDoneJobs(ctx context.Context, updatedAt string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, pruneDoneJobs, updatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const requeueStaleJobs = `-- name: RequeueStaleJobs :execrows
+UPDATE jobs SET status = 'queued', updated_at = ?1
+WHERE status = 'running' AND updated_at < ?2
+`
+
+type RequeueStaleJobsParams struct {
+	Now         string `json:"now"`
+	StaleBefore string `json:"stale_before"`
+}
+
+func (q *Queries) RequeueStaleJobs(ctx context.Context, arg RequeueStaleJobsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, requeueStaleJobs, arg.Now, arg.StaleBefore)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const retryJob = `-- name: RetryJob :exec
+UPDATE jobs SET status = 'queued', run_after = ?, last_error = ?, updated_at = ? WHERE id = ?
+`
+
+type RetryJobParams struct {
+	RunAfter  string         `json:"run_after"`
+	LastError sql.NullString `json:"last_error"`
+	UpdatedAt string         `json:"updated_at"`
+	ID        int64          `json:"id"`
+}
+
+func (q *Queries) RetryJob(ctx context.Context, arg RetryJobParams) error {
+	_, err := q.db.ExecContext(ctx, retryJob,
+		arg.RunAfter,
+		arg.LastError,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
 }

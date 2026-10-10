@@ -1,8 +1,14 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
+	"strings"
 	"time"
+
+	"pantry/internal/auth"
+	"pantry/internal/store"
+	"pantry/internal/store/db"
 )
 
 type statusRecorder struct {
@@ -15,12 +21,24 @@ func (r *statusRecorder) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
+// Flush keeps streaming responses (MCP over SSE) working through the recorder.
+func (r *statusRecorder) Flush() {
+	if f, ok := r.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func (r *statusRecorder) Unwrap() http.ResponseWriter { return r.ResponseWriter }
+
 func (s *Server) logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		s.log.Info("http",
+		if r.URL.Path == "/healthz" && rec.status == http.StatusOK {
+			return // docker healthchecks would flood the log
+		}
+		s.Log.Info("http",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rec.status,
@@ -32,10 +50,40 @@ func (s *Server) recoverer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if v := recover(); v != nil {
-				s.log.Error("panic", "path", r.URL.Path, "panic", v)
+				s.Log.Error("panic", "path", r.URL.Path, "panic", v)
 				writeProblem(w, http.StatusInternalServerError, "internal error", "")
 			}
 		}()
 		next.ServeHTTP(w, r)
+	})
+}
+
+type tokenKey struct{}
+
+// TokenName returns the name of the API token that authenticated the request.
+func TokenName(ctx context.Context) string {
+	name, _ := ctx.Value(tokenKey{}).(string)
+	return name
+}
+
+func (s *Server) requireToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="pantry"`)
+			writeProblem(w, http.StatusUnauthorized, "missing bearer token", "")
+			return
+		}
+		tok, err := auth.Verify(r.Context(), s.q, strings.TrimSpace(raw))
+		if err != nil {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="pantry", error="invalid_token"`)
+			writeProblem(w, http.StatusUnauthorized, "invalid token", "")
+			return
+		}
+		// Throttle last_used_at writes to once a minute per token.
+		if last, err := store.ParseTS(tok.LastUsedAt.String); !tok.LastUsedAt.Valid || err != nil || time.Since(last) > time.Minute {
+			_ = s.q.TouchToken(r.Context(), db.TouchTokenParams{LastUsedAt: store.Str(store.Now()), ID: tok.ID})
+		}
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), tokenKey{}, tok.Name)))
 	})
 }

@@ -456,16 +456,19 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 **If the targets are missed:** iterate on the parser rules first (cheap). Change engines second. Do not add an LLM.
 
 ### M2 — Backend core (6 d)
-- [ ] `store`: sqlc queries for all tables, tx helper, `PRAGMA` setup, `busy_timeout`
-- [ ] Auth middleware + `pantry token create|list|revoke`
-- [ ] Shops & categories CRUD (+ seed categories)
-- [ ] `POST /receipts`: sha256 dedupe (409 with the existing id), store the image, enqueue a job
-- [ ] `jobs`: polling worker (claim with `UPDATE … RETURNING`), retries with backoff, crash-safe (`running` > 10 min → requeue)
-- [ ] `imaging` preprocess, `ocr` client with timeout/retry/fallback
-- [ ] `receipt` parser promoted from the spike, `parser_version` constant, full validator
-- [ ] Receipts GET/PATCH/DELETE/confirm/reparse/reocr, lines CRUD
-- [ ] `pantry import <dir> --shop <id>` (backfill) and `pantry reparse --all|--status needs_review`
-- [ ] Golden tests: the regression corpus must pass; handler tests on a temp DB
+- [x] `store`: sqlc queries for all tables, tx helper, `PRAGMA` setup, `busy_timeout`
+- [x] Auth middleware + `pantry token create|list|revoke`
+- [x] Shops & categories CRUD (+ seed categories)
+- [x] `POST /receipts`: sha256 dedupe (409 with the existing id), store the image, enqueue a job
+- [x] `jobs`: polling worker (claim with `UPDATE … RETURNING`), retries with backoff, crash-safe (`running` > 10 min → requeue)
+- [x] `ocr` client with timeout/retry/fallback. Preprocessing (EXIF orientation, resize ≤2400 px) lives in the OCR sidecar, not Go
+- [x] `receipt` parser promoted from the spike, `parser_version` constant, full validator
+- [x] Receipts GET/PATCH/DELETE/confirm/reparse/reocr, lines CRUD
+- [x] `pantry import -shop ID <dir>` (uploads over HTTP, so it runs from any machine) and `pantry reparse [-status S]`
+- [x] Parser table tests on synthetic layouts + full-stack handler tests (temp DB, fake OCR, queue)
+- [ ] Golden corpus from real receipts (comes from the spike)
+
+**Status: done (2026-10-10)** except the real-receipt criterion, which moves to the spike. Two generated receipts (one rotated + blurred) went through real PP-OCRv5 → parser → `ok` with exact totals. Added migration 00003 (`date_locked`, `header_edited`) so user edits survive reparse.
 
 **Done when** all 100 spike receipts are imported through the real API, and ≥ 80 % of them land in `ok` without edits.
 
