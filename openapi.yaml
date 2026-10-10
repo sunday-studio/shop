@@ -5,8 +5,8 @@ info:
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
-    All /v1 routes need `Authorization: Bearer <token>`, except /v1/auth/status and /v1/auth/pair.
-    Apps get a token by pairing with the server password; scripts/assistants use `shop token create`.
+    All /v1 routes need `Authorization: Bearer <token>`, except /v1/auth/status, /v1/auth/pair and /v1/auth/login.
+    Apps get a token by logging in with the server password (POST /v1/auth/login); scripts/assistants use `shop token create`.
 servers:
   - url: http://localhost:8080
 security:
@@ -761,6 +761,36 @@ paths:
         "409": { $ref: "#/components/responses/Problem" }
         "429": { $ref: "#/components/responses/Problem" }
 
+  /v1/auth/login:
+    post:
+      operationId: login
+      security: []
+      description: >
+        Exchange the server password for a per-client bearer token. The app keeps the token in the
+        Keychain and never stores the password. Wrong password returns 401; repeated failures
+        are rate-limited (429).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResponse" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      description: Revoke the token making the request (sign out). Idempotent for the app; a later request with the token gets 401.
+      responses:
+        "204": { description: Signed out }
+        default: { $ref: "#/components/responses/Problem" }
+
   /v1/auth/me:
     get:
       operationId: getMe
@@ -819,6 +849,18 @@ components:
           schema: { $ref: "#/components/schemas/Problem" }
 
   schemas:
+    LoginRequest:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, format: password }
+        device_name: { type: string, maxLength: 60, description: "optional label shown in the device list" }
+    LoginResponse:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, description: "bearer token, st_…" }
+        expires_at: { type: string, format: date-time, description: "omitted when the token does not expire" }
     Problem:
       type: object
       required: [title, status]
@@ -934,6 +976,7 @@ components:
         parent_line_id: { type: integer, format: int64 }
         product_id: { type: integer, format: int64 }
         user_edited: { type: boolean }
+        text_en: { type: string, description: "dictionary English rendering of raw_text, when good enough" }
         suggestions:
           type: array
           description: Up to 3 likely products for unmatched item lines (single-receipt GET only).
@@ -999,7 +1042,13 @@ components:
       type: object
       required: [name]
       properties:
-        name: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1, description: "as sold (usually Dutch)" }
+        name_en:
+          type: string
+          description: >
+            English name. Omit to keep a previously typed/Open Food Facts name, or to translate
+            automatically; send "" to force automatic translation.
+        name_en_source: { type: string, enum: [manual, openfoodfacts], default: manual }
         brand: { type: string }
         category_id: { type: integer, format: int64 }
         barcode: { type: string }
@@ -1015,6 +1064,8 @@ components:
       properties:
         id: { type: integer, format: int64 }
         name: { type: string }
+        name_en: { type: string }
+        name_en_source: { type: string, enum: [manual, openfoodfacts, dictionary] }
         brand: { type: string }
         category_id: { type: integer, format: int64 }
         barcode: { type: string }
@@ -1033,6 +1084,7 @@ components:
       properties:
         code: { type: string }
         name: { type: string }
+        name_en: { type: string, description: "send as name_en with name_en_source=openfoodfacts" }
         brand: { type: string }
         net_quantity: { type: number, format: double }
         net_unit: { type: string, enum: [g, ml] }
@@ -1053,6 +1105,7 @@ components:
       properties:
         product_id: { type: integer, format: int64 }
         name: { type: string }
+        name_en: { type: string }
         brand: { type: string }
         score: { type: number, format: double }
 

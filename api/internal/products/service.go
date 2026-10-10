@@ -19,6 +19,7 @@ import (
 	"shop/internal/openfoodfacts"
 	"shop/internal/store"
 	"shop/internal/store/db"
+	"shop/internal/translate"
 )
 
 var (
@@ -42,15 +43,20 @@ func New(conn *sql.DB, matcher *match.Matcher, foodFacts *openfoodfacts.Client, 
 
 // Input is a product as entered by the user (or prefilled from OFF).
 type Input struct {
-	Name        string
-	Brand       *string
-	CategoryID  *int64
-	Barcode     *string
-	NetQuantity *float64
-	NetUnit     *string
-	OFFCode     *string
-	ImageURL    *string // OFF image to download on create
-	Nutrition   *Nutrition
+	Name string
+	// NameEN: nil = automatic (keep a typed/Open Food Facts name, else
+	// translate); "" = force automatic; text = use it (source NameENSource,
+	// default "manual").
+	NameEN       *string
+	NameENSource string
+	Brand        *string
+	CategoryID   *int64
+	Barcode      *string
+	NetQuantity  *float64
+	NetUnit      *string
+	OFFCode      *string
+	ImageURL     *string // OFF image to download on create
+	Nutrition    *Nutrition
 }
 
 type Nutrition struct {
@@ -101,6 +107,9 @@ func (in *Input) validate(ctx context.Context, q *db.Queries) error {
 			return fmt.Errorf("%w: category %d does not exist", ErrInvalid, *in.CategoryID)
 		}
 	}
+	if in.NameENSource != "" && in.NameENSource != "manual" && in.NameENSource != "openfoodfacts" {
+		return fmt.Errorf("%w: name_en_source must be manual or openfoodfacts", ErrInvalid)
+	}
 	if in.ImageURL != nil && !openfoodfacts.AllowedImageURL(*in.ImageURL) {
 		return fmt.Errorf("%w: image_url must be an https Open Food Facts image", ErrInvalid)
 	}
@@ -148,8 +157,9 @@ func (s *Service) Create(ctx context.Context, in Input) (Product, error) {
 	err := store.InTx(ctx, s.conn, func(q *db.Queries) error {
 		now := store.Now()
 		var err error
+		nameEN, source := englishName(in, nil)
 		p, err = q.CreateProduct(ctx, db.CreateProductParams{
-			Name: in.Name, Brand: store.NullStr(in.Brand), CategoryID: store.NullInt(in.CategoryID),
+			Name: in.Name, NameEn: nameEN, NameEnSource: source, Brand: store.NullStr(in.Brand), CategoryID: store.NullInt(in.CategoryID),
 			Barcode: store.NullStr(in.Barcode), NetQuantity: floatNull(in.NetQuantity),
 			NetUnit: store.NullStr(in.NetUnit), OffCode: store.NullStr(in.OFFCode),
 			CreatedAt: now, UpdatedAt: now,
@@ -179,6 +189,46 @@ func (s *Service) Create(ctx context.Context, in Input) (Product, error) {
 	return s.Get(ctx, p.ID)
 }
 
+// englishName decides the stored English name (see Input.NameEN).
+func englishName(in Input, cur *db.Product) (sql.NullString, sql.NullString) {
+	if in.NameEN != nil {
+		if v := strings.TrimSpace(*in.NameEN); v != "" {
+			src := in.NameENSource
+			if src == "" {
+				src = "manual"
+			}
+			return store.Str(v), store.Str(src)
+		}
+	} else if cur != nil && cur.NameEnSource.Valid && cur.NameEnSource.String != "dictionary" {
+		return cur.NameEn, cur.NameEnSource // keep what the user or Open Food Facts gave
+	}
+	if t := translate.Translate(in.Name); t.OK() {
+		return store.Str(t.Text), store.Str("dictionary")
+	}
+	return sql.NullString{}, sql.NullString{}
+}
+
+// BackfillEnglish fills English names for products that have none (e.g.
+// created before translation existed, or after the glossary grew).
+func (s *Service) BackfillEnglish(ctx context.Context) (int, error) {
+	rows, err := s.q.ProductsMissingEnglish(ctx)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, r := range rows {
+		if t := translate.Translate(r.Name); t.OK() {
+			if err := s.q.SetProductEnglish(ctx, db.SetProductEnglishParams{
+				NameEn: store.Str(t.Text), NameEnSource: store.Str("dictionary"), ID: r.ID,
+			}); err != nil {
+				return n, err
+			}
+			n++
+		}
+	}
+	return n, nil
+}
+
 func upsertNutrition(ctx context.Context, q *db.Queries, id int64, n Nutrition) error {
 	_, err := q.UpsertNutrition(ctx, db.UpsertNutritionParams{
 		ProductID: id, Per: n.Per, EnergyKcal: floatNull(n.EnergyKcal), Fat: floatNull(n.Fat),
@@ -206,15 +256,17 @@ func (s *Service) Get(ctx context.Context, id int64) (Product, error) {
 
 // Update replaces the editable fields. Nutrition is only touched when given.
 func (s *Service) Update(ctx context.Context, id int64, in Input) (Product, error) {
-	if _, err := s.Get(ctx, id); err != nil {
+	cur, err := s.Get(ctx, id)
+	if err != nil {
 		return Product{}, err
 	}
 	if err := in.validate(ctx, s.q); err != nil {
 		return Product{}, err
 	}
-	err := store.InTx(ctx, s.conn, func(q *db.Queries) error {
+	nameEN, source := englishName(in, &cur.Product)
+	err = store.InTx(ctx, s.conn, func(q *db.Queries) error {
 		_, err := q.UpdateProduct(ctx, db.UpdateProductParams{
-			Name: in.Name, Brand: store.NullStr(in.Brand), CategoryID: store.NullInt(in.CategoryID),
+			Name: in.Name, NameEn: nameEN, NameEnSource: source, Brand: store.NullStr(in.Brand), CategoryID: store.NullInt(in.CategoryID),
 			Barcode: store.NullStr(in.Barcode), NetQuantity: floatNull(in.NetQuantity),
 			NetUnit: store.NullStr(in.NetUnit), UpdatedAt: store.Now(), ID: id,
 		})
@@ -448,10 +500,11 @@ func (s *Service) UnmatchedLinesFor(ctx context.Context, productID int64, days i
 	}
 	name := match.Normalise(p.Name + " " + p.Brand.String)
 	nameOnly := match.Normalise(p.Name)
+	nameEN := match.Normalise(p.NameEn.String)
 	out := make([]UnmatchedLine, len(rows))
 	for i, r := range rows {
 		out[i] = UnmatchedLine{RecentUnmatchedLinesRow: r,
-			Score: max(match.Score(r.NormText, name), match.Score(r.NormText, nameOnly))}
+			Score: max(match.Score(r.NormText, name), match.Score(r.NormText, nameOnly), match.Score(r.NormText, nameEN))}
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
 	return out, nil

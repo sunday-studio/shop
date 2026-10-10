@@ -15,13 +15,13 @@ SELECT * FROM products WHERE deleted_at IS NULL AND id IN (sqlc.slice(ids));
 SELECT * FROM products WHERE barcode = ? AND deleted_at IS NULL;
 
 -- name: CreateProduct :one
-INSERT INTO products (name, brand, category_id, barcode, net_quantity, net_unit, off_code, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO products (name, name_en, name_en_source, brand, category_id, barcode, net_quantity, net_unit, off_code, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateProduct :one
 UPDATE products
-SET name = ?, brand = ?, category_id = ?, barcode = ?, net_quantity = ?, net_unit = ?, updated_at = ?
+SET name = ?, name_en = ?, name_en_source = ?, brand = ?, category_id = ?, barcode = ?, net_quantity = ?, net_unit = ?, updated_at = ?
 WHERE id = ? AND deleted_at IS NULL
 RETURNING *;
 
@@ -96,3 +96,9 @@ WHERE l.product_id IS NULL
   AND COALESCE(r.purchased_at, r.created_at) >= sqlc.arg(since)
 ORDER BY COALESCE(r.purchased_at, r.created_at) DESC, l.line_no
 LIMIT 500;
+
+-- name: ProductsMissingEnglish :many
+SELECT id, name FROM products WHERE deleted_at IS NULL AND name_en IS NULL;
+
+-- name: SetProductEnglish :exec
+UPDATE products SET name_en = ?, name_en_source = ? WHERE id = ?;

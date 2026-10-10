@@ -26,7 +26,8 @@ func ValidBarcode(s string) bool { return eanRe.MatchString(s) }
 // Product is the subset of OFF data Shop uses.
 type Product struct {
 	Code        string     `json:"code"`
-	Name        string     `json:"name"`
+	Name        string     `json:"name"`              // Dutch if available
+	NameEN      string     `json:"name_en,omitempty"` // English, when OFF has one
 	Brand       string     `json:"brand,omitempty"`
 	NetQuantity *float64   `json:"net_quantity,omitempty"`
 	NetUnit     string     `json:"net_unit,omitempty"` // g | ml
@@ -180,6 +181,9 @@ func (r rawProduct) toProduct(barcode string) Product {
 			p.Name = n
 			break
 		}
+	}
+	if en := strings.TrimSpace(r.NameEN); en != "" && en != p.Name {
+		p.NameEN = en
 	}
 	if b, _, _ := strings.Cut(r.Brands, ","); b != "" {
 		p.Brand = strings.TrimSpace(b)

@@ -210,6 +210,27 @@ func (e PricePointUnit) Valid() bool {
 	}
 }
 
+// Defines values for ProductNameEnSource.
+const (
+	ProductNameEnSourceDictionary    ProductNameEnSource = "dictionary"
+	ProductNameEnSourceManual        ProductNameEnSource = "manual"
+	ProductNameEnSourceOpenfoodfacts ProductNameEnSource = "openfoodfacts"
+)
+
+// Valid indicates whether the value is a known member of the ProductNameEnSource enum.
+func (e ProductNameEnSource) Valid() bool {
+	switch e {
+	case ProductNameEnSourceDictionary:
+		return true
+	case ProductNameEnSourceManual:
+		return true
+	case ProductNameEnSourceOpenfoodfacts:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProductNetUnit.
 const (
 	ProductNetUnitG  ProductNetUnit = "g"
@@ -225,6 +246,24 @@ func (e ProductNetUnit) Valid() bool {
 	case ProductNetUnitMl:
 		return true
 	case ProductNetUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductInputNameEnSource.
+const (
+	ProductInputNameEnSourceManual        ProductInputNameEnSource = "manual"
+	ProductInputNameEnSourceOpenfoodfacts ProductInputNameEnSource = "openfoodfacts"
+)
+
+// Valid indicates whether the value is a known member of the ProductInputNameEnSource enum.
+func (e ProductInputNameEnSource) Valid() bool {
+	switch e {
+	case ProductInputNameEnSourceManual:
+		return true
+	case ProductInputNameEnSourceOpenfoodfacts:
 		return true
 	default:
 		return false
@@ -565,10 +604,13 @@ type NutritionSource string
 
 // OpenFoodFactsPrefill defines model for OpenFoodFactsPrefill.
 type OpenFoodFactsPrefill struct {
-	Brand       *string                      `json:"brand,omitempty"`
-	Code        string                       `json:"code"`
-	ImageUrl    *string                      `json:"image_url,omitempty"`
-	Name        string                       `json:"name"`
+	Brand    *string `json:"brand,omitempty"`
+	Code     string  `json:"code"`
+	ImageUrl *string `json:"image_url,omitempty"`
+	Name     string  `json:"name"`
+
+	// NameEn send as name_en with name_en_source=openfoodfacts
+	NameEn      *string                      `json:"name_en,omitempty"`
 	NetQuantity *float64                     `json:"net_quantity,omitempty"`
 	NetUnit     *OpenFoodFactsPrefillNetUnit `json:"net_unit,omitempty"`
 
@@ -628,15 +670,17 @@ type Problem struct {
 
 // Product defines model for Product.
 type Product struct {
-	Barcode     *string         `json:"barcode,omitempty"`
-	Brand       *string         `json:"brand,omitempty"`
-	CategoryId  *int64          `json:"category_id,omitempty"`
-	CreatedAt   time.Time       `json:"created_at"`
-	HasImage    bool            `json:"has_image"`
-	Id          int64           `json:"id"`
-	Name        string          `json:"name"`
-	NetQuantity *float64        `json:"net_quantity,omitempty"`
-	NetUnit     *ProductNetUnit `json:"net_unit,omitempty"`
+	Barcode      *string              `json:"barcode,omitempty"`
+	Brand        *string              `json:"brand,omitempty"`
+	CategoryId   *int64               `json:"category_id,omitempty"`
+	CreatedAt    time.Time            `json:"created_at"`
+	HasImage     bool                 `json:"has_image"`
+	Id           int64                `json:"id"`
+	Name         string               `json:"name"`
+	NameEn       *string              `json:"name_en,omitempty"`
+	NameEnSource *ProductNameEnSource `json:"name_en_source,omitempty"`
+	NetQuantity  *float64             `json:"net_quantity,omitempty"`
+	NetUnit      *ProductNetUnit      `json:"net_unit,omitempty"`
 
 	// Nutrition Values per 100 g / 100 ml.
 	Nutrition         *Nutrition `json:"nutrition,omitempty"`
@@ -646,6 +690,9 @@ type Product struct {
 	Score     *float64  `json:"score,omitempty"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+// ProductNameEnSource defines model for Product.NameEnSource.
+type ProductNameEnSource string
 
 // ProductNetUnit defines model for Product.NetUnit.
 type ProductNetUnit string
@@ -658,7 +705,13 @@ type ProductInput struct {
 
 	// ImageUrl https Open Food Facts image to download (create only)
 	ImageUrl *string `json:"image_url,omitempty"`
-	Name     string  `json:"name"`
+
+	// Name as sold (usually Dutch)
+	Name string `json:"name"`
+
+	// NameEn English name. Omit to keep a previously typed/Open Food Facts name, or to translate automatically; send "" to force automatic translation.
+	NameEn       *string                   `json:"name_en,omitempty"`
+	NameEnSource *ProductInputNameEnSource `json:"name_en_source,omitempty"`
 
 	// NetQuantity package size, with net_unit
 	NetQuantity *float64             `json:"net_quantity,omitempty"`
@@ -669,6 +722,9 @@ type ProductInput struct {
 	OpenfoodfactsCode *string    `json:"openfoodfacts_code,omitempty"`
 }
 
+// ProductInputNameEnSource defines model for ProductInput.NameEnSource.
+type ProductInputNameEnSource string
+
 // ProductInputNetUnit defines model for ProductInput.NetUnit.
 type ProductInputNetUnit string
 
@@ -676,6 +732,7 @@ type ProductInputNetUnit string
 type ProductMatch struct {
 	Brand     *string `json:"brand,omitempty"`
 	Name      string  `json:"name"`
+	NameEn    *string `json:"name_en,omitempty"`
 	ProductId int64   `json:"product_id"`
 	Score     float64 `json:"score"`
 }
@@ -715,11 +772,14 @@ type ReceiptLine struct {
 	ReceiptId      int64    `json:"receipt_id"`
 
 	// Suggestions Up to 3 likely products for unmatched item lines (single-receipt GET only).
-	Suggestions    *[]ProductMatch `json:"suggestions,omitempty"`
-	Unit           LineUnit        `json:"unit"`
-	UnitPriceCents *int64          `json:"unit_price_cents,omitempty"`
-	UserEdited     bool            `json:"user_edited"`
-	VatCode        *string         `json:"vat_code,omitempty"`
+	Suggestions *[]ProductMatch `json:"suggestions,omitempty"`
+
+	// TextEn dictionary English rendering of raw_text, when good enough
+	TextEn         *string  `json:"text_en,omitempty"`
+	Unit           LineUnit `json:"unit"`
+	UnitPriceCents *int64   `json:"unit_price_cents,omitempty"`
+	UserEdited     bool     `json:"user_edited"`
+	VatCode        *string  `json:"vat_code,omitempty"`
 }
 
 // ReceiptPage defines model for ReceiptPage.

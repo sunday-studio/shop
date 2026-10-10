@@ -15,9 +15,10 @@ const sameShopBonus = 0.05
 type Candidate struct {
 	ProductID int64   `json:"product_id"`
 	Name      string  `json:"name"`
+	NameEN    string  `json:"name_en,omitempty"`
 	Brand     string  `json:"brand,omitempty"`
 	Score     float64 `json:"score"`
-	Via       string  `json:"via"` // "product" or "alias"
+	Via       string  `json:"via"` // "product", "product_en" or "alias"
 }
 
 // Matcher finds products for free text using the search_fts trigram
@@ -93,7 +94,7 @@ func (m *Matcher) Search(ctx context.Context, text string, shopID int64, limit i
 		ph = append(ph, "?")
 	}
 	prows, err := m.db.QueryContext(ctx,
-		`SELECT id, name, COALESCE(brand, '') FROM products WHERE deleted_at IS NULL AND id IN (`+strings.Join(ph, ",")+`)`, ids...)
+		`SELECT id, name, COALESCE(name_en, ''), COALESCE(brand, '') FROM products WHERE deleted_at IS NULL AND id IN (`+strings.Join(ph, ",")+`)`, ids...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,15 +102,15 @@ func (m *Matcher) Search(ctx context.Context, text string, shopID int64, limit i
 	var out []Candidate
 	for prows.Next() {
 		var id int64
-		var name, brand string
-		if err := prows.Scan(&id, &name, &brand); err != nil {
+		var name, nameEN, brand string
+		if err := prows.Scan(&id, &name, &nameEN, &brand); err != nil {
 			return nil, err
 		}
 		c := best[id]
 		if c.Score < minScore {
 			continue
 		}
-		c.Name, c.Brand = name, brand
+		c.Name, c.NameEN, c.Brand = name, nameEN, brand
 		out = append(out, c)
 	}
 	if err := prows.Err(); err != nil {
