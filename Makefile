@@ -52,7 +52,7 @@ SPIKE := cd api && go run ./cmd/shop-spike
 SPIKE_COMPOSE := docker compose -f deploy/docker-compose.spike.yml
 
 spike-up: ## start the spike OCR engines (except paddleocr-vl, see docs/spike.md)
-	$(SPIKE_COMPOSE) up -d --build ppocrv5 ppocrv5-server tesseract doctr
+	$(SPIKE_COMPOSE) up -d --build ppocrv5 ppocrv5-longside ppocrv5-server tesseract doctr
 
 spike-down: ## stop all spike engines
 	$(SPIKE_COMPOSE) down

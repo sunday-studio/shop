@@ -21,7 +21,7 @@ ENV OCR_ENGINE=${OCR_ENGINE} \
     PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True \
     PYTHONUNBUFFERED=1
 
-COPY engines.py warmup.py app.py ./
+COPY engines.py tiling.py warmup.py app.py test_tiling.py ./
 # Download weights at build time so the container starts offline.
 RUN python warmup.py
 

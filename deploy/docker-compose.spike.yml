@@ -18,6 +18,16 @@ services:
     ports: ["8101:8000"]
     mem_limit: 3g
 
+  ppocrv5-longside:
+    <<: *engine
+    image: shop-ocr:ppocrv5
+    container_name: spike-ppocrv5-longside
+    build: { context: ../ocr, args: { OCR_ENGINE: ppocrv5 } }
+    environment:
+      OCR_TALL_RATIO: "1000"   # never tile: the pre-tiling behaviour, for comparison
+    ports: ["8106:8000"]
+    mem_limit: 3g
+
   ppocrv5-server:
     <<: *engine
     image: shop-ocr:ppocrv5

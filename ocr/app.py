@@ -18,10 +18,10 @@ import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image, ImageOps
 
+import tiling
 from engines import load_engine
 
 ENGINE_NAME = os.environ.get("OCR_ENGINE", "ppocrv5")
-MAX_SIDE = int(os.environ.get("OCR_MAX_SIDE", "2400"))
 
 app = FastAPI(title="shop-ocr")
 _engine = None
@@ -50,12 +50,16 @@ async def ocr(image: UploadFile = File(...)):
     except Exception as exc:  # noqa: BLE001 - surface any decode failure as 400
         raise HTTPException(400, f"cannot decode image: {exc}") from exc
 
-    img.thumbnail((MAX_SIDE, MAX_SIDE))
+    size = tiling.target_size(img.width, img.height)
+    if size != img.size:
+        img = img.resize(size, Image.LANCZOS)
     arr = np.asarray(img)
+    tiles = tiling.plan_tiles(img.width, img.height)
 
     start = time.perf_counter()
     with _lock:
-        lines = _engine.recognize(arr)
+        per_tile = [_engine.recognize(arr[y0:y1]) for y0, y1 in tiles]
+    lines = tiling.merge(tiles, per_tile)
     ms = int((time.perf_counter() - start) * 1000)
 
     return {
@@ -64,5 +68,6 @@ async def ocr(image: UploadFile = File(...)):
         "ms": ms,
         "width": img.width,
         "height": img.height,
+        "tiles": len(tiles),
         "lines": lines,
     }

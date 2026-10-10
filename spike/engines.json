@@ -6,6 +6,13 @@
     "notes": "Default in compose. PP-OCRv5 mobile det + latin mobile rec, CPU."
   },
   {
+    "name": "ppocrv5-longside",
+    "url": "http://localhost:8106",
+    "container": "spike-ppocrv5-longside",
+    "timeout_s": 300,
+    "notes": "PP-OCRv5 with the old resize (long side capped at 2400 px, no tiling). Compare with ppocrv5 on tall stitched receipts."
+  },
+  {
     "name": "ppocrv5-server",
     "url": "http://localhost:8102",
     "container": "spike-ppocrv5-server",

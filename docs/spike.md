@@ -25,6 +25,7 @@ make spike-ocr           # OCR every image with every engine; results are cached
 | Engine | Port | Notes |
 |---|---|---|
 | `ppocrv5` | 8101 | PP-OCRv5 mobile det + latin rec. Current default |
+| `ppocrv5-longside` | 8106 | Same engine with the old resize (no tiling). Shows whether tiling tall stitched receipts helps |
 | `ppocrv5-server` | 8102 | Server-size det + rec |
 | `tesseract` | 8103 | Tesseract 5, `nld+eng`, baseline |
 | `doctr` | 8104 | docTR (PyTorch CPU) |
