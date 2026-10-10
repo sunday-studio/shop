@@ -85,7 +85,7 @@ struct CategoryShare: Identifiable, Hashable {
     }
 }
 
-/// 10pt stacked bar with 3pt gaps, plus an optional legend ("● Zuivel €78").
+/// 10pt stacked bar with 3pt gaps, plus an optional legend ("● Dairy €78").
 struct CategoryBar: View {
     let shares: [CategoryShare]
     var height: CGFloat = 10
@@ -196,12 +196,12 @@ struct FlowLayout: Layout {
         DeltaChip(deltaCents: -4272, caption: "less than this time in September")
         DeltaChip(deltaCents: 1250, caption: "more than September")
         CategoryBar(shares: [
-            .init(name: "Zuivel", cents: 7840, color: Accent.blue),
-            .init(name: "Groente", cents: 7120, color: Accent.green),
-            .init(name: "Vlees", cents: 6690, color: Accent.red),
-            .init(name: "Voorraad", cents: 5830, color: Accent.yellow),
-            .init(name: "Brood", cents: 4160, color: Accent.orange),
-            .init(name: "Overig", cents: 9600, color: Palette.neutral),
+            .init(name: "Dairy", cents: 7840, color: Accent.blue),
+            .init(name: "Produce", cents: 7120, color: Accent.green),
+            .init(name: "Meat", cents: 6690, color: Accent.red),
+            .init(name: "Pantry", cents: 5830, color: Accent.yellow),
+            .init(name: "Bakery", cents: 4160, color: Accent.orange),
+            .init(name: "Other", cents: 9600, color: Palette.neutral),
         ])
         ShareBar(fraction: 0.19, color: Accent.blue)
     }

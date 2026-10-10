@@ -3,7 +3,7 @@ import SwiftUI
 /// Every design-system component in every state (Settings → About → Design catalog).
 struct CatalogView: View {
     @State private var scheme: ColorScheme? = nil
-    @State private var chip = "Zuivel"
+    @State private var chip = "Dairy"
     @State private var segment = "By category"
     @State private var text = "http://shop.local:8080"
     @State private var password = ""
@@ -62,10 +62,10 @@ struct CatalogView: View {
                         ShopMark(name: "Albert Heijn", size: Size.shopMarkHeader)
                     }
                     HStack(spacing: 10) {
-                        ProductTile(name: "Halfvolle melk", category: "Zuivel")
-                        ProductTile(name: "Bananen", category: "Groente & fruit")
-                        ProductTile(name: "Kipfilet", category: "Vlees & vis")
-                        ProductTile(name: "Brood", category: "Brood")
+                        ProductTile(name: "Halfvolle melk", category: "Dairy")
+                        ProductTile(name: "Bananen", category: "Produce")
+                        ProductTile(name: "Kipfilet", category: "Meat & fish")
+                        ProductTile(name: "Brood", category: "Bakery")
                         CountBadge(count: 2, ring: Palette.tray)
                         GlyphBadge()
                         GlyphBadge(glyph: .check, color: Accent.green)
@@ -84,7 +84,7 @@ struct CatalogView: View {
                     }
                 }
                 section("Chips") {
-                    ChipRow(items: ["All", "Zuivel", "Groente & fruit", "Vlees & vis"], title: { $0 }, dot: { $0 == "All" ? nil : CategoryColor.swatch(for: $0).color }, selection: $chip)
+                    ChipRow(items: ["All", "Dairy", "Produce", "Meat & fish"], title: { $0 }, dot: { $0 == "All" ? nil : CategoryColor.swatch(for: $0).color }, selection: $chip)
                         .padding(.horizontal, -Space.edge)
                     HStack {
                         Chip(title: "All 21", isSelected: true, size: .small) {}
@@ -110,10 +110,10 @@ struct CatalogView: View {
                         DaySectionHeader(title: "Today", trailing: "€38,12")
                         ReceiptRow(shopName: "Lidl", subtitle: "Reading receipt…", subtitleColor: Palette.blueText, amount: "—", amountColor: Palette.ink3, showsSpinner: true)
                         ReceiptRow(shopName: "Albert Heijn", subtitle: "Total doesn’t match · 18:42", subtitleColor: Palette.amberText, amount: "€38,12")
-                        LineRow(title: "Halfvolle melk", subtitle: "AH HALFV MELK 1,5L · Zuivel", amount: "1,79", dot: Accent.blue)
+                        LineRow(title: "Halfvolle melk", subtitle: "AH HALFV MELK 1,5L · Dairy", amount: "1,79", dot: Accent.blue)
                         LineRow(title: "Bonus", subtitle: "on Halfvolle melk", amount: "−0,45", titleColor: Palette.greenText, amountColor: Palette.greenText, dot: Accent.blue, indented: true)
                         LineRow(title: "HUMMUS NATUREL", isRaw: true, subtitle: "Not linked · tap to pick a product", subtitleColor: Palette.amberText, amount: "1,49", dot: Accent.amber)
-                        ProductRow(name: "Halfvolle melk", meta: "1,5 l · Zuivel", category: "Zuivel", price: "€0,85/l", priceShop: "Lidl")
+                        ProductRow(name: "Halfvolle melk", meta: "1,5 l · Dairy", category: "Dairy", price: "€0,85/l", priceShop: "Lidl")
                         ListItemRow(title: "Halfvolle melk", hint: "Cheapest at Lidl · €0,85/l", hintShop: "Lidl", quantity: "× 2", isChecked: checked) { checked = $0 }
                         SettingsRow(icon: .upload, color: Accent.blue, title: "Upload queue", value: "Empty")
                         KeyValueRow(key: "Database", value: "Healthy", dot: Accent.green)
@@ -151,7 +151,7 @@ struct CatalogView: View {
                 }
                 section("Review queue") {
                     ReviewCard(
-                        name: "Arla bio halfvolle melk", detail: "1 l", categoryName: "Zuivel", reason: .nearMatch, suggestionName: "ARLA MELK",
+                        name: "Arla bio halfvolle melk", detail: "1 l", categoryName: "Dairy", reason: .nearMatch, suggestionName: "ARLA MELK",
                         source: .init(shopName: "Albert Heijn", dateText: "Sun 30 Aug", rawText: "ARLA BIO HALFV. MELK", amountText: "1,89")
                     )
                     ReviewCard(name: "Hummus naturel", reason: .noCategory, source: .init(shopName: "Lidl", dateText: "Thu 8 Oct", rawText: "HUMMUS NATUREL", amountText: "1,49"))
@@ -167,7 +167,7 @@ struct CatalogView: View {
                         ScanTally(known: 9, added: 4, toName: 1).padding(.bottom, 10)
                         ScanEntryRow(code: "8718452390010", outcome: .looking)
                         ScanEntryRow(code: "8710400012345", outcome: .known(name: "Halfvolle melk", meta: "1,5 l"))
-                        ScanEntryRow(code: "8718452390027", outcome: .created(name: "Griekse yoghurt 0%", category: "Zuivel"), receiptLines: 2)
+                        ScanEntryRow(code: "8718452390027", outcome: .created(name: "Griekse yoghurt 0%", category: "Dairy"), receiptLines: 2)
                         ScanEntryRow(code: "8710400012345", outcome: .createdMinimal(name: "Unknown product 2345"), mergeSuggestion: "AH BIO MELK")
                         ScanEntryRow(code: "8710400019876", outcome: .offUnavailable(name: "Unknown product 9876"))
                         ScanEntryRow(code: "8718452390034", outcome: .queued)
@@ -194,7 +194,7 @@ struct CatalogView: View {
                     EmptyState(title: "Scan receipts on the day", message: "Thermal paper fades in weeks. Scan now and review whenever you like.")
                     HStack(spacing: 24) {
                         ReceiptThumb(pages: 2)
-                        ProductHero(name: "Melk", category: "Zuivel")
+                        ProductHero(name: "Melk", category: "Dairy")
                     }
                 }
                 section("Tab bar") {
@@ -253,7 +253,7 @@ struct CatalogView: View {
             Text("Scan receipts on the day").textStyle(.emptyTitle)
             Text("Add line").textStyle(.trayTitle)
             Text("Halfvolle melk  1,79").textStyle(.rowTitle)
-            Text("AH HALFV MELK 1,5L · Zuivel").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+            Text("AH HALFV MELK 1,5L · Dairy").textStyle(.rowSub).foregroundStyle(Palette.ink2)
             Text("Today  €38,12").textStyle(.label).foregroundStyle(Palette.ink2)
             Text("AH GRIEKS YOGH 0%").textStyle(.mono)
         }

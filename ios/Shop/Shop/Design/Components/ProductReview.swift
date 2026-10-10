@@ -428,7 +428,7 @@ struct ScanTally: View {
     ScrollView {
         VStack(spacing: 12) {
             ReviewCard(
-                name: "Arla bio halfvolle melk", detail: "1 l", categoryName: "Zuivel", reason: .nearMatch, suggestionName: "ARLA MELK",
+                name: "Arla bio halfvolle melk", detail: "1 l", categoryName: "Dairy", reason: .nearMatch, suggestionName: "ARLA MELK",
                 source: .init(shopName: "Albert Heijn", dateText: "Sun 30 Aug", rawText: "ARLA BIO HALFV. MELK", amountText: "1,89")
             )
             ReviewCard(name: "Hummus naturel", reason: .noCategory, source: .init(shopName: "Lidl", dateText: "Thu 8 Oct", rawText: "HUMMUS NATUREL", amountText: "1,49"))

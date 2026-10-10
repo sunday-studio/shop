@@ -191,7 +191,7 @@ struct SegmentedControl<Option: Hashable>: View {
     @Previewable @State var cat = "All"
     @Previewable @State var seg = "By category"
     VStack(alignment: .leading, spacing: 14) {
-        ChipRow(items: ["All", "Zuivel", "Groente & fruit", "Vlees & vis", "Brood"], title: { $0 }, dot: { $0 == "All" ? nil : CategoryColor.swatch(for: $0).color }, selection: $cat)
+        ChipRow(items: ["All", "Dairy", "Produce", "Meat & fish", "Bakery"], title: { $0 }, dot: { $0 == "All" ? nil : CategoryColor.swatch(for: $0).color }, selection: $cat)
         HStack {
             Chip(title: "All 21", isSelected: true, size: .small) {}
             ToneChip(title: "To fix 3") {}
