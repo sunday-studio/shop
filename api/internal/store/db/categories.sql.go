@@ -80,6 +80,33 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 	return items, nil
 }
 
+const listCategoryKeywords = `-- name: ListCategoryKeywords :many
+SELECT keyword, category_id, updated_at FROM category_keywords ORDER BY keyword
+`
+
+func (q *Queries) ListCategoryKeywords(ctx context.Context) ([]CategoryKeyword, error) {
+	rows, err := q.db.QueryContext(ctx, listCategoryKeywords)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CategoryKeyword{}
+	for rows.Next() {
+		var i CategoryKeyword
+		if err := rows.Scan(&i.Keyword, &i.CategoryID, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeleteCategory = `-- name: SoftDeleteCategory :execrows
 UPDATE categories SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL
 `

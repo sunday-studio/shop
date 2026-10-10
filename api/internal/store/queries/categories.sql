@@ -14,3 +14,6 @@ RETURNING *;
 
 -- name: SoftDeleteCategory :execrows
 UPDATE categories SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL;
+
+-- name: ListCategoryKeywords :many
+SELECT * FROM category_keywords ORDER BY keyword;

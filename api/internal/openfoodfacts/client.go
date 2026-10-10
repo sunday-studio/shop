@@ -33,6 +33,8 @@ type Product struct {
 	NetUnit     string     `json:"net_unit,omitempty"` // g | ml
 	ImageURL    string     `json:"image_url,omitempty"`
 	Nutrition   *Nutrition `json:"nutrition,omitempty"`
+	// CategoryHint is OFF's raw categories_tags list (e.g. "en:dairies"), used to guess our category.
+	CategoryHint []string `json:"category_hint,omitempty"`
 }
 
 type Nutrition struct {
@@ -70,7 +72,7 @@ func (c *Client) WithBaseURL(u string) *Client { c.base = strings.TrimRight(u, "
 
 const negativeTTL = 24 * time.Hour
 
-const fields = "code,product_name,product_name_nl,product_name_en,brands,product_quantity,product_quantity_unit,quantity,nutriments,nutrition_data_per,image_front_url"
+const fields = "code,categories_tags,product_name,product_name_nl,product_name_en,brands,product_quantity,product_quantity_unit,quantity,nutriments,nutrition_data_per,image_front_url"
 
 // Lookup fetches a product by barcode.
 func (c *Client) Lookup(ctx context.Context, barcode string) (Product, error) {
@@ -172,10 +174,11 @@ type rawProduct struct {
 	Nutriments   map[string]flexFloat `json:"nutriments"`
 	NutritionPer string               `json:"nutrition_data_per"`
 	Image        string               `json:"image_front_url"`
+	Categories   []string             `json:"categories_tags"`
 }
 
 func (r rawProduct) toProduct(barcode string) Product {
-	p := Product{Code: barcode, ImageURL: r.Image}
+	p := Product{Code: barcode, ImageURL: r.Image, CategoryHint: r.Categories}
 	for _, n := range []string{r.NameNL, r.Name, r.NameEN} {
 		if n = strings.TrimSpace(n); n != "" {
 			p.Name = n
