@@ -89,6 +89,7 @@ struct SearchField: View {
     var onSubmit: () -> Void = {}
 
     @FocusState private var focused: Bool
+    @Environment(\.isInTray) private var inTray
 
     var body: some View {
         HStack(spacing: Space.ml) {
@@ -118,7 +119,15 @@ struct SearchField: View {
         .padding(.horizontal, Space.xl)
         .frame(height: Size.search)
         .background(background, in: Capsule())
-        .onAppear { if autofocus { focused = true } }
+        .onAppear {
+            guard autofocus else { return }
+            guard inTray else { focused = true; return }
+            // Inside a tray: wait for the 0.45 s enter animation, then focus.
+            Task {
+                try? await Task.sleep(for: .milliseconds(450))
+                focused = true
+            }
+        }
     }
 }
 
