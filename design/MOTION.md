@@ -46,5 +46,7 @@ Taxonomy and mapping live in `DESIGN-RULES.md` and the table in `motion.html`.
 - **Never on scroll**, on scrolling momentum, on passive animations, or on content that arrives without a touch. The exception is the outcome of a user-started operation (success when a receipt finishes).
 - Haptic fires on touch-down for press-style controls and on the state change for toggles, so it lands with the visual.
 - Match weight to consequence: selection for choosing, light for opening, medium for commits, soft for check-offs, notifications only for outcomes.
+- **Swipe actions have two moments.** *Armed* (the drag crosses the commit line) plays `selection`, once per direction change. *Committed* plays the action's own haptic, exactly what the equivalent button or tap plays: Confirm receipt `medium`, Add to list `light`, Check off `soft`, Retry `light`, an action that opens a tray none (the tray plays `trayOpen`; `error` only after a confirmed delete). Tapping the revealed button plays only the committed haptic. Nothing removes data instantly without an Undo toast (`soft`) or a confirmation tray.
+- **Barcode lookups outside the scanner** (product form): data filled from Open Food Facts `scanNew`, nothing found or OFF unreachable `selection` with an inline caption, a code that belongs to another product `warning`.
 - Keep generators prepared (`Haptics.prepare()` on screen appear) and respect a Settings toggle.
 - Haptics reinforce, never replace, a visual state. Every haptic event has a visible change.
