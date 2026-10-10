@@ -279,7 +279,7 @@ private struct ReceiptScreen: View {
                         }
                     }
                     Button("Delete line", systemImage: "trash", role: .destructive) {
-                        Task { await model.deleteLine(line.id) }
+                        askDeleteLine(line, model: model)
                     }
                 }
             }

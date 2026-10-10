@@ -164,7 +164,7 @@ struct ProductsView: View {
                 LazyVStack(spacing: 0) {
                     ForEach(Array(products.enumerated()), id: \.element.id) { index, product in
                         SwipeRow(
-                            leading: SwipeAction(title: "Add to list", icon: .plus, color: Accent.blue, haptic: .medium) { addToList(product) },
+                            leading: SwipeAction(title: "Add to list", icon: .plus, color: Accent.blue, haptic: .light) { addToList(product) },
                             trailing: SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: nil) { askDelete(product) }
                         ) {
                             Button {

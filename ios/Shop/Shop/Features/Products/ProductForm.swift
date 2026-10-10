@@ -51,33 +51,57 @@ final class ProductDraft {
         return nil
     }
 
-    /// What a scanned barcode filled in, for the confirmation line under the field.
-    var scanNote: String?
+    /// What the last barcode scan did, for the line under the Barcode row.
+    enum ScanFeedback: Equatable {
+        case filled([String])
+        case nothingNew
+        case notFound
+        case unreachable
+        case belongsTo(Product)
+
+        static func == (a: ScanFeedback, b: ScanFeedback) -> Bool {
+            switch (a, b) {
+            case (.filled(let x), .filled(let y)): x == y
+            case (.belongsTo(let x), .belongsTo(let y)): x.id == y.id
+            case (.nothingNew, .nothingNew), (.notFound, .notFound), (.unreachable, .unreachable): true
+            default: false
+            }
+        }
+    }
+
+    var scanFeedback: ScanFeedback?
 
     /// Barcode scanned or typed in the form: sets the barcode and fills what Open Food Facts knows.
     /// Typed values stay; empty ones are filled. Nutrition is replaced unless the user edited it.
-    /// Returns a user-facing problem when the barcode belongs to another product.
-    func apply(scan code: String, lookup: BarcodeLookup?) -> String? {
-        if let other = lookup?.product, other.id != existing?.id {
-            return "That barcode belongs to \(other.name)."
-        }
-        barcode = code
-        scannedCode = code
-        guard let prefill = lookup?.prefill else {
-            scanNote = "Barcode saved. Open Food Facts doesn't have this product."
-            return nil
-        }
+    /// A code that belongs to another product is not applied.
+    @discardableResult
+    func apply(scan code: String, lookup: BarcodeLookup?) -> ScanFeedback {
+        let feedback = Self.feedback(for: code, lookup: lookup, into: self)
+        scanFeedback = feedback
+        return feedback
+    }
+
+    func clearBarcode() {
+        barcode = ""
+        scannedCode = nil
+        scanFeedback = nil
+    }
+
+    private static func feedback(for code: String, lookup: BarcodeLookup?, into d: ProductDraft) -> ScanFeedback {
+        if let other = lookup?.product, other.id != d.existing?.id { return .belongsTo(other) }
+        d.barcode = code
+        d.scannedCode = code
+        guard let prefill = lookup?.prefill else { return .notFound }
         var filled: [String] = []
-        if let n = prefill.nutrition, !n.isEmpty, !nutritionTouched {
-            nutrition = n
-            nutritionFromScan = true
+        if let n = prefill.nutrition, !n.isEmpty, !d.nutritionTouched {
+            d.nutrition = n
+            d.nutritionFromScan = true
             filled.append("nutrition")
         }
-        if name.trimmingCharacters(in: .whitespaces).isEmpty, !prefill.name.isEmpty { name = prefill.name; filled.append("name") }
-        if brand.isEmpty, let b = prefill.brand, !b.isEmpty { brand = b; filled.append("brand") }
-        if size.isEmpty, let q = Quantity.netSize(prefill.netQuantity, unit: prefill.netUnit) { size = q; filled.append("size") }
-        scanNote = filled.isEmpty ? "Barcode saved. Nothing new to fill in." : "Filled in from Open Food Facts: " + filled.joined(separator: ", ") + "."
-        return nil
+        if d.name.trimmingCharacters(in: .whitespaces).isEmpty, !prefill.name.isEmpty { d.name = prefill.name; filled.append("name") }
+        if d.brand.isEmpty, let b = prefill.brand, !b.isEmpty { d.brand = b; filled.append("brand") }
+        if d.size.isEmpty, let q = Quantity.netSize(prefill.netQuantity, unit: prefill.netUnit) { d.size = q; filled.append("size") }
+        return filled.isEmpty ? .nothingNew : .filled(filled)
     }
 
     var isValid: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -260,31 +284,73 @@ struct ProductFormTray: View {
 
     private var barcodeRow: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Button { scanning = true } label: {
-                HStack(spacing: Space.l) {
-                    IconView(.barcode, size: 18, weight: .semibold).foregroundStyle(Palette.ink2)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Barcode").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                        Text(draft.barcode.isEmpty ? "Scan it to fill in nutrition" : draft.barcode)
-                            .textStyle(draft.barcode.isEmpty ? .rowSub : TypeStyle.mono.sized(13))
-                            .foregroundStyle(Palette.ink2)
+            HStack(spacing: Space.s) {
+                Button { scanning = true } label: {
+                    HStack(spacing: Space.l) {
+                        IconView(.barcode, size: 18, weight: .semibold).foregroundStyle(Palette.ink2)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Barcode").textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                            Text(draft.barcode.isEmpty ? "Scan it to fill in nutrition" : draft.barcode)
+                                .textStyle(draft.barcode.isEmpty ? .rowSub : TypeStyle.mono.sized(13))
+                                .foregroundStyle(Palette.ink2)
+                        }
+                        Spacer()
+                        if lookingUp {
+                            ProgressView().controlSize(.small).tint(Palette.ink2)
+                        } else {
+                            Text(draft.barcode.isEmpty ? "Scan" : "Rescan").textStyle(.label).foregroundStyle(Palette.blueText)
+                        }
                     }
-                    Spacer()
-                    if lookingUp {
-                        ProgressView().controlSize(.small).tint(Palette.ink2)
-                    } else {
-                        Text(draft.barcode.isEmpty ? "Scan" : "Rescan").textStyle(.label).foregroundStyle(Palette.blueText)
-                    }
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, Space.lx)
-                .frame(height: 52)
-                .background(Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
+                .buttonStyle(.press(haptic: .light))
+                .disabled(lookingUp)
+                if !draft.barcode.isEmpty && !lookingUp {
+                    Button { draft.clearBarcode() } label: {
+                        IconView(.close, size: 11, weight: .bold)
+                            .foregroundStyle(Palette.ink2)
+                            .frame(width: 28, height: 28)
+                            .background(Palette.sunk, in: Circle())
+                    }
+                    .buttonStyle(.press(haptic: .selection))
+                    .accessibilityLabel("Clear barcode")
+                }
             }
-            .buttonStyle(.press(haptic: .light))
-            .disabled(lookingUp)
-            if let note = draft.scanNote {
-                Text(note).textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+            .padding(.horizontal, Space.lx)
+            .frame(height: 52)
+            .background(Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
+            scanFeedbackLine
+        }
+    }
+
+    @ViewBuilder private var scanFeedbackLine: some View {
+        switch draft.scanFeedback {
+        case .filled(let parts):
+            Text("Filled in from Open Food Facts: \(parts.joined(separator: ", ")).")
+                .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+        case .nothingNew:
+            Text("Open Food Facts has nothing new for this product.")
+                .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+        case .notFound:
+            Text("Not on Open Food Facts. Fill in the details yourself.")
+                .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+        case .unreachable:
+            Text("Couldn't reach Open Food Facts. The code is saved.")
+                .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+        case .belongsTo(let other):
+            HStack(spacing: Space.m) {
+                Text("This barcode belongs to \(other.name)").textStyle(.rowSub).foregroundStyle(Palette.amberText)
+                Spacer(minLength: 0)
+                Button("Open it") {
+                    trays.dismiss()
+                    app.push(.product(other.id))
+                }
+                .textStyle(.captionMedium).foregroundStyle(Palette.blueText)
+                .buttonStyle(.press(haptic: .selection))
             }
+            .padding(.horizontal, Space.xs)
+        case nil:
+            EmptyView()
         }
     }
 
@@ -296,17 +362,17 @@ struct ProductFormTray: View {
             defer { lookingUp = false }
             do {
                 let lookup = try await app.api.lookupBarcode(code)
-                if let problem = draft.apply(scan: code, lookup: lookup) {
-                    Haptics.play(.warning)
-                    app.toasts.error(problem)
-                } else {
-                    Haptics.play(draft.scanNote?.hasPrefix("Filled") == true ? .scanNew : .scanKnown)
+                switch draft.apply(scan: code, lookup: lookup) {
+                case .filled: Haptics.play(.scanNew)
+                case .belongsTo: Haptics.play(.warning)
+                case .nothingNew, .notFound, .unreachable: Haptics.play(.selection)
                 }
             } catch let error as APIError {
                 if error.isConnectivity {
-                    // Keep the code; nutrition can be filled later.
-                    _ = draft.apply(scan: code, lookup: nil)
-                    draft.scanNote = "Barcode saved. Couldn't reach the server for nutrition."
+                    // Keep the code; nutrition can be filled by scanning again later.
+                    draft.apply(scan: code, lookup: nil)
+                    draft.scanFeedback = .unreachable
+                    Haptics.play(.selection)
                 } else {
                     Haptics.play(.error)
                     app.toasts.error(error.message)

@@ -120,7 +120,7 @@ struct ShoppingListView: View {
 
     private func row(_ item: ListItem) -> some View {
         SwipeRow(
-            leading: SwipeAction(title: item.isChecked ? "Uncheck" : "Check off", icon: .check, color: Accent.green, haptic: .medium) { toggleBySwipe(item) },
+            leading: SwipeAction(title: item.isChecked ? "Uncheck" : "Check off", icon: .check, color: Accent.green, haptic: .soft) { toggleBySwipe(item) },
             trailing: SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: .soft) { remove(item) }
         ) {
             ListItemRow(
