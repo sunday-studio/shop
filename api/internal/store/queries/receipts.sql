@@ -77,3 +77,12 @@ UPDATE receipts SET header_edited = 0, confirmed_at = NULL, updated_at = ? WHERE
 
 -- name: SetReview :exec
 UPDATE receipts SET parsed_sum_cents = ?, review_reasons = ?, status = ?, updated_at = ? WHERE id = ?;
+
+-- name: ListReceiptsForShopSuggestion :many
+SELECT id, shop_id, confirmed_at, raw_ocr_json FROM receipts
+WHERE raw_ocr_json IS NOT NULL
+ORDER BY id;
+
+-- name: SetReceiptShop :execrows
+UPDATE receipts SET shop_id = ?, updated_at = ?
+WHERE id = ? AND confirmed_at IS NULL;

@@ -160,6 +160,11 @@ type Shop struct {
 	Domain        sql.NullString `json:"domain"`
 }
 
+type ShopSuggestionRejection struct {
+	BranchKey string `json:"branch_key"`
+	CreatedAt string `json:"created_at"`
+}
+
 type ShoppingListClientID struct {
 	ClientID  string `json:"client_id"`
 	ItemID    int64  `json:"item_id"`

@@ -417,6 +417,24 @@ func (e ShopPriceBaseUnit) Valid() bool {
 	}
 }
 
+// Defines values for ShopSuggestionKind.
+const (
+	Existing ShopSuggestionKind = "existing"
+	New      ShopSuggestionKind = "new"
+)
+
+// Valid indicates whether the value is a known member of the ShopSuggestionKind enum.
+func (e ShopSuggestionKind) Valid() bool {
+	switch e {
+	case Existing:
+		return true
+	case New:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SpendGroupBy.
 const (
 	SpendGroupByCategory SpendGroupBy = "category"
@@ -914,8 +932,11 @@ type Receipt struct {
 	PurchasedAt    *time.Time             `json:"purchased_at,omitempty"`
 	ReviewReasons  []ReceiptReviewReasons `json:"review_reasons"`
 	ShopId         int64                  `json:"shop_id"`
-	Status         ReceiptStatus          `json:"status"`
-	TotalCents     *int64                 `json:"total_cents,omitempty"`
+
+	// ShopSuggestion single-receipt GET only; null/absent when there is nothing to suggest
+	ShopSuggestion *ShopSuggestion `json:"shop_suggestion,omitempty"`
+	Status         ReceiptStatus   `json:"status"`
+	TotalCents     *int64          `json:"total_cents,omitempty"`
 
 	// UnlinkedCount item lines without a product
 	UnlinkedCount *int      `json:"unlinked_count,omitempty"`
@@ -1020,6 +1041,30 @@ type ShopPrice struct {
 
 // ShopPriceBaseUnit defines model for ShopPrice.BaseUnit.
 type ShopPriceBaseUnit string
+
+// ShopSuggestion defines model for ShopSuggestion.
+type ShopSuggestion struct {
+	// Branch street + number, town
+	Branch     *string `json:"branch,omitempty"`
+	Chain      *string `json:"chain,omitempty"`
+	Confidence float32 `json:"confidence"`
+
+	// Evidence header rows the suggestion was read from
+	Evidence []string           `json:"evidence"`
+	Kind     ShopSuggestionKind `json:"kind"`
+
+	// Name existing shop's name, or the proposed name of the new shop
+	Name string `json:"name"`
+
+	// ShopId set when kind=existing
+	ShopId *int64 `json:"shop_id,omitempty"`
+
+	// WaitingReceiptIds other unconfirmed receipts from the same branch that accepting would move to the shop
+	WaitingReceiptIds []int64 `json:"waiting_receipt_ids"`
+}
+
+// ShopSuggestionKind defines model for ShopSuggestion.Kind.
+type ShopSuggestionKind string
 
 // Span An unknown word. start/end are UTF-16 offsets (end exclusive, = NSRange) into the displayed string: the English for partial, the Dutch for missing.
 type Span struct {
@@ -1191,6 +1236,15 @@ type ReparseReceiptParams struct {
 	Force *bool `form:"force,omitempty" json:"force,omitempty"`
 }
 
+// AcceptShopSuggestionJSONBody defines parameters for AcceptShopSuggestion.
+type AcceptShopSuggestionJSONBody struct {
+	ApplyToWaiting *bool `json:"apply_to_waiting,omitempty"`
+
+	// Name name for the new shop; the user may edit the suggestion
+	Name   *string `json:"name,omitempty"`
+	ShopId *int64  `json:"shop_id,omitempty"`
+}
+
 // SearchParams defines parameters for Search.
 type SearchParams struct {
 	Q string `form:"q" json:"q"`
@@ -1294,6 +1348,9 @@ type UpdateReceiptJSONRequestBody = ReceiptPatch
 
 // CreateLineJSONRequestBody defines body for CreateLine for application/json ContentType.
 type CreateLineJSONRequestBody = LineInput
+
+// AcceptShopSuggestionJSONRequestBody defines body for AcceptShopSuggestion for application/json ContentType.
+type AcceptShopSuggestionJSONRequestBody AcceptShopSuggestionJSONBody
 
 // CreateShopJSONRequestBody defines body for CreateShop for application/json ContentType.
 type CreateShopJSONRequestBody = ShopInput

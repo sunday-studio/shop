@@ -351,6 +351,47 @@ func (q *Queries) ListReceipts(ctx context.Context, arg ListReceiptsParams) ([]L
 	return items, nil
 }
 
+const listReceiptsForShopSuggestion = `-- name: ListReceiptsForShopSuggestion :many
+SELECT id, shop_id, confirmed_at, raw_ocr_json FROM receipts
+WHERE raw_ocr_json IS NOT NULL
+ORDER BY id
+`
+
+type ListReceiptsForShopSuggestionRow struct {
+	ID          int64          `json:"id"`
+	ShopID      int64          `json:"shop_id"`
+	ConfirmedAt sql.NullString `json:"confirmed_at"`
+	RawOcrJson  sql.NullString `json:"raw_ocr_json"`
+}
+
+func (q *Queries) ListReceiptsForShopSuggestion(ctx context.Context) ([]ListReceiptsForShopSuggestionRow, error) {
+	rows, err := q.db.QueryContext(ctx, listReceiptsForShopSuggestion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListReceiptsForShopSuggestionRow{}
+	for rows.Next() {
+		var i ListReceiptsForShopSuggestionRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ShopID,
+			&i.ConfirmedAt,
+			&i.RawOcrJson,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setReceiptOCR = `-- name: SetReceiptOCR :exec
 UPDATE receipts SET ocr_engine = ?, ocr_ms = ?, raw_ocr_json = ?, updated_at = ? WHERE id = ?
 `
@@ -414,6 +455,25 @@ func (q *Queries) SetReceiptParsed(ctx context.Context, arg SetReceiptParsedPara
 		arg.ID,
 	)
 	return err
+}
+
+const setReceiptShop = `-- name: SetReceiptShop :execrows
+UPDATE receipts SET shop_id = ?, updated_at = ?
+WHERE id = ? AND confirmed_at IS NULL
+`
+
+type SetReceiptShopParams struct {
+	ShopID    int64  `json:"shop_id"`
+	UpdatedAt string `json:"updated_at"`
+	ID        int64  `json:"id"`
+}
+
+func (q *Queries) SetReceiptShop(ctx context.Context, arg SetReceiptShopParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setReceiptShop, arg.ShopID, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const setReceiptStatus = `-- name: SetReceiptStatus :exec
