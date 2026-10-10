@@ -23,8 +23,8 @@ Requires **Xcode 27** (Swift 6), deployment target **iOS 17.0**.
 | `NSCameraUsageDescription` | Scan receipts and product barcodes. |
 | `NSPhotoLibraryUsageDescription` | Pick a photo of a receipt or product. |
 | `NSLocalNetworkUsageDescription` | Connect to your Shop server on this network. |
-| `NSAppTransportSecurity` → `NSAllowsLocalNetworking` | YES (LAN, `.local`, IP addresses over http) |
-| `NSAppTransportSecurity` → `NSExceptionDomains` → `ts.net` → `NSIncludesSubdomains` YES, `NSExceptionAllowsInsecureHTTPLoads` YES | Tailscale over plain http (not needed with `tailscale serve` https) |
+| `NSAppTransportSecurity` → `NSAllowsLocalNetworking` | YES (LAN, `.local`, IP addresses over http). Already in the project: `ios/Shop/Config/ATS.plist` is merged into the generated Info.plist (`INFOPLIST_FILE`, with `GENERATE_INFOPLIST_FILE = YES`), because a dictionary can't be set with `INFOPLIST_KEY_` build settings. |
+| `NSAppTransportSecurity` → `NSExceptionDomains` → `ts.net` → `NSIncludesSubdomains` YES, `NSExceptionAllowsInsecureHTTPLoads` YES | Tailscale over plain http (not needed with `tailscale serve` https). Also in `Config/ATS.plist`. |
 | `UILaunchScreen` | empty dictionary (white/black launch) |
 | `UIUserInterfaceStyle` | leave unset (the app has its own Appearance setting) |
 

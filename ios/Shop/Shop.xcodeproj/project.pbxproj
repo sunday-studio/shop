@@ -256,6 +256,7 @@
 				DEVELOPMENT_TEAM = 2QG5WSN24S;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/ATS.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Shop uses the camera to scan receipts and product barcodes.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Shop connects to your Shop server on your local network.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -290,6 +291,7 @@
 				DEVELOPMENT_TEAM = 2QG5WSN24S;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/ATS.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Shop uses the camera to scan receipts and product barcodes.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Shop connects to your Shop server on your local network.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
