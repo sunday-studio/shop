@@ -67,7 +67,7 @@ final class ProductDetailModel {
         .sorted { $0.shopName < $1.shopName }
     }
 
-    /// "1,5 l · Zuivel · bought 24× since May"
+    /// "1,5 l · Dairy · bought 24× since May"
     var metaLine: String {
         guard let product else { return "" }
         var parts: [String] = []

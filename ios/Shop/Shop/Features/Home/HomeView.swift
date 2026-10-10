@@ -8,7 +8,7 @@ struct HomeView: View {
     private var home: HomeModel { app.home }
 
     /// A typical bar: six categories, two legend rows.
-    private static let placeholderShares = ["Zuivel", "Groente", "Vlees", "Voorraad", "Brood", "Other"].map {
+    private static let placeholderShares = ["Dairy", "Produce", "Meat", "Pantry", "Bakery", "Other"].map {
         CategoryShare(name: $0, cents: 2_000, color: Palette.neutral)
     }
 
