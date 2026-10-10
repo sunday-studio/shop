@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftUI
+import UIKit
 
 /// The "New products" queue (docs/DESIGN-PRODUCT-AUTOPOPULATE.md): products Shop created itself
 /// that it isn't sure about. Also the source of the Products tab badge.
@@ -157,14 +158,19 @@ final class ProductReviewModel {
         do {
             let result = try await api.refreshProduct(item.id)
             app.catalog.upsert(result.product)
-            if let i = items.firstIndex(where: { $0.id == item.id }) {
-                // Found: the card can be accepted as usual (name/category now filled).
-                if result.offStatus == "found" {
+            switch result.offStatus {
+            case "found":
+                // The server filled the details; a card that no longer needs a look leaves the queue.
+                if result.product.needsReview == false {
+                    remove(item)
+                } else if let i = items.firstIndex(where: { $0.id == item.id }) {
                     items[i].product = result.product
-                    app.toasts.show("Found it on Open Food Facts · \(result.product.name)", tone: .green)
-                } else {
-                    app.toasts.show(result.offStatus == "not_found" ? "Not on Open Food Facts" : "Still can't reach Open Food Facts")
                 }
+                app.toasts.show("Found it on Open Food Facts · \(result.product.name)", tone: .green)
+            case "not_found":
+                app.toasts.show("Not on Open Food Facts")
+            default:
+                app.toasts.show("Still can't reach Open Food Facts")
             }
         } catch {
             Haptics.play(.error)
@@ -175,6 +181,8 @@ final class ProductReviewModel {
     func setPhoto(_ jpeg: Data, for item: ReviewItem) async {
         do {
             let product = try await api.putProductImage(item.id, jpeg: jpeg)
+            // Show the photo we just sent without downloading it again.
+            if let url = api.productImageURL(product), let image = UIImage(data: jpeg) { ImageCache.shared.store(image, key: url.absoluteString) }
             app.catalog.upsert(product)
             if let i = items.firstIndex(where: { $0.id == item.id }) { items[i].product = product }
         } catch {

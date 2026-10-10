@@ -276,11 +276,21 @@ final class MockServer: HTTPTransport {
             products.removeAll { $0.id == id(2) }
             return (204, Data())
         case ("GET", "v1/products/:id/image"):
-            return notFound()
+            guard let pid = id(2), let pr = (products.first { $0.id == pid }) ?? queue().first(where: { $0.id == pid })?.product, pr.hasImage else { return notFound() }
+            return (200, Self.productPhoto)
         case ("PUT", "v1/products/:id/image"):
-            guard let i = products.firstIndex(where: { $0.id == id(2) }) else { return notFound() }
-            products[i].updatedAt = .now
-            return ok(products[i])
+            guard let pid = id(2) else { return notFound() }
+            var photo: Product?
+            if let i = products.firstIndex(where: { $0.id == pid }) {
+                products[i].updatedAt = .now; products[i].hasImage = true; products[i].imageUrl = "/v1/products/\(pid)/image"
+                photo = products[i]
+            } else if var items = reviewItems, let i = items.firstIndex(where: { $0.id == pid }) {
+                items[i].product.updatedAt = .now; items[i].product.hasImage = true; items[i].product.imageUrl = "/v1/products/\(pid)/image"
+                photo = items[i].product
+                reviewItems = items
+            }
+            guard let photo else { return notFound() }
+            return ok(photo)
         case ("PUT", "v1/products/:id/nutrition"):
             guard let i = products.firstIndex(where: { $0.id == id(2) }), let n = try? decoder.decode(Nutrition.self, from: body) else { return notFound() }
             products[i].nutrition = n
@@ -311,16 +321,31 @@ final class MockServer: HTTPTransport {
         case ("POST", "v1/product-merges/:id/undo"):
             return undo(id(2))
         case ("POST", "v1/products/:id/refresh"):
-            guard let i = products.firstIndex(where: { $0.id == id(2) }) else { return notFound() }
-            if products[i].barcode == nil { return problem(422, "No barcode", "Only barcode products can be refreshed.") }
-            products[i].name = "Chocomel Vol 1 l"
-            products[i].needsReview = false
-            products[i].reviewReason = nil
-            return ok(ProductRefreshResult(product: products[i], offStatus: "found"))
+            guard let pid = id(2) else { return notFound() }
+            var all = queue()
+            var product: Product
+            let queueIndex = all.firstIndex { $0.id == pid }
+            if let queueIndex { product = all[queueIndex].product }
+            else if let known = products.first(where: { $0.id == pid }) { product = known }
+            else { return notFound() }
+            if product.barcode == nil { return problem(422, "No barcode", "Only barcode products can be refreshed.") }
+            // Simulator aid: outcomes cycle not_found → unavailable → found.
+            refreshCount += 1
+            let outcome = ["not_found", "unavailable", "found"][(refreshCount - 1) % 3]
+            if outcome == "found" {
+                product.name = "Chocomel Vol 1 l"
+                product.categoryId = 7
+                product.needsReview = false
+                product.reviewReason = nil
+                if let queueIndex { all.remove(at: queueIndex); reviewItems = all }
+            }
+            if let i = products.firstIndex(where: { $0.id == pid }) { products[i] = product }
+            return ok(ProductRefreshResult(product: product, offStatus: outcome))
         case ("POST", "v1/lines/:id/split-product"):
             let new = MockData.product(newId(), "AH GRIEKS YOGH", en: "Greek yoghurt", cat: 1, size: nil, unit: nil)
             products.append(new)
             let mid = newId()
+            undoRecords[mid] = UndoRecord(kind: "split", removed: new, survivor: products.first { $0.id == 4 }, item: nil)
             return ok(SplitResult(mergeId: mid, kind: "split", product: new, linesMoved: 2), status: 201)
         case ("POST", "v1/barcodes/:id/product"):
             return createBarcodeProduct(p[2])
@@ -394,6 +419,18 @@ final class MockServer: HTTPTransport {
     // MARK: Behaviours
 
     private var uploadCount = 0
+    private var refreshCount = 0
+
+    /// A plain drawn picture standing in for a product photo.
+    private static let productPhoto: Data = {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 240, height: 240))
+        return renderer.jpegData(withCompressionQuality: 0.8) { ctx in
+            UIColor(red: 0.98, green: 0.78, blue: 0.2, alpha: 1).setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 240, height: 240))
+            UIColor.white.setFill()
+            ctx.fill(CGRect(x: 70, y: 40, width: 100, height: 160))
+        }
+    }()
 
     private func upload(_ body: Data, contentType: String?) -> (Int, Data) {
         // Simulator aid: `-mock-fail` makes every 2nd upload a 415 and every 3rd a 409 duplicate.
