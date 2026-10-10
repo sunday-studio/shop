@@ -5,6 +5,8 @@ struct SwipeAction {
     var title: String
     var icon: Icon
     var color: Color
+    /// Played when the action runs. nil when the action opens something that plays its own.
+    var haptic: HapticEvent? = .light
     var run: () -> Void
 }
 
@@ -20,6 +22,7 @@ struct SwipeRow<Content: View>: View {
     @State private var dragging = false
     /// Stays true a moment after a drag so the row's own tap doesn't fire on release.
     @State private var suppressTap = false
+    @State private var pastCommit = false
     @Environment(\.accessibilityReduceMotion) private var reduce
     @Environment(AppModel.self) private var app
 
@@ -53,10 +56,14 @@ struct SwipeRow<Content: View>: View {
                     if x > 0 && leading == nil { x = 0 }
                     if x < 0 && trailing == nil { x = 0 }
                     offset = max(-commit - 30, min(commit + 30, x))
+                    // One tick when the drag crosses the "it will fire now" line, and back.
+                    let past = abs(offset) >= commit
+                    if past != pastCommit { pastCommit = past; Haptics.play(.selection) }
                 }
                 .onEnded { _ in
                     guard dragging else { return }
                     dragging = false
+                    pastCommit = false
                     Task {
                         try? await Task.sleep(for: .milliseconds(250))
                         suppressTap = false
@@ -90,7 +97,7 @@ struct SwipeRow<Content: View>: View {
     }
 
     private func fire(_ action: SwipeAction) {
-        Haptics.play(.light)
+        if let haptic = action.haptic { Haptics.play(haptic) }
         close()
         action.run()
     }
