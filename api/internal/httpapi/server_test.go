@@ -23,6 +23,7 @@ import (
 
 	"shop/internal/apitypes"
 	"shop/internal/auth"
+	"shop/internal/autoprod"
 	"shop/internal/english"
 	"shop/internal/httpapi"
 	"shop/internal/jobs"
@@ -42,6 +43,7 @@ import (
 
 // env is a full in-process stack: SQLite, fake OCR sidecar, job queue, API.
 type env struct {
+	auto    *autoprod.Service
 	t       *testing.T
 	h       http.Handler
 	queue   *jobs.Queue
@@ -137,9 +139,12 @@ func newEnv(t *testing.T) *env {
 	if err := eng.Load(context.Background()); err != nil { // resets the global user glossary per test
 		t.Fatal(err)
 	}
+	foodFactsClient := openfoodfacts.New("test").WithBaseURL(foodFacts.URL)
+	auto := autoprod.New(conn, match.NewMatcher(conn), prods, foodFactsClient, queue, log, true)
+	auto.RegisterJobs(queue)
 	mcpSrv := mcpserver.New(mcpserver.Deps{DB: conn, Receipts: svc, Products: prods, Stats: st, List: list,
-		Matcher: match.NewMatcher(conn), English: eng, Location: ams})
-	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Stats: st, List: list, English: eng,
+		Matcher: match.NewMatcher(conn), English: eng, Location: ams, Auto: auto})
+	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Stats: st, List: list, English: eng, Auto: auto,
 		Search:   search.New(conn, prods, match.NewMatcher(conn)),
 		Logos:    logos.New("pk_test", filepath.Join(dir, "images")).WithBaseURL(logoDev.URL),
 		Location: ams, Log: log, DataDir: dir, Authed: map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)}})
@@ -149,7 +154,7 @@ func newEnv(t *testing.T) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &env{t: t, h: api.Handler(), queue: queue, token: tok, dataDir: dir, ocr: f, q: q, conn: conn}
+	return &env{t: t, h: api.Handler(), queue: queue, token: tok, dataDir: dir, ocr: f, q: q, conn: conn, auto: auto}
 }
 
 func (e *env) do(method, path string, body any) *httptest.ResponseRecorder {

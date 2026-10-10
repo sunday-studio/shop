@@ -9,6 +9,72 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for BackfillStateState.
+const (
+	BackfillStateStateDone    BackfillStateState = "done"
+	BackfillStateStateFailed  BackfillStateState = "failed"
+	BackfillStateStateIdle    BackfillStateState = "idle"
+	BackfillStateStateRunning BackfillStateState = "running"
+)
+
+// Valid indicates whether the value is a known member of the BackfillStateState enum.
+func (e BackfillStateState) Valid() bool {
+	switch e {
+	case BackfillStateStateDone:
+		return true
+	case BackfillStateStateFailed:
+		return true
+	case BackfillStateStateIdle:
+		return true
+	case BackfillStateStateRunning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BarcodeCreateResultOffStatus.
+const (
+	BarcodeCreateResultOffStatusFound       BarcodeCreateResultOffStatus = "found"
+	BarcodeCreateResultOffStatusNotFound    BarcodeCreateResultOffStatus = "not_found"
+	BarcodeCreateResultOffStatusUnavailable BarcodeCreateResultOffStatus = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the BarcodeCreateResultOffStatus enum.
+func (e BarcodeCreateResultOffStatus) Valid() bool {
+	switch e {
+	case BarcodeCreateResultOffStatusFound:
+		return true
+	case BarcodeCreateResultOffStatusNotFound:
+		return true
+	case BarcodeCreateResultOffStatusUnavailable:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BarcodeCreateResultStatus.
+const (
+	Created        BarcodeCreateResultStatus = "created"
+	CreatedMinimal BarcodeCreateResultStatus = "created_minimal"
+	Known          BarcodeCreateResultStatus = "known"
+)
+
+// Valid indicates whether the value is a known member of the BarcodeCreateResultStatus enum.
+func (e BarcodeCreateResultStatus) Valid() bool {
+	switch e {
+	case Created:
+		return true
+	case CreatedMinimal:
+		return true
+	case Known:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for BarcodeLookupSource.
 const (
 	BarcodeLookupSourceLocal         BarcodeLookupSource = "local"
@@ -87,6 +153,21 @@ func (e LineUnit) Valid() bool {
 	case LineUnitL:
 		return true
 	case LineUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MergeResultKind.
+const (
+	MergeResultKindMerge MergeResultKind = "merge"
+)
+
+// Valid indicates whether the value is a known member of the MergeResultKind enum.
+func (e MergeResultKind) Valid() bool {
+	switch e {
+	case MergeResultKindMerge:
 		return true
 	default:
 		return false
@@ -231,6 +312,51 @@ func (e PricePointUnit) Valid() bool {
 	case PricePointUnitL:
 		return true
 	case PricePointUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductCategorySource.
+const (
+	ProductCategorySourceManual ProductCategorySource = "manual"
+	ProductCategorySourceOff    ProductCategorySource = "off"
+	ProductCategorySourceRule   ProductCategorySource = "rule"
+)
+
+// Valid indicates whether the value is a known member of the ProductCategorySource enum.
+func (e ProductCategorySource) Valid() bool {
+	switch e {
+	case ProductCategorySourceManual:
+		return true
+	case ProductCategorySourceOff:
+		return true
+	case ProductCategorySourceRule:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductCreatedVia.
+const (
+	ProductCreatedViaBackfill ProductCreatedVia = "backfill"
+	ProductCreatedViaBarcode  ProductCreatedVia = "barcode"
+	ProductCreatedViaManual   ProductCreatedVia = "manual"
+	ProductCreatedViaReceipt  ProductCreatedVia = "receipt"
+)
+
+// Valid indicates whether the value is a known member of the ProductCreatedVia enum.
+func (e ProductCreatedVia) Valid() bool {
+	switch e {
+	case ProductCreatedViaBackfill:
+		return true
+	case ProductCreatedViaBarcode:
+		return true
+	case ProductCreatedViaManual:
+		return true
+	case ProductCreatedViaReceipt:
 		return true
 	default:
 		return false
@@ -396,6 +522,78 @@ func (e ReceiptStatus) Valid() bool {
 	}
 }
 
+// Defines values for ReviewInputAction.
+const (
+	ReviewInputActionAccept       ReviewInputAction = "accept"
+	ReviewInputActionDiscard      ReviewInputAction = "discard"
+	ReviewInputActionKeepSeparate ReviewInputAction = "keep_separate"
+	ReviewInputActionMerge        ReviewInputAction = "merge"
+)
+
+// Valid indicates whether the value is a known member of the ReviewInputAction enum.
+func (e ReviewInputAction) Valid() bool {
+	switch e {
+	case ReviewInputActionAccept:
+		return true
+	case ReviewInputActionDiscard:
+		return true
+	case ReviewInputActionKeepSeparate:
+		return true
+	case ReviewInputActionMerge:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReviewReason.
+const (
+	BarcodeMinimal        ReviewReason = "barcode_minimal"
+	BarcodeNameMatch      ReviewReason = "barcode_name_match"
+	BarcodeOffUnavailable ReviewReason = "barcode_off_unavailable"
+	NearMatch             ReviewReason = "near_match"
+	NoCategory            ReviewReason = "no_category"
+	OddName               ReviewReason = "odd_name"
+)
+
+// Valid indicates whether the value is a known member of the ReviewReason enum.
+func (e ReviewReason) Valid() bool {
+	switch e {
+	case BarcodeMinimal:
+		return true
+	case BarcodeNameMatch:
+		return true
+	case BarcodeOffUnavailable:
+		return true
+	case NearMatch:
+		return true
+	case NoCategory:
+		return true
+	case OddName:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReviewResultKind.
+const (
+	ReviewResultKindDiscard ReviewResultKind = "discard"
+	ReviewResultKindMerge   ReviewResultKind = "merge"
+)
+
+// Valid indicates whether the value is a known member of the ReviewResultKind enum.
+func (e ReviewResultKind) Valid() bool {
+	switch e {
+	case ReviewResultKindDiscard:
+		return true
+	case ReviewResultKindMerge:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ShopPriceBaseUnit.
 const (
 	ShopPriceBaseUnitKg ShopPriceBaseUnit = "kg"
@@ -504,6 +702,42 @@ func (e SpendBucketUnit) Valid() bool {
 	}
 }
 
+// Defines values for SplitResultKind.
+const (
+	SplitResultKindSplit SplitResultKind = "split"
+)
+
+// Valid indicates whether the value is a known member of the SplitResultKind enum.
+func (e SplitResultKind) Valid() bool {
+	switch e {
+	case SplitResultKindSplit:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UndoResultKind.
+const (
+	UndoResultKindDiscard UndoResultKind = "discard"
+	UndoResultKindMerge   UndoResultKind = "merge"
+	UndoResultKindSplit   UndoResultKind = "split"
+)
+
+// Valid indicates whether the value is a known member of the UndoResultKind enum.
+func (e UndoResultKind) Valid() bool {
+	switch e {
+	case UndoResultKindDiscard:
+		return true
+	case UndoResultKindMerge:
+		return true
+	case UndoResultKindSplit:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetMe200JSONResponseBodyKind.
 const (
 	GetMe200JSONResponseBodyKindDevice GetMe200JSONResponseBodyKind = "device"
@@ -552,6 +786,27 @@ func (e ListProductsParamsSort) Valid() bool {
 	case Purchases:
 		return true
 	case Recent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefreshProduct200JSONResponseBodyOffStatus.
+const (
+	RefreshProduct200JSONResponseBodyOffStatusFound       RefreshProduct200JSONResponseBodyOffStatus = "found"
+	RefreshProduct200JSONResponseBodyOffStatusNotFound    RefreshProduct200JSONResponseBodyOffStatus = "not_found"
+	RefreshProduct200JSONResponseBodyOffStatusUnavailable RefreshProduct200JSONResponseBodyOffStatus = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the RefreshProduct200JSONResponseBodyOffStatus enum.
+func (e RefreshProduct200JSONResponseBodyOffStatus) Valid() bool {
+	switch e {
+	case RefreshProduct200JSONResponseBodyOffStatusFound:
+		return true
+	case RefreshProduct200JSONResponseBodyOffStatusNotFound:
+		return true
+	case RefreshProduct200JSONResponseBodyOffStatusUnavailable:
 		return true
 	default:
 		return false
@@ -617,6 +872,48 @@ type Alias struct {
 	// Text normalised receipt text
 	Text string `json:"text"`
 }
+
+// AutoProductsSummary defines model for AutoProductsSummary.
+type AutoProductsSummary struct {
+	Created     int     `json:"created"`
+	Error       *string `json:"error,omitempty"`
+	Linked      int     `json:"linked"`
+	NeedsReview int     `json:"needs_review"`
+}
+
+// BackfillState defines model for BackfillState.
+type BackfillState struct {
+	Created       int                `json:"created"`
+	DryRun        bool               `json:"dry_run"`
+	Error         *string            `json:"error,omitempty"`
+	Linked        int                `json:"linked"`
+	NeedsReview   int                `json:"needs_review"`
+	ReceiptsDone  int                `json:"receipts_done"`
+	ReceiptsTotal int                `json:"receipts_total"`
+	State         BackfillStateState `json:"state"`
+}
+
+// BackfillStateState defines model for BackfillState.State.
+type BackfillStateState string
+
+// BarcodeCreateResult defines model for BarcodeCreateResult.
+type BarcodeCreateResult struct {
+	// CreatedNow true only on the 201 that created it; false on every repeat
+	CreatedNow      bool            `json:"created_now"`
+	MergeSuggestion *SuggestedMerge `json:"merge_suggestion,omitempty"`
+
+	// OffStatus absent when status = known
+	OffStatus      *BarcodeCreateResultOffStatus `json:"off_status,omitempty"`
+	Product        Product                       `json:"product"`
+	Status         BarcodeCreateResultStatus     `json:"status"`
+	UnmatchedLines []UnmatchedLine               `json:"unmatched_lines"`
+}
+
+// BarcodeCreateResultOffStatus absent when status = known
+type BarcodeCreateResultOffStatus string
+
+// BarcodeCreateResultStatus defines model for BarcodeCreateResult.Status.
+type BarcodeCreateResultStatus string
 
 // BarcodeLookup defines model for BarcodeLookup.
 type BarcodeLookup struct {
@@ -750,6 +1047,19 @@ type ListItemInput struct {
 	Text      *string  `json:"text,omitempty"`
 }
 
+// MergeResult defines model for MergeResult.
+type MergeResult struct {
+	AliasesMoved int             `json:"aliases_moved"`
+	Kind         MergeResultKind `json:"kind"`
+	LinesMoved   int             `json:"lines_moved"`
+	MergeId      int64           `json:"merge_id"`
+	MergedAway   ProductRef      `json:"merged_away"`
+	Product      Product         `json:"product"`
+}
+
+// MergeResultKind defines model for MergeResult.Kind.
+type MergeResultKind string
+
 // NameEnStatus defines model for NameEnStatus.
 type NameEnStatus string
 
@@ -841,19 +1151,25 @@ type Problem struct {
 
 // Product defines model for Product.
 type Product struct {
-	Barcode       *string              `json:"barcode,omitempty"`
-	Brand         *string              `json:"brand,omitempty"`
-	CategoryId    *int64               `json:"category_id,omitempty"`
-	Cheapest      *ShopPrice           `json:"cheapest,omitempty"`
-	CreatedAt     time.Time            `json:"created_at"`
-	HasImage      bool                 `json:"has_image"`
-	Id            int64                `json:"id"`
+	Barcode        *string                `json:"barcode,omitempty"`
+	Brand          *string                `json:"brand,omitempty"`
+	CategoryId     *int64                 `json:"category_id,omitempty"`
+	CategorySource *ProductCategorySource `json:"category_source,omitempty"`
+	Cheapest       *ShopPrice             `json:"cheapest,omitempty"`
+	CreatedAt      time.Time              `json:"created_at"`
+	CreatedVia     *ProductCreatedVia     `json:"created_via,omitempty"`
+	HasImage       bool                   `json:"has_image"`
+	Id             int64                  `json:"id"`
+
+	// ImageUrl path of GET /v1/products/{id}/image; absent without a photo
+	ImageUrl      *string              `json:"image_url,omitempty"`
 	LastBoughtAt  *time.Time           `json:"last_bought_at,omitempty"`
 	Name          string               `json:"name"`
 	NameEn        *string              `json:"name_en,omitempty"`
 	NameEnSource  *ProductNameEnSource `json:"name_en_source,omitempty"`
 	NameEnStatus  *NameEnStatus        `json:"name_en_status,omitempty"`
 	NameEnUnknown *[]Span              `json:"name_en_unknown,omitempty"`
+	NeedsReview   *bool                `json:"needs_review,omitempty"`
 	NetQuantity   *float64             `json:"net_quantity,omitempty"`
 	NetUnit       *ProductNetUnit      `json:"net_unit,omitempty"`
 
@@ -862,12 +1178,20 @@ type Product struct {
 	OpenfoodfactsCode *string    `json:"openfoodfacts_code,omitempty"`
 
 	// Purchases receipts it was bought on
-	Purchases *int `json:"purchases,omitempty"`
+	Purchases    *int          `json:"purchases,omitempty"`
+	ReviewReason *ReviewReason `json:"review_reason,omitempty"`
 
 	// Score search relevance, only with q
-	Score     *float64  `json:"score,omitempty"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Score          *float64        `json:"score,omitempty"`
+	SuggestedMerge *SuggestedMerge `json:"suggested_merge,omitempty"`
+	UpdatedAt      time.Time       `json:"updated_at"`
 }
+
+// ProductCategorySource defines model for Product.CategorySource.
+type ProductCategorySource string
+
+// ProductCreatedVia defines model for Product.CreatedVia.
+type ProductCreatedVia string
 
 // ProductNameEnSource defines model for Product.NameEnSource.
 type ProductNameEnSource string
@@ -915,11 +1239,19 @@ type ProductMatch struct {
 	Score     float64 `json:"score"`
 }
 
+// ProductRef defines model for ProductRef.
+type ProductRef struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
 // Receipt defines model for Receipt.
 type Receipt struct {
-	ConfirmedAt *time.Time `json:"confirmed_at,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	Id          int64      `json:"id"`
+	// AutoProducts only on the confirm response, when AUTO_PRODUCTS is on
+	AutoProducts *AutoProductsSummary `json:"auto_products,omitempty"`
+	ConfirmedAt  *time.Time           `json:"confirmed_at,omitempty"`
+	CreatedAt    time.Time            `json:"created_at"`
+	Id           int64                `json:"id"`
 
 	// LineCount item lines (excludes discounts, deposits, bags)
 	LineCount      *int           `json:"line_count,omitempty"`
@@ -1000,6 +1332,72 @@ type ReceiptPatch struct {
 
 // ReceiptStatus defines model for ReceiptStatus.
 type ReceiptStatus string
+
+// ReviewInput defines model for ReviewInput.
+type ReviewInput struct {
+	Action ReviewInputAction `json:"action"`
+
+	// CategoryId accept only
+	CategoryId *int64 `json:"category_id,omitempty"`
+
+	// IntoProductId merge only; default: the suggested product
+	IntoProductId *int64 `json:"into_product_id,omitempty"`
+
+	// Name accept only
+	Name *string `json:"name,omitempty"`
+}
+
+// ReviewInputAction defines model for ReviewInput.Action.
+type ReviewInputAction string
+
+// ReviewItem defines model for ReviewItem.
+type ReviewItem struct {
+	Product         Product            `json:"product"`
+	Reason          ReviewReason       `json:"reason"`
+	SourceLineCount int                `json:"source_line_count"`
+	SourceLines     []ReviewSourceLine `json:"source_lines"`
+	SuggestedMerge  *SuggestedMerge    `json:"suggested_merge,omitempty"`
+}
+
+// ReviewQueue defines model for ReviewQueue.
+type ReviewQueue struct {
+	// Counts per-reason totals for the whole queue (every reason present)
+	Counts map[string]int `json:"counts"`
+	Items  []ReviewItem   `json:"items"`
+	Total  int            `json:"total"`
+}
+
+// ReviewReason defines model for ReviewReason.
+type ReviewReason string
+
+// ReviewResult defines model for ReviewResult.
+type ReviewResult struct {
+	AliasesMoved *int `json:"aliases_moved,omitempty"`
+
+	// DiscardId discard (also usable as the id for undo)
+	DiscardId     *int64            `json:"discard_id,omitempty"`
+	Kind          *ReviewResultKind `json:"kind,omitempty"`
+	LinesMoved    *int              `json:"lines_moved,omitempty"`
+	LinesUnlinked *int              `json:"lines_unlinked,omitempty"`
+
+	// MergeId merge
+	MergeId    *int64      `json:"merge_id,omitempty"`
+	MergedAway *ProductRef `json:"merged_away,omitempty"`
+	Product    Product     `json:"product"`
+}
+
+// ReviewResultKind defines model for ReviewResult.Kind.
+type ReviewResultKind string
+
+// ReviewSourceLine defines model for ReviewSourceLine.
+type ReviewSourceLine struct {
+	LineId         int64      `json:"line_id"`
+	LineTotalCents int64      `json:"line_total_cents"`
+	PurchasedAt    *time.Time `json:"purchased_at,omitempty"`
+	RawText        string     `json:"raw_text"`
+	ReceiptId      int64      `json:"receipt_id"`
+	ShopName       string     `json:"shop_name"`
+}
 
 // Shop defines model for Shop.
 type Shop struct {
@@ -1131,6 +1529,40 @@ type SpendBucket struct {
 // SpendBucketUnit group_by=product
 type SpendBucketUnit string
 
+// SplitResult defines model for SplitResult.
+type SplitResult struct {
+	Kind       SplitResultKind `json:"kind"`
+	LinesMoved int             `json:"lines_moved"`
+	MergeId    int64           `json:"merge_id"`
+	Product    Product         `json:"product"`
+}
+
+// SplitResultKind defines model for SplitResult.Kind.
+type SplitResultKind string
+
+// SuggestedMerge defines model for SuggestedMerge.
+type SuggestedMerge struct {
+	Brand     *string `json:"brand,omitempty"`
+	Name      string  `json:"name"`
+	NameEn    *string `json:"name_en,omitempty"`
+	ProductId int64   `json:"product_id"`
+	Score     float64 `json:"score"`
+}
+
+// UndoResult defines model for UndoResult.
+type UndoResult struct {
+	Into          Product        `json:"into"`
+	Kind          UndoResultKind `json:"kind"`
+	LinesRestored int            `json:"lines_restored"`
+
+	// LinesSkipped lines the user relinked since
+	LinesSkipped int     `json:"lines_skipped"`
+	Product      Product `json:"product"`
+}
+
+// UndoResultKind defines model for UndoResult.Kind.
+type UndoResultKind string
+
 // UnmatchedLine defines model for UnmatchedLine.
 type UnmatchedLine struct {
 	Line        ReceiptLine `json:"line"`
@@ -1172,6 +1604,11 @@ type PreviewGlossaryTermJSONBody struct {
 	KeepAsIs *bool   `json:"keep_as_is,omitempty"`
 }
 
+// SplitLineProductJSONBody defines parameters for SplitLineProduct.
+type SplitLineProductJSONBody struct {
+	Name *string `json:"name,omitempty"`
+}
+
 // GetShoppingListParams defines parameters for GetShoppingList.
 type GetShoppingListParams struct {
 	IncludeChecked *bool `form:"include_checked,omitempty" json:"include_checked,omitempty"`
@@ -1202,10 +1639,31 @@ type ListProductsParams struct {
 // ListProductsParamsSort defines parameters for ListProducts.
 type ListProductsParamsSort string
 
+// StartBackfillJSONBody defines parameters for StartBackfill.
+type StartBackfillJSONBody struct {
+	// DryRun count without writing
+	DryRun *bool `json:"dry_run,omitempty"`
+}
+
+// GetReviewQueueParams defines parameters for GetReviewQueue.
+type GetReviewQueueParams struct {
+	Limit  *int          `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int          `form:"offset,omitempty" json:"offset,omitempty"`
+	Reason *ReviewReason `form:"reason,omitempty" json:"reason,omitempty"`
+}
+
 // PutProductImageMultipartBody defines parameters for PutProductImage.
 type PutProductImageMultipartBody struct {
 	Image openapi_types.File `json:"image"`
 }
+
+// MergeProductJSONBody defines parameters for MergeProduct.
+type MergeProductJSONBody struct {
+	IntoProductId int64 `json:"into_product_id"`
+}
+
+// RefreshProduct200JSONResponseBodyOffStatus defines parameters for RefreshProduct.
+type RefreshProduct200JSONResponseBodyOffStatus string
 
 // UnmatchedLinesForProductParams defines parameters for UnmatchedLinesForProduct.
 type UnmatchedLinesForProductParams struct {
@@ -1343,6 +1801,9 @@ type UpdateLineJSONRequestBody = LineInput
 // LinkLineProductJSONRequestBody defines body for LinkLineProduct for application/json ContentType.
 type LinkLineProductJSONRequestBody = LinkInput
 
+// SplitLineProductJSONRequestBody defines body for SplitLineProduct for application/json ContentType.
+type SplitLineProductJSONRequestBody SplitLineProductJSONBody
+
 // AddListItemJSONRequestBody defines body for AddListItem for application/json ContentType.
 type AddListItemJSONRequestBody = ListItemInput
 
@@ -1352,14 +1813,23 @@ type UpdateListItemJSONRequestBody = ListItemInput
 // CreateProductJSONRequestBody defines body for CreateProduct for application/json ContentType.
 type CreateProductJSONRequestBody = ProductInput
 
+// StartBackfillJSONRequestBody defines body for StartBackfill for application/json ContentType.
+type StartBackfillJSONRequestBody StartBackfillJSONBody
+
 // UpdateProductJSONRequestBody defines body for UpdateProduct for application/json ContentType.
 type UpdateProductJSONRequestBody = ProductInput
 
 // PutProductImageMultipartRequestBody defines body for PutProductImage for multipart/form-data ContentType.
 type PutProductImageMultipartRequestBody PutProductImageMultipartBody
 
+// MergeProductJSONRequestBody defines body for MergeProduct for application/json ContentType.
+type MergeProductJSONRequestBody MergeProductJSONBody
+
 // PutNutritionJSONRequestBody defines body for PutNutrition for application/json ContentType.
 type PutNutritionJSONRequestBody = Nutrition
+
+// ReviewProductJSONRequestBody defines body for ReviewProduct for application/json ContentType.
+type ReviewProductJSONRequestBody = ReviewInput
 
 // UploadReceiptMultipartRequestBody defines body for UploadReceipt for multipart/form-data ContentType.
 type UploadReceiptMultipartRequestBody UploadReceiptMultipartBody

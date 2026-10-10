@@ -70,6 +70,7 @@ func (f *fakeOFF) set(code, mode string) { f.mu.Lock(); f.mode[code] = mode; f.m
 func offService(t *testing.T, conn *sql.DB, f *fakeOFF) *Service {
 	s := New(conn, match.NewMatcher(conn), nil, openfoodfacts.New("test").WithBaseURL(f.srv.URL), nil, slog.New(slog.DiscardHandler), true)
 	s.OFFTimeout = 250 * time.Millisecond
+	s.now = fixedClock
 	return s
 }
 

@@ -76,6 +76,13 @@ func TestCreateOrLinkOnTheThirteenRealReceipts(t *testing.T) {
 		}
 	}
 
+	// uncertain matches go to the queue instead of being merged silently
+	nm := count(t, conn, `SELECT COUNT(*) FROM products WHERE review_reason = 'near_match' AND suggested_merge_id IS NOT NULL`)
+	t.Logf("%d near matches in the queue", nm)
+	if nm < 3 {
+		t.Errorf("%d near_match products; the real receipts have several uncertain pairs", nm)
+	}
+
 	// odd name flagged
 	var reason string
 	if err := conn.QueryRow(`SELECT review_reason FROM products WHERE name LIKE 'Nunnunonntt%'`).Scan(&reason); err != nil || reason != ReasonOddName {

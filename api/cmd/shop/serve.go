@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"shop/internal/autoprod"
 	"time"
 
 	"shop/internal/backup"
@@ -34,6 +35,7 @@ type app struct {
 	cfg      config.Config
 	db       *sql.DB
 	queue    *jobs.Queue
+	auto     *autoprod.Service
 	ocr      *ocr.Client
 	fallback *ocr.Client
 	receipts *receipts.Service
@@ -77,7 +79,10 @@ func openApp(ctx context.Context, log *slog.Logger) (*app, error) {
 	a.receipts = receipts.New(conn, a.ocr, a.fallback, a.queue,
 		receipts.Config{ImagesDir: cfg.ImagesDir(), Location: cfg.Location}, log)
 	a.matcher = match.NewMatcher(conn)
-	a.products = products.New(conn, a.matcher, openfoodfacts.New(cfg.FoodFactsUserAgent), cfg.ImagesDir(), log)
+	foodFacts := openfoodfacts.New(cfg.FoodFactsUserAgent)
+	a.products = products.New(conn, a.matcher, foodFacts, cfg.ImagesDir(), log)
+	a.auto = autoprod.New(conn, a.matcher, a.products, foodFacts, a.queue, log, cfg.AutoProducts)
+	a.auto.RegisterJobs(a.queue)
 	// Install the user's glossary, then bring automatic English names up to
 	// date (new products, a grown built-in glossary).
 	a.english = english.New(conn)
@@ -118,11 +123,11 @@ func serve(ctx context.Context, log *slog.Logger) error {
 
 	mcpSrv := mcpserver.New(mcpserver.Deps{
 		DB: a.db, Receipts: a.receipts, Products: a.products, Stats: a.stats, List: a.list,
-		Matcher: a.matcher, English: a.english, Location: a.cfg.Location,
+		Matcher: a.matcher, English: a.english, Location: a.cfg.Location, Auto: a.auto,
 	})
 	api := httpapi.New(httpapi.Deps{
 		DB: a.db, OCR: a.ocr, OCRFallback: a.fallback, Receipts: a.receipts,
-		Products: a.products, Stats: a.stats, List: a.list, English: a.english,
+		Products: a.products, Stats: a.stats, List: a.list, English: a.english, Auto: a.auto,
 		Search: search.New(a.db, a.products, a.matcher), Logos: logos.New(a.cfg.LogoDevToken, a.cfg.ImagesDir()),
 		Location: a.cfg.Location, Log: log,
 		DataDir: a.cfg.DataDir,

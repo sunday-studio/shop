@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type Config struct {
 	BackupDir          string
 	BackupKeepDays     int
 	BackupAt           string // HH:MM local time for scheduled backups
+	AutoProducts       bool   // AUTO_PRODUCTS=on: confirm creates/links products, backfill allowed
 	Location           *time.Location
 }
 
@@ -36,6 +38,10 @@ func Load() (Config, error) {
 	}
 
 	c.LogoDevToken = env("LOGO_DEV_TOKEN", "")
+	switch strings.ToLower(env("AUTO_PRODUCTS", "off")) {
+	case "on", "true", "1", "yes":
+		c.AutoProducts = true
+	}
 	c.BackupDir = env("BACKUP_DIR", "/backup")
 	c.BackupAt = env("BACKUP_AT", "03:30")
 	keep, err := strconv.Atoi(env("BACKUP_KEEP_DAYS", "30"))

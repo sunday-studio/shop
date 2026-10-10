@@ -163,10 +163,9 @@ func (s *Service) createOrLink(ctx context.Context, q *db.Queries, m *match.Matc
 	}
 
 	// 2. fuzzy
-	shop := int64(0)
-	if rec.ShopID.Valid {
-		shop = rec.ShopID.Int64
-	}
+	// shopID 0: the matcher's same-shop alias bonus (+0.05) would push a 0.87 near match over the 0.92
+	// auto-link line; the thresholds of the spec are on the plain score.
+	const shop = int64(0)
 	cands, err := m.Search(ctx, c.Name, shop, 20, ReviewScore)
 	if err != nil {
 		return Stats{}, err
@@ -304,3 +303,9 @@ func fold(s string) string { return strings.TrimSpace(match.Fold(s)) }
 func errf(base error, format string, a ...any) error {
 	return fmt.Errorf("%w: %s", base, fmt.Sprintf(format, a...))
 }
+
+// Similarity is the match score of two product names.
+func Similarity(a, b string) float64 { return match.Score(match.Normalise(a), match.Normalise(b)) }
+
+// SetEnabled switches the AUTO_PRODUCTS behaviour (tests).
+func (s *Service) SetEnabled(on bool) { s.enabled = on }

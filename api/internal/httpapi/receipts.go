@@ -244,21 +244,29 @@ func (s *Server) getReceipt(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	rec, lines, err := s.Receipts.Get(r.Context(), id)
+	out, err := s.receiptOut(r, id)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
-	out := toReceipt(rec, lines)
-	if sug, err := s.suggest.Suggest(r.Context(), id); err != nil {
-		s.writeErr(w, r, err)
-		return
-	} else {
-		out.ShopSuggestion = toShopSuggestion(sug)
+	writeJSON(w, http.StatusOK, out)
+}
+
+// receiptOut builds the single-receipt payload: lines with product names and link suggestions, and
+// the shop suggestion.
+func (s *Server) receiptOut(r *http.Request, id int64) (apitypes.Receipt, error) {
+	rec, lines, err := s.Receipts.Get(r.Context(), id)
+	if err != nil {
+		return apitypes.Receipt{}, err
 	}
+	out := toReceipt(rec, lines)
+	sug, err := s.suggest.Suggest(r.Context(), id)
+	if err != nil {
+		return apitypes.Receipt{}, err
+	}
+	out.ShopSuggestion = toShopSuggestion(sug)
 	if err := s.withProducts(r, *out.Lines); err != nil {
-		s.writeErr(w, r, err)
-		return
+		return apitypes.Receipt{}, err
 	}
 	if s.Products != nil {
 		for i, l := range *out.Lines {
@@ -267,13 +275,12 @@ func (s *Server) getReceipt(w http.ResponseWriter, r *http.Request) {
 			}
 			cands, err := s.Products.Suggest(r.Context(), rec.ShopID.Int64, l.RawText)
 			if err != nil {
-				s.writeErr(w, r, err)
-				return
+				return apitypes.Receipt{}, err
 			}
 			(*out.Lines)[i].Suggestions = toMatches(cands)
 		}
 	}
-	writeJSON(w, http.StatusOK, out)
+	return out, nil
 }
 
 func (s *Server) updateReceipt(w http.ResponseWriter, r *http.Request) {
@@ -334,7 +341,24 @@ func (s *Server) confirmReceipt(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	s.getReceipt(w, r)
+	// Automatic products (flag AUTO_PRODUCTS): a failure here never fails the confirm.
+	var summary *apitypes.AutoProductsSummary
+	if s.Auto != nil && s.Auto.Enabled() {
+		st, aerr := s.Auto.ProcessReceipt(r.Context(), id, "receipt")
+		summary = &apitypes.AutoProductsSummary{Linked: st.Linked, Created: st.Created, NeedsReview: st.NeedsReview}
+		if aerr != nil {
+			s.Log.Warn("auto products on confirm", "receipt", id, "err", aerr)
+			msg := aerr.Error()
+			summary.Error = &msg
+		}
+	}
+	out, err := s.receiptOut(r, id)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	out.AutoProducts = summary
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *Server) requeue(withOCR bool) http.HandlerFunc {
