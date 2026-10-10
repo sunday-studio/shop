@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.9.0
+  version: 0.9.1
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -204,6 +204,11 @@ paths:
               schema: { $ref: "#/components/schemas/Receipt" }
         "409":
           description: Same image already uploaded; body holds the existing receipt id in `detail`
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "415":
+          description: Not a JPEG or PNG. HEIC/HEIF is rejected explicitly (convert to JPEG on the device first); `detail` says which
           content:
             application/problem+json:
               schema: { $ref: "#/components/schemas/Problem" }

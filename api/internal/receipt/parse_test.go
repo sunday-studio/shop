@@ -1,6 +1,8 @@
 package receipt
 
 import (
+	"encoding/json"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -301,5 +303,40 @@ func TestSubtotalWithLeadingCount(t *testing.T) {
 	})
 	if len(r.Reasons) != 0 {
 		t.Errorf("reasons = %v; want none", r.Reasons)
+	}
+}
+
+// Real photographed Albert Heijn receipts (OCR output from the spike). OCR garbles the count in front
+// of SUBTOTAAL ("i1", "C"); it must still not become an item. Dates are not asserted (unverified).
+func TestRealReceiptSubtotal(t *testing.T) {
+	for _, c := range []struct {
+		file  string
+		total int64
+	}{{"ah_subtotal_1469.json", 726}, {"ah_subtotal_1471.json", 2692}} {
+		b, err := os.ReadFile("testdata/" + c.file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var res ocr.Result
+		if err := json.Unmarshal(b, &res); err != nil {
+			t.Fatal(err)
+		}
+		r := Parse(res, Options{Location: ams, Now: now})
+		for _, l := range r.Lines {
+			if strings.Contains(strings.ToLower(l.RawText), "subtotaal") {
+				t.Errorf("%s: subtotal row became a line: %+v", c.file, l)
+			}
+		}
+		if r.TotalCents == nil || *r.TotalCents != c.total || r.SumCents != c.total {
+			t.Errorf("%s: total=%v sum=%d; want both %d (reasons %v)", c.file, r.TotalCents, r.SumCents, c.total, r.Reasons)
+		}
+	}
+}
+
+func TestDirkCountAndPriceRows(t *testing.T) {
+	r := parse("01-10-2026|", "1 MELK 1,29|1,29", "Van 2,49 voor|4,49", "7 3,49|", "Totaal|", "22 Artikelen|1,29")
+	checkLines(t, r.Lines, []want{{"1 MELK 1,29", KindItem, 1, "pc", 129, 129}})
+	if r.TotalCents == nil || *r.TotalCents != 129 {
+		t.Errorf("total = %v; want 129", r.TotalCents)
 	}
 }
