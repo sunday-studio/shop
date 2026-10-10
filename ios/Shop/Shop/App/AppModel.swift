@@ -91,6 +91,11 @@ final class AppModel {
     var paths: [AppTab: [Route]] = [:]
     /// Presented camera flow (document scanner + shop picker, or barcode unpacking).
     var capture: CaptureMode?
+    /// Receipts being reviewed one after another (from "Receipts to review"). Confirming one
+    /// opens the next; Home clears it when it comes back into view.
+    var reviewSequence: [Int64] = []
+    /// True while a list row is being swiped (and just after), so the row's tap doesn't fire.
+    @ObservationIgnored var rowSwipeActive = false
     /// Which system picker the root view should show for "Import receipts".
     var importPicker: ImportSource?
     /// The Import screen (full screen) while receipts are being arranged.
@@ -250,6 +255,30 @@ final class AppModel {
     func push(_ route: Route, on tab: AppTab? = nil) {
         let t = tab ?? self.tab
         paths[t, default: []].append(route)
+    }
+
+    /// Opens the first receipt that needs review and remembers the rest, so the review keeps going.
+    func startReview(_ ids: [Int64]) {
+        guard let first = ids.first else { return }
+        reviewSequence = ids
+        push(.receipt(first))
+    }
+
+    /// After a receipt is confirmed or deleted inside a review run: show the next one still
+    /// waiting, or report there is none. Replaces the current screen so Back still goes Home.
+    @discardableResult
+    func advanceReview(after id: Int64) -> Bool {
+        guard let i = reviewSequence.firstIndex(of: id) else { return false }
+        let waiting = Set(home.attention.map(\.id))
+        guard let next = reviewSequence.dropFirst(i + 1).first(where: { waiting.contains($0) }) else {
+            reviewSequence = []
+            return false
+        }
+        var path = paths[tab, default: []]
+        if !path.isEmpty { path.removeLast() }
+        path.append(.receipt(next))
+        paths[tab] = path
+        return true
     }
 
     func popToRoot(_ tab: AppTab? = nil) {
