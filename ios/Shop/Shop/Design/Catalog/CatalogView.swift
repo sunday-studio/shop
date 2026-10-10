@@ -176,6 +176,30 @@ struct CatalogView: View {
                     .padding(Space.l)
                     .background(Color(hex: 0x1C1C1A), in: RoundedRectangle.continuous(Radius.l))
                 }
+                section("Swipe actions (native)") {
+                    List {
+                        ForEach(["Albert Heijn", "Jumbo", "Dirk"], id: \.self) { shop in
+                            ReceiptRow(shopName: shop, subtitle: "12:08 · 9 items", amount: "€12,40")
+                                .listRowInsets(EdgeInsets())
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                    Button { } label: { Label("Confirm", systemImage: "checkmark").labelStyle(.iconOnly) }
+                                        .tint(Accent.green)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) { } label: { Label("Delete", systemImage: "trash").labelStyle(.iconOnly) }
+                                        .tint(Accent.red)
+                                    Button { } label: { Label("Edit", systemImage: "pencil").labelStyle(.iconOnly) }
+                                        .tint(Accent.blue)
+                                }
+                        }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .scrollDisabled(true)
+                    .frame(height: 200)
+                }
                 section("Trays") {
                     Button("Open a tray") { openTray() }.buttonStyle(.shop(.secondary))
                 }
