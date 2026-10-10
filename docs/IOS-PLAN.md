@@ -3,7 +3,14 @@
 Detailed plan for the iPhone app. It replaces the M6/M7 bullets in [PLAN.md](PLAN.md) §11 (M6 = iM0–iM5, M7 = iM6–iM10).
 Design sources: the **Shop Wireframes** design project (32 screens, light + dark), [design/DESIGN-RULES.md](../design/DESIGN-RULES.md), [design/ia.html](../design/ia.html). The design system extracted from them is in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md). Things the backend must add are in [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md).
 
-**Status: draft v2, waiting for approval. No code until approved.**
+**Status (2026-10-10): approved; all screens written (iM0–iM10 code), not yet built.** Sources in `ios/Shop/` (~14k lines). Project setup: [IOS-SETUP.md](IOS-SETUP.md). Next: you build on Xcode 27, send compile errors, then walk the per-milestone checklists in §4 on the phone.
+
+Changes from the draft while writing:
+- Design system lives in `ios/Shop/Design/` (not `DesignSystem/`), next to the motion/haptics files that already existed there.
+- Offline cache, upload queue and list op log are small **JSON files** (Application Support), not SwiftData: less to go wrong under Swift 6 strict concurrency and nothing to migrate.
+- Auth is `POST /v1/auth/pair` (password → device token); sign out revokes this device via `DELETE /v1/auth/devices/{id}`.
+- Shop logos come from the backend (`logo_url`, `GET /v1/shops/{id}/logo`), cached on the phone; monogram fallback.
+- Mock mode: launch argument `-mock` runs every screen against an in-memory server.
 
 ---
 
@@ -24,7 +31,7 @@ Design sources: the **Shop Wireframes** design project (32 screens, light + dark
 | Language | Swift 6 language mode, strict concurrency | Catches data races in the upload queue at compile time. |
 | UI | SwiftUI. UIKit only where Apple has no SwiftUI view: `VNDocumentCameraViewController`, `DataScannerViewController` | |
 | State | `@Observable` models per feature, injected via `Environment` | Small app, one user. |
-| Project shape | **One app target, organised by folders** (`DesignSystem/`, `Core/`, `Features/`). No local packages | Least setup for you: create project, add the folder, done. |
+| Project shape | **One app target, organised by folders** (`Design/`, `Core/`, `Features/`). No local packages | Least setup for you: create project, add the folder, done. |
 | Dependencies | **None.** API client is hand-written `Codable` models + a small `URLSession` client, mirroring `openapi.yaml` | No package or build-plugin setup; works on older Xcode. |
 | Offline | Scans (upload queue) and shopping list are offline-first. Products, shops and categories are cached read-only. Review edits need a connection (clear error and retry if offline) | Avoids conflict handling on review edits. Say if you want them queued too. |
 | Updates | Polling (no push): every 3 s while a receipt is `processing`, otherwise on foreground and pull-to-refresh | IA "No push". |
@@ -67,7 +74,7 @@ Files I add later are added to the target the same way (or automatically, if you
 ```
 ios/Shop/
 ├─ App/              ShopApp, AppModel, ConnectionGate, RootTabView (pill bar + Add), Router, SyncPill host
-├─ DesignSystem/
+├─ Design/
 │  ├─ Tokens/        Colors, Typography, Spacing, Radii, Elevation, Motion, Haptics, Fonts registration
 │  ├─ Components/    see DESIGN-SYSTEM.md §4
 │  └─ Catalog/       CatalogView (every component, every state; reachable from Settings in debug)
@@ -76,8 +83,8 @@ ios/Shop/
 │  ├─ Auth/          Keychain token store, pairing
 │  ├─ Money/         Cents, nl_NL formatting, per-unit prices
 │  ├─ Dates/         Europe/Amsterdam day grouping, relative labels
-│  ├─ Upload/        UploadQueue (files + SwiftData records, background URLSession, backoff), page stitcher
-│  ├─ Cache/         SwiftData models (shops, categories, products, list items + op log), ImageCache (disk + memory)
+│  ├─ Upload/        UploadQueue (files + JSON records, background URLSession, backoff), page stitcher
+│  ├─ Cache/         JSON caches (shops, categories, products, list + op log), ImageCache (disk + memory)
 │  └─ Mock/          MockData for previews and -mock mode
 ├─ Features/
 │  ├─ Onboarding/    O.1–O.4
@@ -156,7 +163,7 @@ At the end of each milestone I hand you a list of new/changed files, which Previ
 **You check:** for 3 ranges, app totals equal what the assistant reports.
 
 ### iM9 — Shopping list, offline (1.5 d)
-- L (cheapest-at hints, "usually bought by now", check-off animation, clear checked), L.1 add, L.2 suggestions. SwiftData cache + operation log, sync on reconnect.
+- L (cheapest-at hints, "usually bought by now", check-off animation, clear checked), L.1 add, L.2 suggestions. JSON cache + operation log, sync on reconnect.
 
 **You check:** in airplane mode, add, check and remove items; after reconnecting the server matches; an item the assistant adds shows up after a refresh.
 
