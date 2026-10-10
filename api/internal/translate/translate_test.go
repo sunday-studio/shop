@@ -1,6 +1,9 @@
 package translate
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestTranslate(t *testing.T) {
 	cases := map[string]string{
@@ -117,5 +120,16 @@ func TestAbbreviationsKeepInputOffsets(t *testing.T) {
 	// "AH" and "XYZQ" unknown; input offsets refer to the raw receipt text.
 	if len(r.UnknownInput) != 2 || r.UnknownInput[1].Start != 14 || r.UnknownInput[1].End != 18 {
 		t.Errorf("input spans: %+v", r.UnknownInput)
+	}
+}
+
+func TestRealReceiptWords(t *testing.T) {
+	for dutch, want := range map[string]string{
+		"KIP POTEN": "chicken legs", "TIJM": "thyme", "DILLE": "dill", "CITROENGRAS": "lemongrass",
+		"BOOMGAARDSAP": "orchard juice", "KIKKOMAN SOJASAUS": "kikkoman soy sauce", "ROZEMARIJN": "rosemary", "BOSUI": "spring onion",
+	} {
+		if got := Translate(dutch).Text; !strings.EqualFold(got, want) {
+			t.Errorf("%q -> %q; want %q", dutch, got, want)
+		}
 	}
 }
