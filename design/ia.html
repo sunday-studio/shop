@@ -204,7 +204,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 <div class="wrap">
 
 <header>
-  <span class="eyebrow">Shop · iOS app · Information architecture v0.3</span>
+  <span class="eyebrow">Shop · iOS app · Information architecture v0.4</span>
   <h1>Information architecture</h1>
   <p class="lede">How the Shop iPhone app is organised: what lives where, how you move between screens, and what each screen carries. Built from docs/PLAN.md (§0, §5–§10) and openapi.yaml; this is the skeleton the wireframes are drawn on.</p>
   <div class="meta"><span>10 Oct 2026</span><span>Source: docs/PLAN.md</span><span>Single user</span><span>Paper receipts only</span><span>Tabs: 4 + Add</span></div>
@@ -217,12 +217,17 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 
 <section>
   <div class="sec-head">
-    <span class="eyebrow">What changed in v0.3</span>
-    <h2>Your answers, plus the updated plan</h2>
+    <span class="eyebrow">What changed in v0.4</span>
+    <h2>Password sign-in and a design system</h2>
   </div>
   <div class="changes">
+    <div><span class="q">Auth (v0.4)</span><span class="a"><b>URL + password.</b> The app posts the password to <code>POST /v1/auth/pair</code>, the server returns a bearer token, and the app keeps only the token in the Keychain. The password is never stored. Replaces “run <code>shop token create</code> and paste” in the app; the CLI token command stays for assistant/MCP clients.</span></div>
+    <div><span class="q">Onboarding (v0.4)</span><span class="a"><b>Welcome, Server, Password, Ready.</b> Settings › Server &amp; sync gains Change URL, Change password and Sign out. “Token rejected” becomes “Session expired”.</span></div>
+    <div><span class="q">Shop marks (v0.4)</span><span class="a"><b>22 px logo marks</b> from logo.dev, cached per shop, with a monogram fallback. Needs a publishable key as build config.</span></div>
+    <div><span class="q">Design system (v0.4)</span><span class="a"><b>Tabular numbers, bold only for headers,</b> motion and haptics specified. Screens are interactive prototypes and exist in dark mode. See Design system below.</span></div>
+    <div><span class="q">Earlier (v0.3)</span><span class="a">The rows below are the v0.3 decisions, kept for reference.</span></div>
     <div><span class="q">Finding the server</span><span class="a"><b>Typed URL.</b> One field, then Test connection. Works the same for LAN and Tailscale addresses.</span></div>
-    <div><span class="q">Pairing</span><span class="a"><b>Via the server.</b> Create a token on the Mac mini (<code>shop token create iphone</code>) and paste it into the app. Stored in the Keychain.</span></div>
+    <div><span class="q">Pairing (replaced in v0.4)</span><span class="a"><b>Was: via the server.</b> Create a token on the Mac mini (<code>shop token create iphone</code>) and paste it into the app. Stored in the Keychain.</span></div>
     <div><span class="q">Home</span><span class="a"><b>Shows spending this month</b> above the receipts inbox. Tapping it opens Analytics.</span></div>
     <div><span class="q">Phases</span><span class="a"><b>Removed.</b> Every screen here ships. M9 items in the plan (widgets, bank import, label OCR) stay out until you opt in.</span></div>
     <div><span class="q">Input (plan §0)</span><span class="a"><b>Paper receipts only, via the document scanner.</b> Screenshot import and the share sheet are gone, so Add has one receipt path: Scan → pick shop → queued.</span></div>
@@ -328,14 +333,35 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
       <div class="col">
         <div class="col-head side"><span class="sid">S · O · X</span><span class="name">Outside the tabs</span><span class="what">Settings, onboarding, search</span></div>
         <div class="node l2"><span class="name">Settings</span><span class="sid">S</span><span class="what">From avatar</span></div>
-        <div class="node l3"><span class="name">Server &amp; sync</span><span class="sid">S.1</span><span class="what">URL, token, health, backup</span></div>
+        <div class="node l3"><span class="name">Server &amp; sync</span><span class="sid">S.1</span><span class="what">URL, session, health, backup</span></div>
+        <div class="node l3"><span class="name">Change URL</span><span class="sid">S.1a</span><span class="what">Re-test, keep data</span></div>
+        <div class="node l3"><span class="name">Change password</span><span class="sid">S.1b</span><span class="what">New login, new token</span></div>
+        <div class="node l3"><span class="name">Sign out</span><span class="sid">S.1c</span><span class="what">Drops token, keeps cache</span></div>
         <div class="node l3"><span class="name">Upload queue</span><span class="sid">S.2</span><span class="what">Waiting, failed, retry</span></div>
         <div class="node l3"><span class="name">Shops</span><span class="sid">S.3</span><span class="what">List → edit shop</span></div>
         <div class="node l3"><span class="name">Categories</span><span class="sid">S.4</span><span class="what">Rename, reorder</span></div>
-        <div class="node l2"><span class="name">Onboarding</span><span class="sid">O.1–O.4</span><span class="what">Welcome, URL, token, ready</span></div>
+        <div class="node l2"><span class="name">Onboarding</span><span class="sid">O.1–O.4</span><span class="what">O.1 Welcome, O.2 Server, O.3 Password, O.4 Ready</span></div>
         <div class="node l2 sheet"><span class="name">Search</span><span class="sid">X.1</span><span class="what">Products, shops, receipts</span></div>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="design-system">
+  <div class="sec-head">
+    <span class="eyebrow">Design system</span>
+    <h2>Rules every screen follows</h2>
+    <p>Summary only. Source of truth: <code>DESIGN-RULES.md</code>. Motion detail: <code>motion.html</code> and <code>MOTION.md</code>.</p>
+  </div>
+  <div class="changes">
+    <div><span class="q">Type</span><span class="a">GT America + GT America Mono. <b>Numbers are tabular everywhere.</b> Bold (700) only for screen and tray headers and the hero number; rows, labels, buttons and chips use 400 or 500. Receipt text and barcodes in Mono.</span></div>
+    <div><span class="q">Colour</span><span class="a">Tokenised light and dark. Accents are shared across themes; <b>amber always means “needs review”</b>. Categories have fixed colours. Tray tint carries meaning (destructive trays are red).</span></div>
+    <div><span class="q">Shop marks</span><span class="a"><b>22 px</b> in lists, 28 px in headers, max 32 px. logo.dev logo cached per shop, monogram fallback in the brand colour. The logo.dev publishable key is a build-time config value still to be supplied.</span></div>
+    <div><span class="q">Density</span><span class="a">Flat 44–52 px rows, hairline dividers, no card backgrounds for lists, grouped by day with a day total. Aim for 9–12 rows per screen.</span></div>
+    <div><span class="q">Trays</span><span class="a">Soft tactile trays over a scrim. Tray-to-tray changes animate height while content cross-fades.</span></div>
+    <div><span class="q">Motion</span><span class="a">Spring for trays and toggles, ease for fades and slides, 0.97 press scale, digit roll on totals, staggered first paint. Reduced motion keeps 120 ms fades. See <code>motion.html</code> and <code>MOTION.md</code>.</span></div>
+    <div><span class="q">Haptics</span><span class="a">selection, light, medium, soft, plus success, warning and error notifications mapped to specific actions (for example error on wrong password, success when pairing succeeds). See <code>DESIGN-RULES.md</code>.</span></div>
+    <div><span class="q">Prototypes</span><span class="a">Screens are interactive prototypes (real links, inputs and state) and each also exists in dark mode.</span></div>
   </div>
 </section>
 
@@ -351,8 +377,8 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
       <div class="dir">
         <div><span>Type the server URL (LAN or <code>shop.&lt;tailnet&gt;.ts.net:8080</code>)</span><span>O.2</span></div>
         <div><span>Test connection: <code>/healthz</code> and <code>/version</code></span><span>O.2</span></div>
-        <div><span>On the server, run <code>shop token create iphone</code></span><span>O.3</span></div>
-        <div><span>Paste the token; the app checks it and saves it to the Keychain</span><span>O.3</span></div>
+        <div><span>Type the password; the app posts it to <code>/v1/auth/pair</code></span><span>O.3</span></div>
+        <div><span>Server returns a bearer token; the app saves it to the Keychain, never the password</span><span>O.3</span></div>
         <div><span>First sync downloads shops, categories, products and the list</span><span>O.4</span></div>
       </div>
     </div>
@@ -370,13 +396,15 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   <div class="panel">
     <h3>Sync states, shown in the sync pill and on S.1</h3>
     <div class="pills-row">
+      <div class="spill"><span class="p" style="background:var(--sunk);color:var(--ink-2)">Testing…</span><span>O.2 and O.3 while the request is in flight.</span></div>
       <div class="spill"><span class="p" style="background:var(--accent-soft);color:var(--accent)">Connected</span><span>No pill on screen. S.1 shows last sync time and server health.</span></div>
       <div class="spill"><span class="p" style="background:var(--proc-soft);color:var(--proc)">Uploading 3</span><span>Pill while scans upload.</span></div>
       <div class="spill"><span class="p" style="background:var(--sunk);color:var(--ink-2)">Offline · 2 waiting</span><span>No network. Everything still works; scans wait in the upload queue.</span></div>
       <div class="spill"><span class="p" style="background:var(--review-soft);color:var(--review)">Server unreachable</span><span>Network is fine but the server doesn't answer. Pill opens Server &amp; sync.</span></div>
       <div class="spill"><span class="p" style="background:var(--review-soft);color:var(--review)">OCR down</span><span><code>/healthz</code> degraded. Scans upload but wait to be processed.</span></div>
       <div class="spill"><span class="p" style="background:var(--review-soft);color:var(--review)">Backup stale</span><span>Last NAS backup over 36 h ago. Shown in Settings only.</span></div>
-      <div class="spill"><span class="p" style="background:var(--fail-soft);color:var(--fail)">Token rejected</span><span>Full-screen prompt to paste a new token; local data is kept.</span></div>
+      <div class="spill"><span class="p" style="background:var(--fail-soft);color:var(--fail)">Wrong password</span><span>O.3 only: red tint, field shakes once, error haptic.</span></div>
+      <div class="spill"><span class="p" style="background:var(--fail-soft);color:var(--fail)">Session expired</span><span>Token rejected (401). Full-screen password prompt; local data is kept.</span></div>
     </div>
   </div>
 </section>
@@ -394,7 +422,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
     <div class="obj"><h3>Price point</h3><div class="attrs">product × shop × date<br>paid after discounts · per kg/l/pc</div><div class="where"><span class="chip">P.1</span><span class="chip">P.1.1</span><span class="chip">A.3</span><span class="chip">L</span></div></div>
     <div class="obj"><h3>Shop</h3><div class="attrs">name · chain · branch<br>address · city</div><div class="where"><span class="chip">C.2</span><span class="chip">A.1</span><span class="chip">S.3</span></div></div>
     <div class="obj"><h3>List item</h3><div class="attrs">product or text · qty · note<br>checked</div><div class="where"><span class="chip">L</span><span class="chip">L.2</span><span class="chip">P.1</span></div></div>
-    <div class="obj"><h3>Server</h3><div class="attrs">URL · token · health checks<br>queue depth · last backup</div><div class="where"><span class="chip">O.2–O.4</span><span class="chip">S.1</span><span class="chip">sync pill</span></div></div>
+    <div class="obj"><h3>Server</h3><div class="attrs">URL · session (token in Keychain) · health<br>queue depth · last backup</div><div class="where"><span class="chip">O.2–O.4</span><span class="chip">S.1</span><span class="chip">sync pill</span></div></div>
   </div>
 </section>
 
@@ -426,8 +454,8 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
         <div class="step"><div class="box">Welcome <span class="sid">O.1</span></div></div>
         <div class="step"><div class="box hl">Type server URL <span class="sid">O.2</span></div></div>
         <div class="step"><div class="box sys">Test /healthz</div></div>
-        <div class="step"><div class="box sys">Run <code>shop token create</code> on server</div></div>
-        <div class="step"><div class="box hl">Paste token <span class="sid">O.3</span></div></div>
+        <div class="step"><div class="box hl">Enter password <span class="sid">O.3</span></div></div>
+        <div class="step"><div class="box sys">POST /v1/auth/pair → token in Keychain</div></div>
         <div class="step"><div class="box">First sync + camera <span class="sid">O.4</span></div></div>
         <div class="step"><div class="box">Home, empty state</div></div>
       </div>
@@ -510,8 +538,8 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
       <tbody>
         <tr class="grp"><td colspan="5">Onboarding</td></tr>
         <tr><td>O.1</td><td class="n">Welcome</td><td class="d">What Shop does; your receipts stay on your own server</td><td class="d">Connect server</td><td class="d">First launch</td></tr>
-        <tr><td>O.2</td><td class="n">Server address</td><td class="d">URL field, examples (LAN, Tailscale), test result with OCR engine and version</td><td class="d">Test connection</td><td class="d">O.1, S.1</td></tr>
-        <tr><td>O.3</td><td class="n">Access token</td><td class="d">Command to run on the server with copy button, token field with Paste, check result</td><td class="d">Connect</td><td class="d">O.2, token rejected</td></tr>
+        <tr><td>O.2</td><td class="n">Server</td><td class="d">URL field, examples (LAN, Tailscale), test result (testing, connected, unreachable) with OCR engine and version</td><td class="d">Test connection</td><td class="d">O.1, S.1</td></tr>
+        <tr><td>O.3</td><td class="n">Password</td><td class="d">Password field with show/hide; states testing, wrong password (red tint, shake), unreachable</td><td class="d">Connect</td><td class="d">O.2, session expired</td></tr>
         <tr><td>O.4</td><td class="n">Ready</td><td class="d">First sync progress (shops, categories, products, list), camera permission</td><td class="d">Scan first receipt</td><td class="d">O.3</td></tr>
         <tr class="grp"><td colspan="5">Home</td></tr>
         <tr><td>H</td><td class="n">Home</td><td class="d">Spent this month vs last month · needs attention · processing rows · receipts by date (shop, time, total, status)</td><td class="d">Add</td><td class="d">Tab</td></tr>
@@ -543,7 +571,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
         <tr><td>L.1</td><td class="n">Add item</td><td class="d">Search products or type free text, qty, note</td><td class="d">Add</td><td class="d">L</td></tr>
         <tr class="grp"><td colspan="5">Settings</td></tr>
         <tr><td>S</td><td class="n">Settings</td><td class="d">Server card with status, upload queue, shops, categories, about</td><td class="d">—</td><td class="d">Avatar</td></tr>
-        <tr><td>S.1</td><td class="n">Server &amp; sync</td><td class="d">URL, token (replace), checks (database, OCR, fallback OCR, queue), last backup, version, Disconnect</td><td class="d">Sync now</td><td class="d">S, sync pill</td></tr>
+        <tr><td>S.1</td><td class="n">Server &amp; sync</td><td class="d">URL (Change URL), session “Signed in” (Change password, Sign out), checks (database, OCR, fallback OCR, queue), last backup, version</td><td class="d">Sync now</td><td class="d">S, sync pill</td></tr>
         <tr><td>S.2</td><td class="n">Upload queue</td><td class="d">Waiting and failed scans with thumbnail, shop, error; retry or remove</td><td class="d">Retry all</td><td class="d">S, sync pill</td></tr>
         <tr><td>S.3</td><td class="n">Shops</td><td class="d">Shops with receipt count → edit: name, chain, branch, address, city</td><td class="d">Add shop</td><td class="d">S, C.2</td></tr>
         <tr><td>S.4</td><td class="n">Categories</td><td class="d">Ten seed categories, rename, reorder, add</td><td class="d">Add category</td><td class="d">S</td></tr>
