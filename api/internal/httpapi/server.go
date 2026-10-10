@@ -18,6 +18,7 @@ import (
 	"shop/internal/ocr"
 	"shop/internal/products"
 	"shop/internal/receipts"
+	"shop/internal/search"
 	"shop/internal/shopping"
 	"shop/internal/stats"
 	"shop/internal/store"
@@ -34,6 +35,7 @@ type Deps struct {
 	Stats       *stats.Service
 	List        *shopping.Service
 	English     *english.Service
+	Search      *search.Service
 	Location    *time.Location
 	Log         *slog.Logger
 	DataDir     string // for backup status and storage size; optional
@@ -74,6 +76,7 @@ func (s *Server) Handler() http.Handler {
 
 	api.HandleFunc("GET /v1/receipts", s.listReceipts)
 	api.HandleFunc("POST /v1/receipts", s.uploadReceipt)
+	api.HandleFunc("GET /v1/receipts/counts", s.receiptCounts)
 	api.HandleFunc("GET /v1/receipts/{id}", s.getReceipt)
 	api.HandleFunc("PATCH /v1/receipts/{id}", s.updateReceipt)
 	api.HandleFunc("DELETE /v1/receipts/{id}", s.deleteReceipt)
@@ -109,11 +112,13 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("GET /v1/list", s.getShoppingList)
 	api.HandleFunc("POST /v1/list", s.addListItem)
 	api.HandleFunc("DELETE /v1/list/checked", s.clearCheckedItems)
+	api.HandleFunc("GET /v1/list/changes", s.listChanges)
 	api.HandleFunc("PATCH /v1/list/{id}", s.updateListItem)
 	api.HandleFunc("DELETE /v1/list/{id}", s.deleteListItem)
 	api.HandleFunc("POST /v1/list/{id}/check", s.setListItemChecked(true))
 	api.HandleFunc("POST /v1/list/{id}/uncheck", s.setListItemChecked(false))
 
+	api.HandleFunc("GET /v1/search", s.search)
 	api.HandleFunc("GET /v1/glossary", s.listGlossary)
 	api.HandleFunc("POST /v1/glossary/preview", s.previewGlossary)
 	api.HandleFunc("PUT /v1/glossary/{dutch}", s.teachWord)

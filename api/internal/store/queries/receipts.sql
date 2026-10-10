@@ -10,7 +10,12 @@ SELECT * FROM receipts WHERE id = ?;
 SELECT * FROM receipts WHERE image_sha256 = ?;
 
 -- name: ListReceipts :many
-SELECT * FROM receipts
+SELECT sqlc.embed(receipts),
+  CAST((SELECT COUNT(*) FROM receipt_lines l
+        WHERE l.receipt_id = receipts.id AND l.kind = 'item') AS INTEGER) AS line_count,
+  CAST((SELECT COUNT(*) FROM receipt_lines l
+        WHERE l.receipt_id = receipts.id AND l.kind = 'item' AND l.product_id IS NULL) AS INTEGER) AS unlinked_count
+FROM receipts
 WHERE (sqlc.narg(shop_id) IS NULL OR shop_id = sqlc.narg(shop_id))
   AND (sqlc.narg(status) IS NULL OR status = sqlc.narg(status))
   AND (sqlc.narg(from_ts) IS NULL OR purchased_at >= sqlc.narg(from_ts))
@@ -18,6 +23,9 @@ WHERE (sqlc.narg(shop_id) IS NULL OR shop_id = sqlc.narg(shop_id))
   AND (sqlc.narg(before_id) IS NULL OR id < sqlc.narg(before_id))
 ORDER BY id DESC
 LIMIT sqlc.arg(lim);
+
+-- name: CountReceiptsByStatus :many
+SELECT status, COUNT(*) AS n FROM receipts GROUP BY status;
 
 -- name: ListReceiptIDsForReparse :many
 SELECT id FROM receipts

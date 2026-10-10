@@ -74,6 +74,38 @@ func (q *Queries) CountReceiptsByImagePath(ctx context.Context, imagePath string
 	return count, err
 }
 
+const countReceiptsByStatus = `-- name: CountReceiptsByStatus :many
+SELECT status, COUNT(*) AS n FROM receipts GROUP BY status
+`
+
+type CountReceiptsByStatusRow struct {
+	Status string `json:"status"`
+	N      int64  `json:"n"`
+}
+
+func (q *Queries) CountReceiptsByStatus(ctx context.Context) ([]CountReceiptsByStatusRow, error) {
+	rows, err := q.db.QueryContext(ctx, countReceiptsByStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountReceiptsByStatusRow{}
+	for rows.Next() {
+		var i CountReceiptsByStatusRow
+		if err := rows.Scan(&i.Status, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createReceipt = `-- name: CreateReceipt :one
 INSERT INTO receipts (shop_id, purchased_at, date_locked, image_path, image_sha256, status, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
@@ -236,7 +268,12 @@ func (q *Queries) ListReceiptIDsForReparse(ctx context.Context, status interface
 }
 
 const listReceipts = `-- name: ListReceipts :many
-SELECT id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited FROM receipts
+SELECT receipts.id, receipts.shop_id, receipts.purchased_at, receipts.total_cents, receipts.parsed_sum_cents, receipts.currency, receipts.payment_method, receipts.image_path, receipts.image_sha256, receipts.status, receipts.review_reasons, receipts.ocr_engine, receipts.ocr_ms, receipts.raw_ocr_json, receipts.parser_version, receipts.confirmed_at, receipts.created_at, receipts.updated_at, receipts.date_locked, receipts.header_edited,
+  CAST((SELECT COUNT(*) FROM receipt_lines l
+        WHERE l.receipt_id = receipts.id AND l.kind = 'item') AS INTEGER) AS line_count,
+  CAST((SELECT COUNT(*) FROM receipt_lines l
+        WHERE l.receipt_id = receipts.id AND l.kind = 'item' AND l.product_id IS NULL) AS INTEGER) AS unlinked_count
+FROM receipts
 WHERE (?1 IS NULL OR shop_id = ?1)
   AND (?2 IS NULL OR status = ?2)
   AND (?3 IS NULL OR purchased_at >= ?3)
@@ -255,7 +292,13 @@ type ListReceiptsParams struct {
 	Lim      int64       `json:"lim"`
 }
 
-func (q *Queries) ListReceipts(ctx context.Context, arg ListReceiptsParams) ([]Receipt, error) {
+type ListReceiptsRow struct {
+	Receipt       Receipt `json:"receipt"`
+	LineCount     int64   `json:"line_count"`
+	UnlinkedCount int64   `json:"unlinked_count"`
+}
+
+func (q *Queries) ListReceipts(ctx context.Context, arg ListReceiptsParams) ([]ListReceiptsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listReceipts,
 		arg.ShopID,
 		arg.Status,
@@ -268,30 +311,32 @@ func (q *Queries) ListReceipts(ctx context.Context, arg ListReceiptsParams) ([]R
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Receipt{}
+	items := []ListReceiptsRow{}
 	for rows.Next() {
-		var i Receipt
+		var i ListReceiptsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ShopID,
-			&i.PurchasedAt,
-			&i.TotalCents,
-			&i.ParsedSumCents,
-			&i.Currency,
-			&i.PaymentMethod,
-			&i.ImagePath,
-			&i.ImageSha256,
-			&i.Status,
-			&i.ReviewReasons,
-			&i.OcrEngine,
-			&i.OcrMs,
-			&i.RawOcrJson,
-			&i.ParserVersion,
-			&i.ConfirmedAt,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.DateLocked,
-			&i.HeaderEdited,
+			&i.Receipt.ID,
+			&i.Receipt.ShopID,
+			&i.Receipt.PurchasedAt,
+			&i.Receipt.TotalCents,
+			&i.Receipt.ParsedSumCents,
+			&i.Receipt.Currency,
+			&i.Receipt.PaymentMethod,
+			&i.Receipt.ImagePath,
+			&i.Receipt.ImageSha256,
+			&i.Receipt.Status,
+			&i.Receipt.ReviewReasons,
+			&i.Receipt.OcrEngine,
+			&i.Receipt.OcrMs,
+			&i.Receipt.RawOcrJson,
+			&i.Receipt.ParserVersion,
+			&i.Receipt.ConfirmedAt,
+			&i.Receipt.CreatedAt,
+			&i.Receipt.UpdatedAt,
+			&i.Receipt.DateLocked,
+			&i.Receipt.HeaderEdited,
+			&i.LineCount,
+			&i.UnlinkedCount,
 		); err != nil {
 			return nil, err
 		}

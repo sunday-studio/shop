@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.6.0
+  version: 0.7.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -193,6 +193,26 @@ paths:
             application/problem+json:
               schema: { $ref: "#/components/schemas/Problem" }
         default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/counts:
+    get:
+      operationId: receiptCounts
+      description: Receipts per status, for the home attention card and tab badge.
+      responses:
+        "200":
+          description: Counts (every status present, 0 when none)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pending, processing, needs_review, ok, failed, total]
+                properties:
+                  pending: { type: integer }
+                  processing: { type: integer }
+                  needs_review: { type: integer }
+                  ok: { type: integer }
+                  failed: { type: integer }
+                  total: { type: integer }
 
   /v1/receipts/{id}:
     parameters:
@@ -626,6 +646,11 @@ paths:
                 items: { $ref: "#/components/schemas/ListItem" }
     post:
       operationId: addListItem
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          description: Same as client_id in the body (either works).
+          schema: { type: string, maxLength: 100 }
       description: >
         Free text is linked to a product automatically when it matches one closely (score >= 0.9).
         Adding a product that is already open on the list increases its qty instead (200).
@@ -641,10 +666,41 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ListItem" }
         "200":
-          description: Merged into an existing open item
+          description: Merged into an existing open item, or a repeat of an earlier request with the same client_id (returned unchanged)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ListItem" }
+        "410":
+          description: Repeat of a client_id whose item has since been deleted
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/changes:
+    get:
+      operationId: listChanges
+      description: >
+        Offline sync: items created, edited, checked or unchecked at or after `since` (checked items
+        included), plus ids deleted since. Pass the returned server_time as the next `since`.
+        The boundary is inclusive, so an item can come back twice; applying it again is harmless.
+        Deletions are remembered for 30 days; for an older `since` the response sets full_resync
+        and the app should refetch GET /v1/list?include_checked=true.
+      parameters:
+        - { name: since, in: query, required: true, schema: { type: string, format: date-time } }
+      responses:
+        "200":
+          description: Changes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, deleted_ids, server_time, full_resync]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/ListItem" } }
+                  deleted_ids: { type: array, items: { type: integer, format: int64 } }
+                  server_time: { type: string, format: date-time }
+                  full_resync: { type: boolean }
         default: { $ref: "#/components/responses/Problem" }
 
   /v1/list/checked:
@@ -796,6 +852,48 @@ paths:
       description: Unpair a device; its token stops working immediately. (Can be the caller itself.)
       responses:
         "204": { description: Revoked }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # --------------------------------------------------------------- search
+  /v1/search:
+    get:
+      operationId: search
+      description: >
+        One search box for the app: products (Dutch or English names, fuzzy), learned receipt texts
+        (aliases), and receipts whose item lines contain the text or are linked to a matched product.
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: limit, in: query, description: per section, schema: { type: integer, default: 10, maximum: 50 } }
+      responses:
+        "200":
+          description: Results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [products, aliases, receipts]
+                properties:
+                  products: { type: array, items: { $ref: "#/components/schemas/Product" } }
+                  aliases:
+                    type: array
+                    items:
+                      type: object
+                      required: [text, product_id, product_name, score]
+                      properties:
+                        text: { type: string, description: "normalised receipt text, e.g. ah halfvol melk" }
+                        product_id: { type: integer, format: int64 }
+                        product_name: { type: string }
+                        shop_id: { type: integer, format: int64 }
+                        shop_name: { type: string }
+                        score: { type: number, format: double }
+                  receipts:
+                    type: array
+                    items:
+                      type: object
+                      required: [receipt, matched_lines]
+                      properties:
+                        receipt: { $ref: "#/components/schemas/Receipt" }
+                        matched_lines: { type: array, items: { type: string }, description: "up to 3" }
         default: { $ref: "#/components/responses/Problem" }
 
   # ------------------------------------------------------ english names
@@ -976,25 +1074,6 @@ components:
 
   schemas:
     Problem:
-      description: Error
-      content:
-        application/problem+json:
-          schema: { $ref: "#/components/schemas/Problem" }
-
-  schemas:
-    LoginRequest:
-      type: object
-      required: [password]
-      properties:
-        password: { type: string, format: password }
-        device_name: { type: string, maxLength: 60, description: "optional label shown in the device list" }
-    LoginResponse:
-      type: object
-      required: [token]
-      properties:
-        token: { type: string, description: "bearer token, st_…" }
-        expires_at: { type: string, format: date-time, description: "omitted when the token does not expire" }
-    Problem:
       type: object
       required: [title, status]
       properties:
@@ -1108,6 +1187,9 @@ components:
         vat_code: { type: string }
         parent_line_id: { type: integer, format: int64 }
         product_id: { type: integer, format: int64 }
+        product_name: { type: string, description: "linked product (single-receipt GET)" }
+        product_name_en: { type: string }
+        category_id: { type: integer, format: int64, description: "linked product's category" }
         user_edited: { type: boolean }
         text_en: { type: string, description: "dictionary English rendering of raw_text, when good enough" }
         text_en_status: { type: string, enum: [dictionary, partial, missing] }
@@ -1145,6 +1227,8 @@ components:
         confirmed_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        line_count: { type: integer, description: "item lines (excludes discounts, deposits, bags)" }
+        unlinked_count: { type: integer, description: "item lines without a product" }
         lines:
           type: array
           items: { $ref: "#/components/schemas/ReceiptLine" }
@@ -1360,6 +1444,7 @@ components:
     ListItemInput:
       type: object
       properties:
+        client_id: { type: string, maxLength: 100, description: "client-generated id (UUID); makes POST /v1/list idempotent" }
         text: { type: string }
         product_id: { type: integer, format: int64 }
         qty: { type: number, format: double }
@@ -1377,6 +1462,7 @@ components:
         note: { type: string }
         checked_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
         cheapest: { $ref: "#/components/schemas/ShopPrice" }
 
     Device:

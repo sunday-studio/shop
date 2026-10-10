@@ -36,12 +36,60 @@ func toReceipt(r db.Receipt, lines []db.ReceiptLine) apitypes.Receipt {
 	}
 	if lines != nil {
 		ls := make([]apitypes.ReceiptLine, len(lines))
+		var items, unlinked int
 		for i, l := range lines {
 			ls[i] = toLine(l)
+			if l.Kind == "item" {
+				items++
+				if !l.ProductID.Valid {
+					unlinked++
+				}
+			}
 		}
 		out.Lines = &ls
+		out.LineCount, out.UnlinkedCount = &items, &unlinked
 	}
 	return out
+}
+
+// withProducts adds the linked product's names and category to lines.
+func (s *Server) withProducts(r *http.Request, lines []apitypes.ReceiptLine) error {
+	var ids []int64
+	for _, l := range lines {
+		if l.ProductId != nil {
+			ids = append(ids, *l.ProductId)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	ps, err := s.q.GetProductsByIDs(r.Context(), ids)
+	if err != nil {
+		return err
+	}
+	byID := make(map[int64]db.Product, len(ps))
+	for _, p := range ps {
+		byID[p.ID] = p
+	}
+	for i, l := range lines {
+		if l.ProductId == nil {
+			continue
+		}
+		if p, ok := byID[*l.ProductId]; ok {
+			name := p.Name
+			lines[i].ProductName, lines[i].ProductNameEn, lines[i].CategoryId = &name, store.StrPtr(p.NameEn), store.IntPtr(p.CategoryID)
+		}
+	}
+	return nil
+}
+
+func (s *Server) receiptCounts(w http.ResponseWriter, r *http.Request) {
+	c, err := s.Receipts.Counts(r.Context())
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, c)
 }
 
 func toLine(l db.ReceiptLine) apitypes.ReceiptLine {
@@ -108,10 +156,12 @@ func (s *Server) listReceipts(w http.ResponseWriter, r *http.Request) {
 	}
 	page := apitypes.ReceiptPage{Items: make([]apitypes.Receipt, len(recs))}
 	for i, rec := range recs {
-		page.Items[i] = toReceipt(rec, nil)
+		page.Items[i] = toReceipt(rec.Receipt, nil)
+		lc, uc := int(rec.LineCount), int(rec.UnlinkedCount)
+		page.Items[i].LineCount, page.Items[i].UnlinkedCount = &lc, &uc
 	}
 	if int64(len(recs)) == f.Limit {
-		c := itoa(recs[len(recs)-1].ID)
+		c := itoa(recs[len(recs)-1].Receipt.ID)
 		page.NextCursor = &c
 	}
 	writeJSON(w, http.StatusOK, page)
@@ -187,6 +237,10 @@ func (s *Server) getReceipt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := toReceipt(rec, lines)
+	if err := s.withProducts(r, *out.Lines); err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
 	if s.Products != nil {
 		for i, l := range *out.Lines {
 			if l.Kind != apitypes.Item || l.ProductId != nil {

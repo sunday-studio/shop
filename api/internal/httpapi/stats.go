@@ -174,6 +174,9 @@ func (s *Server) getFrequentItems(w http.ResponseWriter, r *http.Request) {
 func toListItem(it shopping.Item) map[string]any {
 	created, _ := store.ParseTS(it.CreatedAt)
 	out := map[string]any{"id": it.ID, "text": it.Text, "created_at": created}
+	if t := store.TimePtr(it.UpdatedAt); t != nil {
+		out["updated_at"] = *t
+	}
 	if it.ProductID.Valid {
 		out["product_id"] = it.ProductID.Int64
 		out["product_name"] = it.ProductName
@@ -198,6 +201,9 @@ func listInput(in apitypes.ListItemInput) shopping.Input {
 	if in.Text != nil {
 		out.Text = *in.Text
 	}
+	if in.ClientId != nil {
+		out.ClientID = *in.ClientId
+	}
 	return out
 }
 
@@ -220,7 +226,11 @@ func (s *Server) addListItem(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	it, created, err := s.List.Add(r.Context(), listInput(in))
+	li := listInput(in)
+	if key := r.Header.Get("Idempotency-Key"); key != "" && li.ClientID == "" {
+		li.ClientID = key
+	}
+	it, created, err := s.List.Add(r.Context(), li)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -287,4 +297,24 @@ func (s *Server) clearCheckedItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]int64{"removed": n})
+}
+
+func (s *Server) listChanges(w http.ResponseWriter, r *http.Request) {
+	since, err := time.Parse(time.RFC3339, r.URL.Query().Get("since"))
+	if err != nil {
+		s.writeErr(w, r, badf("since must be RFC3339, e.g. 2026-10-10T12:00:00Z"))
+		return
+	}
+	c, err := s.List.Changes(r.Context(), since)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	items := make([]map[string]any, len(c.Items))
+	for i, it := range c.Items {
+		items[i] = toListItem(it)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items": items, "deleted_ids": c.DeletedIDs, "server_time": c.ServerTime, "full_resync": c.FullResync,
+	})
 }
