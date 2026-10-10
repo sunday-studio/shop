@@ -1,5 +1,9 @@
 name: shop
 
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
 services:
   api:
     image: shop-api:latest
@@ -13,13 +17,19 @@ services:
     volumes: ["shop-data:/data"]
     environment:
       SHOP_DATA_DIR: /data
-      OCR_URL: http://ocr:8000
+      OCR_URL: ${OCR_URL:-http://ocr:8000}
       OCR_FALLBACK_URL: ${OCR_FALLBACK_URL:-}
       OFF_USER_AGENT: "Shop/0.1 (self-hosted)"
       SHOP_TZ: Europe/Amsterdam
     depends_on:
       ocr:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/shop", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+    logging: *logging
 
   ocr:
     image: shop-ocr:ppocrv5
@@ -29,6 +39,27 @@ services:
         OCR_ENGINE: ppocrv5
     restart: unless-stopped
     mem_limit: 3g
+    logging: *logging
+
+  # Nightly snapshot of the database + image mirror to the NAS.
+  # SHOP_BACKUP_DIR is the host path of the NAS mount, e.g. /Volumes/nas/shop.
+  backup:
+    image: shop-api:latest
+    command: ["backup", "-schedule"]
+    restart: unless-stopped
+    volumes:
+      - "shop-data:/data"
+      - "${SHOP_BACKUP_DIR:-../backups}:/backup"
+    environment:
+      SHOP_DATA_DIR: /data
+      SHOP_TZ: Europe/Amsterdam
+      BACKUP_DIR: /backup
+      BACKUP_AT: ${BACKUP_AT:-03:30}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+    depends_on:
+      api:
+        condition: service_started
+    logging: *logging
 
 volumes:
   shop-data: {}

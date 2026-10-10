@@ -527,11 +527,13 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 **Done when** a full grocery haul can be unpacked with every new product added and linked, and the list works in airplane mode and syncs afterwards.
 
 ### M8 — Ops hardening (2 d)
-- [ ] `shop backup` + backup container, NAS mount docs, retention, `/healthz` staleness
-- [ ] Restore drill executed and documented (`docs/restore.md`)
-- [ ] Tailscale setup docs; optional `tailscale serve` HTTPS
-- [ ] Image + DB size check in `/healthz`; log rotation
-- [ ] Upgrade procedure: `docker compose pull && up -d`, with migrations auto-run on start (with a backup taken first)
+- [x] `shop backup` + backup container, NAS mount docs, retention, `/healthz` staleness
+- [x] Restore drill executed and documented (`docs/restore.md`)
+- [x] Tailscale setup docs; optional `tailscale serve` HTTPS
+- [x] Image + DB size check in `/healthz`; log rotation
+- [x] Upgrade procedure: `docker compose pull && up -d`, with migrations auto-run on start (with a backup taken first)
+
+**Status: done (2026-10-10).** `shop backup` (VACUUM INTO snapshot + integrity check + append-only image mirror + retention), scheduled by the `backup` compose service; `shop restore`; pre-migration snapshot on upgrade; `/healthz` storage + backup checks; container healthcheck; log rotation. Restore drill run on the dev stack (see docs/restore.md). Docs: docs/operations.md, docs/restore.md. Tailscale and the NAS mount are documented, not yet set up on the mini.
 
 **Done when** you can rebuild the Mac mini from scratch using only the NAS backup and the docs, in under 30 min.
 

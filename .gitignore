@@ -20,3 +20,6 @@ ios/**/DerivedData/
 *.xcuserstate
 
 .DS_Store
+
+# local backups (dev default for SHOP_BACKUP_DIR)
+backups/

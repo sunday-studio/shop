@@ -4,11 +4,16 @@ package httpapi
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"shop/internal/apitypes"
+	"shop/internal/backup"
 	"shop/internal/ocr"
 	"shop/internal/products"
 	"shop/internal/receipts"
@@ -29,6 +34,7 @@ type Deps struct {
 	List        *shopping.Service
 	Location    *time.Location
 	Log         *slog.Logger
+	DataDir     string // for backup status and storage size; optional
 	// Extra routes mounted behind auth (e.g. MCP), keyed by pattern.
 	Authed map[string]http.Handler
 }
@@ -135,6 +141,13 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 		checks["jobs"] = apitypes.Check{Ok: true, Detail: &detail}
 	}
 
+	if s.DataDir != "" {
+		checks["storage"] = s.storageCheck()
+		if c, ok := s.backupCheck(); ok {
+			checks["backup"] = c
+		}
+	}
+
 	h := apitypes.Health{Status: apitypes.HealthStatusOk, Checks: checks}
 	code := http.StatusOK
 	for _, c := range checks {
@@ -177,4 +190,41 @@ func check(err error) apitypes.Check {
 		return apitypes.Check{Ok: false, Detail: &msg}
 	}
 	return apitypes.Check{Ok: true}
+}
+
+// backupStaleAfter: daily backups, plus slack for a missed night.
+const backupStaleAfter = 36 * time.Hour
+
+// backupCheck reports the last backup run. It is absent until backups
+// have run at least once, so a dev setup without a NAS stays healthy.
+func (s *Server) backupCheck() (apitypes.Check, bool) {
+	st, err := backup.ReadStatus(filepath.Join(s.DataDir, "backup_status.json"))
+	if errors.Is(err, os.ErrNotExist) {
+		return apitypes.Check{}, false
+	}
+	if err != nil {
+		return check(err), true
+	}
+	age := time.Since(st.At).Round(time.Minute)
+	switch {
+	case !st.OK:
+		d := fmt.Sprintf("last backup failed %s ago: %s", age, st.Error)
+		return apitypes.Check{Ok: false, Detail: &d}, true
+	case age > backupStaleAfter:
+		d := fmt.Sprintf("stale: last backup %s ago", age)
+		return apitypes.Check{Ok: false, Detail: &d}, true
+	}
+	d := fmt.Sprintf("%s, %s ago", st.Snapshot, age)
+	return apitypes.Check{Ok: true, Detail: &d}, true
+}
+
+func (s *Server) storageCheck() apitypes.Check {
+	var size int64
+	for _, suffix := range []string{"", "-wal"} {
+		if fi, err := os.Stat(filepath.Join(s.DataDir, "shop.db"+suffix)); err == nil {
+			size += fi.Size()
+		}
+	}
+	d := fmt.Sprintf("db %.1f MB", float64(size)/(1<<20))
+	return apitypes.Check{Ok: true, Detail: &d}
 }
