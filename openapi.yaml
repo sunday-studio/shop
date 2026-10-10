@@ -309,6 +309,8 @@ paths:
               properties:
                 shop_id: { type: integer, format: int64 }
                 name: { type: string, description: "name for the new shop; the user may edit the suggestion" }
+                branch: { type: string, description: "overrides the suggested branch of the new shop" }
+                domain: { type: string, description: "overrides the guessed logo domain of the new shop (e.g. ah.nl)" }
                 apply_to_waiting: { type: boolean, default: true }
       responses:
         "200":
@@ -1318,6 +1320,7 @@ components:
         name: { type: string, description: "existing shop's name, or the proposed name of the new shop" }
         chain: { type: string }
         branch: { type: string, description: "street + number, town" }
+        domain: { type: string, description: "guessed web domain for the logo, e.g. ah.nl; absent when unknown" }
         confidence: { type: number, format: float }
         evidence: { type: array, items: { type: string }, description: "header rows the suggestion was read from" }
         waiting_receipt_ids:

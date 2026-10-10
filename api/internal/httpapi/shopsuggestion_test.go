@@ -30,7 +30,7 @@ func TestShopSuggestionNewThenAcceptMovesWaiting(t *testing.T) {
 	}](t, e.do("GET", fmt.Sprintf("/v1/receipts/%d/shop-suggestion", a.Id), nil))
 	s := got.Suggestion
 	if s == nil || s.Kind != apitypes.New || s.Name != "Albert Heijn" ||
-		s.Branch == nil || *s.Branch != "Hoofdstraat 12, Teststad" ||
+		s.Domain == nil || *s.Domain != "ah.nl" || s.Branch == nil || *s.Branch != "Hoofdstraat 12, Teststad" ||
 		len(s.WaitingReceiptIds) != 1 || s.WaitingReceiptIds[0] != b.Id {
 		t.Fatalf("suggestion = %+v", s)
 	}
@@ -40,7 +40,7 @@ func TestShopSuggestionNewThenAcceptMovesWaiting(t *testing.T) {
 		t.Error("shop_suggestion missing from GET /v1/receipts/{id}")
 	}
 
-	rec := e.do("POST", fmt.Sprintf("/v1/receipts/%d/shop-suggestion/accept", a.Id), map[string]any{"name": "AH Teststad"})
+	rec := e.do("POST", fmt.Sprintf("/v1/receipts/%d/shop-suggestion/accept", a.Id), map[string]any{"name": "AH Teststad", "domain": "ah.nl"})
 	if rec.Code != 200 {
 		t.Fatalf("accept: %d %s", rec.Code, rec.Body)
 	}
@@ -48,7 +48,7 @@ func TestShopSuggestionNewThenAcceptMovesWaiting(t *testing.T) {
 		Shop   apitypes.Shop `json:"shop"`
 		Linked []int64       `json:"linked_receipt_ids"`
 	}](t, rec)
-	if res.Shop.Name != "AH Teststad" || len(res.Linked) != 2 {
+	if res.Shop.Name != "AH Teststad" || res.Shop.Domain == nil || *res.Shop.Domain != "ah.nl" || len(res.Linked) != 2 {
 		t.Fatalf("accept result = %+v", res)
 	}
 	for id, want := range map[int64]int64{a.Id: res.Shop.Id, b.Id: res.Shop.Id, other.Id: holding.Id} {

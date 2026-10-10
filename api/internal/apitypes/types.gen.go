@@ -1049,6 +1049,9 @@ type ShopSuggestion struct {
 	Chain      *string `json:"chain,omitempty"`
 	Confidence float32 `json:"confidence"`
 
+	// Domain guessed web domain for the logo, e.g. ah.nl; absent when unknown
+	Domain *string `json:"domain,omitempty"`
+
 	// Evidence header rows the suggestion was read from
 	Evidence []string           `json:"evidence"`
 	Kind     ShopSuggestionKind `json:"kind"`
@@ -1239,6 +1242,12 @@ type ReparseReceiptParams struct {
 // AcceptShopSuggestionJSONBody defines parameters for AcceptShopSuggestion.
 type AcceptShopSuggestionJSONBody struct {
 	ApplyToWaiting *bool `json:"apply_to_waiting,omitempty"`
+
+	// Branch overrides the suggested branch of the new shop
+	Branch *string `json:"branch,omitempty"`
+
+	// Domain overrides the guessed logo domain of the new shop (e.g. ah.nl)
+	Domain *string `json:"domain,omitempty"`
 
 	// Name name for the new shop; the user may edit the suggestion
 	Name   *string `json:"name,omitempty"`
