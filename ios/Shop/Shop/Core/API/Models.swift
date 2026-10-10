@@ -197,7 +197,8 @@ nonisolated struct ReceiptPatch: Codable, Sendable, Hashable {
 
 nonisolated struct Receipt: Codable, Sendable, Hashable, Identifiable {
     var id: Int64
-    var shopId: Int64
+    /// nil while the receipt is unassigned (uploaded without a shop; the server may suggest one).
+    var shopId: Int64?
     var purchasedAt: Date?
     var totalCents: Int64?
     var parsedSumCents: Int64?
@@ -217,6 +218,8 @@ nonisolated struct Receipt: Codable, Sendable, Hashable, Identifiable {
     var unlinkedCount: Int?
     /// Single-receipt GET only: the shop this receipt header looks like (openapi 0.10.0).
     var shopSuggestion: ShopSuggestion?
+    /// Hint from the photo's EXIF; never the purchase date unless the user picks it.
+    var photoTakenAt: Date?
 
     var reasons: [ReviewReason] { reviewReasons.compactMap(ReviewReason.init(rawValue:)) }
     /// The date to show and group by: purchase time, else upload time.
@@ -332,7 +335,8 @@ nonisolated struct Alias: Codable, Sendable, Hashable, Identifiable {
 
 nonisolated struct UnmatchedLine: Codable, Sendable, Hashable, Identifiable {
     var line: ReceiptLine
-    var shopId: Int64
+    /// nil for a line on an unassigned receipt (shop_name is then "Unassigned").
+    var shopId: Int64?
     var shopName: String
     var purchasedAt: Date?
     var score: Double

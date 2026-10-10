@@ -71,6 +71,26 @@ private struct ReceiptScreen: View {
                             Banner(tone: banner.tone, lead: banner.lead.isEmpty ? nil : banner.lead, message: banner.message)
                                 .padding(.horizontal, Space.edge)
                                 .padding(.top, 18)
+                            if receipt.shopId == nil {
+                                Button("Pick a shop") {
+                                    app.trays.present("edit-details") { EditDetailsTray(model: model) }
+                                }
+                                .textStyle(.label)
+                                .foregroundStyle(Palette.blueText)
+                                .buttonStyle(.press(haptic: .selection))
+                                .padding(.horizontal, Space.edge + Space.lx)
+                                .padding(.top, Space.m)
+                            }
+                            if receipt.reasons.contains(.noDate) {
+                                Button("Set the date") {
+                                    app.trays.present("no-date") { NoDateFixTray(model: model) }
+                                }
+                                .textStyle(.label)
+                                .foregroundStyle(Palette.blueText)
+                                .buttonStyle(.press(haptic: .selection))
+                                .padding(.horizontal, Space.edge + Space.lx)
+                                .padding(.top, Space.m)
+                            }
                         } else if receipt.lines == nil && receipt.status == .needsReview {
                             // The banner needs the lines; hold its space so the rows don't jump.
                             Banner(tone: .amber, lead: "Placeholder amount short.", message: "Check the lines against the photo.")
@@ -368,6 +388,56 @@ struct SuggestionEditTray: View {
             name = suggestion.name
             branch = suggestion.branch ?? ""
             website = suggestion.domain ?? ""
+        }
+    }
+}
+
+
+/// "No date found" fix: use the upload day, or pick one. (A photo date joins them once the
+/// server keeps `photo_taken_at`.)
+struct NoDateFixTray: View {
+    let model: ReceiptModel
+    @Environment(TrayCoordinator.self) private var trays
+    @State private var picked = Date()
+    @State private var picking = false
+    @State private var saving = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.lx) {
+            TrayHeader(title: "Receipt date", subtitle: "Pick a date so it counts in your totals.")
+            if let uploaded = model.receipt?.createdAt {
+                OptionRow(icon: .upload, title: "Use upload day", hint: "\(Dates.shortDay(uploaded)) · \(Dates.time(uploaded))") {
+                    Task { await save(uploaded) }
+                }
+            }
+            OptionRow(icon: .calendar, title: "Pick…", hint: "Choose the day you shopped") {
+                withAnimation(Motion.spring) { picking.toggle() }
+            }
+            if picking {
+                DatePicker("", selection: $picked, in: ...Date.now)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .tint(Accent.blue)
+                    .environment(\.timeZone, Dates.timeZone)
+                Button {
+                    Task { await save(picked) }
+                } label: {
+                    LoadingLabel(title: "Use this date", isLoading: saving)
+                }
+                .buttonStyle(.shop())
+                .disabled(saving)
+            }
+        }
+    }
+
+    private func save(_ date: Date) async {
+        saving = true
+        defer { saving = false }
+        var patch = ReceiptPatch()
+        patch.purchasedAt = date
+        if await model.updateDetails(patch) {
+            Haptics.play(.success)
+            trays.dismiss()
         }
     }
 }

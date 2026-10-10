@@ -52,7 +52,11 @@ final class HomeModel {
         }
     }
 
-    var attentionCount: Int { counts.map { $0.needsReview + $0.failed } ?? attention.count }
+    /// Unassigned receipts the server doesn't count as "needs review": they still need a shop.
+    var unassignedCount: Int {
+        attention.filter { $0.shopId == nil && $0.status != .needsReview && $0.status != .failed }.count
+    }
+    var attentionCount: Int { (counts.map { $0.needsReview + $0.failed } ?? attention.count) + unassignedCount }
     var processingCount: Int { receipts.filter { $0.status == .processing || $0.status == .pending }.count }
 
     /// Rough review time: about a minute per receipt.
@@ -110,7 +114,10 @@ final class HomeModel {
             let (p, r, f) = try await (page, review, failed)
             receipts = p.items
             nextCursor = p.nextCursor
-            attention = (r.items + f.items).sorted { $0.displayDate > $1.displayDate }
+            // Receipts without a shop (and no suggestion accepted yet) go to the review list too.
+            let flagged = Set((r.items + f.items).map(\.id))
+            let unassigned = p.items.filter { $0.shopId == nil && $0.confirmedAt == nil && $0.status == .ok && !flagged.contains($0.id) }
+            attention = (r.items + f.items + unassigned).sorted { $0.displayDate > $1.displayDate }
             error = nil
             hasLoaded = true
             if !filter.isActive { DiskStore.save(p.items, to: "inbox.json") }
@@ -238,7 +245,7 @@ final class HomeModel {
         r.lines = nil
         if let i = receipts.firstIndex(where: { $0.id == r.id }) { receipts[i] = r }
         attention.removeAll { $0.id == r.id }
-        if r.status == .needsReview || r.status == .failed { attention.insert(r, at: 0) }
+        if r.status == .needsReview || r.status == .failed || (r.shopId == nil && r.confirmedAt == nil && r.status == .ok) { attention.insert(r, at: 0) }
         Task { counts = try? await api.receiptCounts() }
         updatePolling()
     }

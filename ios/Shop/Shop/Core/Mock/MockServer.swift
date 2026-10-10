@@ -368,7 +368,7 @@ final class MockServer: HTTPTransport {
         let shopId = text.range(of: "name=\"shop_id\"\r\n\r\n").flatMap { r -> Int64? in
             let rest = text[r.upperBound...]
             return Int64(rest.prefix { $0.isNumber })
-        } ?? 1
+        }
         let rid = newId()
         let r = Receipt(id: rid, shopId: shopId, purchasedAt: nil, totalCents: nil, parsedSumCents: nil, paymentMethod: nil, status: .processing,
                         reviewReasons: [], ocrEngine: nil, ocrMs: nil, parserVersion: nil, confirmedAt: nil, createdAt: .now, updatedAt: .now, lines: [])
@@ -539,13 +539,14 @@ final class MockServer: HTTPTransport {
         return nil
     }
 
-    private func shopName(_ id: Int64) -> String { shops.first { $0.id == id }?.name ?? "Shop" }
+    private func shopName(_ id: Int64?) -> String { id == nil ? "Unassigned" : (shops.first { $0.id == id }?.name ?? "Shop") }
 
     private var acceptedSuggestions: Set<Int64> = []
 
     /// One receipt that "looks like Aldi", for trying the suggestion card in -mock.
     private func mockSuggestion(for id: Int64) -> ShopSuggestion? {
-        guard id == 102, !acceptedSuggestions.contains(id) else { return nil }
+        let unassigned = receipts.first { $0.id == id }.map { $0.shopId == nil && $0.status != .processing } ?? false
+        guard id == 102 || unassigned, !acceptedSuggestions.contains(id) else { return nil }
         return ShopSuggestion(kind: .new, shopId: nil, name: "Aldi", chain: "Aldi", branch: "Hoofdstraat 12, Teststad", domain: "aldi.nl",
                               confidence: 0.92, evidence: ["ALDI", "Hoofdstraat 12", "Teststad"], waitingReceiptIds: acceptedSuggestions.contains(104) ? [] : [104])
     }

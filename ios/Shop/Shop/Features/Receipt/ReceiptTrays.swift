@@ -557,7 +557,7 @@ struct EditDetailsTray: View {
         }
         .onAppear {
             guard !loaded, let r = model.receipt else { return }
-            shopId = r.shopId
+            shopId = r.shopId ?? 0
             if let d = r.purchasedAt { date = d } else { hasDate = false }
             total = Money.editable(r.totalCents)
             loaded = true
@@ -568,7 +568,7 @@ struct EditDetailsTray: View {
         saving = true
         defer { saving = false }
         var patch = ReceiptPatch()
-        if shopId != model.receipt?.shopId { patch.shopId = shopId }
+        if shopId != 0 && shopId != model.receipt?.shopId { patch.shopId = shopId }
         if hasDate && date != model.receipt?.purchasedAt { patch.purchasedAt = date }
         if let cents = Money.parse(total), cents != model.receipt?.totalCents { patch.totalCents = cents }
         if patch.shopId == nil && patch.purchasedAt == nil && patch.totalCents == nil {

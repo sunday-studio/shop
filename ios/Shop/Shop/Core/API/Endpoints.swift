@@ -103,10 +103,11 @@ extension APIClient {
     func receiptImageURL(_ id: Int64) -> URL? { url("/v1/receipts/\(id)/image") }
 
     /// Foreground upload (the queue normally uploads in the background).
-    func uploadReceipt(image: Data, shopId: Int64?, purchasedAt: Date?) async throws -> Receipt {
+    func uploadReceipt(image: Data, shopId: Int64?, purchasedAt: Date?, photoTakenAt: Date? = nil) async throws -> Receipt {
         var form = Multipart()
         if let shopId { form.add(field: "shop_id", value: String(shopId)) }
         if let purchasedAt { form.add(field: "purchased_at", value: Dates.rfc3339(purchasedAt)) }
+        if let photoTakenAt { form.add(field: "photo_taken_at", value: Dates.rfc3339(photoTakenAt)) }
         form.add(file: "image", filename: "receipt.jpg", mimeType: "image/jpeg", data: image)
         form.finish()
         return try await upload("POST", "/v1/receipts", multipart: form)

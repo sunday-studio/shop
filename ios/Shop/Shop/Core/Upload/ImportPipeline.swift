@@ -227,6 +227,7 @@ nonisolated enum ImportPreparer {
         var form = Multipart()
         if let shopId = item.shopId { form.add(field: "shop_id", value: String(shopId)) }
         if let purchasedAt = item.purchasedAt { form.add(field: "purchased_at", value: Dates.rfc3339(purchasedAt)) }
+        if let taken = item.photoTakenAt { form.add(field: "photo_taken_at", value: Dates.rfc3339(taken)) }
         form.add(file: "image", filename: "receipt.jpg", mimeType: "image/jpeg", data: jpeg)
         form.finish()
         do {

@@ -140,6 +140,9 @@ final class ReceiptModel {
         default:
             break
         }
+        if r.shopId == nil {
+            return (.amber, "No shop yet.", suggestion == nil ? "Pick the shop so it counts per shop." : "Add the suggested shop above, or pick another.")
+        }
         if let total = r.totalCents {
             let diff = countedCents - total
             if abs(diff) > 1 {
@@ -149,7 +152,7 @@ final class ReceiptModel {
         } else if r.status == .needsReview {
             return (.amber, "No total found.", "Add the printed total in Edit details.")
         }
-        if r.reasons.contains(.noDate) { return (.amber, "No date found.", "Set the date in Edit details.") }
+        if r.reasons.contains(.noDate) { return (.amber, "No date found.", "Pick a date so it counts in your totals.") }
         if r.reasons.contains(.lowConf) { return (.amber, "Hard to read.", "Check the marked lines against the photo.") }
         if r.reasons.contains(.lineMath) { return (.amber, "A line doesn't add up.", "Quantity × price differs from the line total.") }
         if unread > 0 { return (.amber, "", unreadNote) }
