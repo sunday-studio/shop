@@ -590,21 +590,25 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 **Done when** the assistant correctly answers: September spend, spend per shop this year, "where is milk cheapest", "add eggs to the list".
 
 ### M6 — iOS MVP: capture & review (7 d)
-- [ ] Xcode project, generated client from `openapi.yaml`, Keychain token, Settings/onboarding (URL + test connection, then pair with the password via `POST /auth/pair`; Settings > Server & sync has Change URL, Re-pair, Unpair this phone (`DELETE /auth/devices/{id}`); session-expired state on 401)
-- [ ] ScanFlow (document scanner, multi-page stitch, shop picker), UploadQueue (persistent, background `URLSession`)
-- [ ] Inbox (status filters, pull to refresh, polling while processing)
-- [ ] ReviewView (image zoom, line edit, kind picker, add/delete line, live Σ vs total, link product with suggestions/search/create, confirm)
-- [ ] Shops & categories management screens
+- [x] Xcode project, hand-written client for `openapi.yaml`, Keychain token, Settings/onboarding (URL + test connection, then pair with the password via `POST /auth/pair`; Settings > Server & sync has Change URL, Re-pair, Unpair this phone (`DELETE /auth/devices/{id}`); session-expired state on 401)
+- [x] ScanFlow (document scanner, multi-page stitch, shop picker), UploadQueue (persistent, background `URLSession`)
+- [x] Inbox (status filters, pull to refresh, polling while processing)
+- [x] ReviewView (image zoom, line edit, kind picker, add/delete line, live Σ vs total, link product with suggestions/search/create, confirm)
+- [x] Shops & categories management screens
 - [ ] Unit tests (queue, money formatting), one UI test for scan → upload against a mock server
+
+**Status (2026-10-11):** all screens are built and were exercised in the simulator against the mock server only. Unit tests and the UI test don't exist. Real-server, background-upload and real-device checks are still open (docs/IOS-STATUS.md). The two-week trial hasn't started.
 
 **Done when** you use only the app for every receipt for 2 weeks, and it takes under 90 s to review a `needs_review` receipt.
 
 ### M7 — iOS catalog, charts, list (6 d)
-- [ ] Unpack: DataScanner EAN, known/new feedback, QuickAdd with OFF prefill, camera photo, NutritionForm, link to an unmatched line
-- [ ] Products list/detail with a price history chart per shop + compare card
-- [ ] Spend tab (Swift Charts): monthly bars, by-shop/by-category breakdowns, range picker
-- [ ] Shopping list with an offline SwiftData cache + sync, and "cheapest at" hints
-- [ ] Polish: empty states, error toasts, Dutch number formatting, dark mode
+- [x] Unpack: DataScanner EAN, known/new feedback, QuickAdd with OFF prefill, camera photo, NutritionForm, link to an unmatched line
+- [x] Products list/detail with a price history chart per shop + compare card
+- [x] Spend tab (Swift Charts): monthly bars, by-shop/by-category breakdowns, range picker
+- [x] Shopping list with an offline JSON cache + op-log sync, and "cheapest at" hints
+- [x] Polish: empty states, error toasts, Dutch number formatting, dark mode
+
+**Status (2026-10-11):** built and exercised on the mock server; airplane-mode sync, torch and the real haul are unverified. Note that the list cache is JSON, not SwiftData.
 
 **Done when** a full grocery haul can be unpacked with every new product added and linked, and the list works in airplane mode and syncs afterwards.
 
@@ -647,13 +651,15 @@ Each item starts with a short research step against the real receipts in `spike/
 - [ ] Done when `missing` products drop sharply on the spike data without any manual name changing.
 
 **Upload photos of receipts**
-- [ ] The app already has a "Choose a photo" picker in the scan flow (up to 5 pages). Make it a first-class path: an "Add photos" option in the Add tray that skips the scanner, including old receipts, and one receipt per photo or multi-page.
+- [x] The app already has a "Choose a photo" picker in the scan flow (up to 5 pages). Make it a first-class path: an "Add photos" option in the Add tray that skips the scanner, including old receipts, and one receipt per photo or multi-page.
 - [ ] Verify HEIC end to end (the spike set is HEIC): app uploads, server accepts, OCR gets a JPEG/PNG, original is kept in the image mirror.
 - [ ] Later: share extension ("Share to Shop" from Photos or Files).
 - [ ] Done when a photo from the camera roll becomes a parsed receipt with the purchase date from the receipt, not the upload date.
 
 **Known bugs found in the first real run**
 - [ ] The parser counts the `SUBTOTAAL` line as an item, so `parsed_sum_cents` is exactly double the printed total on both receipts so far (e.g. 16936 vs 8468). Classify subtotal/total/betaling lines as `other`/ignored (§5.3) and add the two receipts as test fixtures.
+
+**iOS status (2026-10-11):** the import flow (Photos/Files/PDF, batches, straighten and crop), shop suggestion cards, the product review queue with undo, and barcode create are built and exercised on the mock server (docs/IOS-STATUS.md). Left unticked because they need the real server or a device: HEIC end to end, the date-from-receipt check, and the "ready suggestion" done-when. The share extension is not started.
 
 ### M9 — Later (unscheduled, opt-in)
 - Per-shop parser profiles, if `needs_review` clusters on one chain
