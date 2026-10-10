@@ -1,0 +1,253 @@
+import Foundation
+import Observation
+import SwiftUI
+
+/// Home (H): this month's spend above the receipts inbox. Owned by AppModel so uploads and
+/// confirmations can refresh it and the tab badge stays current.
+@MainActor
+@Observable
+final class HomeModel {
+    struct Filter: Equatable {
+        var status: ReceiptStatus?
+        var shopId: Int64?
+        var isActive: Bool { status != nil || shopId != nil }
+    }
+
+    struct DayGroup: Identifiable {
+        let id: Date
+        let title: String
+        let totalCents: Int64
+        let receipts: [Receipt]
+    }
+
+    private(set) var receipts: [Receipt] = []
+    private(set) var nextCursor: String?
+    private(set) var monthSpend: Spend?
+    private(set) var lastMonthCents: Int64?
+    private(set) var attention: [Receipt] = []
+    private(set) var counts: ReceiptCounts?
+    private(set) var isLoading = false
+    private(set) var hasLoaded = false
+    private(set) var error: APIError?
+    private(set) var filter = Filter()
+
+    @ObservationIgnored private let api: APIClient
+    @ObservationIgnored private let catalog: Catalog
+    @ObservationIgnored private var pollTask: Task<Void, Never>?
+
+    init(api: APIClient, catalog: Catalog) {
+        self.api = api
+        self.catalog = catalog
+        if let cached = DiskStore.load([Receipt].self, from: "inbox.json") {
+            receipts = cached
+            attention = cached.filter { $0.status == .needsReview || $0.status == .failed }
+        }
+    }
+
+    var attentionCount: Int { counts.map { $0.needsReview + $0.failed } ?? attention.count }
+    var processingCount: Int { receipts.filter { $0.status == .processing || $0.status == .pending }.count }
+
+    /// Rough review time: about a minute per receipt.
+    var attentionHint: String {
+        let minutes = max(1, attention.count)
+        return "about \(minutes) min"
+    }
+
+    var monthDeltaCents: Int64? {
+        guard let monthSpend, let lastMonthCents else { return nil }
+        return monthSpend.totalCents - lastMonthCents
+    }
+
+    var dayGroups: [DayGroup] {
+        let grouped = Dictionary(grouping: receipts) { Dates.startOfDay($0.displayDate) }
+        return grouped.keys.sorted(by: >).map { day in
+            let items = (grouped[day] ?? []).sorted { $0.displayDate > $1.displayDate }
+            let total = items.reduce(Int64(0)) { $0 + ($1.totalCents ?? 0) }
+            return DayGroup(id: day, title: Dates.dayLabel(day), totalCents: total, receipts: items)
+        }
+    }
+
+    /// Top five categories plus "Overig" for the rest.
+    var categoryShares: [CategoryShare] {
+        guard let spend = monthSpend, spend.totalCents > 0 else { return [] }
+        let buckets = spend.buckets.filter { $0.cents > 0 }.sorted { $0.cents > $1.cents }
+        let named = buckets.filter { $0.key != "none" }.prefix(5)
+        var shares = named.map { CategoryShare(name: Self.shortName($0.label), cents: $0.cents, color: CategoryColor.swatch(for: $0.label).color) }
+        let rest = spend.totalCents - named.reduce(Int64(0)) { $0 + $1.cents }
+        if rest > 0 { shares.append(CategoryShare(name: "Overig", cents: rest, color: Palette.neutral)) }
+        return shares
+    }
+
+    static func shortName(_ name: String) -> String {
+        // "Groente & fruit" → "Groente" to fit the legend, like the wireframe.
+        name.components(separatedBy: " & ").first ?? name
+    }
+
+    func setFilter(_ new: Filter) {
+        guard new != filter else { return }
+        filter = new
+        Task { await refresh() }
+    }
+
+    // MARK: Loading
+
+    func refresh() async {
+        guard !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            async let page = api.receipts(shopId: filter.shopId, status: filter.status, limit: 50)
+            async let review = api.receipts(status: .needsReview, limit: 200)
+            async let failed = api.receipts(status: .failed, limit: 50)
+            let (p, r, f) = try await (page, review, failed)
+            receipts = p.items
+            nextCursor = p.nextCursor
+            attention = (r.items + f.items).sorted { $0.displayDate > $1.displayDate }
+            error = nil
+            hasLoaded = true
+            if !filter.isActive { DiskStore.save(p.items, to: "inbox.json") }
+        } catch let e as APIError {
+            error = e
+        } catch {}
+        counts = try? await api.receiptCounts()
+        await refreshSpend()
+        updatePolling()
+    }
+
+    func loadMore() async {
+        guard let cursor = nextCursor, !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+        if let page = try? await api.receipts(shopId: filter.shopId, status: filter.status, limit: 50, cursor: cursor) {
+            let known = Set(receipts.map(\.id))
+            receipts += page.items.filter { !known.contains($0.id) }
+            nextCursor = page.nextCursor
+        }
+    }
+
+    private func refreshSpend() async {
+        let now = Date.now
+        let monthStart = Dates.startOfMonth(now)
+        let lastStart = Dates.adding(.month, -1, to: monthStart)
+        let dayOfMonth = Dates.calendar.component(.day, from: now)
+        let lastMonthDays = Dates.calendar.range(of: .day, in: .month, for: lastStart)?.count ?? 30
+        let lastSameDay = Dates.adding(.day, min(dayOfMonth, lastMonthDays) - 1, to: lastStart)
+        async let current = api.spend(from: monthStart, to: now, groupBy: .category)
+        async let previous = api.spend(from: lastStart, to: lastSameDay, groupBy: .month)
+        monthSpend = try? await current
+        lastMonthCents = (try? await previous)?.totalCents
+    }
+
+    // MARK: Polling
+
+    /// Every 3 s while a receipt is processing on the server (no push, IA "No push").
+    private func updatePolling() {
+        let processing = receipts.contains { $0.status == .processing || $0.status == .pending }
+        if processing, pollTask == nil {
+            pollTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(3))
+                    guard let self, !Task.isCancelled else { return }
+                    await self.pollOnce()
+                }
+            }
+        } else if !processing {
+            pollTask?.cancel()
+            pollTask = nil
+        }
+    }
+
+    private func pollOnce() async {
+        let ids = receipts.filter { $0.status == .processing || $0.status == .pending }.map(\.id)
+        guard !ids.isEmpty else { updatePolling(); return }
+        var changed = false
+        for id in ids {
+            guard let fresh = try? await api.receipt(id) else { continue }
+            if let i = receipts.firstIndex(where: { $0.id == id }), receipts[i].status != fresh.status {
+                var r = fresh
+                r.lines = nil
+                receipts[i] = r
+                changed = true
+                Haptics.play(fresh.status == .ok ? .success : (fresh.status == .needsReview ? .warning : .error))
+            }
+        }
+        if changed {
+            pollTask?.cancel()
+            pollTask = nil
+            await refresh()
+        }
+    }
+
+    // MARK: Local updates
+
+    /// After a confirm/edit on the detail screen.
+    func apply(_ receipt: Receipt) {
+        var r = receipt
+        r.lines = nil
+        if let i = receipts.firstIndex(where: { $0.id == r.id }) { receipts[i] = r }
+        attention.removeAll { $0.id == r.id }
+        if r.status == .needsReview || r.status == .failed { attention.insert(r, at: 0) }
+        Task { counts = try? await api.receiptCounts() }
+        updatePolling()
+    }
+
+    func remove(_ id: Int64) {
+        receipts.removeAll { $0.id == id }
+        attention.removeAll { $0.id == id }
+        Task { counts = try? await api.receiptCounts() }
+    }
+
+    func reset() {
+        pollTask?.cancel()
+        pollTask = nil
+        receipts = []
+        attention = []
+        counts = nil
+        monthSpend = nil
+        lastMonthCents = nil
+        hasLoaded = false
+        filter = Filter()
+    }
+}
+
+// MARK: - Receipt row presentation
+
+extension Receipt {
+    /// Sub-line and colours for inbox rows (H).
+    @MainActor
+    func rowPresentation() -> (subtitle: String, subtitleColor: Color, amount: String, amountColor: Color, spinner: Bool) {
+        let time = purchasedAt.map(Dates.time)
+        let items = lineCount.map { $0 == 1 ? "1 item" : "\($0) items" }
+        func join(_ parts: String?...) -> String { parts.compactMap { $0 }.joined(separator: " · ") }
+        let amount = totalCents.map(Money.format) ?? "—"
+        switch status {
+        case .pending, .processing:
+            return ("Reading receipt…", Palette.blueText, "—", Palette.ink3, true)
+        case .failed:
+            return ("Couldn't read the image", Palette.redText, amount, Palette.ink3, false)
+        case .needsReview:
+            let reason: String
+            if let unlinked = unlinkedCount, unlinked > 0, reasons.isEmpty {
+                reason = unlinked == 1 ? "1 item to link" : "\(unlinked) items to link"
+            } else {
+                reason = Self.reasonText(reasons.first)
+            }
+            return (join(reason, time), Palette.amberText, amount, Palette.ink, false)
+        case .ok:
+            let line = join(time, items)
+            return (line.isEmpty ? "Done" : line, Palette.ink2, amount, Palette.ink, false)
+        }
+    }
+
+    static func reasonText(_ reason: ReviewReason?) -> String {
+        switch reason {
+        case .totalMismatch: "Total doesn’t match"
+        case .noTotal: "No total found"
+        case .lineMath: "A line doesn’t add up"
+        case .noDate: "No date found"
+        case .lowConf: "Hard to read"
+        case .unparsedRows: "Rows couldn’t be read"
+        case nil: "Needs a look"
+        }
+    }
+}
