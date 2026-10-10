@@ -377,7 +377,7 @@ struct ScanEntryRow: View {
         switch outcome {
         case .looking: code
         case .known(_, let meta): ["Known", meta].compactMap { $0 }.joined(separator: " · ")
-        case .created(_, let category): ["Added", category, "from Open Food Facts"].compactMap { $0 }.joined(separator: " · ")
+        case .created(_, let category): ["Added", category ?? "Open Food Facts"].joined(separator: " · ")
         case .createdMinimal: "New · add a name"
         case .offUnavailable: "Added · details fill in later"
         case .queued: "Waiting for a connection"
