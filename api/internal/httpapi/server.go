@@ -41,18 +41,23 @@ type Deps struct {
 
 type Server struct {
 	Deps
-	q *db.Queries
+	q       *db.Queries
+	pairing *pairLimiter
 }
 
 func New(d Deps) *Server {
 	if d.Location == nil {
 		d.Location = time.UTC
 	}
-	return &Server{Deps: d, q: db.New(d.DB)}
+	return &Server{Deps: d, q: db.New(d.DB), pairing: newPairLimiter()}
 }
 
 func (s *Server) Handler() http.Handler {
 	api := http.NewServeMux()
+
+	api.HandleFunc("GET /v1/auth/me", s.me)
+	api.HandleFunc("GET /v1/auth/devices", s.listDevices)
+	api.HandleFunc("DELETE /v1/auth/devices/{id}", s.revokeDevice)
 
 	api.HandleFunc("GET /v1/shops", s.listShops)
 	api.HandleFunc("POST /v1/shops", s.createShop)
@@ -114,6 +119,8 @@ func (s *Server) Handler() http.Handler {
 	root := http.NewServeMux()
 	root.HandleFunc("GET /healthz", s.health)
 	root.HandleFunc("GET /version", s.version)
+	root.HandleFunc("GET /v1/auth/status", s.authStatus)
+	root.HandleFunc("POST /v1/auth/pair", s.pair)
 	root.Handle("/", s.requireToken(api))
 	return s.recoverer(s.logRequests(root))
 }

@@ -11,18 +11,24 @@ import (
 )
 
 const createToken = `-- name: CreateToken :one
-INSERT INTO api_tokens (name, token_hash, created_at) VALUES (?, ?, ?)
-RETURNING id, name, token_hash, created_at, last_used_at
+INSERT INTO api_tokens (name, token_hash, kind, created_at) VALUES (?, ?, ?, ?)
+RETURNING id, name, token_hash, created_at, last_used_at, kind
 `
 
 type CreateTokenParams struct {
 	Name      string `json:"name"`
 	TokenHash string `json:"token_hash"`
+	Kind      string `json:"kind"`
 	CreatedAt string `json:"created_at"`
 }
 
 func (q *Queries) CreateToken(ctx context.Context, arg CreateTokenParams) (ApiToken, error) {
-	row := q.db.QueryRowContext(ctx, createToken, arg.Name, arg.TokenHash, arg.CreatedAt)
+	row := q.db.QueryRowContext(ctx, createToken,
+		arg.Name,
+		arg.TokenHash,
+		arg.Kind,
+		arg.CreatedAt,
+	)
 	var i ApiToken
 	err := row.Scan(
 		&i.ID,
@@ -30,8 +36,21 @@ func (q *Queries) CreateToken(ctx context.Context, arg CreateTokenParams) (ApiTo
 		&i.TokenHash,
 		&i.CreatedAt,
 		&i.LastUsedAt,
+		&i.Kind,
 	)
 	return i, err
+}
+
+const deleteDeviceTokens = `-- name: DeleteDeviceTokens :execrows
+DELETE FROM api_tokens WHERE kind = 'device'
+`
+
+func (q *Queries) DeleteDeviceTokens(ctx context.Context) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteDeviceTokens)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const deleteToken = `-- name: DeleteToken :execrows
@@ -46,8 +65,38 @@ func (q *Queries) DeleteToken(ctx context.Context, name string) (int64, error) {
 	return result.RowsAffected()
 }
 
+const deleteTokenByID = `-- name: DeleteTokenByID :execrows
+DELETE FROM api_tokens WHERE id = ?
+`
+
+func (q *Queries) DeleteTokenByID(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteTokenByID, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const getToken = `-- name: GetToken :one
+SELECT id, name, token_hash, created_at, last_used_at, kind FROM api_tokens WHERE id = ?
+`
+
+func (q *Queries) GetToken(ctx context.Context, id int64) (ApiToken, error) {
+	row := q.db.QueryRowContext(ctx, getToken, id)
+	var i ApiToken
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.TokenHash,
+		&i.CreatedAt,
+		&i.LastUsedAt,
+		&i.Kind,
+	)
+	return i, err
+}
+
 const getTokenByHash = `-- name: GetTokenByHash :one
-SELECT id, name, token_hash, created_at, last_used_at FROM api_tokens WHERE token_hash = ?
+SELECT id, name, token_hash, created_at, last_used_at, kind FROM api_tokens WHERE token_hash = ?
 `
 
 func (q *Queries) GetTokenByHash(ctx context.Context, tokenHash string) (ApiToken, error) {
@@ -59,12 +108,47 @@ func (q *Queries) GetTokenByHash(ctx context.Context, tokenHash string) (ApiToke
 		&i.TokenHash,
 		&i.CreatedAt,
 		&i.LastUsedAt,
+		&i.Kind,
 	)
 	return i, err
 }
 
+const listDeviceTokens = `-- name: ListDeviceTokens :many
+SELECT id, name, token_hash, created_at, last_used_at, kind FROM api_tokens WHERE kind = 'device' ORDER BY created_at
+`
+
+func (q *Queries) ListDeviceTokens(ctx context.Context) ([]ApiToken, error) {
+	rows, err := q.db.QueryContext(ctx, listDeviceTokens)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ApiToken{}
+	for rows.Next() {
+		var i ApiToken
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.TokenHash,
+			&i.CreatedAt,
+			&i.LastUsedAt,
+			&i.Kind,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTokens = `-- name: ListTokens :many
-SELECT id, name, token_hash, created_at, last_used_at FROM api_tokens ORDER BY name
+SELECT id, name, token_hash, created_at, last_used_at, kind FROM api_tokens ORDER BY name
 `
 
 func (q *Queries) ListTokens(ctx context.Context) ([]ApiToken, error) {
@@ -82,6 +166,7 @@ func (q *Queries) ListTokens(ctx context.Context) ([]ApiToken, error) {
 			&i.TokenHash,
 			&i.CreatedAt,
 			&i.LastUsedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -94,6 +179,17 @@ func (q *Queries) ListTokens(ctx context.Context) ([]ApiToken, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const tokenNameExists = `-- name: TokenNameExists :one
+SELECT COUNT(*) FROM api_tokens WHERE name = ?
+`
+
+func (q *Queries) TokenNameExists(ctx context.Context, name string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, tokenNameExists, name)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const touchToken = `-- name: TouchToken :exec

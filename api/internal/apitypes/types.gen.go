@@ -357,6 +357,39 @@ func (e SpendGroupBy) Valid() bool {
 	}
 }
 
+// Defines values for GetMe200JSONResponseBodyKind.
+const (
+	GetMe200JSONResponseBodyKindDevice GetMe200JSONResponseBodyKind = "device"
+	GetMe200JSONResponseBodyKindManual GetMe200JSONResponseBodyKind = "manual"
+)
+
+// Valid indicates whether the value is a known member of the GetMe200JSONResponseBodyKind enum.
+func (e GetMe200JSONResponseBodyKind) Valid() bool {
+	switch e {
+	case GetMe200JSONResponseBodyKindDevice:
+		return true
+	case GetMe200JSONResponseBodyKindManual:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAuthStatus200JSONResponseBodyServer.
+const (
+	GetAuthStatus200JSONResponseBodyServerShop GetAuthStatus200JSONResponseBodyServer = "shop"
+)
+
+// Valid indicates whether the value is a known member of the GetAuthStatus200JSONResponseBodyServer enum.
+func (e GetAuthStatus200JSONResponseBodyServer) Valid() bool {
+	switch e {
+	case GetAuthStatus200JSONResponseBodyServerShop:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetSpendParamsGroupBy.
 const (
 	GetSpendParamsGroupByCategory GetSpendParamsGroupBy = "category"
@@ -423,6 +456,17 @@ type CategoryInput struct {
 type Check struct {
 	Detail *string `json:"detail,omitempty"`
 	Ok     bool    `json:"ok"`
+}
+
+// Device defines model for Device.
+type Device struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Current the device making this request
+	Current    bool       `json:"current"`
+	Id         int64      `json:"id"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+	Name       string     `json:"name"`
 }
 
 // FrequentItem defines model for FrequentItem.
@@ -777,6 +821,18 @@ type Version struct {
 // ID defines model for ID.
 type ID = int64
 
+// GetMe200JSONResponseBodyKind defines parameters for GetMe.
+type GetMe200JSONResponseBodyKind string
+
+// PairDeviceJSONBody defines parameters for PairDevice.
+type PairDeviceJSONBody struct {
+	DeviceName string `json:"device_name"`
+	Password   string `json:"password"`
+}
+
+// GetAuthStatus200JSONResponseBodyServer defines parameters for GetAuthStatus.
+type GetAuthStatus200JSONResponseBodyServer string
+
 // GetShoppingListParams defines parameters for GetShoppingList.
 type GetShoppingListParams struct {
 	IncludeChecked *bool `form:"include_checked,omitempty" json:"include_checked,omitempty"`
@@ -862,6 +918,9 @@ type GetSpendParams struct {
 
 // GetSpendParamsGroupBy defines parameters for GetSpend.
 type GetSpendParamsGroupBy string
+
+// PairDeviceJSONRequestBody defines body for PairDevice for application/json ContentType.
+type PairDeviceJSONRequestBody PairDeviceJSONBody
 
 // CreateCategoryJSONRequestBody defines body for CreateCategory for application/json ContentType.
 type CreateCategoryJSONRequestBody = CategoryInput

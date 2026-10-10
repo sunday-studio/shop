@@ -1,11 +1,12 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.4.0
+  version: 0.5.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
-    All /v1 routes need `Authorization: Bearer <token>` (create with `shop token create`).
+    All /v1 routes need `Authorization: Bearer <token>`, except /v1/auth/status and /v1/auth/pair.
+    Apps get a token by pairing with the server password; scripts/assistants use `shop token create`.
 servers:
   - url: http://localhost:8080
 security:
@@ -709,6 +710,94 @@ paths:
               schema: { $ref: "#/components/schemas/ListItem" }
         default: { $ref: "#/components/responses/Problem" }
 
+  # ----------------------------------------------------------------- auth
+  /v1/auth/status:
+    get:
+      operationId: getAuthStatus
+      security: []
+      description: Lets the app confirm a URL is a Shop server and that pairing is set up.
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [server, version, pairing_enabled]
+                properties:
+                  server: { type: string, enum: [shop] }
+                  version: { type: string }
+                  pairing_enabled: { type: boolean }
+
+  /v1/auth/pair:
+    post:
+      operationId: pairDevice
+      security: []
+      description: >
+        Exchange the server's pairing password for a device token (store it in the Keychain;
+        the password itself should not be kept). 5 failures in 15 minutes lock the address out (429).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, device_name]
+              properties:
+                password: { type: string }
+                device_name: { type: string, maxLength: 60 }
+      responses:
+        "201":
+          description: Paired
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, device]
+                properties:
+                  token: { type: string, description: "bearer token, st_…" }
+                  device: { $ref: "#/components/schemas/Device" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+
+  /v1/auth/me:
+    get:
+      operationId: getMe
+      responses:
+        "200":
+          description: The token making the request
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name, kind]
+                properties:
+                  name: { type: string }
+                  kind: { type: string, enum: [device, manual] }
+
+  /v1/auth/devices:
+    get:
+      operationId: listDevices
+      responses:
+        "200":
+          description: Paired devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Device" }
+
+  /v1/auth/devices/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    delete:
+      operationId: revokeDevice
+      description: Unpair a device; its token stops working immediately. (Can be the caller itself.)
+      responses:
+        "204": { description: Revoked }
+        default: { $ref: "#/components/responses/Problem" }
+
 components:
   securitySchemes:
     bearer:
@@ -1099,3 +1188,13 @@ components:
         checked_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
         cheapest: { $ref: "#/components/schemas/ShopPrice" }
+
+    Device:
+      type: object
+      required: [id, name, created_at, current]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time }
+        current: { type: boolean, description: "the device making this request" }
