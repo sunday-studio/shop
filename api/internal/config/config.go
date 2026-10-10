@@ -21,7 +21,7 @@ type Config struct {
 	BackupDir          string
 	BackupKeepDays     int
 	BackupAt           string // HH:MM local time for scheduled backups
-	AutoProducts       bool   // AUTO_PRODUCTS=on: confirm creates/links products, backfill allowed
+	AutoProducts       bool   // AUTO_PRODUCTS (default on): confirm creates/links products, backfill allowed
 	Location           *time.Location
 }
 
@@ -38,7 +38,7 @@ func Load() (Config, error) {
 	}
 
 	c.LogoDevToken = env("LOGO_DEV_TOKEN", "")
-	switch strings.ToLower(env("AUTO_PRODUCTS", "off")) {
+	switch strings.ToLower(env("AUTO_PRODUCTS", "on")) {
 	case "on", "true", "1", "yes":
 		c.AutoProducts = true
 	}
