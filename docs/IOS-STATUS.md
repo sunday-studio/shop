@@ -1,48 +1,54 @@
 # Shop iOS — Status & handoff
 
-_Last updated 2026-10-10. Read this first; then [IOS-PLAN.md](IOS-PLAN.md) (milestones), [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) (tokens/components), [IOS-SETUP.md](IOS-SETUP.md) (Xcode project), [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md) (API asks)._
+_Last updated 2026-10-11. Read this first; then [IOS-PLAN.md](IOS-PLAN.md) (milestones), [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) (tokens/components), [IOS-SETUP.md](IOS-SETUP.md) (Xcode project), [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md) (API asks)._
 
 ## TL;DR
 
-- **All screens are written** (`ios/Shop/`, ~14.5k lines Swift, 64 files, commit `0c888f7`).
-- **It has never been compiled.** No Xcode project is committed, nothing has run in the simulator or on a device, and **there are no tests**. The code was written blind for Xcode 27 / Swift 6 / iOS 17. Expect a round of compile fixes on the first build.
-- The app targets **`openapi.yaml` 0.9.0**; every backend need (#1–#11) is live and wired.
+- **It builds and runs.** The Xcode project is committed (`ios/Shop/Shop.xcodeproj`, scheme `Shop`, bundle id `com.sundaystudi.Shop`, Swift 6, iOS 17). `xcodebuild -project Shop.xcodeproj -scheme Shop -destination 'generic/platform=iOS Simulator' build` succeeds.
+- **Verified on the iPhone 17 Pro simulator against the mock server only** (`-mock`, see §2 for the launch flags). Every screen and flow listed in §1 was exercised there. **Nothing has been verified against the real server yet** (the simulator isn't paired), and **nothing has run on a physical device**.
+- **There are still no automated tests** (no XCTest or UI test target); checking is by simulator walk-throughs and previews.
+- The app targets **`openapi.yaml` 0.12.0** (shop optional on upload, `photo_taken_at`, shop suggestions, product review queue, undo, merge, split, barcode create/refresh).
 - **Open question for the user:** the bundled GT America fonts register under PostScript names `GTAmericaTrial-*` (see `ios/Shop/Design/Typography.swift`), so the files in `ios/Shop/Resources/Fonts/` and `design/fonts/` look like **trial licences**. The user said GT America may be used; they still need to confirm the licence covers these files before any distribution.
+- **Real open gaps:** the M10 app part (the "needs English" badge, highlighted unknown words, teach-a-word sheet; no UI for `/v1/glossary` or `/v1/translations/todo`), the font licence, and every unverified item in §4.
 
 ## 1. Milestones (IOS-PLAN.md §4)
 
-"Written" = code exists. None of it has been verified by building, previews, or the on-device checklists in IOS-PLAN.md.
+"Done" below means built and exercised in the simulator with the mock server. Nothing is verified against the real server or on a device, and none of the on-device checklists in IOS-PLAN.md has been run.
 
-| Milestone | Code | Verified | Notes |
-|---|---|---|---|
-| iM0 Skeleton | Written | No | No `.xcodeproj` in the repo by design (user creates it, see IOS-SETUP). Fonts + Info.plist keys documented. |
-| iM1 Design system | Written | No | `Design/` tokens + ~25 components + `CatalogView` (Settings → About Shop). Previews in every component file. |
-| iM2 API, pairing, shell | Written | No | `POST /v1/auth/pair`; sign out = revoke own device. Token-rejected screen. |
-| iM3 Home & inbox | Written | No | Counts, line/unlinked counts, polling every 3 s while processing, H.2 filter. |
-| iM4 Capture & upload queue | Written | No | VisionKit document scanner, page stitching, background `URLSession` queue with backoff, 409 duplicate handling, S.2 queue. Background relaunch path is untested. |
-| iM5 Receipt review | Written | No | H.1 + all trays (edit/add line, link product, actions, edit details, image zoom). Confirm always enabled. |
-| iM6 Products & search | Written | No | P list (sort by last bought, `Product.cheapest`), P.1 detail, P.1.1 history, P.1.4 aliases (swipe delete), X.1 search on `/v1/search`. |
-| iM7 Unpack | Written | No | DataScanner EAN, quick add with Open Food Facts prefill, nutrition form, link-to-line. |
-| iM8 Analytics | Written | No | A (split_by=category bars), A.1 shop, A.2 category (group_by=product table), A.3 price changes, A.4 range tray. |
-| iM9 Shopping list offline | Written | No | Local items + op log, temp ids, `client_id` idempotency. |
-| iM10 Polish & audit | Partly | No | App icon (light/dark/tinted) and accent colour done. Not done: VoiceOver pass, Dynamic Type audit at XXL, design audit vs wireframes, launch screen beyond `UILaunchScreen`. |
+| Milestone | Status | Notes |
+|---|---|---|
+| iM0 Skeleton | Done | Xcode project committed; Info.plist keys in `Config/ATS.plist` (ATS, camera, local network) and the build settings. |
+| iM1 Design system | Done | `Design/` tokens + components + `CatalogView` (Settings → About Shop). Owned by the design agent. |
+| iM2 API, pairing, shell | Done on mock | `POST /v1/auth/pair`; sign out = revoke own device. Real pairing not yet run. |
+| iM3 Home & inbox | Done on mock | Counts, polling every 3 s while processing, filter, spend header with cached placeholder, swipe actions. |
+| iM4 Capture & upload queue | Done on mock | VisionKit scanner, stitching, disk-backed queue with `preparing`/`waiting`/`uploading`/`failed`/`done`, background `URLSession`. **Background relaunch is untested.** |
+| iM5 Receipt review | Done on mock | All trays, skeleton lines, one banner per problem, auto-link at 80 %+, "Review N of M" run through all receipts. |
+| iM6 Products & search | Done on mock | List, detail, history, aliases, search, product form with barcode scan and nutrition, swipe actions. |
+| iM7 Unpack | Done on mock | DataScanner EAN; scanning creates the product (no form), outcome rows, merge strip, offline queue (`PendingScans`). **Torch untested.** |
+| iM8 Analytics | Done on mock | Spend bars, shop, category, price changes, range tray. |
+| iM9 Shopping list offline | Done on mock | Local items + op log, `client_id` idempotency; **offline reconnect resume not verified**. |
+| iM10 Polish & audit | Partly | App icon and accent done. **Not done:** VoiceOver pass (swipe rows have accessibility actions, never tried with VoiceOver), Dynamic Type audit at XXL, 390 pt width check, design audit vs wireframes, launch screen beyond `UILaunchScreen`. |
+| M10 app part (English) | **Not started** | "needs English" badge, highlighted unknown words, teach-a-word sheet, review queue. Backend is done. |
+| M11 iOS items | Done on mock | See "M11 iOS progress" at the end. |
 
 ## 2. Build & run
 
 1. **Xcode 27** (Sep 2026; 27.1 fine). Swift 6 language mode, deployment target **iOS 17.0**, bundle id **`com.sundaystudi.Shop`**.
-2. Create the project once by following [IOS-SETUP.md](IOS-SETUP.md). All of it is manual: new App project in `ios/`, delete the template's `ShopApp.swift` / `ContentView.swift` / `Assets.xcassets`, drag in `App`, `Core`, `Design`, `Features`, `Resources`, add the Info.plist keys (fonts, camera, photo library, local network, ATS), set the signing team. Scheme: **Shop** (the default).
-3. **Without a server:** add the launch argument `-mock` (Scheme → Run → Arguments). `Core/Mock/MockServer.swift` fakes every endpoint; the password `wrong` shows the wrong-password state; an upload turns from processing to needs-review after about 4 s.
+2. Open `ios/Shop/Shop.xcodeproj` (sources are a file-system synchronized group, so new files are picked up automatically). Set the signing team for a device build. [IOS-SETUP.md](IOS-SETUP.md) describes how the project was set up.
+3. **Without a server:** add the launch argument `-mock` (Scheme → Run → Arguments, or `xcrun simctl launch <udid> com.sundaystudi.Shop -mock`). Other flags: `-offline`, `-mock-fail`, `-mock-auto`, `-mock-empty-queue`, `-mock-scan`. `Core/Mock/MockServer.swift` fakes every endpoint; the password `wrong` shows the wrong-password state; an upload turns from processing to needs-review after about 4 s.
 4. **Against the local server:**
    - Start it: `make up` (or `make setup` the first time, which prints the pairing password once). New password: `docker compose -f deploy/docker-compose.yml exec api shop password generate`.
    - Server URL in onboarding: the simulator can use `http://localhost:8080`. A phone needs the Mac's LAN address (`http://<mac>.local:8080` or `http://192.168.x.y:8080`) or Tailscale (`http://<host>.<tailnet>.ts.net:8080`). ATS allows these through the plist keys in IOS-SETUP.
    - Then enter the pairing password. The app stores only the returned device token (Keychain), never the password.
 5. **Previews:** most files end with light/dark `#Preview`s that use `AppModel(mock: true)`.
 
-## 3. API status (openapi.yaml 0.9.0)
+## 3. API status (openapi.yaml 0.12.0)
 
 All calls go through `Core/API/Endpoints.swift`; models are in `Core/API/Models.swift` (snake_case ↔ camelCase via the coders).
 
 **Wired and used by screens:** `/healthz`, `/version`, `auth/status`, `auth/pair`, `auth/devices` (+ revoke self), shops CRUD (incl. `domain`, `logo_url`, `GET /v1/shops/{id}/logo` via `ShopLogos` + `ImageCache`), categories CRUD, receipts list/get/patch/delete/confirm/reparse/reocr/image/upload (multipart, background), `receipts/counts`, lines create/update/delete/link, products list (`q`, `category_id`, `sort`)/get/create/update/delete/image GET+PUT/nutrition PUT+DELETE, `barcodes/{code}`, aliases list/delete, `unmatched-lines`, `search`, stats `spend` (incl. `split_by`, `group_by=product`, `category_id`), `prices`, `compare`, `price-changes`, `frequent-items`, list get/add (`client_id`)/patch/delete/check/uncheck/clear checked.
+
+**Added since 0.9.0 (all wired):** shop suggestions (`shopSuggestion`, accept, reject), `POST /v1/barcodes/{code}/product`, review queue + review/merge/undo/split/refresh, `photo_taken_at` and optional `shop_id` on upload.
 
 **Defined but unused:** `auth/me`; `api.receiptImageURL` covers one image per receipt.
 
@@ -50,8 +56,9 @@ All calls go through `Core/API/Endpoints.swift`; models are in `Core/API/Models.
 
 ## 4. Known gaps, stubs, open decisions
 
-- **Uncompiled code, likely trouble spots** (Swift 6, MainActor-default isolation): `nonisolated` on `Shake`, `Line` and `CornerShape`; the `UIColor` dynamic provider in `Design/Colors.swift`; `FlowLayout` (`Design/Components/Amounts.swift`); `@Observable` classes; `Text + Text` concatenation (deprecated in newer SDKs, warning only); Swift Charts axis code in `Design/Components/Charts.swift`.
-- **No tests at all.** The user chose previews plus on-device checklists over automated tests (IOS-PLAN §0).
+- **Unverified:** real-server behaviour for everything above (mock only); background-upload relaunch; torch; offline-reconnect resume; VoiceOver; Dynamic Type at XXL; 390 pt width; the Settings "Straighten imported photos" nudge visual; all real-device checks (HEIC from the camera roll, camera, haptics feel). The "Suggested" row in the shop picker after "Not now" and the first-run nudge were deliberately not built.
+- **Previously uncompiled code, now compiling** (kept for context): (Swift 6, MainActor-default isolation): `nonisolated` on `Shake`, `Line` and `CornerShape`; the `UIColor` dynamic provider in `Design/Colors.swift`; `FlowLayout` (`Design/Components/Amounts.swift`); `@Observable` classes; `Text + Text` concatenation (deprecated in newer SDKs, warning only); Swift Charts axis code in `Design/Components/Charts.swift`.
+- **No automated tests.** The user chose previews plus on-device checklists over automated tests (IOS-PLAN §0).
 - **Review edits need a connection** (decision): only scans and the shopping list work offline.
 - `ImageCache` negative-caches every failed load (including offline failures) until relaunch (`Core/Cache/ImageCache.swift`).
 - `ShopLogos` is a static map refreshed when the catalog syncs; `ShopMark` doesn't observe it, so a logo shows up on the next re-render (`Core/Cache/ShopLogos.swift`).
@@ -67,11 +74,11 @@ All calls go through `Core/API/Endpoints.swift`; models are in `Core/API/Models.
 
 ## 5. Next tasks, in order
 
-1. **Create the Xcode project and get a clean build** (IOS-SETUP.md). Fix the compile errors, keeping the token and naming rules in §6.
-2. **Run in the simulator with `-mock`.** Walk the Catalog screen and every tab in light and dark; fix layout against the wireframes (`Pantry Wireframes` design project, https://claude.ai/artifact/LVSTnG3RYKArPtpCcCu4mG).
-3. **Pair with the real server** (`make up`, `shop password generate`) and run the iM2/iM3 checklists in IOS-PLAN.md §4.
-4. **Scan on a real phone** (iM4 checklist): background upload, airplane mode, duplicate scan, force-quit mid-upload.
-5. Optional but cheap: add a small XCTest target for `Money.parse/format`, `Dates`, `ProductDraft.parseSize`, `UploadQueue.receiptId(from:)`, if the user wants tests.
+1. **Pair the simulator with the real server** (`make up`, `shop password generate`) and re-walk Home, receipt review, import (HEIC, PDF, batches), product review and Unpack; fix what differs from the mock.
+2. **Run on a real phone** (iM4 checklist): background upload and relaunch, airplane mode, force-quit mid-upload, torch, camera, haptics.
+3. **M10 app part:** "needs English" badge, unknown words, teach-a-word sheet (design thread first).
+4. **iM10:** VoiceOver, Dynamic Type XXL, 390 pt, launch screen.
+5. Optional: an XCTest target for `Money`, `Dates`, `ProductDraft.parseSize`, `UploadQueue.receiptId(from:)`, `isValidBarcode`, and a UI test for scan → upload against `-mock`.
 
 ## 6. Don't undo
 
@@ -92,7 +99,11 @@ All calls go through `Core/API/Endpoints.swift`; models are in `Core/API/Models.
 - Never commit `deploy/.env` (it holds the logo.dev key; git-ignored).
 
 ## M11 iOS progress (swift app agent)
-- Done: built coordinator's edits (camera/local-network plist keys, ShopFont.register, FeatureCard hug, URLError.cancelled, "Other") and with MemberImportVisibility on (`SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY=YES`): both build clean.
-- Done: "Add photos" in the Add tray (`CaptureMode.photos`, `ReceiptCaptureView(photosFirst:)`), PhotosPicker up to 5, `+ Photo` to append. HEIC is decoded by `UIImage(data:)` and always re-encoded to JPEG by `Stitcher`, so the server only sees JPEG.
-- Done: haptic call sites moved to the new events (scanKnown/scanNew, uploadQueued, uploadFailed); tray-opening buttons use `haptic: nil`.
-- Next: device test of Add photos with a real HEIC; shop suggestion UI waits for the research go/no-go.
+All done and verified in the simulator on the mock server; **not** verified against the real server or on a device.
+- Import flow: Photos, Files and PDF, batches (max 30 pages, 5 per receipt, dedupe by SHA-256), straighten and crop (Vision + CoreImage, adjust screen, Settings toggle), HEIC always re-encoded to JPEG, `photo_taken_at` from EXIF, shop optional on upload.
+- Unknown shop: "Let Shop find out" is the default; shop suggestion cards on Home, "Other shop", create a shop from the picker, banners "Pick a shop ›" / "Set the date ›" fix trays.
+- Product auto-populate: "New products" review queue with reasons, undo (8 s), merge, split line, Try now, photo, 80 %+ auto-link, "Review N of M" through all receipts.
+- Unpack creates products on scan; barcode scan inside the product form (digits only, 8/12/13/14).
+- Swipe actions with haptics on Home receipts, Products, Shopping list, Retry queue and Manage lists; undoable removal for list and queue.
+- English category names throughout Core/Features.
+- Not done: the M10 English UI; share extension; real-HEIC device test.
