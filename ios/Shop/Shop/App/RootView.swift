@@ -128,7 +128,7 @@ struct RootTabView: View {
 
     private var items: [TabBarItem<AppTab>] {
         AppTab.allCases.map {
-            TabBarItem(id: $0, title: $0.title, icon: $0.icon, selectedIcon: $0.selectedIcon, badge: $0 == .home ? model.reviewBadge : 0)
+            TabBarItem(id: $0, title: $0.title, icon: $0.icon, selectedIcon: $0.selectedIcon, badge: $0 == .home ? model.reviewBadge : ($0 == .products ? model.productReview.total : 0))
         }
     }
 
@@ -199,6 +199,7 @@ struct RouteView: View {
             case .categories: CategoriesView()
             case .search: SearchView()
             case .catalog: CatalogView()
+            case .productReview: ProductReviewView()
             }
         }
         .toolbar(.hidden, for: .navigationBar)

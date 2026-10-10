@@ -172,6 +172,41 @@ extension APIClient {
         }
     }
 
+    // MARK: Product auto-population
+
+    /// Creates the product for a scanned barcode (or returns the known one). Safe to repeat.
+    func createBarcodeProduct(_ code: String) async throws -> BarcodeCreateResponse {
+        try await send("POST", "/v1/barcodes/\(code)/product")
+    }
+
+    func reviewQueue(limit: Int = 50, offset: Int = 0, reason: String? = nil) async throws -> ReviewQueueResponse {
+        try await get("/v1/products/review-queue", query: ["limit": String(limit), "offset": String(offset), "reason": reason])
+    }
+
+    func reviewProduct(_ id: Int64, _ body: ReviewBody) async throws -> ReviewResult {
+        try await send("POST", "/v1/products/\(id)/review", body: body)
+    }
+
+    struct MergeBody: Codable, Sendable { var intoProductId: Int64 }
+
+    func mergeProduct(_ id: Int64, into target: Int64) async throws -> ReviewResult {
+        try await send("POST", "/v1/products/\(id)/merge", body: MergeBody(intoProductId: target))
+    }
+
+    func undoProductChange(_ id: Int64) async throws -> UndoResult {
+        try await send("POST", "/v1/product-merges/\(id)/undo")
+    }
+
+    struct SplitBody: Codable, Sendable { var name: String? }
+
+    func splitLineProduct(_ lineId: Int64, name: String? = nil) async throws -> SplitResult {
+        try await send("POST", "/v1/lines/\(lineId)/split-product", body: SplitBody(name: name))
+    }
+
+    func refreshProduct(_ id: Int64) async throws -> ProductRefreshResult {
+        try await send("POST", "/v1/products/\(id)/refresh")
+    }
+
     func aliases(productId: Int64) async throws -> [Alias] { try await get("/v1/products/\(productId)/aliases") }
     func deleteAlias(_ id: Int64) async throws { try await perform("DELETE", "/v1/aliases/\(id)") }
 

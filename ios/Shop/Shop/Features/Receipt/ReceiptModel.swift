@@ -285,12 +285,30 @@ final class ReceiptModel {
         do {
             let r = try await api.confirmReceipt(receiptId)
             replace(r)
-            app.toasts.show("Receipt confirmed", tone: .green)
+            if let auto = r.autoProducts, auto.created > 0 {
+                showAutoProductsToast(auto)
+                app.productReview.bump(by: auto.needsReview)
+                Task { await app.productReview.refreshCount() }
+            } else {
+                app.toasts.show("Receipt confirmed", tone: .green)
+            }
             return true
         } catch let e as APIError {
             app.toasts.error(e.message)
             return false
         } catch { return false }
+    }
+
+    private func showAutoProductsToast(_ auto: AutoProductsSummary) {
+        let created: String = auto.created == 1 ? "1 new product" : "\(auto.created) new products"
+        var text = "Receipt confirmed · \(created)"
+        var action: (title: String, run: () -> Void)?
+        if auto.needsReview > 0 {
+            text += ", \(auto.needsReview) to check"
+            let app = self.app
+            action = (title: "Review", run: { app.push(.productReview) })
+        }
+        app.toasts.show(text, tone: .green, duration: .seconds(4), action: action)
     }
 
     func saveLine(_ id: Int64?, _ input: LineInput) async -> Bool {

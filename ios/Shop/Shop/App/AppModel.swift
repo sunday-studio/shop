@@ -50,6 +50,7 @@ enum Route: Hashable {
     case categories
     case search
     case catalog
+    case productReview
 }
 
 /// Full-screen camera flows started from the Add tray.
@@ -109,6 +110,7 @@ final class AppModel {
     let toasts = ToastCenter()
     let home: HomeModel
     let isMock: Bool
+    @ObservationIgnored lazy var productReview = ProductReviewModel(app: self)
 
     private static let serverKey = "session.serverURL"
     private static let deviceKey = "session.deviceName"
@@ -152,7 +154,8 @@ final class AppModel {
         async let h: Void = refreshHealth()
         async let i: Void = home.refresh()
         async let l: Void = list.sync()
-        _ = await (h, i, l)
+        async let r: Void = productReview.refreshCount()
+        _ = await (h, i, l, r)
         if catalog.lastSync == nil || (catalog.lastSync ?? .distantPast) < .now.addingTimeInterval(-60 * 30) {
             await catalog.syncAll()
         } else {
@@ -217,6 +220,7 @@ final class AppModel {
         catalog.reset()
         list.reset()
         home.reset()
+        productReview.reset()
         api.configure(baseURL: nil, token: nil)
         serverURL = nil
         paths = [:]

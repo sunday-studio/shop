@@ -88,6 +88,15 @@ struct ProductsView: View {
                     IconButton(icon: .barcode, label: "Scan barcode") { app.startCapture(.unpack) }
                 }
 
+                if app.productReview.total > 0 {
+                    AttentionCard(count: app.productReview.total, title: "New products to check", hint: "about 2 min") {
+                        app.push(.productReview)
+                    }
+                    .padding(.horizontal, Space.edge)
+                    .padding(.top, Space.lx)
+                    .transition(.opacity)
+                }
+
                 SearchField(placeholder: "Products or receipt names", text: $model.query)
                     .padding(.horizontal, Space.edge)
                     .padding(.top, Space.lx)
