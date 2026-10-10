@@ -285,7 +285,8 @@ func (s *Server) startBackfill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		DryRun bool `json:"dry_run"`
+		DryRun bool    `json:"dry_run"`
+		Skip   []int64 `json:"skip_receipt_ids"`
 	}
 	if body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<16)); len(body) > 0 {
 		if err := json.Unmarshal(body, &in); err != nil {
@@ -293,7 +294,7 @@ func (s *Server) startBackfill(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	id, err := a.StartBackfill(r.Context(), in.DryRun)
+	id, err := a.StartBackfill(r.Context(), in.DryRun, in.Skip)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return

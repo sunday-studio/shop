@@ -229,16 +229,16 @@ func TestBackfillDryRunThenRealIsIdempotent(t *testing.T) {
 	s := newService(t, conn, true)
 	loadReceipts(t, conn)
 
-	if _, err := newService(t, conn, false).StartBackfill(ctx, true); err != ErrDisabled {
+	if _, err := newService(t, conn, false).StartBackfill(ctx, true, nil); err != ErrDisabled {
 		t.Errorf("backfill with the flag off err = %v; want disabled", err)
 	}
-	if _, err := s.StartBackfill(ctx, true); err != nil {
+	if _, err := s.StartBackfill(ctx, true, nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.StartBackfill(ctx, false); err == nil {
+	if _, err := s.StartBackfill(ctx, false, nil); err == nil {
 		t.Error("a second backfill while one is running must be refused")
 	}
-	if err := s.RunBackfill(ctx, true); err != nil {
+	if err := s.RunBackfill(ctx, true, nil); err != nil {
 		t.Fatal(err)
 	}
 	dry, _ := s.GetBackfill(ctx)
@@ -249,10 +249,10 @@ func TestBackfillDryRunThenRealIsIdempotent(t *testing.T) {
 		t.Fatalf("a dry run created %d products", n)
 	}
 
-	if _, err := s.StartBackfill(ctx, false); err != nil {
+	if _, err := s.StartBackfill(ctx, false, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.RunBackfill(ctx, false); err != nil {
+	if err := s.RunBackfill(ctx, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	real, _ := s.GetBackfill(ctx)
@@ -265,10 +265,10 @@ func TestBackfillDryRunThenRealIsIdempotent(t *testing.T) {
 	if n := count(t, conn, `SELECT COUNT(*) FROM products WHERE created_via != 'backfill'`); n != 0 {
 		t.Error("backfill products must be created_via=backfill")
 	}
-	if _, err := s.StartBackfill(ctx, false); err != nil {
+	if _, err := s.StartBackfill(ctx, false, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.RunBackfill(ctx, false); err != nil {
+	if err := s.RunBackfill(ctx, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	second, _ := s.GetBackfill(ctx)
@@ -276,4 +276,47 @@ func TestBackfillDryRunThenRealIsIdempotent(t *testing.T) {
 		t.Errorf("second backfill = %+v; want nothing new", second)
 	}
 	_ = json.Marshal
+}
+
+func TestBackfillSkipsListedReceipts(t *testing.T) {
+	ctx := context.Background()
+	conn := newDB(t)
+	s := newService(t, conn, true)
+	ids := loadReceipts(t, conn)
+	skip := []int64{ids[0], ids[3]}
+
+	if _, err := s.StartBackfill(ctx, true, skip); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RunBackfill(ctx, true, skip); err != nil {
+		t.Fatal(err)
+	}
+	dry, _ := s.GetBackfill(ctx)
+	if dry.ReceiptsTotal != len(ids)-2 || dry.ReceiptsDone != dry.ReceiptsTotal || len(dry.SkippedIDs) != 2 {
+		t.Fatalf("dry run with skips = %+v", dry)
+	}
+	if _, err := s.StartBackfill(ctx, false, skip); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RunBackfill(ctx, false, skip); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range skip {
+		if n := count(t, conn, `SELECT COUNT(*) FROM receipt_lines WHERE receipt_id = ? AND product_id IS NOT NULL`, id); n != 0 {
+			t.Errorf("skipped receipt %d got %d linked lines", id, n)
+		}
+	}
+	if n := count(t, conn, `SELECT COUNT(*) FROM receipt_lines WHERE receipt_id NOT IN (?, ?) AND kind='item' AND product_id IS NOT NULL`, skip[0], skip[1]); n == 0 {
+		t.Error("the other receipts were not processed")
+	}
+	// later, without the skip list, the skipped receipts are picked up; nothing else changes
+	if _, err := s.StartBackfill(ctx, false, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RunBackfill(ctx, false, nil); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, conn, `SELECT COUNT(*) FROM receipt_lines WHERE receipt_id = ? AND kind='item' AND product_id IS NULL`, skip[0]); n > 1 {
+		t.Errorf("%d unlinked item lines left on a receipt that is no longer skipped", n)
+	}
 }

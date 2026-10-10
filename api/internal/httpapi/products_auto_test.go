@@ -245,6 +245,16 @@ func TestBackfillOverHTTP(t *testing.T) {
 	if n := count(t, e, `SELECT COUNT(*) FROM products`); n != 0 {
 		t.Errorf("dry run created %d products", n)
 	}
+	// a skip list leaves that receipt out
+	rec = e.do("POST", "/v1/products/autopopulate/backfill", map[string]any{"dry_run": true, "skip_receipt_ids": []int64{1}})
+	if rec.Code != 202 {
+		t.Fatalf("start with skip: %d %s", rec.Code, rec.Body)
+	}
+	e.drain()
+	st = jsonMap(t, e.do("GET", "/v1/products/autopopulate/backfill", nil).Body.String())
+	if st["receipts_total"].(float64) != 0 || st["created"].(float64) != 0 {
+		t.Errorf("skipping the only receipt: %v", st)
+	}
 	e.do("POST", "/v1/products/autopopulate/backfill", map[string]any{"dry_run": false})
 	e.drain()
 	st = jsonMap(t, e.do("GET", "/v1/products/autopopulate/backfill", nil).Body.String())

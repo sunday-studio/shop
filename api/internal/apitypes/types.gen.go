@@ -883,14 +883,17 @@ type AutoProductsSummary struct {
 
 // BackfillState defines model for BackfillState.
 type BackfillState struct {
-	Created       int                `json:"created"`
-	DryRun        bool               `json:"dry_run"`
-	Error         *string            `json:"error,omitempty"`
-	Linked        int                `json:"linked"`
-	NeedsReview   int                `json:"needs_review"`
-	ReceiptsDone  int                `json:"receipts_done"`
-	ReceiptsTotal int                `json:"receipts_total"`
-	State         BackfillStateState `json:"state"`
+	Created       int     `json:"created"`
+	DryRun        bool    `json:"dry_run"`
+	Error         *string `json:"error,omitempty"`
+	Linked        int     `json:"linked"`
+	NeedsReview   int     `json:"needs_review"`
+	ReceiptsDone  int     `json:"receipts_done"`
+	ReceiptsTotal int     `json:"receipts_total"`
+
+	// SkippedReceiptIds receipts left out on request
+	SkippedReceiptIds *[]int64           `json:"skipped_receipt_ids,omitempty"`
+	State             BackfillStateState `json:"state"`
 }
 
 // BackfillStateState defines model for BackfillState.State.
@@ -1643,6 +1646,9 @@ type ListProductsParamsSort string
 type StartBackfillJSONBody struct {
 	// DryRun count without writing
 	DryRun *bool `json:"dry_run,omitempty"`
+
+	// SkipReceiptIds receipts to leave out (e.g. one that still needs fixing)
+	SkipReceiptIds *[]int64 `json:"skip_receipt_ids,omitempty"`
 }
 
 // GetReviewQueueParams defines parameters for GetReviewQueue.
