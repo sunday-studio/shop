@@ -126,10 +126,19 @@ func TestAbbreviationsKeepInputOffsets(t *testing.T) {
 func TestRealReceiptWords(t *testing.T) {
 	for dutch, want := range map[string]string{
 		"KIP POTEN": "chicken legs", "TIJM": "thyme", "DILLE": "dill", "CITROENGRAS": "lemongrass",
-		"BOOMGAARDSAP": "orchard juice", "KIKKOMAN SOJASAUS": "kikkoman soy sauce", "ROZEMARIJN": "rosemary", "BOSUI": "spring onion",
+		"BOOMGAARDSAP": "orchard juice", "KALFSPOTEN GEBRADEN": "veal legs roasted", "AVOCADO VERPAKT": "avocado packed",
+		"GEMBER LOS": "ginger loose", "PETERSELIE KRUL": "parsley curly", "ZAKJE KERRIE": "bag curry", "WINTERPEEN": "winter carrot", "KIKKOMAN SOJASAUS": "kikkoman soy sauce", "ROZEMARIJN": "rosemary", "BOSUI": "spring onion",
 	} {
 		if got := Translate(dutch).Text; !strings.EqualFold(got, want) {
 			t.Errorf("%q -> %q; want %q", dutch, got, want)
+		}
+	}
+}
+
+func TestRealReceiptWordsAreDictionaryStatus(t *testing.T) {
+	for _, name := range []string{"KIP POTEN", "TIJM", "DILLE", "CITROENGRAS", "KIKKOMAN SOJASAUS", "ROZEMARIJN", "BOSUI", "COCA-COLA", "FANTA", "MAGGI HOT"} {
+		if r := Translate(name); !r.OK() {
+			t.Errorf("%q is not fully translated: %+v", name, r)
 		}
 	}
 }
