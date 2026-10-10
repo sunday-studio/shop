@@ -85,7 +85,6 @@ final class ProductDetailModel {
     func addToList() {
         guard let product else { return }
         app.list.add(text: product.name, productId: product.id, qty: 1)
-        Haptics.play(.light)
         app.toasts.show("Added to the list", tone: .green)
         Task { await app.list.sync() }
     }

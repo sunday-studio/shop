@@ -35,13 +35,13 @@ final class UnpackModel {
         if let i = entries.firstIndex(where: { $0.code == code }) {
             let entry = entries.remove(at: i)
             entries.insert(entry, at: 0)
-            if case .known = entry.state { Haptics.play(.success) } else { Haptics.play(.warning) }
+            if case .known = entry.state { Haptics.play(.scanKnown) } else { Haptics.play(.scanNew) }
             return
         }
         // Instant answer from the local catalog when we have it.
         if let local = app.catalog.products.values.first(where: { $0.barcode == code }) {
             entries.insert(Entry(code: code, state: .known(local)), at: 0)
-            Haptics.play(.success)
+            Haptics.play(.scanKnown)
             return
         }
         entries.insert(Entry(code: code, state: .looking), at: 0)
@@ -69,8 +69,8 @@ final class UnpackModel {
         guard let i = entries.firstIndex(where: { $0.code == code }) else { return }
         entries[i].state = state
         switch state {
-        case .known: Haptics.play(.success)
-        case .new: Haptics.play(.warning)
+        case .known: Haptics.play(.scanKnown)
+        case .new: Haptics.play(.scanNew)
         case .failed: Haptics.play(.error)
         case .looking: break
         }
