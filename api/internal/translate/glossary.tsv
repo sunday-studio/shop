@@ -1,0 +1,404 @@
+# Dutch → English grocery glossary. One "dutch<TAB>english" per line, lowercase,
+# accents optional (matching is accent-insensitive). Multi-word Dutch phrases
+# are allowed and win over single words. Compounds (kipfilet, volkorenbrood)
+# are split automatically, so list the parts rather than every compound.
+# Plurals ending in -s/-en and adjective -e are handled by rules; list
+# irregular forms explicitly.
+
+# --- dairy & eggs
+melk	milk
+halfvol	semi-skimmed
+halfvolle	semi-skimmed
+mager	skimmed
+magere	skimmed
+vol	whole
+volle	whole
+karnemelk	buttermilk
+yoghurt	yoghurt
+kwark	quark
+vla	custard
+room	cream
+slagroom	whipping cream
+zure room	sour cream
+creme fraiche	crème fraîche
+kookroom	cooking cream
+koffiemelk	evaporated milk
+boter	butter
+roomboter	butter
+margarine	margarine
+kaas	cheese
+geitenkaas	goat cheese
+roomkaas	cream cheese
+smeerkaas	cheese spread
+jong	young
+jonge	young
+belegen	mature
+oud	old
+oude	old
+extra belegen	extra mature
+geraspt	grated
+geraspte	grated
+plakken	slices
+plak	slice
+ei	egg
+eieren	eggs
+scharrel	free-range
+scharreleieren	free-range eggs
+biologisch	organic
+biologische	organic
+bio	organic
+lactosevrij	lactose-free
+lactosevrije	lactose-free
+drinkyoghurt	drinking yoghurt
+toetje	dessert
+ijs	ice cream
+roomijs	ice cream
+
+# --- bread & bakery
+brood	bread
+broodje	roll
+broodjes	rolls
+bolletjes	buns
+volkoren	wholemeal
+wit	white
+witte	white
+bruin	brown
+bruine	brown
+meergranen	multigrain
+spelt	spelt
+desem	sourdough
+stokbrood	baguette
+croissant	croissant
+krentenbollen	currant buns
+beschuit	rusks
+crackers	crackers
+knackebrod	crispbread
+ontbijtkoek	gingerbread
+koek	cake
+koekjes	biscuits
+taart	cake
+gebak	pastry
+tortilla	tortilla
+wraps	wraps
+pita	pitta
+afbak	bake-off
+
+# --- meat & fish
+vlees	meat
+kip	chicken
+kipfilet	chicken breast
+kippendijen	chicken thighs
+dij	thigh
+dijen	thighs
+dijfilet	thigh fillet
+filet	fillet
+rund	beef
+rundvlees	beef
+runder	beef
+gehakt	mince
+rundergehakt	beef mince
+half om half	mixed mince
+varken	pork
+varkens	pork
+varkensvlees	pork
+spek	bacon
+spekjes	bacon cubes
+ontbijtspek	bacon
+ham	ham
+worst	sausage
+worstjes	sausages
+rookworst	smoked sausage
+braadworst	bratwurst
+salami	salami
+biefstuk	steak
+schnitzel	schnitzel
+lam	lamb
+lams	lamb
+kalkoen	turkey
+gerookt	smoked
+gerookte	smoked
+gekookt	cooked
+gekookte	cooked
+gegrild	grilled
+gegrilde	grilled
+gepaneerd	breaded
+gepaneerde	breaded
+gemarineerd	marinated
+gemarineerde	marinated
+vis	fish
+zalm	salmon
+tonijn	tuna
+kabeljauw	cod
+garnalen	prawns
+mosselen	mussels
+haring	herring
+makreel	mackerel
+pangasius	pangasius
+vissticks	fish fingers
+
+# --- vegetables
+groente	vegetables
+groenten	vegetables
+aardappel	potato
+aardappelen	potatoes
+aardappels	potatoes
+kruimig	floury
+kruimige	floury
+vastkokend	waxy
+vastkokende	waxy
+ui	onion
+uien	onions
+rode ui	red onion
+knoflook	garlic
+tomaat	tomato
+tomaten	tomatoes
+cherrytomaten	cherry tomatoes
+komkommer	cucumber
+paprika	pepper
+paprikas	peppers
+wortel	carrot
+wortels	carrots
+worteltjes	baby carrots
+sla	lettuce
+ijsbergsla	iceberg lettuce
+spinazie	spinach
+broccoli	broccoli
+bloemkool	cauliflower
+kool	cabbage
+rode kool	red cabbage
+spruitjes	brussels sprouts
+boerenkool	kale
+prei	leek
+courgette	courgette
+aubergine	aubergine
+champignons	mushrooms
+paddenstoelen	mushrooms
+sperziebonen	green beans
+bonen	beans
+erwten	peas
+doperwten	peas
+mais	sweetcorn
+avocado	avocado
+pompoen	pumpkin
+biet	beetroot
+bieten	beetroot
+rucola	rocket
+andijvie	endive
+witlof	chicory
+radijs	radish
+selderij	celery
+bleekselderij	celery
+venkel	fennel
+asperges	asparagus
+peterselie	parsley
+basilicum	basil
+koriander	coriander
+bieslook	chives
+munt	mint
+gember	ginger
+peper	pepper
+chilipeper	chilli
+roerbak	stir-fry
+roerbakgroente	stir-fry vegetables
+soepgroente	soup vegetables
+diepvries	frozen
+gesneden	sliced
+geschild	peeled
+geschilde	peeled
+
+# --- fruit
+fruit	fruit
+appel	apple
+appels	apples
+peer	pear
+peren	pears
+banaan	banana
+bananen	bananas
+sinaasappel	orange
+sinaasappels	oranges
+mandarijn	mandarin
+mandarijnen	mandarins
+citroen	lemon
+citroenen	lemons
+limoen	lime
+druiven	grapes
+aardbeien	strawberries
+aardbei	strawberry
+frambozen	raspberries
+blauwe bessen	blueberries
+bessen	berries
+kiwi	kiwi
+mango	mango
+ananas	pineapple
+meloen	melon
+watermeloen	watermelon
+perzik	peach
+nectarine	nectarine
+pruimen	plums
+kersen	cherries
+rozijnen	raisins
+dadels	dates
+noten	nuts
+walnoten	walnuts
+amandelen	almonds
+pinda	peanut
+pindas	peanuts
+cashewnoten	cashews
+
+# --- pantry
+rijst	rice
+zilvervliesrijst	brown rice
+pasta	pasta
+spaghetti	spaghetti
+macaroni	macaroni
+penne	penne
+noedels	noodles
+mie	noodles
+meel	flour
+bloem	flour
+tarwebloem	wheat flour
+suiker	sugar
+zout	salt
+olie	oil
+olijfolie	olive oil
+zonnebloemolie	sunflower oil
+azijn	vinegar
+saus	sauce
+tomatensaus	tomato sauce
+pastasaus	pasta sauce
+ketchup	ketchup
+mayonaise	mayonnaise
+mosterd	mustard
+pindakaas	peanut butter
+hagelslag	chocolate sprinkles
+jam	jam
+honing	honey
+pasta	pasta
+soep	soup
+bouillon	stock
+blokjes	cubes
+kruiden	herbs
+specerijen	spices
+muesli	muesli
+havermout	oats
+cornflakes	cornflakes
+ontbijtgranen	cereal
+granola	granola
+chips	crisps
+popcorn	popcorn
+chocolade	chocolate
+reep	bar
+snoep	sweets
+drop	liquorice
+koffie	coffee
+koffiebonen	coffee beans
+bonen	beans
+gemalen	ground
+thee	tea
+cacao	cocoa
+blik	tin
+pot	jar
+zak	bag
+pak	pack
+fles	bottle
+doos	box
+kidneybonen	kidney beans
+kikkererwten	chickpeas
+linzen	lentils
+tofu	tofu
+vegetarisch	vegetarian
+vegetarische	vegetarian
+vega	vegetarian
+vegan	vegan
+glutenvrij	gluten-free
+suikervrij	sugar-free
+naturel	plain
+zoet	sweet
+zoete	sweet
+zout	salt
+pittig	spicy
+pittige	spicy
+vers	fresh
+verse	fresh
+
+# --- drinks
+water	water
+bronwater	spring water
+mineraalwater	mineral water
+spa	mineral water
+bruisend	sparkling
+bruisende	sparkling
+koolzuurhoudend	sparkling
+sap	juice
+sinaasappelsap	orange juice
+appelsap	apple juice
+frisdrank	soft drink
+cola	cola
+limonade	squash
+siroop	syrup
+bier	beer
+wijn	wine
+rode wijn	red wine
+witte wijn	white wine
+rose	rosé
+alcoholvrij	alcohol-free
+haver	oat
+haverdrank	oat drink
+sojadrank	soy drink
+amandeldrank	almond drink
+drank	drink
+energiedrank	energy drink
+ijsthee	iced tea
+
+# --- household & personal care
+wc papier	toilet paper
+toiletpapier	toilet paper
+keukenpapier	kitchen roll
+rol	roll
+rollen	rolls
+tissues	tissues
+afwasmiddel	washing-up liquid
+vaatwastabletten	dishwasher tablets
+wasmiddel	laundry detergent
+wasverzachter	fabric softener
+schoonmaakmiddel	cleaner
+allesreiniger	all-purpose cleaner
+vuilniszakken	bin bags
+zakken	bags
+aluminiumfolie	aluminium foil
+folie	foil
+batterijen	batteries
+tandpasta	toothpaste
+tandenborstel	toothbrush
+shampoo	shampoo
+douchegel	shower gel
+zeep	soap
+deodorant	deodorant
+luiers	nappies
+maandverband	sanitary pads
+scheermesjes	razors
+
+# --- receipt words, sizes, misc
+stuk	piece
+stuks	pieces
+st	pieces
+gram	grams
+kilo	kilo
+liter	litre
+groot	large
+grote	large
+klein	small
+kleine	small
+mini	mini
+voordeel	value
+voordeelpak	value pack
+huismerk	own brand
+statiegeld	deposit
+tas	bag
+draagtas	carrier bag
+en	and
+met	with
+zonder	without
+van	-
+de	-
+het	-

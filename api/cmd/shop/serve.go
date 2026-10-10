@@ -74,6 +74,11 @@ func openApp(ctx context.Context, log *slog.Logger) (*app, error) {
 		receipts.Config{ImagesDir: cfg.ImagesDir(), Location: cfg.Location}, log)
 	a.matcher = match.NewMatcher(conn)
 	a.products = products.New(conn, a.matcher, openfoodfacts.New(cfg.FoodFactsUserAgent), cfg.ImagesDir(), log)
+	if n, err := a.products.BackfillEnglish(ctx); err != nil {
+		log.Warn("english name backfill", "err", err)
+	} else if n > 0 {
+		log.Info("english names added", "products", n)
+	}
 	a.stats = stats.New(conn, cfg.Location)
 	a.list = shopping.New(conn, a.matcher, a.stats)
 	return a, nil

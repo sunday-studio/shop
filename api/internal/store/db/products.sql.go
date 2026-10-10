@@ -12,26 +12,30 @@ import (
 )
 
 const createProduct = `-- name: CreateProduct :one
-INSERT INTO products (name, brand, category_id, barcode, net_quantity, net_unit, off_code, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at
+INSERT INTO products (name, name_en, name_en_source, brand, category_id, barcode, net_quantity, net_unit, off_code, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source
 `
 
 type CreateProductParams struct {
-	Name        string          `json:"name"`
-	Brand       sql.NullString  `json:"brand"`
-	CategoryID  sql.NullInt64   `json:"category_id"`
-	Barcode     sql.NullString  `json:"barcode"`
-	NetQuantity sql.NullFloat64 `json:"net_quantity"`
-	NetUnit     sql.NullString  `json:"net_unit"`
-	OffCode     sql.NullString  `json:"off_code"`
-	CreatedAt   string          `json:"created_at"`
-	UpdatedAt   string          `json:"updated_at"`
+	Name         string          `json:"name"`
+	NameEn       sql.NullString  `json:"name_en"`
+	NameEnSource sql.NullString  `json:"name_en_source"`
+	Brand        sql.NullString  `json:"brand"`
+	CategoryID   sql.NullInt64   `json:"category_id"`
+	Barcode      sql.NullString  `json:"barcode"`
+	NetQuantity  sql.NullFloat64 `json:"net_quantity"`
+	NetUnit      sql.NullString  `json:"net_unit"`
+	OffCode      sql.NullString  `json:"off_code"`
+	CreatedAt    string          `json:"created_at"`
+	UpdatedAt    string          `json:"updated_at"`
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
 	row := q.db.QueryRowContext(ctx, createProduct,
 		arg.Name,
+		arg.NameEn,
+		arg.NameEnSource,
 		arg.Brand,
 		arg.CategoryID,
 		arg.Barcode,
@@ -55,6 +59,8 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.NameEn,
+		&i.NameEnSource,
 	)
 	return i, err
 }
@@ -140,7 +146,7 @@ func (q *Queries) GetNutrition(ctx context.Context, productID int64) (Nutrition,
 }
 
 const getProduct = `-- name: GetProduct :one
-SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at FROM products WHERE id = ? AND deleted_at IS NULL
+SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source FROM products WHERE id = ? AND deleted_at IS NULL
 `
 
 func (q *Queries) GetProduct(ctx context.Context, id int64) (Product, error) {
@@ -159,12 +165,14 @@ func (q *Queries) GetProduct(ctx context.Context, id int64) (Product, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.NameEn,
+		&i.NameEnSource,
 	)
 	return i, err
 }
 
 const getProductByBarcode = `-- name: GetProductByBarcode :one
-SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at FROM products WHERE barcode = ? AND deleted_at IS NULL
+SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source FROM products WHERE barcode = ? AND deleted_at IS NULL
 `
 
 func (q *Queries) GetProductByBarcode(ctx context.Context, barcode sql.NullString) (Product, error) {
@@ -183,12 +191,14 @@ func (q *Queries) GetProductByBarcode(ctx context.Context, barcode sql.NullStrin
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.NameEn,
+		&i.NameEnSource,
 	)
 	return i, err
 }
 
 const getProductsByIDs = `-- name: GetProductsByIDs :many
-SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at FROM products WHERE deleted_at IS NULL AND id IN (/*SLICE:ids*/?)
+SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source FROM products WHERE deleted_at IS NULL AND id IN (/*SLICE:ids*/?)
 `
 
 func (q *Queries) GetProductsByIDs(ctx context.Context, ids []int64) ([]Product, error) {
@@ -223,6 +233,8 @@ func (q *Queries) GetProductsByIDs(ctx context.Context, ids []int64) ([]Product,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.NameEn,
+			&i.NameEnSource,
 		); err != nil {
 			return nil, err
 		}
@@ -308,7 +320,7 @@ func (q *Queries) ListAliasesForProduct(ctx context.Context, productID int64) ([
 }
 
 const listProducts = `-- name: ListProducts :many
-SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at FROM products
+SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source FROM products
 WHERE deleted_at IS NULL
   AND (?1 IS NULL OR category_id = ?1)
 ORDER BY name
@@ -343,7 +355,41 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]P
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.NameEn,
+			&i.NameEnSource,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const productsMissingEnglish = `-- name: ProductsMissingEnglish :many
+SELECT id, name FROM products WHERE deleted_at IS NULL AND name_en IS NULL
+`
+
+type ProductsMissingEnglishRow struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+func (q *Queries) ProductsMissingEnglish(ctx context.Context) ([]ProductsMissingEnglishRow, error) {
+	rows, err := q.db.QueryContext(ctx, productsMissingEnglish)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ProductsMissingEnglishRow{}
+	for rows.Next() {
+		var i ProductsMissingEnglishRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -476,6 +522,21 @@ func (q *Queries) SetLineProduct(ctx context.Context, arg SetLineProductParams) 
 	return i, err
 }
 
+const setProductEnglish = `-- name: SetProductEnglish :exec
+UPDATE products SET name_en = ?, name_en_source = ? WHERE id = ?
+`
+
+type SetProductEnglishParams struct {
+	NameEn       sql.NullString `json:"name_en"`
+	NameEnSource sql.NullString `json:"name_en_source"`
+	ID           int64          `json:"id"`
+}
+
+func (q *Queries) SetProductEnglish(ctx context.Context, arg SetProductEnglishParams) error {
+	_, err := q.db.ExecContext(ctx, setProductEnglish, arg.NameEn, arg.NameEnSource, arg.ID)
+	return err
+}
+
 const setProductImage = `-- name: SetProductImage :exec
 UPDATE products SET image_path = ?, updated_at = ? WHERE id = ?
 `
@@ -512,25 +573,29 @@ func (q *Queries) SoftDeleteProduct(ctx context.Context, arg SoftDeleteProductPa
 
 const updateProduct = `-- name: UpdateProduct :one
 UPDATE products
-SET name = ?, brand = ?, category_id = ?, barcode = ?, net_quantity = ?, net_unit = ?, updated_at = ?
+SET name = ?, name_en = ?, name_en_source = ?, brand = ?, category_id = ?, barcode = ?, net_quantity = ?, net_unit = ?, updated_at = ?
 WHERE id = ? AND deleted_at IS NULL
-RETURNING id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at
+RETURNING id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source
 `
 
 type UpdateProductParams struct {
-	Name        string          `json:"name"`
-	Brand       sql.NullString  `json:"brand"`
-	CategoryID  sql.NullInt64   `json:"category_id"`
-	Barcode     sql.NullString  `json:"barcode"`
-	NetQuantity sql.NullFloat64 `json:"net_quantity"`
-	NetUnit     sql.NullString  `json:"net_unit"`
-	UpdatedAt   string          `json:"updated_at"`
-	ID          int64           `json:"id"`
+	Name         string          `json:"name"`
+	NameEn       sql.NullString  `json:"name_en"`
+	NameEnSource sql.NullString  `json:"name_en_source"`
+	Brand        sql.NullString  `json:"brand"`
+	CategoryID   sql.NullInt64   `json:"category_id"`
+	Barcode      sql.NullString  `json:"barcode"`
+	NetQuantity  sql.NullFloat64 `json:"net_quantity"`
+	NetUnit      sql.NullString  `json:"net_unit"`
+	UpdatedAt    string          `json:"updated_at"`
+	ID           int64           `json:"id"`
 }
 
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error) {
 	row := q.db.QueryRowContext(ctx, updateProduct,
 		arg.Name,
+		arg.NameEn,
+		arg.NameEnSource,
 		arg.Brand,
 		arg.CategoryID,
 		arg.Barcode,
@@ -553,6 +618,8 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.NameEn,
+		&i.NameEnSource,
 	)
 	return i, err
 }

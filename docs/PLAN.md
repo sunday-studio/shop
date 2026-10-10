@@ -8,11 +8,12 @@ Self-hosted grocery receipt tracker. You photograph **paper receipts (NL/EN)**, 
 
 | Area | Decision |
 |---|---|
-| Users | One user per install. No accounts. |
-| Auth | A **pairing password** is created at setup (`make setup`). The app sends URL + password once (`POST /v1/auth/pair`) and gets its own device token (revocable). The assistant uses a CLI-created token. Pairing attempts are rate-limited. |
+| Users | One user per install. No accounts. Single user, one server password. |
+| Auth | **Single server password** (hash in `SHOP_PASSWORD_HASH`, set with `shop passwd`; the server refuses to start without it). The app sends URL + password (`POST /v1/auth/login`) and gets its own per-client bearer token (revocable), kept in the Keychain; the password is never stored on the phone. The assistant/MCP client still uses a token made with `shop token create`. Login attempts are rate-limited. (v0.4: replaces the earlier pairing flow in the app.) |
 | Input | Paper receipts only, captured with the iOS document scanner. |
 | Models | **OCR only**, using small weights. No LLMs for structuring, categorising, or suggestions. |
 | Parsing | Deterministic Go: row reconstruction from boxes, regex classification, and arithmetic validation. |
+| Languages | Products keep the Dutch name (as sold) **and** an English `name_en`. The English name comes from Open Food Facts, from a built-in grocery dictionary with Dutch compound/plural rules (`internal/translate`, no models), or is typed by you; your own text always wins. Both names are indexed for search, linking and the shopping list. Receipt lines get an English gloss (`text_en`). |
 | Matching / search | **Fuzzy only**: normalisation + SQLite FTS5 trigram + Jaro-Winkler/token-set scoring in Go. No embeddings. |
 | Shops | Plain CRUD. The user picks the shop for each receipt. A generic parser is used for everything; per-shop tweaks are added only if the data demands them. |
 | Host | Mac mini 16 GB. Docker = CPU-only (the macOS VM has no Metal/ANE access). The same images run on any amd64/arm64 box. |
@@ -108,7 +109,7 @@ shop/
 - **Soft delete** (`deleted_at`) for shops, products, and categories, so history is never orphaned. Receipts are hard-deleted, image included.
 - **Errors:** RFC 7807 `application/problem+json`.
 - **Logging:** `log/slog` JSON. One line per request and one per job.
-- **Config (env):** `SHOP_DATA_DIR`, `SHOP_ADDR`, `OCR_URL`, `OCR_FALLBACK_URL`, `OFF_USER_AGENT`, `SHOP_WORKERS` (default 1), `SHOP_TZ=Europe/Amsterdam`.
+- **Config (env):** `SHOP_DATA_DIR`, `SHOP_ADDR`, `OCR_URL`, `OCR_FALLBACK_URL`, `OFF_USER_AGENT`, `SHOP_WORKERS` (default 1), `SHOP_TZ=Europe/Amsterdam`, `SHOP_PASSWORD_HASH` (argon2id or bcrypt hash of the server password; required, the server refuses to start without it; `shop passwd` sets it).
 - **Tests:** table-driven Go tests. The parser regression corpus has to pass in CI. Handler tests use a temp SQLite DB.
 
 ---
@@ -298,6 +299,8 @@ Stats        GET /stats/spend?from&to&group_by=day|week|month|shop|category
              GET /stats/products/{id}/compare    latest cents/base-unit per shop
              GET /stats/price-changes?since&min_pct
 List         GET /list · POST /list · PATCH/DELETE /list/{id} · POST /list/{id}/check
+Auth         POST /auth/login {password} → {token, expires_at?}   (no bearer needed; rate-limited)
+             POST /auth/logout                   revokes the calling token
 System       GET /healthz (db, ocr, ocr_fallback, queue depth) · GET /version
 ```
 
@@ -333,7 +336,7 @@ Product arguments accept an ID or text. Text is resolved through the fuzzy match
 
 ```
 Shop/
-├─ App/            ShopApp, RootTabView, Settings (server URL, token in Keychain)
+├─ App/            ShopApp, RootTabView, Settings (server URL + session; the token lives in the Keychain, the password is never stored)
 ├─ API/            generated client (swift-openapi-generator) + APIClient wrapper
 ├─ Sync/           UploadQueue (files in Application Support + SwiftData records, retries w/ backoff)
 ├─ Cache/          SwiftData models: CachedProduct, CachedListItem, CachedShop
@@ -456,6 +459,7 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 ### M2 — Backend core (6 d)
 - [x] `store`: sqlc queries for all tables, tx helper, `PRAGMA` setup, `busy_timeout`
 - [x] Auth middleware + `shop token create|list|revoke`
+- [ ] v0.4 auth: `SHOP_PASSWORD_HASH` + `shop passwd`, `POST /auth/login` and `/auth/logout` (token create stays for assistant/MCP clients)
 - [x] Shops & categories CRUD (+ seed categories)
 - [x] `POST /receipts`: sha256 dedupe (409 with the existing id), store the image, enqueue a job
 - [x] `jobs`: polling worker (claim with `UPDATE … RETURNING`), retries with backoff, crash-safe (`running` > 10 min → requeue)
@@ -506,7 +510,7 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 **Done when** the assistant correctly answers: September spend, spend per shop this year, "where is milk cheapest", "add eggs to the list".
 
 ### M6 — iOS MVP: capture & review (7 d)
-- [ ] Xcode project, generated client from `openapi.yaml`, Keychain token, Settings/onboarding (URL + token + test connection)
+- [ ] Xcode project, generated client from `openapi.yaml`, Keychain token, Settings/onboarding (URL + test connection, then password login via `POST /auth/login`; Settings > Server & sync has Change URL, Change password, Sign out; session-expired state on 401)
 - [ ] ScanFlow (document scanner, multi-page stitch, shop picker), UploadQueue (persistent, background `URLSession`)
 - [ ] Inbox (status filters, pull to refresh, polling while processing)
 - [ ] ReviewView (image zoom, line edit, kind picker, add/delete line, live Σ vs total, link product with suggestions/search/create, confirm)

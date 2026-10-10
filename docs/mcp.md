@@ -40,7 +40,7 @@ claude mcp add --transport http shop http://localhost:8080/mcp --header "Authori
 
 ## Tools
 
-Product and shop arguments take an **id or a name**. Names are fuzzy-matched, and the result shows which product or shop was used. Dates are local `YYYY-MM-DD`. Money is returned as `{cents, eur}` (e.g. `{"cents": 129, "eur": "€1,29"}`).
+Product and shop arguments take an **id or a name**, in Dutch or English. Names are fuzzy-matched, and the result shows which product or shop was used. Dates are local `YYYY-MM-DD`. Money is returned as `{cents, eur}` (e.g. `{"cents": 129, "eur": "€1,29"}`).
 
 | Tool | Writes? | What it answers |
 |---|---|---|

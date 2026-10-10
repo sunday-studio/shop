@@ -61,7 +61,7 @@ func toProduct(p db.Product, n *db.Nutrition) apitypes.Product {
 	created, _ := store.ParseTS(p.CreatedAt)
 	updated, _ := store.ParseTS(p.UpdatedAt)
 	out := apitypes.Product{
-		Id: p.ID, Name: p.Name, Brand: store.StrPtr(p.Brand), CategoryId: store.IntPtr(p.CategoryID),
+		Id: p.ID, Name: p.Name, NameEn: store.StrPtr(p.NameEn), Brand: store.StrPtr(p.Brand), CategoryId: store.IntPtr(p.CategoryID),
 		Barcode: store.StrPtr(p.Barcode), NetQuantity: floatPtr(p.NetQuantity),
 		OpenfoodfactsCode: store.StrPtr(p.OffCode), HasImage: p.ImagePath.Valid,
 		CreatedAt: created, UpdatedAt: updated,
@@ -69,6 +69,10 @@ func toProduct(p db.Product, n *db.Nutrition) apitypes.Product {
 	if p.NetUnit.Valid {
 		u := apitypes.ProductNetUnit(p.NetUnit.String)
 		out.NetUnit = &u
+	}
+	if p.NameEnSource.Valid {
+		src := apitypes.ProductNameEnSource(p.NameEnSource.String)
+		out.NameEnSource = &src
 	}
 	if n != nil {
 		nu := toNutrition(*n)
@@ -81,6 +85,10 @@ func toMatches(cs []match.Candidate) *[]apitypes.ProductMatch {
 	out := make([]apitypes.ProductMatch, len(cs))
 	for i, c := range cs {
 		out[i] = apitypes.ProductMatch{ProductId: c.ProductID, Name: c.Name, Score: round3(c.Score)}
+		if c.NameEN != "" {
+			en := c.NameEN
+			out[i].NameEn = &en
+		}
 		if c.Brand != "" {
 			b := c.Brand
 			out[i].Brand = &b
@@ -93,13 +101,16 @@ func round3(f float64) float64 { return float64(int(f*1000+0.5)) / 1000 }
 
 func productInput(in apitypes.ProductInput) products.Input {
 	out := products.Input{
-		Name: in.Name, Brand: in.Brand, CategoryID: in.CategoryId, Barcode: in.Barcode,
+		Name: in.Name, NameEN: in.NameEn, Brand: in.Brand, CategoryID: in.CategoryId, Barcode: in.Barcode,
 		NetQuantity: in.NetQuantity, OFFCode: in.OpenfoodfactsCode, ImageURL: in.ImageUrl,
 		Nutrition: fromNutrition(in.Nutrition),
 	}
 	if in.NetUnit != nil {
 		u := string(*in.NetUnit)
 		out.NetUnit = &u
+	}
+	if in.NameEnSource != nil {
+		out.NameENSource = string(*in.NameEnSource)
 	}
 	return out
 }
@@ -308,6 +319,9 @@ func toPrefill(p openfoodfacts.Product) *apitypes.OpenFoodFactsPrefill {
 	out := &apitypes.OpenFoodFactsPrefill{Code: p.Code, Name: p.Name, NetQuantity: p.NetQuantity}
 	if p.Brand != "" {
 		out.Brand = &p.Brand
+	}
+	if p.NameEN != "" {
+		out.NameEn = &p.NameEN
 	}
 	if p.NetUnit != "" {
 		u := apitypes.OpenFoodFactsPrefillNetUnit(p.NetUnit)

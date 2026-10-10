@@ -25,6 +25,7 @@ import (
 	"shop/internal/stats"
 	"shop/internal/store"
 	"shop/internal/store/db"
+	"shop/internal/translate"
 	"shop/internal/version"
 )
 
@@ -45,7 +46,8 @@ type server struct {
 
 const instructions = `Shop tracks grocery receipts (Dutch/English), products, prices per shop and a shopping list.
 Money is given both as integer cents and formatted euros. Dates are local (Europe/Amsterdam), YYYY-MM-DD.
-Product and shop arguments accept an id or a name; names are fuzzy-matched and the result says which one was used.
+Product and shop arguments accept an id or a name (Dutch or English); names are fuzzy-matched and the result says which one was used.
+Products have a Dutch name (as sold) and an English name_en.
 Unit prices are per base unit (kg, l or piece). Prices come from receipts with status ok.`
 
 // New builds the MCP server with all tools and resources registered.
@@ -163,8 +165,9 @@ func (s *server) resolveShop(ctx context.Context, ref string) (*db.Shop, error) 
 }
 
 type ProductRef struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	NameEN string `json:"name_en,omitempty"`
 }
 
 // resolveProduct accepts an id or a (fuzzy) name.
@@ -178,7 +181,7 @@ func (s *server) resolveProduct(ctx context.Context, ref string) (ProductRef, er
 		if err != nil {
 			return ProductRef{}, fmt.Errorf("no product with id %d", id)
 		}
-		return ProductRef{ID: p.ID, Name: p.Name}, nil
+		return ProductRef{ID: p.ID, Name: p.Name, NameEN: p.NameEn.String}, nil
 	}
 	cands, err := s.Matcher.Search(ctx, ref, 0, 1, 0.6)
 	if err != nil {
@@ -187,7 +190,7 @@ func (s *server) resolveProduct(ctx context.Context, ref string) (ProductRef, er
 	if len(cands) == 0 {
 		return ProductRef{}, fmt.Errorf("no product matches %q; try search_products", ref)
 	}
-	return ProductRef{ID: cands[0].ProductID, Name: cands[0].Name}, nil
+	return ProductRef{ID: cands[0].ProductID, Name: cands[0].Name, NameEN: cands[0].NameEN}, nil
 }
 
 // ------------------------------------------------------------- spend
@@ -359,6 +362,7 @@ type ReceiptLine struct {
 	Unit    string  `json:"unit"`
 	Total   Amount  `json:"total"`
 	Product string  `json:"product,omitempty"`
+	TextEN  string  `json:"text_en,omitempty"`
 }
 
 type GetReceiptOut struct {
@@ -382,17 +386,19 @@ func (s *server) getReceipt(ctx context.Context, _ *mcp.CallToolRequest, in GetR
 		_ = json.Unmarshal([]byte(rec.ReviewReasons.String), &out.ReviewReasons)
 	}
 	out.ReceiptSummary.Lines = len(lines)
-	productNames := map[int64]string{}
+	productNames := map[int64][2]string{}
 	for _, l := range lines {
 		rl := ReceiptLine{Text: l.RawText, Kind: l.Kind, Qty: l.Qty, Unit: l.Unit, Total: amount(l.LineTotalCents)}
 		if l.ProductID.Valid {
 			id := l.ProductID.Int64
 			if _, ok := productNames[id]; !ok {
 				if p, err := s.Products.Get(ctx, id); err == nil {
-					productNames[id] = p.Name
+					productNames[id] = [2]string{p.Name, p.NameEn.String}
 				}
 			}
-			rl.Product = productNames[id]
+			rl.Product, rl.TextEN = productNames[id][0], productNames[id][1]
+		} else if t := translate.Translate(match.Normalise(l.RawText)); t.OK() && l.Kind == "item" {
+			rl.TextEN = t.Text
 		}
 		out.Lines = append(out.Lines, rl)
 	}
@@ -407,10 +413,11 @@ type SearchIn struct {
 }
 
 type ProductHit struct {
-	ID    int64   `json:"id"`
-	Name  string  `json:"name"`
-	Brand string  `json:"brand,omitempty"`
-	Score float64 `json:"score"`
+	ID     int64   `json:"id"`
+	Name   string  `json:"name"`
+	NameEN string  `json:"name_en,omitempty"`
+	Brand  string  `json:"brand,omitempty"`
+	Score  float64 `json:"score"`
 }
 
 type SearchOut struct {
@@ -428,7 +435,7 @@ func (s *server) searchProducts(ctx context.Context, _ *mcp.CallToolRequest, in 
 	}
 	out := SearchOut{Products: make([]ProductHit, len(cands))}
 	for i, c := range cands {
-		out.Products[i] = ProductHit{ID: c.ProductID, Name: c.Name, Brand: c.Brand, Score: float64(int(c.Score*100)) / 100}
+		out.Products[i] = ProductHit{ID: c.ProductID, Name: c.Name, NameEN: c.NameEN, Brand: c.Brand, Score: float64(int(c.Score*100)) / 100}
 	}
 	return nil, out, nil
 }

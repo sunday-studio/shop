@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"shop/internal/apitypes"
+	"shop/internal/match"
 	"shop/internal/receipts"
 	"shop/internal/store"
 	"shop/internal/store/db"
+	"shop/internal/translate"
 )
 
 const maxUpload = 20 << 20
@@ -44,13 +46,18 @@ func toReceipt(r db.Receipt, lines []db.ReceiptLine) apitypes.Receipt {
 }
 
 func toLine(l db.ReceiptLine) apitypes.ReceiptLine {
-	return apitypes.ReceiptLine{
+	out := apitypes.ReceiptLine{
 		Id: l.ID, ReceiptId: l.ReceiptID, LineNo: int(l.LineNo), RawText: l.RawText,
 		Kind: apitypes.LineKind(l.Kind), Qty: l.Qty, Unit: apitypes.LineUnit(l.Unit),
 		UnitPriceCents: store.IntPtr(l.UnitPriceCents), LineTotalCents: l.LineTotalCents,
 		VatCode: store.StrPtr(l.VatCode), ParentLineId: store.IntPtr(l.ParentLineID),
 		ProductId: store.IntPtr(l.ProductID), UserEdited: l.UserEdited != 0,
 	}
+	// Receipt text is abbreviated; expand it (Normalise) before translating.
+	if t := translate.Translate(match.Normalise(l.RawText)); t.OK() && l.Kind == "item" {
+		out.TextEn = &t.Text
+	}
+	return out
 }
 
 func (s *Server) listReceipts(w http.ResponseWriter, r *http.Request) {

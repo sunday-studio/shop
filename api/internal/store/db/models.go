@@ -61,18 +61,20 @@ type PricePoint struct {
 }
 
 type Product struct {
-	ID          int64           `json:"id"`
-	Name        string          `json:"name"`
-	Brand       sql.NullString  `json:"brand"`
-	CategoryID  sql.NullInt64   `json:"category_id"`
-	Barcode     sql.NullString  `json:"barcode"`
-	NetQuantity sql.NullFloat64 `json:"net_quantity"`
-	NetUnit     sql.NullString  `json:"net_unit"`
-	ImagePath   sql.NullString  `json:"image_path"`
-	OffCode     sql.NullString  `json:"off_code"`
-	CreatedAt   string          `json:"created_at"`
-	UpdatedAt   string          `json:"updated_at"`
-	DeletedAt   sql.NullString  `json:"deleted_at"`
+	ID           int64           `json:"id"`
+	Name         string          `json:"name"`
+	Brand        sql.NullString  `json:"brand"`
+	CategoryID   sql.NullInt64   `json:"category_id"`
+	Barcode      sql.NullString  `json:"barcode"`
+	NetQuantity  sql.NullFloat64 `json:"net_quantity"`
+	NetUnit      sql.NullString  `json:"net_unit"`
+	ImagePath    sql.NullString  `json:"image_path"`
+	OffCode      sql.NullString  `json:"off_code"`
+	CreatedAt    string          `json:"created_at"`
+	UpdatedAt    string          `json:"updated_at"`
+	DeletedAt    sql.NullString  `json:"deleted_at"`
+	NameEn       sql.NullString  `json:"name_en"`
+	NameEnSource sql.NullString  `json:"name_en_source"`
 }
 
 type ProductAlias struct {
