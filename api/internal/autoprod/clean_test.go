@@ -22,6 +22,10 @@ func TestCleanLine(t *testing.T) {
 		{"D LET KILO", "", true, false},
 		{"NUNNUNONNTT BIO ZON OLIE", "Nunnunonntt Bio Zon Olie", false, true},
 		{"AH BIO MELK", "AH Bio Melk", false, false},
+		{", PETERSELIE KRUL 0.74", "Peterselie Krul", false, false},
+		{"22 SUBTOTAAL", "", true, false},
+		{"TOTAAL 12,34", "", true, false},
+		{"22 Artikelen", "", true, false},
 	} {
 		got := CleanLine(c.raw)
 		if got.Skip != c.skip || got.Name != c.name || got.Odd != c.odd {

@@ -13,7 +13,8 @@ import (
 
 var (
 	qtyPrefixRe   = regexp.MustCompile(`^\d{1,2}\s+`)
-	bulletRe      = regexp.MustCompile(`^[-–•*.\s]+`)
+	bulletRe      = regexp.MustCompile(`^[^\p{L}\p{N}]+`) // leading bullets, dashes, commas, OCR specks
+	totalsRowRe   = regexp.MustCompile(`^(sub\s*-?\s*)?(totaal|total)\b|\bartikelen$|^(te betalen|btw|bonus box|jouw voordeel)\b`)
 	trailPriceRe  = regexp.MustCompile(`\s+\d+[.,]\d{2}$`)
 	trailVATRe    = regexp.MustCompile(`\s+[A-Da-d]$`)
 	weightRowRe   = regexp.MustCompile(`^\d+[.,]?\d*\s?kg(\s*x\s*\d+)?$`)
@@ -74,7 +75,7 @@ func CleanLine(raw string) Cleaned {
 	s = strings.Join(toks, " ")
 
 	f := match.Fold(s)
-	if !threeLetters.MatchString(f) || kiloResidueRe.MatchString(f) {
+	if !threeLetters.MatchString(f) || kiloResidueRe.MatchString(f) || totalsRowRe.MatchString(f) {
 		return Cleaned{Skip: true}
 	}
 	odd := false
