@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Pantry API
-  version: 0.2.0
+  version: 0.3.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -323,6 +323,208 @@ paths:
         "204": { description: Deleted }
         default: { $ref: "#/components/responses/Problem" }
 
+  # ------------------------------------------------------------- products
+  /v1/products:
+    get:
+      operationId: listProducts
+      description: Without q, products sorted by name. With q, fuzzy-ranked (score >= 0.5).
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: category_id, in: query, schema: { type: integer, format: int64 } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Product" }
+        default: { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "409":
+          description: Barcode already used
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/barcodes/{code}:
+    parameters:
+      - { name: code, in: path, required: true, schema: { type: string, pattern: "^[0-9]{8}$|^[0-9]{12,14}$" } }
+    get:
+      operationId: lookupBarcode
+      description: Local product if known, else an Open Food Facts prefill (not saved). 404 if neither.
+      responses:
+        "200":
+          description: Found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BarcodeLookup" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      operationId: getProduct
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        default: { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateProduct
+      description: Replaces editable fields (send the full product). Nutrition only changes when present.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteProduct
+      responses:
+        "204": { description: Soft-deleted (barcode released) }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/{id}/image:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      operationId: getProductImage
+      responses:
+        "200":
+          description: JPEG, max 1024 px
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+        default: { $ref: "#/components/responses/Problem" }
+    put:
+      operationId: putProductImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image: { type: string, format: binary }
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/{id}/nutrition:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    put:
+      operationId: putNutrition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Nutrition" }
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteNutrition
+      responses:
+        "204": { description: Removed }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/{id}/aliases:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      operationId: listAliases
+      responses:
+        "200":
+          description: Receipt texts linked to this product
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Alias" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/aliases/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    delete:
+      operationId: deleteAlias
+      responses:
+        "204": { description: Deleted (already-linked lines keep their product) }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/{id}/unmatched-lines:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+      - { name: days, in: query, schema: { type: integer, default: 14, maximum: 365 } }
+    get:
+      operationId: unmatchedLinesForProduct
+      description: Recent receipt lines without a product, ranked by similarity to this product.
+      responses:
+        "200":
+          description: Lines
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/UnmatchedLine" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/lines/{id}/product:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    put:
+      operationId: linkLineProduct
+      description: >
+        Set or clear (product_id null) a line's product. With remember (default true) the
+        line text at this shop becomes an alias: other unmatched lines with the same text are
+        linked now, and future receipts link automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkInput" }
+      responses:
+        "200":
+          description: Linked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
 components:
   securitySchemes:
     bearer:
@@ -459,6 +661,10 @@ components:
         parent_line_id: { type: integer, format: int64 }
         product_id: { type: integer, format: int64 }
         user_edited: { type: boolean }
+        suggestions:
+          type: array
+          description: Up to 3 likely products for unmatched item lines (single-receipt GET only).
+          items: { $ref: "#/components/schemas/ProductMatch" }
 
     ReceiptPatch:
       type: object
@@ -500,3 +706,114 @@ components:
           type: array
           items: { $ref: "#/components/schemas/Receipt" }
         next_cursor: { type: string }
+
+    Nutrition:
+      type: object
+      description: Values per 100 g / 100 ml.
+      properties:
+        per: { type: string, enum: ["100g", "100ml"], default: "100g" }
+        energy_kcal: { type: number, format: double }
+        fat: { type: number, format: double }
+        saturated_fat: { type: number, format: double }
+        carbs: { type: number, format: double }
+        sugars: { type: number, format: double }
+        fibre: { type: number, format: double }
+        protein: { type: number, format: double }
+        salt: { type: number, format: double }
+        source: { type: string, enum: [openfoodfacts, manual], default: manual }
+
+    ProductInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        brand: { type: string }
+        category_id: { type: integer, format: int64 }
+        barcode: { type: string }
+        net_quantity: { type: number, format: double, description: "package size, with net_unit" }
+        net_unit: { type: string, enum: [g, ml, pc] }
+        openfoodfacts_code: { type: string }
+        image_url: { type: string, description: "https Open Food Facts image to download (create only)" }
+        nutrition: { $ref: "#/components/schemas/Nutrition" }
+
+    Product:
+      type: object
+      required: [id, name, has_image, created_at, updated_at]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        brand: { type: string }
+        category_id: { type: integer, format: int64 }
+        barcode: { type: string }
+        net_quantity: { type: number, format: double }
+        net_unit: { type: string, enum: [g, ml, pc] }
+        openfoodfacts_code: { type: string }
+        has_image: { type: boolean }
+        nutrition: { $ref: "#/components/schemas/Nutrition" }
+        score: { type: number, format: double, description: "search relevance, only with q" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    OpenFoodFactsPrefill:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        brand: { type: string }
+        net_quantity: { type: number, format: double }
+        net_unit: { type: string, enum: [g, ml] }
+        image_url: { type: string }
+        nutrition: { $ref: "#/components/schemas/Nutrition" }
+
+    BarcodeLookup:
+      type: object
+      required: [source]
+      properties:
+        source: { type: string, enum: [local, openfoodfacts] }
+        product: { $ref: "#/components/schemas/Product" }
+        prefill: { $ref: "#/components/schemas/OpenFoodFactsPrefill" }
+
+    ProductMatch:
+      type: object
+      required: [product_id, name, score]
+      properties:
+        product_id: { type: integer, format: int64 }
+        name: { type: string }
+        brand: { type: string }
+        score: { type: number, format: double }
+
+    Alias:
+      type: object
+      required: [id, text, product_id, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        text: { type: string, description: normalised receipt text }
+        shop_id: { type: integer, format: int64 }
+        shop_name: { type: string }
+        product_id: { type: integer, format: int64 }
+        created_at: { type: string, format: date-time }
+
+    UnmatchedLine:
+      type: object
+      required: [line, shop_id, shop_name, score]
+      properties:
+        line: { $ref: "#/components/schemas/ReceiptLine" }
+        shop_id: { type: integer, format: int64 }
+        shop_name: { type: string }
+        purchased_at: { type: string, format: date-time }
+        score: { type: number, format: double }
+
+    LinkInput:
+      type: object
+      properties:
+        product_id: { type: integer, format: int64, nullable: true }
+        remember: { type: boolean, default: true }
+
+    LinkResult:
+      type: object
+      required: [line, also_linked, alias_created]
+      properties:
+        line: { $ref: "#/components/schemas/ReceiptLine" }
+        also_linked: { type: integer, format: int64, description: "other lines linked through the alias" }
+        alias_created: { type: boolean }

@@ -24,7 +24,10 @@ import (
 	"pantry/internal/auth"
 	"pantry/internal/httpapi"
 	"pantry/internal/jobs"
+	"pantry/internal/match"
 	"pantry/internal/ocr"
+	"pantry/internal/openfoodfacts"
+	"pantry/internal/products"
 	"pantry/internal/receipts"
 	"pantry/internal/store"
 	"pantry/internal/store/db"
@@ -99,7 +102,19 @@ func newEnv(t *testing.T) *env {
 	queue.Backoff = func(int64) time.Duration { return 0 } // retries are due immediately
 	ocrClient := ocr.New(f.srv.URL)
 	svc := receipts.New(conn, ocrClient, nil, queue, receipts.Config{ImagesDir: filepath.Join(dir, "images"), Location: ams}, log)
-	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Location: ams, Log: log})
+	foodFacts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v2/product/8710400000017.json" {
+			_, _ = w.Write([]byte(`{"status":1,"product":{"product_name_nl":"Halfvolle melk","brands":"AH",
+				"product_quantity":1500,"product_quantity_unit":"ml",
+				"nutriments":{"energy-kcal_100g":46,"fat_100g":1.5,"proteins_100g":3.5}}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"status":0}`))
+	}))
+	t.Cleanup(foodFacts.Close)
+	prods := products.New(conn, match.NewMatcher(conn), openfoodfacts.New("test").WithBaseURL(foodFacts.URL),
+		filepath.Join(dir, "images"), log)
+	api := httpapi.New(httpapi.Deps{DB: conn, OCR: ocrClient, Receipts: svc, Products: prods, Location: ams, Log: log})
 
 	q := db.New(conn)
 	tok, err := auth.Create(context.Background(), q, "test")

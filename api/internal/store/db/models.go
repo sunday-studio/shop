@@ -123,9 +123,10 @@ type ReceiptLine struct {
 }
 
 type SearchFt struct {
-	Kind  string `json:"kind"`
-	RefID string `json:"ref_id"`
-	Text  string `json:"text"`
+	Kind   string `json:"kind"`
+	RefID  string `json:"ref_id"`
+	ShopID string `json:"shop_id"`
+	Text   string `json:"text"`
 }
 
 type Shop struct {

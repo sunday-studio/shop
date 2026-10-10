@@ -78,7 +78,7 @@ pantry/
 │  │  ├─ ocr/                OCR client (+ fallback)
 │  │  ├─ receipt/            rows.go, classify.go, parse.go, validate.go, numbers.go, dates.go
 │  │  ├─ match/              normalise.go, fuzzy.go, aliases.go
-│  │  ├─ off/                Open Food Facts client
+│  │  ├─ openfoodfacts/      Open Food Facts client
 │  │  ├─ stats/              spend, price points, compare, changes
 │  │  └─ money/              cents type + NL formatting
 │  ├─ testdata/receipts/     regression corpus (OCR JSON + expected JSON)
@@ -291,7 +291,7 @@ Receipts     POST /receipts                      multipart{image, shop_id, purch
 Lines        POST /receipts/{id}/lines · PATCH/DELETE /lines/{id}
              PUT  /lines/{id}/product            {product_id, remember: true} → writes alias
 Products     GET /products?q&category_id · POST /products · GET/PATCH/DELETE /products/{id}
-             GET /products/barcode/{ean}         local hit | OFF prefill | 404
+             GET /barcodes/{ean}         local hit | OFF prefill | 404
              PUT /products/{id}/image            multipart
              PUT /products/{id}/nutrition
              GET /products/{id}/unmatched-lines?days=14   candidate lines to link
@@ -473,13 +473,15 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 **Done when** all 100 spike receipts are imported through the real API, and ≥ 80 % of them land in `ok` without edits.
 
 ### M3 — Products & fuzzy matching (4 d)
-- [ ] `match.Normalise` + abbreviation table + tests
-- [ ] FTS5 trigram index maintenance (triggers or explicit refresh)
-- [ ] Jaro-Winkler + token-set scorer, `Suggest(shopID, text) []Candidate`
-- [ ] Products CRUD, image upload (resize to 1024 px, JPEG), nutrition PUT
-- [ ] `off` client: `GET https://world.openfoodfacts.org/api/v2/product/{ean}` with a proper User-Agent, 24 h negative cache, mapping to product + nutrition
-- [ ] `GET /products/barcode/{ean}`, `PUT /lines/{id}/product` (alias write), suggestions in `GET /receipts/{id}`
-- [ ] `GET /products/{id}/unmatched-lines`
+- [x] `match.Normalise` + abbreviation table + tests
+- [x] FTS5 trigram index maintenance (triggers or explicit refresh)
+- [x] Jaro-Winkler + token-set scorer, `Suggest(shopID, text) []Candidate`
+- [x] Products CRUD, image upload (resize to 1024 px, JPEG), nutrition PUT
+- [x] `openfoodfacts` client: `GET https://world.openfoodfacts.org/api/v2/product/{ean}` with a proper User-Agent, 24 h negative cache, mapping to product + nutrition
+- [x] `GET /barcodes/{ean}`, `PUT /lines/{id}/product` (alias write), suggestions in `GET /receipts/{id}`
+- [x] `GET /products/{id}/unmatched-lines`
+
+**Status: done (2026-10-10).** Barcode lookup lives at `GET /v1/barcodes/{code}` (a `/v1/products/barcode/…` path clashes with `/v1/products/{id}/…`). Search index rebuilt with diacritics folding + triggers (migration 00004). Verified live against Open Food Facts.
 
 **Done when** linking a line once makes the same text from the same shop auto-link on the next receipt, and an EAN scan of an AH/Jumbo/Lidl product returns an OFF prefill.
 
