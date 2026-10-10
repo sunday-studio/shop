@@ -640,26 +640,29 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 Each item starts with a short research step against the real receipts in `spike/data` (HEIC photos), and ends with a go/no-go before any build work.
 
 **Auto-suggest new shops**
-- [ ] Research: how often does the receipt header resolve to no known shop? Cluster unmatched header text across the spike receipts and see whether chain + branch can be read reliably (`internal/logos` already guesses a domain for new shops).
-- [ ] Propose a shop (name, chain, domain, logo) when a receipt's header doesn't match one, instead of dropping it into a generic bucket. The user accepts or edits in one tap. Accepting re-links the receipts waiting on it.
-- [ ] Done when a receipt from a chain you've never scanned arrives with a ready suggestion.
+- [x] Research: how often does the receipt header resolve to no known shop? *(done: 11 of 13 real headers readable, 7 Albert Heijn + 4 Dirk; the 2 butcher slips have no header and get no suggestion)* Cluster unmatched header text across the spike receipts and see whether chain + branch can be read reliably (`internal/logos` already guesses a domain for new shops).
+- [x] Propose a shop (name, chain, domain, logo) *(backend done: `shop-suggestion` / `accept` / `reject`, optional `shop_id` on upload; the app UI is the swift agent's)* when a receipt's header doesn't match one, instead of dropping it into a generic bucket. The user accepts or edits in one tap. Accepting re-links the receipts waiting on it.
+- [x] Done when a receipt from a chain you've never scanned arrives with a ready suggestion. *(backend: yes; not yet tried with a chain that is not in the built-in list)*
 
 **Small model for Dutch → English**
-- [ ] Research: pick a small CPU-only NL→EN model (e.g. an opus-mt-nl-en class model, quantized) that fits the Mac mini next to the OCR container. Measure on grocery names against the glossary and every manual `name_en` you've typed (that's the eval set).
+- [ ] *(held, conditional go: not built; glossary + taught words cover English names for now)* Research: pick a small CPU-only NL→EN model (e.g. an opus-mt-nl-en class model, quantized) that fits the Mac mini next to the OCR container. Measure on grocery names against the glossary and every manual `name_en` you've typed (that's the eval set).
 - [ ] Use it only where the glossary gives `partial` or `missing`; keep glossary and manual names first. New `name_en_status` value (`model`), shown like `dictionary` with an "auto" hint, and still correctable via §6a.
 - [ ] Corrections feed back: a taught word or manual name is added to the eval set, and a model result you fix becomes a glossary term.
 - [ ] Done when `missing` products drop sharply on the spike data without any manual name changing.
 
 **Upload photos of receipts**
 - [x] The app already has a "Choose a photo" picker in the scan flow (up to 5 pages). Make it a first-class path: an "Add photos" option in the Add tray that skips the scanner, including old receipts, and one receipt per photo or multi-page.
-- [ ] Verify HEIC end to end (the spike set is HEIC): app uploads, server accepts, OCR gets a JPEG/PNG, original is kept in the image mirror.
+- [x] Verify HEIC end to end *(decision changed: the app converts HEIC to JPEG, the server rejects HEIC/HEIF with an explicit 415, and the uploaded JPEG is kept in the image mirror)* (the spike set is HEIC): app uploads, server accepts, OCR gets a JPEG/PNG, original is kept in the image mirror.
 - [ ] Later: share extension ("Share to Shop" from Photos or Files).
-- [ ] Done when a photo from the camera roll becomes a parsed receipt with the purchase date from the receipt, not the upload date.
+- [x] Done when a photo from the camera roll becomes a parsed receipt with the purchase date from the receipt, not the upload date. *(backend: `purchased_at` is the parsed receipt date, else empty; never the upload time or EXIF)*
 
 **Known bugs found in the first real run**
-- [ ] The parser counts the `SUBTOTAAL` line as an item, so `parsed_sum_cents` is exactly double the printed total on both receipts so far (e.g. 16936 vs 8468). Classify subtotal/total/betaling lines as `other`/ignored (§5.3) and add the two receipts as test fixtures.
+- [x] The parser counts the `SUBTOTAAL` line as an item *(done; fixtures 1469 and 1471, plus 1466 and 1470 price repairs; 12 of 13 real receipts reconcile. IMG_1475 / receipt 3 is a curled photo and still needs a straightened one, so it stays `needs_review`)*, so `parsed_sum_cents` is exactly double the printed total on both receipts so far (e.g. 16936 vs 8468). Classify subtotal/total/betaling lines as `other`/ignored (§5.3) and add the two receipts as test fixtures.
 
 **iOS status (2026-10-11):** the import flow (Photos/Files/PDF, batches, straighten and crop), shop suggestion cards, the product review queue with undo, and barcode create are built and exercised on the mock server (docs/IOS-STATUS.md). Left unticked because they need the real server or a device: HEIC end to end, the date-from-receipt check, and the "ready suggestion" done-when. The share extension is not started.
+
+**Product auto-populate** (added after the research)
+- [x] Backend built: `create_or_link` on confirm, review queue, merge / undo / split / discard, barcode create, backfill, `AUTO_PRODUCTS` on by default; 25 products created on the real DB. See [BACKEND-STATUS.md](BACKEND-STATUS.md) and [PRODUCT-AUTOPOPULATE.md](PRODUCT-AUTOPOPULATE.md). The app screens are the swift agent's.
 
 ### M9 — Later (unscheduled, opt-in)
 - Per-shop parser profiles, if `needs_review` clusters on one chain
