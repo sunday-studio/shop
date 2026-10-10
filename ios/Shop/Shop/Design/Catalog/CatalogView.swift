@@ -129,6 +129,50 @@ struct CatalogView: View {
                         FeatureCard(icon: .barcode, title: "Unpack groceries", caption: "Scan barcodes, add new products", color: Accent.green) {}
                     }
                 }
+                section("Import") {
+                    let page = UIGraphicsImageRenderer(size: CGSize(width: 90, height: 130)).image { ctx in
+                        UIColor(white: 0.93, alpha: 1).setFill()
+                        ctx.fill(CGRect(x: 0, y: 0, width: 90, height: 130))
+                    }
+                    VStack(spacing: 0) {
+                        ImportReceiptRow(pages: [page, page], title: "Receipt 1 · 2 pages", shopName: "Albert Heijn", straighten: .straightened, onShop: {}, onDetails: {}, onRemove: {})
+                        JoinPill(isJoined: false) {}
+                        ImportReceiptRow(pages: [page], title: "Receipt 2", shopName: nil, photoDateHint: "Photo from 3 Oct", straighten: .notFound, onShop: {}, onDetails: {}, onRemove: {})
+                    }
+                    UploadProgressCard(state: .uploading(done: 3, total: 6))
+                    UploadProgressCard(state: .offline(waiting: 6))
+                    UploadProgressCard(state: .partial(uploaded: 4, failed: 2))
+                    UploadProgressCard(state: .done(total: 6))
+                    ShopSuggestionCard(name: "Aldi", detail: "Utrecht · aldi.nl", waiting: 3, onAccept: {}, onEdit: {}, onNotNow: {})
+                    ReceiptRow(shopName: "Unknown shop", subtitle: "Looks like Aldi · tap to add", subtitleColor: Palette.blueText, amount: "€27,40", isUnknownShop: true)
+                }
+                section("Review queue") {
+                    ReviewCard(
+                        name: "Arla bio halfvolle melk", detail: "1 l", categoryName: "Zuivel", reason: .nearMatch, suggestionName: "ARLA MELK",
+                        source: .init(shopName: "Albert Heijn", dateText: "Sun 30 Aug", rawText: "ARLA BIO HALFV. MELK", amountText: "1,89")
+                    )
+                    ReviewCard(name: "Hummus naturel", reason: .noCategory, source: .init(shopName: "Lidl", dateText: "Thu 8 Oct", rawText: "HUMMUS NATUREL", amountText: "1,49"))
+                    ReviewCard(name: "Unknown product 2345", reason: .barcodeMinimal, barcode: "8710400012345")
+                    ReviewCard(name: "Unknown product 9876", reason: .barcodeOffUnavailable, barcode: "8710400019876")
+                    ReviewCard(name: "Griekse yoghurt", reason: .barcodeNameMatch, suggestionName: "AH GRIEKS YOGH", barcode: "8718452390010", isOffline: true)
+                    ReviewCardSkeleton()
+                    AttentionCard(count: 12, title: "New products to check", hint: "about 2 min") {}
+                    ToastView(message: ToastMessage(text: "Merged into AH BIO MELK", action: (title: "Undo", run: {})))
+                }
+                section("Scanner rows") {
+                    VStack(spacing: 0) {
+                        ScanTally(known: 9, added: 4, toName: 1).padding(.bottom, 10)
+                        ScanEntryRow(code: "8718452390010", outcome: .looking)
+                        ScanEntryRow(code: "8710400012345", outcome: .known(name: "Halfvolle melk", meta: "1,5 l"))
+                        ScanEntryRow(code: "8718452390027", outcome: .created(name: "Griekse yoghurt 0%", category: "Zuivel"), receiptLines: 2)
+                        ScanEntryRow(code: "8710400012345", outcome: .createdMinimal(name: "Unknown product 2345"), mergeSuggestion: "AH BIO MELK")
+                        ScanEntryRow(code: "8710400019876", outcome: .offUnavailable(name: "Unknown product 9876"))
+                        ScanEntryRow(code: "8718452390034", outcome: .queued)
+                        ScanEntryRow(code: "8718452390041", outcome: .failed(message: "Server not reachable"))
+                    }
+                    .padding(Space.l)
+                    .background(Color(hex: 0x1C1C1A), in: RoundedRectangle.continuous(Radius.l))
+                }
                 section("Trays") {
                     Button("Open a tray") { openTray() }.buttonStyle(.shop(.secondary))
                 }
