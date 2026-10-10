@@ -34,6 +34,10 @@ struct ConfirmBar: View {
     let totalCents: Int64?
     var buttonTitle: String = "Confirm"
     var isWorking: Bool = false
+    /// True while only the receipt summary is on screen and its lines are still loading:
+    /// shows the printed total with a neutral meter, disables Confirm and skips the
+    /// number roll, so "€38,13 off" doesn't flash amber before the lines arrive.
+    var isLoading: Bool = false
     let onConfirm: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduce
@@ -50,14 +54,18 @@ struct ConfirmBar: View {
                     .contentTransition(reduce ? .opacity : .numericText(value: Double(linesCents)))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+                    .id(isLoading) // loading -> loaded cross-fades; a numeric roll between the two strings garbles
+                    .transition(.asymmetric(insertion: .opacity.animation(Motion.fade.delay(0.06)), removal: .opacity.animation(.easeOut(duration: 0.06))))
                 HStack(spacing: Space.m) {
-                    ProgressMeter(fraction: fraction, color: matches ? Accent.green : Accent.amber)
+                    ProgressMeter(fraction: isLoading ? 0 : fraction, color: matches ? Accent.green : Accent.amber)
                     Text(deltaText)
                         .textStyle(.label)
-                        .foregroundStyle(matches ? Palette.greenText : Palette.amberText)
+                        .foregroundStyle(isLoading ? Palette.ink3 : (matches ? Palette.greenText : Palette.amberText))
                         .contentTransition(reduce ? .opacity : .numericText(value: Double(delta ?? 0)))
                         .lineLimit(1)
                         .fixedSize()
+                        .id(isLoading)
+                        .transition(.asymmetric(insertion: .opacity.animation(Motion.fade.delay(0.06)), removal: .opacity.animation(.easeOut(duration: 0.06))))
                 }
             }
             Button(action: onConfirm) {
@@ -65,7 +73,7 @@ struct ConfirmBar: View {
                     .labelMorph()
             }
             .buttonStyle(.shop(size: .confirm, fullWidth: false, haptic: .medium))
-            .disabled(isWorking)
+            .disabled(isWorking || isLoading)
         }
         .padding(.vertical, Space.xl)
         .padding(.leading, 22)
@@ -73,11 +81,13 @@ struct ConfirmBar: View {
         .background(Palette.tray, in: RoundedRectangle.continuous(Radius.bar))
         .elevationRing(RoundedRectangle.continuous(Radius.bar))
         .elevation(.tray)
-        .animation(reduce ? Motion.reducedFade : Motion.numberRoll, value: linesCents)
+        .animation(isLoading ? nil : (reduce ? Motion.reducedFade : Motion.numberRoll), value: linesCents)
+        .animation(Motion.fade, value: isLoading)
         .accessibilityElement(children: .contain)
     }
 
     private var caption: String {
+        if isLoading, let totalCents { return "Receipt \(Money.format(totalCents))" }
         if let totalCents {
             return "Lines \(Money.format(linesCents)) · Receipt \(Money.format(totalCents))"
         }
@@ -85,6 +95,7 @@ struct ConfirmBar: View {
     }
 
     private var deltaText: String {
+        if isLoading { return "Reading lines…" }
         guard let delta else { return "Add the total" }
         if abs(delta) <= 1 { return "Adds up" }
         return "\(Money.format(Int64(delta.magnitude))) off"

@@ -38,7 +38,7 @@ struct PillTabBar<ID: Hashable>: View {
                     .background(Palette.btn, in: Circle())
                     .elevation(.bar)
             }
-            .buttonStyle(.press(scale: Motion.pillScale, haptic: .light))
+            .buttonStyle(.press(scale: Motion.pillScale, haptic: nil)) // the Add tray plays .trayOpen
             .accessibilityLabel("Add")
         }
         .padding(.horizontal, Space.edge)

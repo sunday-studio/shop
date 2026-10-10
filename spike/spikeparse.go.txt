@@ -1,0 +1,382 @@
+// Throwaway spike tool (M11 parser diagnosis). Copy kept at spike/spikeparse.go.txt.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"math"
+	"os"
+	"regexp"
+	"sort"
+	"strings"
+	"time"
+
+	"shop/internal/ocr"
+	"shop/internal/receipt"
+)
+
+func median(v []float64) float64 {
+	if len(v) == 0 {
+		return 0
+	}
+	s := append([]float64(nil), v...)
+	sort.Float64s(s)
+	return s[len(s)/2]
+}
+
+// dropTall removes boxes much taller than the median (rotated margin text that
+// anchors a row group and swallows neighbouring rows).
+func dropTall(ls []ocr.Line) []ocr.Line {
+	var hs []float64
+	for _, l := range ls {
+		hs = append(hs, l.Box[3]-l.Box[1])
+	}
+	m := median(hs)
+	var out []ocr.Line
+	for _, l := range ls {
+		if l.Box[3]-l.Box[1] > 2.2*m {
+			continue
+		}
+		out = append(out, l)
+	}
+	return out
+}
+
+var moneyRe = regexp.MustCompile(`^-?\d{1,3}[.,]\d{2}$`)
+
+// price column = money-looking boxes; their right edge cluster. Fit y-offset of
+// each price box against the nearest description box by order (no rotation).
+// estimateSkew returns tan(theta) from left edges of description boxes vs y.
+func estimateSkew(ls []ocr.Line) float64 {
+	var xs, ys []float64
+	var x0s []float64
+	for _, l := range ls {
+		if !moneyRe.MatchString(l.Text) && len(l.Text) > 4 {
+			x0s = append(x0s, l.Box[0])
+		}
+	}
+	m := median(x0s)
+	for _, l := range ls {
+		if moneyRe.MatchString(l.Text) || len(l.Text) <= 4 {
+			continue
+		}
+		if math.Abs(l.Box[0]-m) < 60 {
+			xs = append(xs, l.Box[0])
+			ys = append(ys, (l.Box[1]+l.Box[3])/2)
+		}
+	}
+	return slope(ys, xs)
+}
+
+func slope(x, y []float64) float64 { // dy/dx
+	n := float64(len(x))
+	if n < 3 {
+		return 0
+	}
+	var sx, sy, sxx, sxy float64
+	for i := range x {
+		sx += x[i]
+		sy += y[i]
+		sxx += x[i] * x[i]
+		sxy += x[i] * y[i]
+	}
+	d := n*sxx - sx*sx
+	if d == 0 {
+		return 0
+	}
+	return (n*sxy - sx*sy) / d
+}
+
+// priceRowSkew: slope of price-box y vs the y of matching description is unknown;
+// we estimate rotation from the price column's right edge vs y instead.
+func estimateSkewPrice(ls []ocr.Line) float64 {
+	var xs, ys []float64
+	for _, l := range ls {
+		if moneyRe.MatchString(l.Text) {
+			xs = append(xs, l.Box[2])
+			ys = append(ys, (l.Box[1]+l.Box[3])/2)
+		}
+	}
+	// keep the rightmost cluster
+	m := median(xs)
+	var x2, y2 []float64
+	for i := range xs {
+		if math.Abs(xs[i]-m) < 60 {
+			x2 = append(x2, xs[i])
+			y2 = append(y2, ys[i])
+		}
+	}
+	return slope(y2, x2)
+}
+
+// rotate box centres by -atan(t) about the centroid; boxes become axis-aligned
+// again around the rotated centre with the same size.
+func deskew(ls []ocr.Line, t float64) []ocr.Line {
+	var cx, cy float64
+	for _, l := range ls {
+		cx += (l.Box[0] + l.Box[2]) / 2
+		cy += (l.Box[1] + l.Box[3]) / 2
+	}
+	cx /= float64(len(ls))
+	cy /= float64(len(ls))
+	th := math.Atan(t)
+	c, s := math.Cos(-th), math.Sin(-th)
+	out := make([]ocr.Line, len(ls))
+	for i, l := range ls {
+		mx, my := (l.Box[0]+l.Box[2])/2-cx, (l.Box[1]+l.Box[3])/2-cy
+		nx, ny := mx*c-my*s+cx, mx*s+my*c+cy
+		hw, hh := (l.Box[2]-l.Box[0])/2, (l.Box[3]-l.Box[1])/2
+		l.Box = [4]float64{nx - hw, ny - hh, nx + hw, ny + hh}
+		out[i] = l
+	}
+	return out
+}
+
+// dropClipped removes a 1-2 digit box in the right-most column when a full
+// money box sits to its left on the same row (clipped "2,49" read as "49").
+func dropClipped(ls []ocr.Line) []ocr.Line {
+	var out []ocr.Line
+	for _, l := range ls {
+		if twoDigit.MatchString(strings.TrimSpace(l.Text)) && l.Box[0] > 1000 {
+			found := false
+			for _, o := range ls {
+				if moneyRe.MatchString(strings.TrimSpace(o.Text)) && o.Box[2] < l.Box[0]+20 && math.Abs(yc(o)-yc(l)) < 25 {
+					found = true
+				}
+			}
+			if found {
+				continue
+			}
+		}
+		out = append(out, l)
+	}
+	return out
+}
+
+var twoDigit = regexp.MustCompile(`^\d{1,2}$`)
+
+// fixTokens: text-level repairs found in the three failing receipts.
+//  - "20015" in the price column at low confidence: comma read as zero -> "20,15".
+func fixTokens(ls []ocr.Line) []ocr.Line {
+	out := make([]ocr.Line, len(ls))
+	re := regexp.MustCompile(`^(\d{1,3})0(\d{2})$`)
+	for i, l := range ls {
+		if l.Conf < 0.8 {
+			if m := re.FindStringSubmatch(l.Text); m != nil && l.Box[0] > 800 {
+				l.Text = m[1] + "," + m[2]
+			}
+		}
+		out[i] = l
+	}
+	return out
+}
+
+// colPair: after separating description boxes and money boxes, re-align each
+// money box vertically to the nearest description box that has no money yet,
+// within +-1.2 line heights, in order (monotonic).
+func alignPrices(ls []ocr.Line) []ocr.Line {
+	var desc, money, other []int
+	for i, l := range ls {
+		if moneyRe.MatchString(l.Text) && l.Box[0] > 800 {
+			money = append(money, i)
+		} else if strings.TrimSpace(l.Text) != "" && !moneyRe.MatchString(l.Text) && l.Box[0] < 800 && len(l.Text) > 3 {
+			desc = append(desc, i)
+		} else {
+			other = append(other, i)
+		}
+	}
+	sort.Slice(desc, func(a, b int) bool { return yc(ls[desc[a]]) < yc(ls[desc[b]]) })
+	sort.Slice(money, func(a, b int) bool { return yc(ls[money[a]]) < yc(ls[money[b]]) })
+	out := append([]ocr.Line(nil), ls...)
+	j := 0
+	for _, mi := range money {
+		best, bd := -1, 1e9
+		for k := j; k < len(desc); k++ {
+			d := math.Abs(yc(ls[desc[k]]) - yc(ls[mi]))
+			if d < bd {
+				bd, best = d, k
+			}
+			if yc(ls[desc[k]])-yc(ls[mi]) > 60 {
+				break
+			}
+		}
+		if best >= 0 && bd < 40 {
+			dy := yc(ls[desc[best]]) - yc(ls[mi])
+			l := out[mi]
+			l.Box[1] += dy
+			l.Box[3] += dy
+			out[mi] = l
+			j = best
+		}
+	}
+	return out
+}
+// pairColumns groups description boxes and money boxes into rows separately,
+// aligns the two row lists in order (DP on |dy|, gaps allowed) and moves each
+// money row to its description row's y, so BuildRows groups them together.
+func pairColumns(ls []ocr.Line) []ocr.Line {
+	isMoney := func(l ocr.Line) bool { return moneyRe.MatchString(strings.TrimSpace(l.Text)) }
+	var hs []float64
+	for _, l := range ls {
+		hs = append(hs, l.Box[3]-l.Box[1])
+	}
+	mh := median(hs)
+	// money column = right-most money boxes: x0 beyond the median x0 of descriptions
+	var dx []float64
+	for _, l := range ls {
+		if !isMoney(l) && len(l.Text) > 4 {
+			dx = append(dx, l.Box[0])
+		}
+	}
+	dmed := median(dx)
+	type grp struct {
+		idx []int
+		y   float64
+	}
+	build := func(sel func(ocr.Line) bool) []grp {
+		var ids []int
+		for i, l := range ls {
+			if sel(l) {
+				ids = append(ids, i)
+			}
+		}
+		sort.Slice(ids, func(a, b int) bool { return yc(ls[ids[a]]) < yc(ls[ids[b]]) })
+		var gs []grp
+		for _, i := range ids {
+			if n := len(gs); n > 0 && math.Abs(yc(ls[i])-yc(ls[gs[n-1].idx[0]])) < 0.5*math.Min(ls[i].Box[3]-ls[i].Box[1], ls[gs[n-1].idx[0]].Box[3]-ls[gs[n-1].idx[0]].Box[1]) {
+				gs[n-1].idx = append(gs[n-1].idx, i)
+				continue
+			}
+			gs = append(gs, grp{idx: []int{i}})
+		}
+		for k := range gs {
+			var sy float64
+			for _, i := range gs[k].idx {
+				sy += yc(ls[i])
+			}
+			gs[k].y = sy / float64(len(gs[k].idx))
+		}
+		return gs
+	}
+	money := build(func(l ocr.Line) bool { return isMoney(l) && l.Box[0] > dmed+150 })
+	desc := build(func(l ocr.Line) bool { return !isMoney(l) && l.Box[0] < dmed+150 })
+	n, m := len(desc), len(money)
+	const gap = 28.0
+	tol := 1.2 * mh
+	inf := 1e9
+	dp := make([][]float64, n+1)
+	bk := make([][]int, n+1)
+	for i := range dp {
+		dp[i] = make([]float64, m+1)
+		bk[i] = make([]int, m+1)
+	}
+	for i := 1; i <= n; i++ {
+		dp[i][0] = dp[i-1][0] + 0 // unmatched description is free (headers, notes)
+		bk[i][0] = 1
+	}
+	for j := 1; j <= m; j++ {
+		dp[0][j] = dp[0][j-1] + gap*3
+		bk[0][j] = 2
+	}
+	for i := 1; i <= n; i++ {
+		for j := 1; j <= m; j++ {
+			best, b := dp[i-1][j], 1
+			if v := dp[i][j-1] + gap*3; v < best {
+				best, b = v, 2
+			}
+			if d := math.Abs(desc[i-1].y - money[j-1].y); d < tol {
+				if v := dp[i-1][j-1] + d; v < best {
+					best, b = v, 3
+				}
+			}
+			dp[i][j], bk[i][j] = best, b
+			_ = inf
+		}
+	}
+	out := append([]ocr.Line(nil), ls...)
+	i, j := n, m
+	for i > 0 || j > 0 {
+		switch {
+		case i > 0 && j > 0 && bk[i][j] == 3:
+			dy := desc[i-1].y - money[j-1].y
+			for _, k := range money[j-1].idx {
+				l := out[k]
+				l.Box[1] += dy
+				l.Box[3] += dy
+				out[k] = l
+			}
+			i--
+			j--
+		case j > 0 && (i == 0 || bk[i][j] == 2):
+			j--
+		default:
+			i--
+		}
+	}
+	return out
+}
+
+func yc(l ocr.Line) float64 { return (l.Box[1] + l.Box[3]) / 2 }
+
+func run(name string, r ocr.Result, mode string, verbose bool) (tot string, sum int64, nl int, reasons []string, th float64) {
+	ls := r.Lines
+	var t float64
+	if strings.Contains(mode, "T") {
+		ls = dropTall(ls)
+	}
+	if strings.Contains(mode, "F") {
+		ls = fixTokens(ls)
+	}
+	if strings.Contains(mode, "S") {
+		t = estimateSkewPrice(ls)
+		if len(ls) > 0 {
+			ls = deskew(ls, t)
+		}
+	}
+	if strings.Contains(mode, "A") {
+		ls = alignPrices(ls)
+	}
+	if strings.Contains(mode, "P") {
+		ls = pairColumns(ls)
+	}
+	if strings.Contains(mode, "K") {
+		ls = dropClipped(ls)
+	}
+	r.Lines = ls
+	loc, _ := time.LoadLocation("Europe/Amsterdam")
+	p := receipt.Parse(r, receipt.Options{Location: loc, Now: time.Now()})
+	tot = "nil"
+	if p.TotalCents != nil {
+		tot = fmt.Sprint(*p.TotalCents)
+	}
+	if verbose {
+		for _, l := range p.Lines {
+			fmt.Printf("   %-9s %8d  %s\n", l.Kind, l.LineTotalCents, l.RawText)
+		}
+	}
+	return tot, p.SumCents, len(p.Lines), p.Reasons, t
+}
+
+func main() {
+	mode := os.Args[1]
+	verbose := os.Getenv("V") != ""
+	for _, f := range os.Args[2:] {
+		b, _ := os.ReadFile(f)
+		var r ocr.Result
+		json.Unmarshal(b, &r)
+		var hs []float64
+		for _, l := range r.Lines {
+			hs = append(hs, 0*l.Conf)
+		}
+		tot, sum, nl, reasons, t := run(f, r, mode, verbose)
+		ok := ""
+		if fmt.Sprint(sum) == tot {
+			ok = "OK"
+		}
+		if os.Getenv("SKEW") != "" {
+			fmt.Printf("%s leftEdge=%+.2fdeg priceEdge=%+.2fdeg\n", f[len(f)-13:len(f)-5], math.Atan(estimateSkew(r.Lines))*180/math.Pi, math.Atan(estimateSkewPrice(r.Lines))*180/math.Pi)
+			continue
+		}
+		fmt.Printf("%s mode=%-5s total=%-6s sum=%-6d lines=%-3d %-2s skewTan=%+.4f (%.2f deg) %v\n", f[len(f)-13:len(f)-5], mode, tot, sum, nl, ok, t, math.Atan(t)*180/math.Pi, reasons)
+	}
+}
