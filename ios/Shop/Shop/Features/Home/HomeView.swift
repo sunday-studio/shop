@@ -79,10 +79,23 @@ struct HomeView: View {
                 Text("Spent in \(Dates.month(.now))")
                     .textStyle(TypeStyle.rowTitle)
                     .foregroundStyle(Palette.ink2)
-                if home.spendLoaded {
+                if home.spendLoaded && home.spendUnavailable {
+                    // No figure yet and the request failed (offline): say so instead of €0,00.
+                    HeroAmount(cents: 0).hidden()
+                        .overlay(alignment: .leading) {
+                            Text("Totals appear once you're online.")
+                                .textStyle(TypeStyle.body.sized(15))
+                                .foregroundStyle(Palette.ink2)
+                        }
+                    Text(" ").textStyle(TypeStyle.body.sized(13.5)).padding(.top, Space.xs)
+                } else if home.spendLoaded {
                     HeroAmount(cents: home.monthSpend?.totalCents ?? 0, color: hasSpend ? Palette.ink : Palette.ink3)
                     Group {
-                        if let delta = home.monthDeltaCents, hasSpend {
+                        if home.spendIsStale, let updated = home.spendUpdatedAt {
+                            Text("Last updated \(Dates.relativeStamp(updated))")
+                                .textStyle(TypeStyle.body.sized(13.5))
+                                .foregroundStyle(Palette.ink3)
+                        } else if let delta = home.monthDeltaCents, hasSpend {
                             DeltaChip(deltaCents: delta, caption: "\(delta <= 0 ? "less" : "more") than this time in \(Dates.month(Dates.adding(.month, -1, to: .now)))")
                         } else {
                             Text("Totals show up once a receipt is read.")
