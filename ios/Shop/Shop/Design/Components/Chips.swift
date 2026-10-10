@@ -139,7 +139,7 @@ struct SuggestionChip: View {
             .frame(height: Size.chip)
             .background(color.opacity(0.22), in: Capsule())
         }
-        .buttonStyle(.press(scale: Motion.pillScale, haptic: .light))
+        .buttonStyle(.press(scale: Motion.pillScale, haptic: nil)) // the add action plays its own light tap; touch-down + action was a double
     }
 }
 

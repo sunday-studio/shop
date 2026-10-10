@@ -20,6 +20,7 @@ enum Motion {
     static let ease = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.24)
     static let tabSlide = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.2)
     static let fade = Animation.easeOut(duration: 0.16)
+    static let trayFade = Animation.easeOut(duration: 0.1)
     static let reducedFade = Animation.easeOut(duration: 0.12)
     static let press = Animation.easeOut(duration: 0.09)
     static let numberRoll = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.18)
@@ -85,7 +86,10 @@ extension AnyTransition {
     /// Tray enters 24pt below and faded, 420ms spring. Exits with 240ms ease.
     static var tray: AnyTransition {
         .asymmetric(
-            insertion: .offset(y: 24).combined(with: .opacity).animation(Motion.spring),
+            // Opacity runs on its own quick fade: on the 420ms spring the tray stayed see-through
+            // long enough for the list behind it to show through the card.
+            insertion: AnyTransition.offset(y: 24).animation(Motion.spring)
+                .combined(with: .opacity.animation(Motion.trayFade)),
             removal: .offset(y: 24).combined(with: .opacity).animation(Motion.ease)
         )
     }
@@ -123,8 +127,15 @@ struct RollingText: View {
 /// First paint only: rows fade and slide in 8pt, 24ms apart, max 8 rows.
 struct StaggeredAppear: ViewModifier {
     let index: Int
-    @State private var shown = false
+    // Rows past the stagger cap start shown: lazy stacks recreate rows as they scroll back
+    // into view, and replaying the fade there reads as flicker.
+    @State private var shown: Bool
     @Environment(\.accessibilityReduceMotion) private var reduce
+
+    init(index: Int) {
+        self.index = index
+        _shown = State(initialValue: index >= Motion.staggerMax)
+    }
 
     func body(content: Content) -> some View {
         content

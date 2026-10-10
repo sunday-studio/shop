@@ -27,7 +27,7 @@ final class TrayCoordinator {
     ) {
         let replacing = current != nil
         let next = Presented(id: id, content: AnyView(content()), dismissible: dismissible)
-        if !replacing { Haptics.play(.light) }
+        if !replacing { Haptics.play(.trayOpen) }
         withAnimation(replacing ? Motion.heightSpring : Motion.spring) {
             current = next
         }
@@ -82,6 +82,9 @@ private struct TrayHost: ViewModifier {
                 }
                 .ignoresSafeArea(.container, edges: .bottom)
             }
+            .onChange(of: coordinator.current?.id) { _, id in
+                if id != nil { drag = 0 }
+            }
     }
 
     private func dragGesture(dismissible: Bool) -> some Gesture {
@@ -94,8 +97,10 @@ private struct TrayHost: ViewModifier {
             .onEnded { value in
                 let shouldClose = dismissible && (value.translation.height > 120 || value.predictedEndTranslation.height > 260)
                 if shouldClose {
+                    Haptics.play(.trayDismiss)
+                    // Leave `drag` where the finger left it so the tray fades out from there;
+                    // resetting it here snapped the tray back up before the exit transition.
                     coordinator.dismiss()
-                    drag = 0
                 } else {
                     withAnimation(Motion.spring) { drag = 0 }
                 }
@@ -207,6 +212,8 @@ struct FeatureCard<Accessory: View>: View {
             .foregroundStyle(Accent.white)
             .padding(Space.xl)
             .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
+            // Hug the content (at least `height`) instead of letting the Spacer fill a tray.
+            .fixedSize(horizontal: false, vertical: true)
             .background(color, in: RoundedRectangle.continuous(Radius.card))
         }
         .buttonStyle(.press(haptic: .light))

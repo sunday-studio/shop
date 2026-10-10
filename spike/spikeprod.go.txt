@@ -1,0 +1,76 @@
+// Throwaway spike tool (M11 product auto-populate estimate). Copy kept at spike/spikeprod.go.txt.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"regexp"
+	"strings"
+	"time"
+
+	"shop/internal/match"
+	"shop/internal/ocr"
+	"shop/internal/receipt"
+	"shop/internal/translate"
+)
+
+var qtyPrefix = regexp.MustCompile(`^(\d{1,2})\s+`)
+var trailPrice = regexp.MustCompile(`\s+\d+[.,]\d{2}$`)
+
+type prod struct {
+	norm  string
+	first string
+	n     int
+}
+
+func main() {
+	loc, _ := time.LoadLocation("Europe/Amsterdam")
+	var prods []prod
+	total, auto, review, created, none := 0, 0, 0, 0, 0
+	st := map[string]int{}
+	for _, f := range os.Args[1:] {
+		b, _ := os.ReadFile(f)
+		var r ocr.Result
+		json.Unmarshal(b, &r)
+		p := receipt.Parse(r, receipt.Options{Location: loc, Now: time.Now()})
+		fmt.Printf("== %s\n", f[len(f)-13:len(f)-5])
+		for _, l := range p.Lines {
+			if l.Kind != receipt.KindItem {
+				continue
+			}
+			raw := qtyPrefix.ReplaceAllString(strings.TrimSpace(l.RawText), "")
+			raw = trailPrice.ReplaceAllString(raw, "")
+			n := match.Normalise(raw)
+			if len(n) < 3 {
+				none++
+				continue
+			}
+			total++
+			tr := translate.Translate(raw)
+			st[tr.Status()]++
+			best, bi := 0.0, -1
+			for i, q := range prods {
+				if s := match.Score(n, q.norm); s > best {
+					best, bi = s, i
+				}
+			}
+			act := "NEW"
+			switch {
+			case best >= 0.92:
+				act = fmt.Sprintf("AUTO-MERGE→%q %.2f", prods[bi].first, best)
+				auto++
+				prods[bi].n++
+			case best >= 0.75:
+				act = fmt.Sprintf("REVIEW≈%q %.2f", prods[bi].first, best)
+				review++
+				prods = append(prods, prod{n, raw, 1})
+			default:
+				created++
+				prods = append(prods, prod{n, raw, 1})
+			}
+			fmt.Printf("  %-26s | %-28s | %-10s | %s\n", raw, tr.Text, tr.Status(), act)
+		}
+	}
+	fmt.Printf("\nlines=%d (skipped short=%d) autoMerge=%d review=%d new=%d products=%d status=%v\n", total, none, auto, review, created, len(prods), st)
+}
