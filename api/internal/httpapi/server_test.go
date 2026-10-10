@@ -544,3 +544,14 @@ func TestHealthReportsBackups(t *testing.T) {
 		t.Errorf("failed backup: %d %+v", code, h.Checks["backup"])
 	}
 }
+
+func TestUploadRejectsHEIC(t *testing.T) {
+	e := newEnv(t)
+	shop := e.shop("Jumbo")
+	heic := append([]byte{0, 0, 0, 24}, []byte("ftypheic")...)
+	heic = append(heic, make([]byte, 64)...)
+	rec := e.upload(shop.Id, heic, nil)
+	if rec.Code != 415 || !strings.Contains(rec.Body.String(), "HEIC") {
+		t.Fatalf("heic upload: %d %s; want 415 mentioning HEIC", rec.Code, rec.Body)
+	}
+}

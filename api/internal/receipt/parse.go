@@ -78,13 +78,17 @@ const (
 )
 
 var (
-	totalRe    = regexp.MustCompile(`^(?:\d{1,3}\s+)?(totaal|te betalen|total|te voldoen|totaalbedrag)\b`)
-	subtotalRe = regexp.MustCompile(`^(?:\d{1,3}\s+)?sub\s*-?\s*tota`)
+	totalRe    = regexp.MustCompile(`^(?:\S{1,3}\s+)?(totaal|te betalen|total|te voldoen|totaalbedrag)\b`)
+	subtotalRe = regexp.MustCompile(`^(?:\S{1,3}\s+)?sub\s*-?\s*tota`)
 	paymentRe  = regexp.MustCompile(`\b(pin|pinnen|pinbetaling|maestro|v ?pay|visa|mastercard|contant|contactloos|creditcard|debit|betaald)\b`)
-	ignoreRe   = regexp.MustCompile(`^(btw|b\.t\.w|vat|aantal|artikelen|bonuskaart|air ?miles|klantenkaart)\b`)
-	discountRe = regexp.MustCompile(`(bonus|korting|actie|voordeel|kassakorting|prijsvoordeel|aanbieding)`)
-	depositRe  = regexp.MustCompile(`(statiegeld|emballage|leeggoed)`)
-	bagRe      = regexp.MustCompile(`(^|\s)((draag|plastic |boodschappen)?tas(je)?|zak|bag)(\s|$)`)
+	ignoreRe   = regexp.MustCompile(`^((?:\d{1,3}\s+)?artikelen|btw|b\.t\.w|vat|aantal|bonuskaart|air ?miles|klantenkaart|van \d+[.,]\d{2} voor)\b`)
+	// A row holding only a price ("2,29", "7 3,49"): the unit-price column of a skewed photo, not an item.
+	// "JOUW VOORDEEL -0,60" sums the bonus rows above it; OCR garbles the first word ("IOLJW").
+	savingsSummaryRe = regexp.MustCompile(`^(\S+\s+)?voordeel$`)
+	lonePriceRe      = regexp.MustCompile(`^(?:(?:\d{1,3}\s+)?\d+[.,]\d{2}|\d{1,3})$`)
+	discountRe       = regexp.MustCompile(`(bonus|korting|actie|voordeel|kassakorting|prijsvoordeel|aanbieding)`)
+	depositRe        = regexp.MustCompile(`(statiegeld|emballage|leeggoed)`)
+	bagRe            = regexp.MustCompile(`(^|\s)((draag|plastic |boodschappen)?tas(je)?|zak|bag)(\s|$)`)
 	// "2 x 0,89" (unit price inside the text); total, if any, is the row amount.
 	qtyFullRe = regexp.MustCompile(`^(\d{1,3})\s*[x×*]\s*(?:€\s*)?(-?\d+[.,]\d{2})$`)
 	// "2 x" / "2x" with the unit price as the row amount.
@@ -129,9 +133,23 @@ func Parse(res ocr.Result, opt Options) Result {
 			break
 		}
 	}
+	// "Totaal" with its amount on the "22 Artikelen" row below (Dirk layout).
+	var totalFromCount *int64
+	if totalIdx < 0 {
+		for i := 0; i+1 < len(rows); i++ {
+			if rows[i].Amount == nil && totalRe.MatchString(folded[i]) && rows[i+1].Amount != nil &&
+				regexp.MustCompile(`^\d{1,3}\s+artikelen`).MatchString(folded[i+1]) {
+				totalIdx, totalFromCount = i, rows[i+1].Amount
+				break
+			}
+		}
+	}
 	end := len(rows)
 	if totalIdx >= 0 {
 		out.TotalCents = rows[totalIdx].Amount
+		if totalFromCount != nil {
+			out.TotalCents = totalFromCount
+		}
 		end = totalIdx
 		for i := totalIdx + 1; i < len(rows); i++ {
 			if m := paymentRe.FindString(match.Fold(rows[i].Raw)); m != "" {
@@ -182,7 +200,7 @@ func classify(r Row, f string) rowInfo {
 	switch {
 	case subtotalRe.MatchString(f):
 		return rowInfo{kind: rSubtotal}
-	case ignoreRe.MatchString(f):
+	case ignoreRe.MatchString(f), lonePriceRe.MatchString(f), savingsSummaryRe.MatchString(f):
 		return rowInfo{kind: rIgnore}
 	}
 

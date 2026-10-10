@@ -33,6 +33,7 @@ var (
 	ErrEdited        = errors.New("receipt was confirmed or edited; use force to discard edits")
 	ErrInvalid       = errors.New("invalid input")
 	errNoOCR         = errors.New("no stored OCR output")
+	ErrHEIC          = fmt.Errorf("%w: HEIC/HEIF is not accepted; convert the photo to JPEG before uploading", ErrUnsupported)
 	allowedImageType = map[string]string{"image/jpeg": ".jpg", "image/png": ".png"}
 )
 
@@ -75,6 +76,9 @@ type processPayload struct {
 func (s *Service) Ingest(ctx context.Context, shopID int64, purchasedAt *time.Time, image []byte) (db.Receipt, error) {
 	ext, ok := allowedImageType[http.DetectContentType(image)]
 	if !ok {
+		if isHEIF(image) {
+			return db.Receipt{}, ErrHEIC
+		}
 		return db.Receipt{}, ErrUnsupported
 	}
 	if _, err := s.q.GetShop(ctx, shopID); err != nil {
@@ -346,4 +350,16 @@ func boolInt(b bool) int64 {
 		return 1
 	}
 	return 0
+}
+
+// isHEIF reports an ISO-BMFF "ftyp" box with a HEIC/HEIF brand (iPhone photos).
+func isHEIF(b []byte) bool {
+	if len(b) < 12 || string(b[4:8]) != "ftyp" {
+		return false
+	}
+	switch string(b[8:12]) {
+	case "heic", "heix", "hevc", "hevx", "heim", "heis", "mif1", "msf1":
+		return true
+	}
+	return false
 }
