@@ -57,13 +57,14 @@ final class ProductDraft {
         case nothingNew
         case notFound
         case unreachable
+        case invalid
         case belongsTo(Product)
 
         static func == (a: ScanFeedback, b: ScanFeedback) -> Bool {
             switch (a, b) {
             case (.filled(let x), .filled(let y)): x == y
             case (.belongsTo(let x), .belongsTo(let y)): x.id == y.id
-            case (.nothingNew, .nothingNew), (.notFound, .notFound), (.unreachable, .unreachable): true
+            case (.nothingNew, .nothingNew), (.notFound, .notFound), (.unreachable, .unreachable), (.invalid, .invalid): true
             default: false
             }
         }
@@ -74,8 +75,17 @@ final class ProductDraft {
     /// Barcode scanned or typed in the form: sets the barcode and fills what Open Food Facts knows.
     /// Typed values stay; empty ones are filled. Nutrition is replaced unless the user edited it.
     /// A code that belongs to another product is not applied.
+    /// EAN-8, UPC-A, EAN-13 or ITF-14 length, digits only.
+    static func isValidBarcode(_ code: String) -> Bool {
+        code.allSatisfy(\.isNumber) && [8, 12, 13, 14].contains(code.count)
+    }
+
     @discardableResult
     func apply(scan code: String, lookup: BarcodeLookup?) -> ScanFeedback {
+        guard Self.isValidBarcode(code) else {
+            scanFeedback = .invalid
+            return .invalid
+        }
         let feedback = Self.feedback(for: code, lookup: lookup, into: self)
         scanFeedback = feedback
         return feedback
@@ -348,6 +358,9 @@ struct ProductFormTray: View {
         case .notFound:
             Text("Not on Open Food Facts. Fill in the details yourself.")
                 .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+        case .invalid:
+            Text("Not a valid barcode. Barcodes have 8, 12, 13 or 14 digits.")
+                .textStyle(.rowSub).foregroundStyle(Palette.amberText).padding(.horizontal, Space.xs)
         case .unreachable:
             Text("Couldn't reach Open Food Facts. The code is saved.")
                 .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
@@ -375,11 +388,16 @@ struct ProductFormTray: View {
         lookingUp = true
         Task {
             defer { lookingUp = false }
+            guard ProductDraft.isValidBarcode(code) else {
+                draft.apply(scan: code, lookup: nil)
+                Haptics.play(.warning)
+                return
+            }
             do {
                 let lookup = try await app.api.lookupBarcode(code)
                 switch draft.apply(scan: code, lookup: lookup) {
                 case .filled: Haptics.play(.scanNew)
-                case .belongsTo: Haptics.play(.warning)
+                case .belongsTo, .invalid: Haptics.play(.warning)
                 case .nothingNew, .notFound, .unreachable: Haptics.play(.selection)
                 }
             } catch let error as APIError {
