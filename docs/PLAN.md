@@ -195,7 +195,7 @@ FROM receipt_lines l JOIN receipts r ON r.id = l.receipt_id
 WHERE l.kind = 'item' AND l.product_id IS NOT NULL AND r.status = 'ok';
 ```
 
-The per-base-unit price (`cents/kg`, `cents/l`, `cents/pc`) is computed in Go from `paid_cents`, `qty`/`unit`, and the product's `net_quantity`/`net_unit`. Seed categories: Zuivel/Dairy, Groente & fruit, Vlees & vis, Brood, Voorraad, Diepvries, Dranken, Huishouden, Verzorging, Overig.
+The per-base-unit price (`cents/kg`, `cents/l`, `cents/pc`) is computed in Go from `paid_cents`, `qty`/`unit`, and the product's `net_quantity`/`net_unit`. Seed categories: Dairy, Produce, Meat & fish, Bakery, Pantry, Frozen, Drinks, Household, Personal care, Other (seeded in Dutch, renamed by migration 00010).
 
 ---
 
@@ -631,6 +631,29 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 **Status: backend done (2026-10-10)**, verified on the Docker stack. The app part is waiting on the iOS work. `products_updated` counts name **or** status changes (keep-as-is leaves names unchanged but clears "needs English").
 
 **Done when** an unknown word taught once fixes every product that contains it, and manual names are never touched.
+
+### M11 — Research and next features (added 2026-10-10)
+Each item starts with a short research step against the real receipts in `spike/data` (HEIC photos), and ends with a go/no-go before any build work.
+
+**Auto-suggest new shops**
+- [ ] Research: how often does the receipt header resolve to no known shop? Cluster unmatched header text across the spike receipts and see whether chain + branch can be read reliably (`internal/logos` already guesses a domain for new shops).
+- [ ] Propose a shop (name, chain, domain, logo) when a receipt's header doesn't match one, instead of dropping it into a generic bucket. The user accepts or edits in one tap. Accepting re-links the receipts waiting on it.
+- [ ] Done when a receipt from a chain you've never scanned arrives with a ready suggestion.
+
+**Small model for Dutch → English**
+- [ ] Research: pick a small CPU-only NL→EN model (e.g. an opus-mt-nl-en class model, quantized) that fits the Mac mini next to the OCR container. Measure on grocery names against the glossary and every manual `name_en` you've typed (that's the eval set).
+- [ ] Use it only where the glossary gives `partial` or `missing`; keep glossary and manual names first. New `name_en_status` value (`model`), shown like `dictionary` with an "auto" hint, and still correctable via §6a.
+- [ ] Corrections feed back: a taught word or manual name is added to the eval set, and a model result you fix becomes a glossary term.
+- [ ] Done when `missing` products drop sharply on the spike data without any manual name changing.
+
+**Upload photos of receipts**
+- [ ] The app already has a "Choose a photo" picker in the scan flow (up to 5 pages). Make it a first-class path: an "Add photos" option in the Add tray that skips the scanner, including old receipts, and one receipt per photo or multi-page.
+- [ ] Verify HEIC end to end (the spike set is HEIC): app uploads, server accepts, OCR gets a JPEG/PNG, original is kept in the image mirror.
+- [ ] Later: share extension ("Share to Shop" from Photos or Files).
+- [ ] Done when a photo from the camera roll becomes a parsed receipt with the purchase date from the receipt, not the upload date.
+
+**Known bugs found in the first real run**
+- [ ] The parser counts the `SUBTOTAAL` line as an item, so `parsed_sum_cents` is exactly double the printed total on both receipts so far (e.g. 16936 vs 8468). Classify subtotal/total/betaling lines as `other`/ignored (§5.3) and add the two receipts as test fixtures.
 
 ### M9 — Later (unscheduled, opt-in)
 - Per-shop parser profiles, if `needs_review` clusters on one chain
