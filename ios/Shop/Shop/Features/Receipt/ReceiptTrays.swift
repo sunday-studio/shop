@@ -368,7 +368,7 @@ enum ProductSearch {
         let tokens = q.split(separator: " ").map(String.init)
         return catalog.products.values
             .compactMap { p -> (Product, Double)? in
-                let hay = fold(p.name + " " + (p.nameEn ?? "") + " " + (p.brand ?? ""))
+                let hay = catalog.searchHaystack(p.id) ?? fold(p.name + " " + (p.nameEn ?? "") + " " + (p.brand ?? ""))
                 guard tokens.allSatisfy({ hay.contains($0) }) else { return nil }
                 let score = hay.hasPrefix(q) ? 1.0 : 0.8
                 return (p, score)

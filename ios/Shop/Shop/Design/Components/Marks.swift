@@ -15,7 +15,7 @@ struct ShopMark: View {
         let shape = RoundedRectangle.continuous(side * 6 / 22)
         ZStack {
             shape.fill(Color.dynamic(light: 0xFFFFFF, dark: 0xF4F4F1))
-            CachedImage(url: ShopLogos.url(for: name), key: ShopLogos.cacheKey(for: name)) { image in
+            CachedImage(url: ShopLogos.url(for: name), key: ShopLogos.cacheKey(for: name), maxPixel: 160) { image in
                 image.resizable().scaledToFit().padding(side * 0.12)
             } placeholder: {
                 Text(mark.monogram)
@@ -62,7 +62,7 @@ struct ProductTile: View {
         let shape = RoundedRectangle.continuous(size * 11 / 36)
         ZStack {
             shape.fill(CategoryColor.swatch(token: categoryToken, name: category).tile)
-            CachedImage(url: imageURL) { image in
+            CachedImage(url: imageURL, maxPixel: 300) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
                 Text(Self.initials(name))

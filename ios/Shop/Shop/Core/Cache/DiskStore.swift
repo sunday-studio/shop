@@ -30,6 +30,38 @@ nonisolated enum DiskStore {
         try? data.write(to: url(name), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 
+    private static let writer = DispatchQueue(label: "shop.diskstore.writer", qos: .utility)
+    private static let generation = Generation()
+
+    private final class Generation: @unchecked Sendable {
+        private let lock = NSLock()
+        private var latest: [String: Int] = [:]
+        func next(_ name: String) -> Int {
+            lock.lock(); defer { lock.unlock() }
+            let n = (latest[name] ?? 0) + 1
+            latest[name] = n
+            return n
+        }
+        func isLatest(_ name: String, _ n: Int) -> Bool {
+            lock.lock(); defer { lock.unlock() }
+            return latest[name] == n
+        }
+    }
+
+    private struct Unchecked<T>: @unchecked Sendable { let value: T }
+
+    /// Like `save`, but encodes and writes off the main thread (big files: the product catalog,
+    /// the inbox). Only the newest pending write for a file is kept. Don't read the file back
+    /// straight away; use `save` for anything that is read again within the same run.
+    static func saveInBackground<T: Encodable>(_ value: T, to name: String) {
+        let box = Unchecked(value: value)
+        let n = generation.next(name)
+        writer.async {
+            guard generation.isLatest(name, n) else { return }
+            save(box.value, to: name)
+        }
+    }
+
     static func remove(_ name: String) {
         try? FileManager.default.removeItem(at: url(name))
     }

@@ -8,11 +8,20 @@ import Observation
 final class Catalog {
     private(set) var shops: [Shop] = []
     private(set) var categories: [Category] = []
-    private(set) var products: [Int64: Product] = [:]
+    private(set) var products: [Int64: Product] = [:] {
+        didSet { derivedCache = nil }
+    }
     private(set) var lastSync: Date?
     private(set) var isSyncing = false
 
     @ObservationIgnored private let api: APIClient
+
+    /// Lists derived from `products`, built once per change instead of once per screen refresh.
+    private struct Derived {
+        var recentFirst: [Product]
+        var haystacks: [Int64: String]
+    }
+    @ObservationIgnored private var derivedCache: Derived?
 
     private static let lastShopKey = "catalog.lastShopId"
 
@@ -51,7 +60,7 @@ final class Catalog {
             offset += 200
         }
         products = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-        DiskStore.save(all, to: "products.json")
+        DiskStore.saveInBackground(all, to: "products.json")
     }
 
     func syncAll() async {
@@ -101,6 +110,31 @@ final class Catalog {
         products.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    private var derived: Derived {
+        _ = products // keeps views that read the cached lists observing `products`
+        if let derivedCache { return derivedCache }
+        let recent = products.values.sorted { a, b in
+            switch (a.lastBoughtAt, b.lastBoughtAt) {
+            case let (x?, y?) where x != y: return x > y
+            case (.some, nil): return true
+            case (nil, .some): return false
+            default: return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            }
+        }
+        var hay: [Int64: String] = [:]
+        hay.reserveCapacity(products.count)
+        for p in products.values { hay[p.id] = ProductSearch.fold(p.name + " " + (p.nameEn ?? "") + " " + (p.brand ?? "")) }
+        let built = Derived(recentFirst: recent, haystacks: hay)
+        derivedCache = built
+        return built
+    }
+
+    /// Every product, most recently bought first (then A to Z).
+    var productsRecentFirst: [Product] { derived.recentFirst }
+
+    /// Folded "name nameEn brand" text used by local search.
+    func searchHaystack(_ id: Int64) -> String? { derived.haystacks[id] }
+
     // MARK: Last used shop (C.2 preselect)
 
     var lastShopId: Int64? {
@@ -145,12 +179,12 @@ final class Catalog {
         var p = product
         p.score = nil
         products[p.id] = p
-        DiskStore.save(Array(products.values), to: "products.json")
+        DiskStore.saveInBackground(Array(products.values), to: "products.json")
     }
 
     func removeProduct(_ id: Int64) {
         products[id] = nil
-        DiskStore.save(Array(products.values), to: "products.json")
+        DiskStore.saveInBackground(Array(products.values), to: "products.json")
     }
 
     func reset() {
