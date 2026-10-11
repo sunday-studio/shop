@@ -6,7 +6,7 @@ Plain HTML and CSS. No framework, no build step, no JavaScript, no external requ
 
     cd site && python3 -m http.server 8000     # then open http://localhost:8000/
 
-Pages: `index.html` (landing), `guide/index.html` (Guide home), `guide/install.html` (Install the server).
+Pages: `index.html` (landing, hand-written) and `guide/*.html` (generated, see below).
 Open `guide/` pages from a server or from disk; all links are relative.
 
 ## Layout
@@ -37,13 +37,29 @@ the "What Shop is" sidebar and previous-link entries). Marked with `PRODUCT NAME
 
 GitHub links point to https://github.com/sunday-studio/shop (header pill, mobile menu, hero and closing buttons, footer, guide header);
 `grep -rn "sunday-studio/shop" .` finds them all. The footer also links to https://www.thesunday.studio/.
-Other guide pages are not built yet; their sidebar and previous/next links point to `#`.
+
+## Writing guide pages
+
+The guide is markdown in `content/guide/NN-slug.md` (NN sets the order). Render it with Python 3 (standard library only):
+
+    python3 build.py
+
+This writes `guide/<slug>.html` and `guide/index.html` (commit the output). Unknown syntax makes the build fail with file and line.
+Page output: sidebar (from `group` and `title`), "On this page" rail (from `##` headings; the "Steps" heading is highlighted if present),
+previous/next cards, and an optional app-screen panel.
+
+Front matter: `title`, `group`, `summary` (the lead paragraph), optional `screen: home|receipt|analytics|products|product`.
+Supported: `## ` sections; numbered list = steps (01, 02), an item may hold paragraphs, nested bullets and indented fences;
+bullet list = bullets, `{lettered}` on the line before a bullet list = A. B. C. list; fences `bash` or `json` = command block (no Copy button),
+`terminal` = dark terminal capture (line prefixes: `$ ` command, `~ ` muted line, `✓ ` green tick, `+ ` green line);
+blockquotes starting `**Warning:**`, `**Note:**` or `**Tip:**` = callouts; tables (3-column tables stack as "name · default value" with the meaning below on mobile);
+inline code, `**bold**`, `*italic*`, links (a bare slug such as `connect` links to `connect.html`). The word TODO anywhere fails the build.
 
 ## Layout, motion
 
 - Content sits in a centred 1280 px column (80 px side padding); the hero and closing sky art stay full-bleed.
 - `html{scroll-behavior:smooth}` and the cross-document view transition (`@view-transition`) are only enabled with
-  `prefers-reduced-motion: no-preference`.
+  `prefers-reduced-motion: no-preference`, together with a short page-load fade for browsers without view transitions.
 - Feature showcase: four hidden radios (`#sf1`..`#sf4`) before `.shrow`; the list items are `<label>`s. The per-selection rules in
   `css/home.css` ("Click-to-select") restart the 20 s cycle from the clicked item.
 
