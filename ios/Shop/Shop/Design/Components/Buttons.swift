@@ -186,47 +186,26 @@ struct IconButton: View {
 
 // MARK: - Avatar
 
-/// Top-left user button that opens Settings. Same 36 pt circle as the other header buttons.
-/// `plain` is the old yellow square, kept until a style is chosen (docs/DESIGN-AVATAR.md).
-enum AvatarStyle: CaseIterable {
-    case plain
-    /// Neutral circle, the initial in ink (same look as the search button).
-    case initials
-    /// Circle tinted with the user's colour, the initial in that colour.
-    case tinted
-    /// A person glyph (duotone) in the neutral circle; no initial.
-    case glyph
-}
-
+/// Top-left user button that opens Settings: the same 36 pt grey circle as the search button, with a
+/// duotone person glyph (docs/DESIGN-AVATAR.md). `badge` puts a small dot on the corner when something
+/// in Settings needs attention (uploads waiting, offline, old backup).
 struct Avatar: View {
-    var initial: String = "S"
-    var style: AvatarStyle = .plain
+    /// Kept so existing call sites compile; the glyph does not show it.
+    var initial: String = ""
     var size: CGFloat = Size.avatar
-    /// A small dot on the corner: something in Settings needs attention (uploads waiting, offline).
     var badge: Color? = nil
     let action: () -> Void
-
-    private static let tones: [(solid: Color, tint: Color, text: Color)] = [
-        (Accent.blue, Palette.blueTint, Palette.blueText),
-        (Accent.green, Palette.greenTint, Palette.greenText),
-        (Accent.pink, Color.dynamic(light: 0xFFE3F1, dark: 0x3A1427), Color.dynamic(light: 0xC2257A, dark: 0xFF7DC0)),
-        (Accent.purple, Color.dynamic(light: 0xEBE5FF, dark: 0x1F1838), Color.dynamic(light: 0x5B3FD6, dark: 0xA793FF)),
-        (Accent.orange, Palette.amberTint, Palette.amberText),
-        (Accent.teal, Color.dynamic(light: 0xD8F5F2, dark: 0x0A2A27), Color.dynamic(light: 0x00806F, dark: 0x3FD9CA)),
-    ]
-
-    private var tone: (solid: Color, tint: Color, text: Color) {
-        Self.tones[Int(initial.uppercased().unicodeScalars.first?.value ?? 0) % Self.tones.count]
-    }
 
     var body: some View {
         Button {
             Haptics.play(.light)
             action()
         } label: {
-            content
+            Image("nav-user").renderingMode(.template).resizable().scaledToFit()
+                .frame(width: size * 0.58, height: size * 0.58)
+                .foregroundStyle(Palette.ink)
                 .frame(width: size, height: size)
-                .background(background, in: style == .plain ? AnyShape(RoundedRectangle.continuous(Radius.ml)) : AnyShape(Circle()))
+                .background(Palette.sunk, in: Circle())
                 .overlay(alignment: .topTrailing) {
                     if let badge {
                         Circle().fill(badge)
@@ -238,31 +217,6 @@ struct Avatar: View {
         }
         .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
         .accessibilityLabel(badge == nil ? "Settings" : "Settings, needs attention")
-    }
-
-    private var letter: String { initial.prefix(1).uppercased() }
-
-    private var background: Color {
-        switch style {
-        case .plain: Accent.avatar
-        case .initials, .glyph: Palette.sunk
-        case .tinted: tone.tint
-        }
-    }
-
-    @ViewBuilder private var content: some View {
-        switch style {
-        case .plain:
-            Text(letter).textStyle(TypeStyle.rowTitle).foregroundStyle(Accent.onLight)
-        case .initials:
-            TypeStyle.rowTitle.text(letter).foregroundStyle(Palette.ink)
-        case .tinted:
-            TypeStyle.rowTitle.text(letter).foregroundStyle(tone.text)
-        case .glyph:
-            Image("nav-user").renderingMode(.template).resizable().scaledToFit()
-                .frame(width: size * 0.58, height: size * 0.58)
-                .foregroundStyle(Palette.ink)
-        }
     }
 }
 

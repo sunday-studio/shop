@@ -245,7 +245,7 @@ struct CatalogView: View {
                 section("Navigation icons") {
                     navIconCompare
                 }
-                section("User avatar options") {
+                section("Home header") {
                     LogoOptions()
                 }
                 section("Tab bar") {
@@ -446,35 +446,19 @@ private struct CatalogMoveTray: View {
 }
 
 
-/// The user button options in the Home header with the logo centred, light and dark.
+/// The Home header: person glyph, logo in the middle, search; with and without the attention dot.
 private struct LogoOptions: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lx) {
-            ForEach(Array(AvatarStyle.allCases.enumerated()), id: \.offset) { i, style in
-                Text(["Today: yellow square", "A  Initials, neutral", "B  Initials, tinted (recommended)", "C  Person glyph"][i])
-                    .textStyle(.label).foregroundStyle(Palette.ink2)
-                ForEach([ColorScheme.light, .dark], id: \.self) { scheme in
-                    VStack(spacing: Space.l) {
-                        HStack {
-                            Avatar(initial: "I", style: style, badge: i == 2 ? Accent.amber : nil) {}
-                            Spacer()
-                            ShopLogo(height: 30)
-                            Spacer()
-                            IconView(.search, size: 18).foregroundStyle(Palette.ink)
-                                .frame(width: Size.iconButton, height: Size.iconButton)
-                                .background(Palette.sunk, in: Circle())
-                        }
-                        HStack(spacing: Space.l) {
-                            ForEach(["Anna", "Bas", "Casper", "Dina", "Emre", "Fleur", "Gijs"], id: \.self) { n in
-                                Avatar(initial: n, style: style) {}
-                            }
-                        }
-                    }
-                    .padding(Space.l)
-                    .background(Palette.bg, in: RoundedRectangle.continuous(Radius.l))
-                    .overlay(RoundedRectangle.continuous(Radius.l).strokeBorder(Palette.line))
-                    .environment(\.colorScheme, scheme)
+            ForEach([ColorScheme.light, .dark], id: \.self) { scheme in
+                VStack(spacing: Space.l) {
+                    HomeHeader(onSettings: {}, onSearch: {})
+                    HomeHeader(badge: Accent.amber, onSettings: {}, onSearch: {})
                 }
+                .padding(.bottom, Space.l)
+                .background(Palette.bg, in: RoundedRectangle.continuous(Radius.l))
+                .overlay(RoundedRectangle.continuous(Radius.l).strokeBorder(Palette.line))
+                .environment(\.colorScheme, scheme)
             }
         }
     }
