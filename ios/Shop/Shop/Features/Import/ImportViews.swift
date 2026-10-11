@@ -312,7 +312,7 @@ struct ImportScreen: View {
         let count = model.pageCount
         trays.present("import-discard") {
             ConfirmTray(title: count == 1 ? "Discard 1 photo?" : "Discard \(count) photos?", confirmTitle: "Discard", destructive: true) {
-                Haptics.play(.error)
+                Haptics.play(.warning)
                 close()
                 return true
             }

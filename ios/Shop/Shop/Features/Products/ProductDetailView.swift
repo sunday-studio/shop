@@ -546,7 +546,7 @@ struct ReceiptNamesView: View {
 
     private func delete(_ alias: Alias) {
         withAnimation(Motion.collapse) { aliases.removeAll { $0.id == alias.id } }
-        Haptics.play(.error)
+        Haptics.play(.warning)
         Task {
             do { try await app.api.deleteAlias(alias.id) } catch {
                 app.toasts.error("Couldn't delete \(alias.text.uppercased())")
