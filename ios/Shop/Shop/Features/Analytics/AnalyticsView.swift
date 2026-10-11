@@ -364,7 +364,7 @@ struct RangeTray: View {
             }
             .padding(.horizontal, Space.xs)
 
-            Button("Show \(current.title.lowercased().hasPrefix("last ") ? String(current.title.dropFirst(5)) : current.title.lowercased())") {
+            Button("Show \(preset == .custom ? current.title : (current.title.lowercased().hasPrefix("last ") ? String(current.title.dropFirst(5)) : current.title.lowercased()))") {
                 onApply(current)
                 trays.dismiss()
             }
@@ -372,19 +372,66 @@ struct RangeTray: View {
         }
     }
 
+    /// A plain tile (no system popover inside the tray): tapping swaps this tray for a calendar
+    /// tray, and "Done" swaps back with the date set.
     private func dateTile(_ label: String, selection: Binding<Date>) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).textStyle(.caption).foregroundStyle(Palette.ink2)
-            DatePicker("", selection: Binding(get: { selection.wrappedValue }, set: { selection.wrappedValue = $0; preset = .custom }),
-                       in: ...Date.now, displayedComponents: .date)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .environment(\.timeZone, Dates.timeZone)
+        Button {
+            Haptics.play(.selection)
+            let isFrom = label == "From"
+            let bars = bars
+            let other = isFrom ? to : from
+            let onApply = onApply
+            trays.present("range-date") {
+                RangeDateTray(title: label, date: selection.wrappedValue, limit: isFrom ? Date.distantPast...min(other, .now) : other...Date.now) { picked in
+                    let range = DateRange.custom(from: isFrom ? picked : other, to: isFrom ? other : picked)
+                    var r = range
+                    r.bars = bars
+                    trays.present("range") { RangeTray(range: r, onApply: onApply) }
+                }
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).textStyle(.caption).foregroundStyle(Palette.ink2)
+                Text(selection.wrappedValue.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted, timeZone: Dates.timeZone)))
+                    .textStyle(TypeStyle.input.sized(16))
+                    .foregroundStyle(Palette.ink)
+            }
+            .padding(.vertical, Space.ml)
+            .padding(.horizontal, Space.lx)
+            .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+            .background(Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
+            .contentShape(RoundedRectangle.continuous(Radius.l))
         }
-        .padding(.vertical, Space.ml)
-        .padding(.horizontal, Space.lx)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
+        .buttonStyle(.press(haptic: nil))
+    }
+}
+
+/// Calendar for one end of the range. Replaces the range tray, then returns to it.
+struct RangeDateTray: View {
+    let title: String
+    let limit: ClosedRange<Date>
+    let onDone: (Date) -> Void
+    @State private var date: Date
+    @Environment(TrayCoordinator.self) private var trays
+
+    init(title: String, date: Date, limit: ClosedRange<Date>, onDone: @escaping (Date) -> Void) {
+        self.title = title
+        self.limit = limit
+        self.onDone = onDone
+        _date = State(initialValue: min(max(date, limit.lowerBound), limit.upperBound))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.lx) {
+            TrayHeader(title: title == "From" ? "Start date" : "End date")
+            DatePicker("", selection: $date, in: limit, displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+                .tint(Accent.blue)
+                .environment(\.timeZone, Dates.timeZone)
+            Button("Done") { onDone(date) }
+                .buttonStyle(.shop(haptic: .medium))
+        }
     }
 }
 
