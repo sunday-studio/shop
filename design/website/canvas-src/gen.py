@@ -252,4 +252,5 @@ if __name__=='__main__':
     write('HF-Page-Mobile.dc.html',doc('x','Website page, mobile',body(True,False),390,2900,'light'))
     dark_wrapper('D-HF-Page-Desktop.dc.html','HF-Page-Desktop','Website page, desktop, dark',1280,2420)
     dark_wrapper('D-HF-Page-Mobile.dc.html','HF-Page-Mobile','Website page, mobile, dark',390,2900)
+    import docs_boards; docs_boards.build(globals())
     print(sorted(os.listdir(f'{OUT}/project')),sorted(os.listdir(f'{OUT}/preview')))
