@@ -149,7 +149,7 @@ func (q *Queries) GetMerge(ctx context.Context, id int64) (ProductMerge, error) 
 }
 
 const getProductAny = `-- name: GetProductAny :one
-SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source, deleted_barcode FROM products WHERE id = ?
+SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source, deleted_barcode, group_id FROM products WHERE id = ?
 `
 
 func (q *Queries) GetProductAny(ctx context.Context, id int64) (Product, error) {
@@ -177,6 +177,7 @@ func (q *Queries) GetProductAny(ctx context.Context, id int64) (Product, error) 
 		&i.MergedIntoID,
 		&i.CategorySource,
 		&i.DeletedBarcode,
+		&i.GroupID,
 	)
 	return i, err
 }
@@ -208,7 +209,7 @@ const insertAutoProduct = `-- name: InsertAutoProduct :one
 INSERT INTO products (name, name_en, name_en_source, brand, category_id, barcode, net_quantity, net_unit, off_code,
                       created_via, needs_review, review_reason, suggested_merge_id, category_source, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source, deleted_barcode
+RETURNING id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source, deleted_barcode, group_id
 `
 
 type InsertAutoProductParams struct {
@@ -272,6 +273,7 @@ func (q *Queries) InsertAutoProduct(ctx context.Context, arg InsertAutoProductPa
 		&i.MergedIntoID,
 		&i.CategorySource,
 		&i.DeletedBarcode,
+		&i.GroupID,
 	)
 	return i, err
 }
@@ -719,7 +721,7 @@ func (q *Queries) ReviewCounts(ctx context.Context) ([]ReviewCountsRow, error) {
 }
 
 const reviewQueue = `-- name: ReviewQueue :many
-SELECT p.id, p.name, p.brand, p.category_id, p.barcode, p.net_quantity, p.net_unit, p.image_path, p.off_code, p.created_at, p.updated_at, p.deleted_at, p.name_en, p.name_en_source, p.created_via, p.needs_review, p.review_reason, p.suggested_merge_id, p.merged_into_id, p.category_source, p.deleted_barcode FROM products p
+SELECT p.id, p.name, p.brand, p.category_id, p.barcode, p.net_quantity, p.net_unit, p.image_path, p.off_code, p.created_at, p.updated_at, p.deleted_at, p.name_en, p.name_en_source, p.created_via, p.needs_review, p.review_reason, p.suggested_merge_id, p.merged_into_id, p.category_source, p.deleted_barcode, p.group_id FROM products p
 WHERE p.needs_review = 1 AND p.deleted_at IS NULL
   AND (?1 IS NULL OR p.review_reason = ?1)
 ORDER BY CASE p.review_reason
@@ -766,6 +768,7 @@ func (q *Queries) ReviewQueue(ctx context.Context, arg ReviewQueueParams) ([]Pro
 			&i.MergedIntoID,
 			&i.CategorySource,
 			&i.DeletedBarcode,
+			&i.GroupID,
 		); err != nil {
 			return nil, err
 		}

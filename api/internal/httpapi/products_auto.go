@@ -98,7 +98,11 @@ func (s *Server) getReviewQueue(w http.ResponseWriter, r *http.Request) {
 		items[i] = apitypes.ReviewItem{Product: prod, Reason: apitypes.ReviewReason(it.Reason), SuggestedMerge: toSuggestedMerge(it.SuggestedMerge),
 			SourceLineCount: it.SourceLineCount, SourceLines: lines}
 	}
-	writeJSON(w, http.StatusOK, apitypes.ReviewQueue{Total: res.Total, Counts: res.Counts, Items: items})
+	same := 0
+	if n, err := s.Plan.SuggestionCount(r.Context()); err == nil {
+		same = n
+	}
+	writeJSON(w, http.StatusOK, apitypes.ReviewQueue{Total: res.Total, Counts: res.Counts, Items: items, SameKindTotal: &same})
 }
 
 func (s *Server) reviewProduct(w http.ResponseWriter, r *http.Request) {

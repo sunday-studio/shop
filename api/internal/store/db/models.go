@@ -96,6 +96,7 @@ type Product struct {
 	MergedIntoID     sql.NullInt64   `json:"merged_into_id"`
 	CategorySource   sql.NullString  `json:"category_source"`
 	DeletedBarcode   sql.NullString  `json:"deleted_barcode"`
+	GroupID          sql.NullInt64   `json:"group_id"`
 }
 
 type ProductAlias struct {
@@ -110,6 +111,29 @@ type ProductDistinct struct {
 	AID       int64  `json:"a_id"`
 	BID       int64  `json:"b_id"`
 	CreatedAt string `json:"created_at"`
+}
+
+type ProductGroup struct {
+	ID         int64          `json:"id"`
+	Name       string         `json:"name"`
+	CategoryID sql.NullInt64  `json:"category_id"`
+	BaseUnit   sql.NullString `json:"base_unit"`
+	CreatedAt  string         `json:"created_at"`
+	UpdatedAt  string         `json:"updated_at"`
+}
+
+type ProductGroupDenied struct {
+	AID       int64  `json:"a_id"`
+	BID       int64  `json:"b_id"`
+	CreatedAt string `json:"created_at"`
+}
+
+type ProductGroupOp struct {
+	ID        int64          `json:"id"`
+	Kind      string         `json:"kind"`
+	Snapshot  string         `json:"snapshot"`
+	CreatedAt string         `json:"created_at"`
+	UndoneAt  sql.NullString `json:"undone_at"`
 }
 
 type ProductMerge struct {

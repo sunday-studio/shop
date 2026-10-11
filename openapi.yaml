@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.15.0
+  version: 0.16.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -1387,6 +1387,271 @@ paths:
               schema: { $ref: "#/components/schemas/ListItem" }
         default: { $ref: "#/components/responses/Problem" }
 
+  # ----------------------------------------------------------------- cheapest store (phase C)
+  /v1/list/plan:
+    get:
+      operationId: getListPlan
+      description: |
+        Splits the open list (main list and live checklists; checked, template and archived items are left out) by
+        shop and says whether the extra stop is worth it. Never promises a saving it cannot back up.
+
+        Prices: only receipts with status ok, a date and a shop, after the discounts linked to the line. Each price is
+        per kg, per l or per piece (`basis`); a product without a pack size is compared per piece and says so
+        (`pack_size_known=false`, `different_pack`). An item's price at a shop is the median of its last 3
+        purchases there inside 90 days (30 for fresh produce); older purchases are ignored. Items linked to a
+        product group are priced from every product of the group, so house-brand milk at two shops compares; prices
+        in different base units are never mixed.
+
+        Plan: the usual shop (most receipts in 90 days) alone, or with up to `max_stops - 1` of the next shops (4
+        shops are considered). Savings are counted only on items with a price at the usual shop and at the shop
+        they move to, minus `extra_stop_cents` per extra shop. `status` is `split` only when that is above 0 and at
+        least 2 items are comparable; `one_shop_fine` when splitting does not pay (`split_saving_cents` is what the
+        best split would save before its stops); `not_enough_data` when fewer than 2 items have prices at two shops.
+        Items without a price stay with the usual shop and carry no estimate.
+
+        `extra_stop_cents` and `max_stops` default to the saved settings (`/v1/list/plan/settings`); passing them here
+        is a what-if and saves nothing. `computed_at` is stable for caching on the phone.
+      parameters:
+        - { name: extra_stop_cents, in: query, schema: { type: integer, minimum: 0, maximum: 2000 } }
+        - { name: max_stops, in: query, schema: { type: integer, minimum: 1, maximum: 3 } }
+      responses:
+        "200":
+          description: The plan
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListPlan" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/plan/settings:
+    get:
+      operationId: getListPlanSettings
+      description: Cost of an extra stop and the most shops a plan may use. Stored on the server so every phone and the assistant agree. Defaults 250 and 2.
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListPlanSettings" }
+        default: { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateListPlanSettings
+      description: Changes the given fields. 400 outside 0..2000 cents or 1..3 stops.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListPlanSettingsPatch" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListPlanSettings" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/product-groups:
+    get:
+      operationId: listProductGroups
+      description: Product groups ("same kind of item"), each with its products and the shops they were bought at.
+      responses:
+        "200":
+          description: Groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProductGroup" }
+        default: { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: confirmProductGroup
+      description: |
+        The user says these products are the same kind of item. Products that already belong to groups pull those
+        groups in, so everything ends up in one (the oldest keeps its id and, unless `name` is given, its name).
+        Without a name the group is called after the first product that has an English name, else its name.
+        Clears an earlier "not the same". Nothing is ever grouped without this call. Same as `/v1/product-groups/confirm`.
+        Reversible with `/v1/product-group-ops/{op_id}/undo`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductGroupConfirm" }
+      responses:
+        "200":
+          description: The group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductGroupResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/product-groups/confirm:
+    post:
+      operationId: confirmProductGroupPair
+      description: Alias of POST /v1/product-groups ("Yes, same kind"), kept for the pair confirmation card.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductGroupConfirm" }
+      responses:
+        "200":
+          description: The group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductGroupResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/product-groups/deny:
+    post:
+      operationId: denyProductGroupPair
+      description: "\"No, not the same kind\": the pair is never suggested again. Undoable. 409 when both are already in one group."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_a_id, product_b_id]
+              properties:
+                product_a_id: { type: integer, format: int64 }
+                product_b_id: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [op_id]
+                properties:
+                  op_id: { type: integer, format: int64 }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/product-groups/suggestions:
+    get:
+      operationId: listProductGroupSuggestions
+      description: |
+        Pairs of products that look like the same kind of item, best first (name score at least 0.80 after dropping
+        store-brand words and pack sizes, same category and base unit, bought at different shops, not already
+        together, not denied, not "keep separate" in the product review). Only questions: the server never groups
+        anything by itself. `GET /v1/products/review-queue` carries the number as `same_kind_total`.
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50, minimum: 1, maximum: 50 } }
+      responses:
+        "200":
+          description: Suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProductGroupSuggestion" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/product-groups/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      operationId: getProductGroup
+      responses:
+        "200":
+          description: Group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductGroup" }
+        default: { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: renameProductGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 100 }
+      responses:
+        "200":
+          description: Renamed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductGroup" }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteProductGroup
+      description: Dissolves the group; its products stay. Undoable with the returned op_id.
+      responses:
+        "200":
+          description: Dissolved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductGroupResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/product-groups/{id}/merge:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: mergeProductGroup
+      description: "`{id}` disappears into `into_group_id`: its products move over. 400 when both are the same group. Undoable."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [into_group_id]
+              properties:
+                into_group_id: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: The surviving group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductGroupResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/product-groups/{id}/split:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: splitProductGroup
+      description: |
+        Takes products out of the group. A group left with fewer than two products is dissolved (`group` is then
+        null, or the new group when `keep_together`). With `keep_together` (and at least two products, not all of
+        them) the products that leave form a new group called `name` (default: the old name). Undoable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_ids]
+              properties:
+                product_ids: { type: array, items: { type: integer, format: int64 }, minItems: 1 }
+                keep_together: { type: boolean }
+                name: { type: string, maxLength: 100 }
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductGroupResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/product-group-ops/{id}/undo:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: undoProductGroupOp
+      description: Reverses a confirm, merge, split, delete or deny exactly, once, within 30 days (409 otherwise). `group` is the first group the change touched, if it exists again.
+      responses:
+        "200":
+          description: Undone
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductGroupResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
   # ----------------------------------------------------------------- auth
   /v1/auth/status:
     get:
@@ -2056,6 +2321,9 @@ components:
         items:
           type: array
           items: { $ref: "#/components/schemas/ReviewItem" }
+        same_kind_total:
+          type: integer
+          description: open "same kind of item" suggestions (GET /v1/product-groups/suggestions); also shown in the review queue badge
 
     ReviewInput:
       type: object
@@ -2459,3 +2727,225 @@ components:
         keep_as_is: { type: boolean }
         products_count: { type: integer }
         updated_at: { type: string, format: date-time }
+
+    ShopRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        chain: { type: string }
+
+    ProductGroupMember:
+      type: object
+      required: [product_id, name, base_unit, pack_size_known, shops, purchases]
+      properties:
+        product_id: { type: integer, format: int64 }
+        name: { type: string }
+        name_en: { type: string }
+        brand: { type: string }
+        category_id: { type: integer, format: int64, nullable: true }
+        base_unit: { type: string, enum: [kg, l, pc] }
+        pack_size_known: { type: boolean }
+        shops: { type: array, items: { $ref: "#/components/schemas/ShopRef" }, description: "shops it was bought at (ok receipts)" }
+        purchases: { type: integer }
+        last_bought_at: { type: string, format: date-time, nullable: true }
+
+    ProductGroup:
+      type: object
+      required: [id, name, base_unit, created_at, updated_at, members, shop_count]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        category_id: { type: integer, format: int64, nullable: true }
+        base_unit: { type: string, enum: [kg, l, pc], description: "what the members are priced in; pc when no member has a pack size" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        members: { type: array, items: { $ref: "#/components/schemas/ProductGroupMember" } }
+        shop_count: { type: integer, description: "shops the members were bought at; plans need 2" }
+
+    ProductGroupConfirm:
+      type: object
+      required: [product_ids]
+      properties:
+        product_ids: { type: array, items: { type: integer, format: int64 }, minItems: 2, maxItems: 50 }
+        name: { type: string, maxLength: 100 }
+
+    ProductGroupResult:
+      type: object
+      required: [group, op_id, dissolved_group_ids]
+      properties:
+        group: { allOf: [{ $ref: "#/components/schemas/ProductGroup" }], nullable: true }
+        op_id: { type: integer, format: int64, description: "pass to /v1/product-group-ops/{id}/undo" }
+        dissolved_group_ids: { type: array, items: { type: integer, format: int64 }, description: "groups that are gone (merged into another, or left with fewer than two products)" }
+
+    SuggestedProduct:
+      type: object
+      required: [product_id, name, shops]
+      properties:
+        product_id: { type: integer, format: int64 }
+        name: { type: string }
+        name_en: { type: string }
+        group_id: { type: integer, format: int64, nullable: true, description: "the group it is already in" }
+        shops: { type: array, items: { $ref: "#/components/schemas/ShopRef" } }
+
+    ProductGroupSuggestion:
+      type: object
+      required: [a, b, score, reason]
+      properties:
+        a: { $ref: "#/components/schemas/SuggestedProduct" }
+        b: { $ref: "#/components/schemas/SuggestedProduct" }
+        score: { type: number, description: "0.80 to 1" }
+        reason: { type: string, enum: [similar_name_other_shop] }
+
+    ListPlanSettings:
+      type: object
+      required: [extra_stop_cents, max_stops]
+      properties:
+        extra_stop_cents: { type: integer, minimum: 0, maximum: 2000, description: "default 250" }
+        max_stops: { type: integer, minimum: 1, maximum: 3, description: "most shops a plan may use, default 2" }
+
+    ListPlanSettingsPatch:
+      type: object
+      properties:
+        extra_stop_cents: { type: integer, minimum: 0, maximum: 2000 }
+        max_stops: { type: integer, minimum: 1, maximum: 3 }
+
+    PlanStore:
+      type: object
+      required: [shop_id, name, item_count, estimate_cents, unpriced_count, is_usual, receipts_90d]
+      properties:
+        shop_id: { type: integer, format: int64 }
+        name: { type: string }
+        chain: { type: string }
+        item_count: { type: integer }
+        estimate_cents: { type: integer, format: int64, description: "sum of the items that have an estimate here" }
+        unpriced_count: { type: integer, description: "items here without an estimate" }
+        is_usual: { type: boolean }
+        receipts_90d: { type: integer }
+
+    PlanPoint:
+      type: object
+      required: [at, unit_cents, paid_cents, product_id, product_name]
+      properties:
+        at: { type: string, format: date-time }
+        unit_cents: { type: integer, format: int64 }
+        paid_cents: { type: integer, format: int64, description: "after discounts" }
+        product_id: { type: integer, format: int64 }
+        product_name: { type: string }
+
+    PlanShopPrice:
+      type: object
+      required: [shop_id, shop_name, unit_cents, base_unit, purchases, latest_at, age_days, is_usual, points]
+      properties:
+        shop_id: { type: integer, format: int64 }
+        shop_name: { type: string }
+        unit_cents: { type: integer, format: int64, description: "median of points, per base_unit" }
+        base_unit: { type: string, enum: [kg, l, pc] }
+        purchases: { type: integer, description: "purchases in the window, not only the last 3" }
+        latest_at: { type: string, format: date-time }
+        age_days: { type: integer }
+        is_usual: { type: boolean }
+        points: { type: array, items: { $ref: "#/components/schemas/PlanPoint" }, description: "the purchases the median is taken from, newest first (at most 3)" }
+
+    PlanOtherPrice:
+      type: object
+      required: [shop_id, unit_cents]
+      properties:
+        shop_id: { type: integer, format: int64 }
+        unit_cents: { type: integer, format: int64 }
+
+    PairConfirmation:
+      type: object
+      description: An unconfirmed "same kind of item" question that would give this item a comparison. Answer with /v1/product-groups/confirm or /deny.
+      required: [product_a, product_b, name_a, name_b, shop_a, shop_b, shop_a_id, shop_b_id]
+      properties:
+        product_a: { type: integer, format: int64 }
+        product_b: { type: integer, format: int64 }
+        name_a: { type: string }
+        name_b: { type: string }
+        shop_a: { type: string }
+        shop_b: { type: string }
+        shop_a_id: { type: integer, format: int64 }
+        shop_b_id: { type: integer, format: int64 }
+
+    PlanItem:
+      type: object
+      required: [item_id, text, qty, status, pack_size_known, saving_cents, other_prices, prices, confidence, explanation]
+      properties:
+        item_id: { type: integer, format: int64 }
+        text: { type: string }
+        product_id: { type: integer, format: int64, nullable: true }
+        product_group_id: { type: integer, format: int64, nullable: true }
+        group_id: { type: integer, format: int64, nullable: true, description: "the checklist the item is in" }
+        qty: { type: number }
+        shop_id: { type: integer, format: int64, nullable: true, description: "where to buy it; the usual shop unless the plan moves it; null without a usual shop" }
+        status:
+          type: string
+          enum: [compared, only_here, only_elsewhere, no_price]
+          description: |
+            compared: priced at the usual shop and at another candidate. only_here: usual shop only. only_elsewhere:
+            priced at another shop only; it stays with the usual shop without an estimate and never carries a saving.
+            no_price: no fresh price anywhere.
+        no_price_reason: { type: string, enum: [not_linked, never_bought, stale, no_usual_shop] }
+        unit_cents: { type: integer, format: int64, nullable: true, description: "price per base_unit at shop_id" }
+        base_unit: { type: string, enum: [kg, l, pc] }
+        basis: { type: string, enum: [per_kg, per_l, per_piece] }
+        pack_size_known: { type: boolean, description: "false: compared per piece because no pack size is known" }
+        estimate_cents: { type: integer, format: int64, nullable: true, description: "unit price times the pack size (or usual weight) times qty" }
+        saving_cents: { type: integer, format: int64, description: "counted saving if the plan moves this item, else 0" }
+        other_prices: { type: array, items: { $ref: "#/components/schemas/PlanOtherPrice" }, description: "fresh prices at the other shops" }
+        prices: { type: array, items: { $ref: "#/components/schemas/PlanShopPrice" }, description: "every shop with a fresh price, cheapest first, with the purchases behind it" }
+        confidence:
+          type: array
+          items: { type: string, enum: [seen_once, old_price, different_pack, not_enough_data] }
+          description: "seen_once: a compared price rests on one purchase. old_price: older than half the window. different_pack: pack size unknown, packs differ by over 20%, or other units were left out. not_enough_data: priced at one shop only."
+        last_seen: { type: string, format: date-time, nullable: true }
+        last_seen_shop_id: { type: integer, format: int64, nullable: true }
+        explanation: { type: string, description: "English sentence with prices and dates; the app may build its own from `prices`" }
+        pair_confirmation: { allOf: [{ $ref: "#/components/schemas/PairConfirmation" }], nullable: true }
+
+    PlanSummary:
+      type: object
+      required: [item_count, priced_count, compared_count, no_price_count, per_piece_count, saving_cents, gross_saving_cents, extra_stops, extra_stop_cents, extra_stop_total_cents, max_stops, one_shop_fine, split_saving_cents, baseline_cents, plan_cents, confidence, coverage]
+      properties:
+        item_count: { type: integer }
+        priced_count: { type: integer, description: "items with a fresh price somewhere" }
+        compared_count: { type: integer, description: "items priced at the usual shop and at another shop" }
+        no_price_count: { type: integer }
+        per_piece_count: { type: integer, description: "priced items compared per piece because the pack size is unknown" }
+        saving_cents: { type: integer, format: int64, description: "net: gross minus the extra stops. 0 unless status=split" }
+        gross_saving_cents: { type: integer, format: int64 }
+        extra_stops: { type: integer }
+        extra_stop_cents: { type: integer, format: int64, description: "cost applied per extra stop" }
+        extra_stop_total_cents: { type: integer, format: int64 }
+        max_stops: { type: integer }
+        one_shop_fine: { type: boolean }
+        split_saving_cents: { type: integer, format: int64, description: "one_shop_fine: gross saving of the best split, before its stops" }
+        baseline_cents: { type: integer, format: int64, description: "the compared items at the usual shop alone" }
+        plan_cents: { type: integer, format: int64, description: "the same items in the plan" }
+        confidence: { type: string, enum: [none, low, medium, high] }
+        coverage: { type: number, description: "compared_count / item_count, 0..1" }
+
+    PlanBasis:
+      type: object
+      required: [window_days, fresh_window_days, median_of, comparison, pieces_note]
+      properties:
+        window_days: { type: integer }
+        fresh_window_days: { type: integer }
+        median_of: { type: integer }
+        comparison: { type: string }
+        pieces_note: { type: string }
+
+    ListPlan:
+      type: object
+      required: [computed_at, list_rev, status, stores, items, summary, basis]
+      properties:
+        computed_at: { type: string, format: date-time }
+        list_rev: { type: integer, format: int64, description: "the list's rev the plan was made for" }
+        status: { type: string, enum: [split, one_shop_fine, not_enough_data] }
+        usual_shop_id: { type: integer, format: int64, nullable: true }
+        stores: { type: array, items: { $ref: "#/components/schemas/PlanStore" }, description: "usual shop first; only shops the plan uses" }
+        items: { type: array, items: { $ref: "#/components/schemas/PlanItem" }, description: "in list order" }
+        summary: { $ref: "#/components/schemas/PlanSummary" }
+        basis: { $ref: "#/components/schemas/PlanBasis" }
