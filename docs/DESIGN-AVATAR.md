@@ -1,14 +1,18 @@
-# Home user mark (the avatar)
+# Home header: user button and logo
 
-Decision so far: the blue **icon badge + "Shop" wordmark** is kept as the app logo (option A, `ShopLogo`); options B and C are removed. The thing to make fun is the **user icon**, top left of Home (and the same component in Settings). Frames: `docs/design-frames/avatar/avatar-options-1.jpg`, `-2.jpg` (Home-header mock, light and dark, seven sample names each).
+Decided: the **logo is the centre of the header** (blue app-icon badge + "Shop", `ShopLogo`). The earlier playful avatar ideas (sticker, receipt with a face, receipt initial) and the yellow square are rejected.
 
-The colour comes from the user's initial (eight accents), so it is stable and every household member gets a different one. Tapping it plays one short tilt (spring, no loop; none with Reduce Motion) before opening Settings.
+Direction now: stop decorating the user button. It is a button that opens Settings, so it should look like the other header buttons (36 pt circle, same fill as the search button) and let the logo be the fun part. References (Mobbin): [Perplexity](https://mobbin.com/screens/8b77ceb4-4427-4def-91c1-7126b89cd5e7) (plain initial circle top left), [Mindtrip](https://mobbin.com/screens/a3e98124-f000-4a3b-a57f-b338ee1344ac) (tinted initials circle), [Once](https://mobbin.com/screens/aa0339b9-639e-488b-ac56-92f96cc267df) (plain person glyph).
+
+Frame: `docs/design-frames/avatar/profile-options-2.jpg` (B and C shown; A is the neutral version at the top), each on a Home-header mock, light and dark, seven sample names.
 
 | | Look | Notes |
 |---|---|---|
-| Today (`plain`) | Yellow square, plain initial | Everyone is yellow, no personality |
-| 1 Sticker (`sticker`) | Tilted -6°, bold initial, peeled corner | Simple, keeps the initial; fun but quiet |
-| **2 Receipt buddy (`buddy`, recommended)** | The icon's tilted receipt with a face (two dot eyes, smile, yellow total bar), on the user's colour; no initial | The most characterful, directly the app icon's character, still tiny and cheap. Cost: the initial is gone, so two people with the same colour look identical (colour is by initial, so same initial = same colour only) |
-| 3 Receipt initial (`receipt`) | Tilted mini receipt carrying the initial on the user's colour | Keeps the initial and the receipt link; busiest at 36 pt |
+| Today | Yellow rounded square, initial | Everyone is the same yellow; doesn't match the circle buttons |
+| A Initials, neutral | Same grey circle as the search button, initial in ink | Quietest; the header reads as three matching controls |
+| **B Initials, tinted (recommended)** | Circle tinted with the user's colour (six tones from the initial), initial in that colour | Identity without decoration; light and dark tints are defined per tone. A household with two people gets two colours |
+| C Person glyph | Grey circle, duotone person icon (Phosphor, MIT, same set as the tab icons) | Says "account", no identity; same for every user |
 
-Component: `Avatar(initial:style:size:action:)` in `Design/Components/Buttons.swift`; Catalog section "User avatar options". The default style is still `plain` so nothing changes until you pick. Once picked, I change the default and the swift agent needs no change (the Home and Settings call sites already use `Avatar(initial:)`).
+All variants support a **corner dot** (`badge:`): amber when something in Settings needs attention (uploads waiting, offline, backup old), nothing otherwise. The VoiceOver label becomes "Settings, needs attention". Shown on B in the frame.
+
+Component: `Avatar(initial:style:badge:action:)` (`Design/Components/Buttons.swift`), Catalog section "User avatar options". `HomeHeader` (Design) already uses it and the default is still the old square, so nothing changes until you pick; then I switch the default and wire `badge` from the upload queue state (a small change for the swift agent in the Home screen).

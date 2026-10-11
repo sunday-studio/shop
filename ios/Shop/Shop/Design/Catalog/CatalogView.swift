@@ -446,20 +446,19 @@ private struct CatalogMoveTray: View {
 }
 
 
-/// The user mark options, three names each, light and dark, in the Home header with the chosen blue logo.
+/// The user button options in the Home header with the logo centred, light and dark.
 private struct LogoOptions: View {
-    @State private var wiggle = 0
-
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lx) {
             ForEach(Array(AvatarStyle.allCases.enumerated()), id: \.offset) { i, style in
-                TypeStyle.label.text(["Today: plain square", "1  Sticker (recommended)", "2  Receipt buddy", "3  Receipt initial"][i]).foregroundStyle(Palette.ink2)
+                Text(["Today: yellow square", "A  Initials, neutral", "B  Initials, tinted (recommended)", "C  Person glyph"][i])
+                    .textStyle(.label).foregroundStyle(Palette.ink2)
                 ForEach([ColorScheme.light, .dark], id: \.self) { scheme in
                     VStack(spacing: Space.l) {
                         HStack {
-                            Avatar(initial: "I", style: style) {}
+                            Avatar(initial: "I", style: style, badge: i == 2 ? Accent.amber : nil) {}
                             Spacer()
-                            ShopLogo(height: 30, wiggle: wiggle)
+                            ShopLogo(height: 30)
                             Spacer()
                             IconView(.search, size: 18).foregroundStyle(Palette.ink)
                                 .frame(width: Size.iconButton, height: Size.iconButton)
@@ -475,7 +474,6 @@ private struct LogoOptions: View {
                     .background(Palette.bg, in: RoundedRectangle.continuous(Radius.l))
                     .overlay(RoundedRectangle.continuous(Radius.l).strokeBorder(Palette.line))
                     .environment(\.colorScheme, scheme)
-                    .onTapGesture { wiggle += 1 }
                 }
             }
         }
