@@ -40,6 +40,9 @@ enum Motion {
     static let skeletonPulse = Animation.easeInOut(duration: 1.1).repeatForever(autoreverses: true)
     static let stateSwap = Animation.easeOut(duration: 0.2)
 
+    /// The Unpack scan line: one pass 1.4 s, back and forth.
+    static let scanSweep = Animation.easeInOut(duration: 1.4).repeatForever(autoreverses: true)
+
     static let pressScale: CGFloat = 0.97
     static let pillScale: CGFloat = 0.94
     static let staggerStep: Double = 0.024

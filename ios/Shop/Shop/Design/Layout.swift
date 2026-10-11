@@ -26,11 +26,22 @@ enum Space {
 
 enum Radius {
     static let xs: CGFloat = 3
+    /// Colour squares and small marks.
+    static let dot: CGFloat = 5
+    /// Small badges and chips.
+    static let badge: CGFloat = 6
     static let s: CGFloat = 8
+    /// Thumbnails and inset tiles.
+    static let tile: CGFloat = 10
     static let m: CGFloat = 11
     static let ml: CGFloat = 12
+    static let glyph: CGFloat = 13
     static let l: CGFloat = 16
     static let xl: CGFloat = 18
+    /// Grouped field blocks (inline rows).
+    static let input: CGFloat = 20
+    static let hero: CGFloat = 22
+    static let art: CGFloat = 24
     static let card: CGFloat = 26
     static let feature: CGFloat = 28
     static let bar: CGFloat = 34

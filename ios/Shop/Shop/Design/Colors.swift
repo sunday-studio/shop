@@ -51,6 +51,16 @@ enum Palette {
     // Primary button (inverts per theme)
     static let btn = Color.dynamic(light: 0x1D1D1B, dark: 0xF4F4F1)
     static let btnInk = Color.dynamic(light: 0xFFFFFF, dark: 0x0C0C0B)
+    // Camera and scanner surfaces are dark in both appearances.
+    static let scanBg = Color(hex: 0x111211)
+    static let scanBgDeep = Color(hex: 0x0C0C0B)
+    static let scanInk = Color(hex: 0xF4F4F1)
+    static let scanInk2 = Color(hex: 0x8F8F8A)
+    static let scanField = Color(hex: 0x2A2A27)
+    static let scanGreen = Color(hex: 0x3DDC84)
+    static let scanAmber = Color(hex: 0xFFB340)
+    static let scanRed = Color(hex: 0xFF6B61)
+    static let scanBlue = Color(hex: 0x4DA3FF)
     static let btnDisabled = Color.dynamic(light: 0xECECEA, dark: 0x2E2E2B)
     static let btnDisabledInk = Color.dynamic(light: 0xB4B4AF, dark: 0x5C5C58)
 

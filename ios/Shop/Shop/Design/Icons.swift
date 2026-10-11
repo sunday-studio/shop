@@ -56,6 +56,8 @@ enum Icon: String, CaseIterable {
     case leaf = "leaf"
     case nutrition = "chart.pie"
     case reorder = "line.3.horizontal"
+    case crop = "crop"
+    case rotateRight = "rotate.right"
     case filter = "line.3.horizontal.decrease"
     case clock = "clock"
     case sparkle = "sparkles"

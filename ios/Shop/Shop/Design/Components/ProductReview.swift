@@ -235,13 +235,13 @@ struct ReviewCardSkeleton: View {
 // MARK: - Scanner rows (dark tray)
 
 private enum ScanPalette {
-    static let ink = Color(hex: 0xF4F4F1)
-    static let ink2 = Color(hex: 0x8F8F8A)
-    static let line = Color(hex: 0x2A2A27)
-    static let green = Color(hex: 0x3DDC84)
-    static let amber = Color(hex: 0xFFB340)
-    static let red = Color(hex: 0xFF6B61)
-    static let blue = Color(hex: 0x4DA3FF)
+    static let ink = Palette.scanInk
+    static let ink2 = Palette.scanInk2
+    static let line = Palette.scanField
+    static let green = Palette.scanGreen
+    static let amber = Palette.scanAmber
+    static let red = Palette.scanRed
+    static let blue = Palette.scanBlue
 }
 
 /// What a scanned barcode turned into. One row per code in the Unpack session tray.
