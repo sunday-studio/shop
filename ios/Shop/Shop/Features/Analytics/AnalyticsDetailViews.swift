@@ -255,7 +255,7 @@ struct CategorySpendView: View {
             if loaded && rows.isEmpty {
                 Text("No linked products in this category for the range.").textStyle(.body).foregroundStyle(Palette.ink2).padding(.vertical, Space.xxl)
             } else if !loaded {
-                LoadingState()
+                SkeletonRows(count: 5) { SkeletonProductRow() }
             }
         }
     }
@@ -344,7 +344,7 @@ struct PriceChangesView: View {
                         }
                         .padding(.top, 40)
                     } else if !loaded {
-                        LoadingState()
+                        SkeletonRows(count: 5) { SkeletonProductRow() }
                     }
                 }
                 .padding(.horizontal, Space.gutter)

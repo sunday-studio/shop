@@ -67,7 +67,7 @@ struct ProductReviewView: View {
                             sectionHeader(section.reason, count: section.count)
                         }
                     }
-                    if model.isLoadingMore { ProgressView().frame(maxWidth: .infinity).padding(.vertical, Space.l) }
+                    LoadMoreFooter(state: model.isLoadingMore ? .loading : .idle, retry: {})
                 }
             }
         }

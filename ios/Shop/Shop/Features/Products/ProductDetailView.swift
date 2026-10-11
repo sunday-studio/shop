@@ -139,10 +139,20 @@ struct ProductDetailView: View {
                             .buttonStyle(.press(haptic: nil))
                             .padding(.horizontal, Space.gutter)
                             .padding(.top, Space.xxl)
-                    } else if let error = model.error {
-                        ErrorState(message: error.message) { Task { await model.load() } }
                     } else {
-                        LoadingState()
+                        StatefulContent(phase: model.error.map { .failed($0.message) } ?? .loading, retry: { Task { await model.load() } }) {
+                            VStack(alignment: .leading, spacing: Space.xl) {
+                                SkeletonCard(height: 96)
+                                SkeletonCard(height: 96)
+                                SkeletonRows(count: 3) { SkeletonLineRow() }
+                            }
+                        } empty: {
+                            EmptyView()
+                        } content: {
+                            EmptyView()
+                        }
+                        .padding(.horizontal, Space.gutter)
+                        .padding(.top, Space.xl)
                     }
                 }
                 .padding(.bottom, 120)
@@ -437,7 +447,12 @@ struct PriceHistoryView: View {
                     }
                     .padding(.top, 60)
                 } else {
-                    LoadingState()
+                    VStack(alignment: .leading, spacing: Space.xl) {
+                        SkeletonChart()
+                        SkeletonRows(count: 4) { SkeletonLineRow() }
+                    }
+                    .padding(.horizontal, Space.gutter)
+                    .padding(.top, Space.xl)
                 }
             }
             .padding(.bottom, 40)

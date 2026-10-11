@@ -44,7 +44,7 @@ struct SearchView: View {
                     if let results {
                         content(results)
                     } else if searching {
-                        LoadingState()
+                        SearchLoadingRows()
                     } else {
                         EmptyState(title: "Search everything", message: "Products by Dutch or English name, the way shops print them, and receipts that contain them.") {
                             GlyphIllustration(icon: .search, color: Accent.green)
@@ -141,4 +141,20 @@ struct SearchView: View {
 #Preview("Search") {
     let app = AppModel(mock: true)
     return NavigationStack { SearchView() }.environment(app)
+}
+
+/// Four product-row skeletons, only after a short wait so quick searches don't flash.
+private struct SearchLoadingRows: View {
+    @State private var visible = false
+
+    var body: some View {
+        Group {
+            if visible { SkeletonRows(count: 4) { SkeletonProductRow() }.transition(.opacity) } else { Color.clear.frame(height: 1) }
+        }
+        .task {
+            try? await Task.sleep(for: Motion.skeletonDelay)
+            guard !Task.isCancelled else { return }
+            withAnimation(Motion.stateSwap) { visible = true }
+        }
+    }
 }

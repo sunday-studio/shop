@@ -44,6 +44,21 @@ struct ShopsView: View {
             .padding(.bottom, Space.xs)
             .shopListRow()
 
+            if app.catalog.shops.isEmpty {
+                StatefulContent(phase: app.catalog.isSyncing ? .loading : .empty) {
+                    SkeletonRows(count: 5) { SkeletonSimpleRow() }
+                } empty: {
+                    EmptyState(title: "No shops yet", message: "Add the shops you buy from, or let Shop find them from your receipts.",
+                               action: (title: "Add shop", run: { openForm(nil) })) {
+                        GlyphIllustration(icon: .products, color: Accent.blue)
+                    }
+                } content: {
+                    EmptyView()
+                }
+                .padding(.horizontal, Space.gutter)
+                .shopListRow()
+            }
+
             ForEach(app.catalog.shops) { shop in
                 Button { openForm(shop) } label: {
                     HStack(spacing: Space.l) {

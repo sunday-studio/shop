@@ -74,10 +74,17 @@ struct ShoppingListView: View {
     @ViewBuilder
     private var items: some View {
         if list.items.isEmpty {
-            EmptyState(title: "Nothing on the list", message: "Add things as you run out. The list works without signal and syncs when you're back online.") {
-                GlyphIllustration(icon: .list, color: Accent.green)
+            StatefulContent(phase: list.lastSync == nil && list.lastError == nil ? .loading : .empty) {
+                SkeletonRows { SkeletonListRow() }
+            } empty: {
+                EmptyState(title: "Nothing on the list", message: "Add things as you run out. The list works without signal and syncs when you're back online.") {
+                    GlyphIllustration(icon: .list, color: Accent.green)
+                }
+                .padding(.top, 40)
+            } content: {
+                EmptyView()
             }
-            .padding(.top, 40 + Space.ml)
+            .padding(.top, Space.ml)
             .padding(.horizontal, Space.gutter)
             .shopListRow()
         }

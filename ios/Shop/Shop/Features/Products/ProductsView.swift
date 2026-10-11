@@ -154,7 +154,14 @@ struct ProductsView: View {
                 if model.isSearching {
                     newProductRow(name: model.query)
                 } else if app.catalog.isSyncing {
-                    LoadingState(title: "Copying your catalog")
+                    SkeletonRows(count: 8) { SkeletonProductRow() }
+                } else if let id = model.categoryId {
+                    let name = app.catalog.category(id)?.name ?? "this category"
+                    EmptyState(title: "Nothing in \(name) yet", message: "Products show up here once they're in this category.",
+                               action: (title: "Show all", run: { model.categoryId = nil; model.categoryChanged() })) {
+                        GlyphIllustration(icon: .products, color: Accent.blue)
+                    }
+                    .padding(.top, 30)
                 } else {
                     EmptyState(title: "No products yet", message: "Unpack your groceries to add products by barcode, or link receipt lines to new products.") {
                         GlyphIllustration(icon: .products, color: Accent.blue)
