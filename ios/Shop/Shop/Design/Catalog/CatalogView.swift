@@ -231,6 +231,9 @@ struct CatalogView: View {
                     ErrorState(message: "Saved receipts still work. This needs a connection.", offline: true) {}
                     LoadMoreFooter(state: .failed) {}
                 }
+                section("Navigation icons") {
+                    navIconCompare
+                }
                 section("Tab bar") {
                     PillTabBar(items: [
                         TabBarItem(id: 0, title: "Home", icon: .home, selectedIcon: .homeFill, badge: 2),
@@ -257,6 +260,19 @@ struct CatalogView: View {
                 .textStyle(TypeStyle.mono.sized(11))
                 .foregroundStyle(Palette.ink3)
             content()
+        }
+    }
+
+    private var navIconCompare: some View {
+        VStack(alignment: .leading, spacing: Space.lx) {
+            ForEach([NavIconStyle.duotone, .symbol], id: \.self) { style in
+                Text(style == .duotone ? "Duotone (Phosphor, MIT)" : "SF Symbols (palette)")
+                    .textStyle(.label).foregroundStyle(Palette.ink2)
+                ForEach([ColorScheme.light, .dark], id: \.self) { scheme in
+                    NavIconPanel(style: style)
+                        .environment(\.colorScheme, scheme)
+                }
+            }
         }
     }
 
@@ -324,4 +340,26 @@ struct CatalogView: View {
 
 #Preview("Catalog · dark") {
     CatalogView().preferredColorScheme(.dark)
+}
+
+
+/// One tab bar on a page-coloured panel, tappable, for the icon comparison.
+private struct NavIconPanel: View {
+    let style: NavIconStyle
+    @State private var tab = 1
+
+    var body: some View {
+        PillTabBar(items: [
+            TabBarItem(id: 0, title: "Home", icon: .home, selectedIcon: .homeFill, badge: 2),
+            TabBarItem(id: 1, title: "Analytics", icon: .analytics, selectedIcon: .analyticsFill),
+            TabBarItem(id: 2, title: "Products", icon: .products, selectedIcon: .productsFill),
+            TabBarItem(id: 3, title: "List", icon: .list, selectedIcon: .listFill),
+        ], selection: $tab) {}
+            .environment(\.navIconStyle, style)
+            .padding(.vertical, Space.l)
+            .frame(maxWidth: .infinity)
+            .background(Palette.bg)
+            .clipShape(RoundedRectangle.continuous(Radius.l))
+            .overlay(RoundedRectangle.continuous(Radius.l).strokeBorder(Palette.line))
+    }
 }
