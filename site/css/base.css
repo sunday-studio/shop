@@ -1,0 +1,107 @@
+/* Shared styles: tokens, fonts, reset, header, buttons, footer, motion.
+   Colours follow the visitor's system theme (prefers-color-scheme).
+   Mobile first; the desktop layout starts at 800 px. */
+
+/* ---- Fonts (self-hosted; TRIAL licence, see README) ---- */
+@font-face{font-family:"GT America";src:url(../fonts/GTAmerica-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"GT America";src:url(../fonts/GTAmerica-Medium.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"GT America";src:url(../fonts/GTAmerica-Bold.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"GT America Mono";src:url(../fonts/GTAmericaMono-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+
+/* ---- Tokens ---- */
+:root{
+  color-scheme:light;
+  --bg:#FFFFFF; --sunk:#F3F4F8; --line:#E4E6EE;
+  --ink:#2B2D3F; --ink2:#686B7E; --ink3:#B2B5C4;
+  --btn:#1D1D1B; --btnInk:#FFFFFF;
+  --blue:#0A84FF; --blueText:#0071E3; --blueTint:#E5F1FF; --panel:#DCEBFF;
+  --yellow:#FFCC1A;
+  --green:#18B663; --greenText:#0B8A47; --greenTint:#E3F6EC;
+  --amber:#FF9500; --amberText:#B25E00; --amberTint:#FFF3DF;
+  --purpleTint:#F0EAFE;
+  --paper:#F7F9FF; --shadow:rgba(29,29,27,.16); --bezel:#1D1D1B;
+  /* hero and closing sky */
+  --tintP:#FFF1E6;
+  --sk1:#C4D3F2; --sk2:#E2DCF1; --sk3:#F8DCCB; --sk4:#F2C4A2; --sun:#FFE6C7; --cl1:#FFF4EA; --cl2:#F7C9AB;
+  --mt1:#D9C9E8; --mt2:#B9A5D6; --mt3:#8E80BE; --gr1:#7F72B0; --gr3:#574E8C;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    color-scheme:dark;
+    --bg:#0C0C0B; --sunk:#1A1A18; --line:#2A2A27;
+    --ink:#F4F4F1; --ink2:#9B9B95; --ink3:#5C5C58;
+    --btn:#F4F4F1; --btnInk:#0C0C0B;
+    --blue:#4DA3FF; --blueText:#4DA3FF; --blueTint:#0E2236; --panel:#12304F;
+    --green:#3DDC84; --greenText:#3DDC84; --greenTint:#12281C;
+    --amber:#FFB340; --amberText:#FFB340; --amberTint:#2B2112;
+    --purpleTint:#221A36;
+    --paper:#E9ECF4; --shadow:rgba(0,0,0,.55); --bezel:#2A2A27;
+    --tintP:#2A1F22;
+    --sk1:#080D24; --sk2:#16204A; --sk3:#3E3270; --sk4:#8A5868; --sun:#C98A86; --cl1:#6872B8; --cl2:#8C5E78;
+    --mt1:#4A4380; --mt2:#352F6A; --mt3:#251F52; --gr1:#1A1840; --gr3:#0F0D28;
+  }
+}
+
+/* ---- Reset ---- */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:"GT America",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;overflow-x:clip}
+h1,h2,h3,p{margin:0}
+a{color:inherit;text-decoration:none}
+img{display:block}
+:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.skip{position:absolute;left:12px;top:-60px;z-index:20;background:var(--btn);color:var(--btnInk);padding:10px 16px;border-radius:20px;font-weight:500}
+.skip:focus{top:12px}
+
+/* ---- Brand, header ---- */
+.brand{display:inline-flex;align-items:center;gap:10px;font-weight:500;letter-spacing:-.02em;font-size:21px;line-height:1}
+.brand img{width:32px;height:32px;flex:none}
+.nav{display:flex;align-items:center;justify-content:space-between;height:68px;padding:0 20px}
+.nav .links{display:flex;align-items:center;gap:8px}
+.nl{height:40px;padding:0 14px;display:inline-flex;align-items:center;border-radius:20px;font-size:15px;font-weight:500;color:var(--ink2);transition:color .15s,background .15s}
+.nl:hover,.nl[aria-current]{background:var(--sunk)}
+.nl:hover{color:var(--ink)}
+.nl[aria-current]{color:var(--blueText)}
+.nl:focus-visible{outline-offset:2px}
+
+/* ---- Buttons, links ---- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:56px;padding:0 28px;border-radius:28px;font-weight:500;font-size:16.5px;background:var(--btn);color:var(--btnInk);transition:transform .16s cubic-bezier(.22,1,.36,1),opacity .2s}
+.btn:hover{opacity:.9}
+.btn:active{transform:scale(.97)}
+.btn.sm{height:36px;padding:0 18px;font-size:14px;border-radius:18px;position:relative}
+.btn.sm::after{content:"";position:absolute;inset:-4px 0} /* 44 px hit area */
+.btn.alt{background:rgba(255,255,255,.6);color:var(--ink);backdrop-filter:blur(8px)}
+.link{color:var(--blueText);font-weight:500;border-radius:6px}
+.link:hover{text-decoration:underline;text-underline-offset:3px}
+
+/* ---- Footer ---- */
+.foot{position:relative;z-index:2;background:var(--bg);margin-top:-2px;padding:36px 20px 40px}
+.foot-row{display:flex;flex-direction:column;justify-content:space-between;gap:24px;align-items:flex-start}
+.foot-link{display:inline-flex;align-items:center;gap:8px;font-size:16px}
+.foot p{margin-top:28px;font-size:13.5px;line-height:1.6;color:var(--ink2);max-width:640px}
+
+/* ---- Phone frame ---- */
+.dev{position:relative;border-radius:46px;background:var(--bezel);padding:7px;box-shadow:0 30px 60px -20px var(--shadow),0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent);flex:none}
+.dev img{width:100%;height:auto;border-radius:39px}
+
+/* ---- Motion ---- */
+@keyframes settle{from{opacity:0;transform:rotate(-17deg) translateY(28px)}to{opacity:1;transform:rotate(-9deg) translateY(0)}}
+@keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+.a-settle{animation:settle .9s cubic-bezier(.22,1,.36,1) both}
+.a-rise{animation:rise .7s cubic-bezier(.22,1,.36,1) both}
+@supports (animation-timeline:view()){
+  .a-scroll{animation:rise linear both;animation-timeline:view();animation-range:entry 0% entry 45%}
+}
+@media (prefers-reduced-motion:reduce){
+  .a-settle,.a-rise,.a-scroll{animation:none!important;opacity:1!important}
+  .a-settle{transform:rotate(-9deg)}
+  .btn{transition:none}
+  .btn:hover{transform:none}
+}
+
+@media (min-width:800px){
+  .nav{height:88px}
+  .foot{padding:56px 80px 64px}
+  .foot-row{flex-direction:row;gap:40px;align-items:center}
+  .foot p{margin-top:36px}
+}
