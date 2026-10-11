@@ -69,3 +69,7 @@ inline code, `**bold**`, `*italic*`, links (a bare slug such as `connect` links 
   before the site goes public; do not publish with these files.
 - Logo and screens: project assets from `design/website/`.
 - Site code: MIT, like the project.
+
+## Deploying (Cloudflare Workers Builds)
+
+`wrangler.jsonc` publishes this folder as static assets; `.assetsignore` keeps the build script, the markdown sources and the config out of the public site. In Cloudflare: connect the repo, set the project name to `shop`, set **Path** (root directory) to `site`, leave the build command empty (the generated pages are committed; run `python3 build.py` locally after editing `content/`), and use `npx wrangler deploy` as the deploy command.
