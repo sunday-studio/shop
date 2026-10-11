@@ -201,6 +201,42 @@ func (e LineUnit) Valid() bool {
 	}
 }
 
+// Defines values for ListItemCheckSource.
+const (
+	ListItemCheckSourceManual  ListItemCheckSource = "manual"
+	ListItemCheckSourceReceipt ListItemCheckSource = "receipt"
+)
+
+// Valid indicates whether the value is a known member of the ListItemCheckSource enum.
+func (e ListItemCheckSource) Valid() bool {
+	switch e {
+	case ListItemCheckSourceManual:
+		return true
+	case ListItemCheckSourceReceipt:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSuggestionReason.
+const (
+	Match      ListSuggestionReason = "match"
+	Substitute ListSuggestionReason = "substitute"
+)
+
+// Valid indicates whether the value is a known member of the ListSuggestionReason enum.
+func (e ListSuggestionReason) Valid() bool {
+	switch e {
+	case Match:
+		return true
+	case Substitute:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MergeResultKind.
 const (
 	MergeResultKindMerge MergeResultKind = "merge"
@@ -1086,17 +1122,29 @@ type LinkResult struct {
 
 // ListItem defines model for ListItem.
 type ListItem struct {
-	Cheapest    *ShopPrice `json:"cheapest,omitempty"`
-	CheckedAt   *time.Time `json:"checked_at,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	Id          int64      `json:"id"`
-	Note        *string    `json:"note,omitempty"`
-	ProductId   *int64     `json:"product_id,omitempty"`
-	ProductName *string    `json:"product_name,omitempty"`
-	Qty         *float64   `json:"qty,omitempty"`
-	Text        string     `json:"text"`
-	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
+	Cheapest *ShopPrice `json:"cheapest,omitempty"`
+
+	// CheckSource present when checked. "receipt" = checked automatically (or by accepting a suggestion) because of a confirmed receipt.
+	CheckSource *ListItemCheckSource `json:"check_source,omitempty"`
+	CheckedAt   *time.Time           `json:"checked_at,omitempty"`
+
+	// CheckedLineId the receipt line that matched
+	CheckedLineId *int64 `json:"checked_line_id,omitempty"`
+
+	// CheckedReceiptId the receipt that checked it (check_source=receipt)
+	CheckedReceiptId *int64     `json:"checked_receipt_id,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	Id               int64      `json:"id"`
+	Note             *string    `json:"note,omitempty"`
+	ProductId        *int64     `json:"product_id,omitempty"`
+	ProductName      *string    `json:"product_name,omitempty"`
+	Qty              *float64   `json:"qty,omitempty"`
+	Text             string     `json:"text"`
+	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
 }
+
+// ListItemCheckSource present when checked. "receipt" = checked automatically (or by accepting a suggestion) because of a confirmed receipt.
+type ListItemCheckSource string
 
 // ListItemInput defines model for ListItemInput.
 type ListItemInput struct {
@@ -1107,6 +1155,26 @@ type ListItemInput struct {
 	Qty       *float64 `json:"qty,omitempty"`
 	Text      *string  `json:"text,omitempty"`
 }
+
+// ListSuggestion defines model for ListSuggestion.
+type ListSuggestion struct {
+	CreatedAt time.Time `json:"created_at"`
+	Id        int64     `json:"id"`
+	ItemId    int64     `json:"item_id"`
+	ItemText  string    `json:"item_text"`
+	LineId    *int64    `json:"line_id,omitempty"`
+
+	// LineText the receipt line as printed
+	LineText string `json:"line_text"`
+
+	// Reason match = text looks like the line; substitute = a different product of the same category
+	Reason    ListSuggestionReason `json:"reason"`
+	ReceiptId int64                `json:"receipt_id"`
+	Score     float64              `json:"score"`
+}
+
+// ListSuggestionReason match = text looks like the line; substitute = a different product of the same category
+type ListSuggestionReason string
 
 // MergeResult defines model for MergeResult.
 type MergeResult struct {
@@ -1320,13 +1388,16 @@ type Receipt struct {
 	Id           int64                `json:"id"`
 
 	// LineCount item lines (excludes discounts, deposits, bags)
-	LineCount      *int           `json:"line_count,omitempty"`
-	Lines          *[]ReceiptLine `json:"lines,omitempty"`
-	OcrEngine      *string        `json:"ocr_engine,omitempty"`
-	OcrMs          *int64         `json:"ocr_ms,omitempty"`
-	ParsedSumCents *int64         `json:"parsed_sum_cents,omitempty"`
-	ParserVersion  *int           `json:"parser_version,omitempty"`
-	PaymentMethod  *string        `json:"payment_method,omitempty"`
+	LineCount *int           `json:"line_count,omitempty"`
+	Lines     *[]ReceiptLine `json:"lines,omitempty"`
+
+	// List only on the confirm response. What confirming did to the shopping list; absent if the list step failed.
+	List           *ReceiptListChecks `json:"list,omitempty"`
+	OcrEngine      *string            `json:"ocr_engine,omitempty"`
+	OcrMs          *int64             `json:"ocr_ms,omitempty"`
+	ParsedSumCents *int64             `json:"parsed_sum_cents,omitempty"`
+	ParserVersion  *int               `json:"parser_version,omitempty"`
+	PaymentMethod  *string            `json:"payment_method,omitempty"`
 
 	// PhotoTakenAt hint from the photo's EXIF; never the purchase date unless the user picks it
 	PhotoTakenAt  *time.Time             `json:"photo_taken_at,omitempty"`
@@ -1380,6 +1451,18 @@ type ReceiptLine struct {
 
 // ReceiptLineTextEnStatus defines model for ReceiptLine.TextEnStatus.
 type ReceiptLineTextEnStatus string
+
+// ReceiptListChecks defines model for ReceiptListChecks.
+type ReceiptListChecks struct {
+	// Checked items checked off by this receipt
+	Checked []ListItem `json:"checked"`
+
+	// Reduced items kept open with a smaller qty and the note "1 of 3 bought"
+	Reduced []ListItem `json:"reduced"`
+
+	// Suggestions new suggestions from this receipt
+	Suggestions []ListSuggestion `json:"suggestions"`
+}
 
 // ReceiptPage defines model for ReceiptPage.
 type ReceiptPage struct {

@@ -87,7 +87,7 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeProblem(w, http.StatusUnsupportedMediaType, "unsupported media type", err.Error())
 	case errors.Is(err, shopping.ErrGone):
 		writeProblem(w, http.StatusGone, "item was deleted", "this client_id's item has since been deleted")
-	case errors.Is(err, products.ErrConflict):
+	case errors.Is(err, products.ErrConflict), errors.Is(err, shopping.ErrConflict):
 		writeProblem(w, http.StatusConflict, "conflict", err.Error())
 	case errors.Is(err, receipts.ErrEdited):
 		writeProblem(w, http.StatusConflict, "receipt edited", err.Error())

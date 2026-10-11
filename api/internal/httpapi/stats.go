@@ -198,6 +198,13 @@ func toListItem(it shopping.Item) map[string]any {
 	}
 	if t := store.TimePtr(it.CheckedAt); t != nil {
 		out["checked_at"] = *t
+		out["check_source"] = it.CheckSource
+		if it.CheckedReceiptID.Valid {
+			out["checked_receipt_id"] = it.CheckedReceiptID.Int64
+		}
+		if it.CheckedLineID.Valid {
+			out["checked_line_id"] = it.CheckedLineID.Int64
+		}
 	}
 	if it.Cheapest != nil {
 		out["cheapest"] = it.Cheapest
@@ -323,7 +330,93 @@ func (s *Server) listChanges(w http.ResponseWriter, r *http.Request) {
 	for i, it := range c.Items {
 		items[i] = toListItem(it)
 	}
+	sugs, err := s.List.Suggestions(r.Context())
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"items": items, "deleted_ids": c.DeletedIDs, "server_time": c.ServerTime, "full_resync": c.FullResync,
+		"suggestions": toSuggestions(sugs),
 	})
+}
+
+// ---------------------------------------------------------------- list suggestions (receipt checks)
+
+func toSuggestion(sg shopping.Suggestion) map[string]any {
+	created, _ := store.ParseTS(sg.CreatedAt)
+	out := map[string]any{
+		"id": sg.ID, "item_id": sg.ItemID, "item_text": sg.ItemText, "receipt_id": sg.ReceiptID,
+		"line_text": sg.LineText, "score": sg.Score, "reason": sg.Reason, "created_at": created,
+	}
+	if sg.LineID.Valid {
+		out["line_id"] = sg.LineID.Int64
+	}
+	return out
+}
+
+func toSuggestions(in []shopping.Suggestion) []map[string]any {
+	out := make([]map[string]any, len(in))
+	for i, sg := range in {
+		out[i] = toSuggestion(sg)
+	}
+	return out
+}
+
+func toItems(in []shopping.Item) []map[string]any {
+	out := make([]map[string]any, len(in))
+	for i, it := range in {
+		out[i] = toListItem(it)
+	}
+	return out
+}
+
+func (s *Server) listSuggestions(w http.ResponseWriter, r *http.Request) {
+	sugs, err := s.List.Suggestions(r.Context())
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toSuggestions(sugs))
+}
+
+func (s *Server) acceptSuggestion(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	it, err := s.List.AcceptSuggestion(r.Context(), id)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toListItem(it))
+}
+
+func (s *Server) dismissSuggestion(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	if err := s.List.DismissSuggestion(r.Context(), id); err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) undoListChecks(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	items, err := s.List.UndoReceipt(r.Context(), id)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"restored": toItems(items)})
 }

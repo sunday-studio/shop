@@ -21,6 +21,8 @@ import (
 var (
 	ErrNotFound = errors.New("not found")
 	ErrInvalid  = errors.New("invalid input")
+	// ErrConflict: the request contradicts an earlier decision (e.g. accepting a dismissed suggestion).
+	ErrConflict = errors.New("conflict")
 	// ErrGone: a retried add whose item has since been deleted.
 	ErrGone = errors.New("item was deleted")
 )
@@ -39,10 +41,11 @@ type Service struct {
 	matcher *match.Matcher
 	stats   *stats.Service
 	now     func() time.Time
+	loc     *time.Location
 }
 
 func New(conn *sql.DB, matcher *match.Matcher, st *stats.Service) *Service {
-	return &Service{conn: conn, q: db.New(conn), matcher: matcher, stats: st, now: time.Now}
+	return &Service{conn: conn, q: db.New(conn), matcher: matcher, stats: st, now: time.Now, loc: time.Local}
 }
 
 type Input struct {
