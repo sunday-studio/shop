@@ -156,14 +156,18 @@ struct LoadingState: View {
     }
 }
 
-/// Inline error with retry.
+/// Inline error with retry. Only for screens with nothing cached; with a saved copy on screen use `StaleBanner`.
+/// Offline gets its own title and glyph: it is the user's situation, not a fault.
 struct ErrorState: View {
     let message: String
+    var offline = false
     var retry: (() -> Void)? = nil
 
     var body: some View {
-        EmptyState(title: "Couldn't load", message: message, action: retry.map { (title: "Try again", run: $0) }) {
-            GlyphIllustration(icon: .wifiSlash, color: Accent.red)
+        EmptyState(title: offline ? "You're offline" : "Couldn't load",
+                   message: message,
+                   action: retry.map { (title: "Try again", run: $0) }) {
+            GlyphIllustration(icon: offline ? .wifiSlash : .server, color: offline ? Accent.amber : Accent.red)
         }
         .padding(.vertical, 24)
     }
@@ -175,6 +179,7 @@ struct ErrorState: View {
             EmptyState(title: "Scan receipts on the day", message: "Thermal paper fades in weeks. Scan now and review whenever you like. Scans upload as soon as you're back online.")
             HStack(spacing: 30) { ReceiptThumb(pages: 2); PaperReceipt(highlight: Accent.yellow).frame(width: 72, height: 100) }
             ErrorState(message: "The server didn't answer.") {}
+            ErrorState(message: "Saved receipts still work. This needs a connection.", offline: true) {}
             LoadingState(title: "Loading receipts")
         }
         .padding(.vertical, 30)

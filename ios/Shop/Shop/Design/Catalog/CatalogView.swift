@@ -221,6 +221,16 @@ struct CatalogView: View {
                         ProductHero(name: "Melk", category: "Dairy")
                     }
                 }
+                section("Loading states") {
+                    SkeletonRows(count: 3) { SkeletonReceiptRow() }
+                    SkeletonRows(count: 3) { SkeletonProductRow() }
+                    SkeletonRows(count: 2) { SkeletonSimpleRow() }
+                    SkeletonRows(count: 2) { SkeletonListRow() }
+                    SkeletonChart(height: 110)
+                    StaleBanner(what: "products") {}
+                    ErrorState(message: "Saved receipts still work. This needs a connection.", offline: true) {}
+                    LoadMoreFooter(state: .failed) {}
+                }
                 section("Tab bar") {
                     PillTabBar(items: [
                         TabBarItem(id: 0, title: "Home", icon: .home, selectedIcon: .homeFill, badge: 2),

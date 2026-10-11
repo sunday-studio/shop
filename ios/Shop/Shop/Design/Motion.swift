@@ -33,6 +33,13 @@ enum Motion {
     static let numberRoll = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.18)
     static let collapse = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.24)
 
+    /// Loading states (see docs/DESIGN-LOADING-STATES.md). Nothing shows for the first 250 ms,
+    /// a skeleton that appeared stays at least 400 ms, then it cross-fades to content in 200 ms.
+    static let skeletonDelay: Duration = .milliseconds(250)
+    static let skeletonMinimum: Duration = .milliseconds(400)
+    static let skeletonPulse = Animation.easeInOut(duration: 1.1).repeatForever(autoreverses: true)
+    static let stateSwap = Animation.easeOut(duration: 0.2)
+
     static let pressScale: CGFloat = 0.97
     static let pillScale: CGFloat = 0.94
     static let staggerStep: Double = 0.024
