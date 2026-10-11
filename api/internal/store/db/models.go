@@ -148,6 +148,10 @@ type Receipt struct {
 	DateLocked     int64          `json:"date_locked"`
 	HeaderEdited   int64          `json:"header_edited"`
 	PhotoTakenAt   sql.NullString `json:"photo_taken_at"`
+	HeaderJson     sql.NullString `json:"header_json"`
+	HeaderChain    sql.NullString `json:"header_chain"`
+	HeaderNumber   sql.NullString `json:"header_number"`
+	HeaderVersion  sql.NullInt64  `json:"header_version"`
 }
 
 type ReceiptLine struct {

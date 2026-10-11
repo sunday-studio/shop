@@ -54,6 +54,9 @@ func addReceipt(t *testing.T, conn *sql.DB, rows ...string) int64 {
 
 func suggest(t *testing.T, s *Service, id int64) *Suggestion {
 	t.Helper()
+	if _, err := s.Reindex(context.Background()); err != nil { // as the server does after a start
+		t.Fatal(err)
+	}
 	sg, err := s.Suggest(context.Background(), id)
 	if err != nil {
 		t.Fatal(err)

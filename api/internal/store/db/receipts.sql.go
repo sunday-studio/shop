@@ -26,7 +26,7 @@ func (q *Queries) ClearHeaderEdited(ctx context.Context, arg ClearHeaderEditedPa
 
 const confirmReceipt = `-- name: ConfirmReceipt :one
 UPDATE receipts SET status = 'ok', confirmed_at = ?, updated_at = ? WHERE id = ?
-RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at
+RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at, header_json, header_chain, header_number, header_version
 `
 
 type ConfirmReceiptParams struct {
@@ -60,6 +60,10 @@ func (q *Queries) ConfirmReceipt(ctx context.Context, arg ConfirmReceiptParams) 
 		&i.DateLocked,
 		&i.HeaderEdited,
 		&i.PhotoTakenAt,
+		&i.HeaderJson,
+		&i.HeaderChain,
+		&i.HeaderNumber,
+		&i.HeaderVersion,
 	)
 	return i, err
 }
@@ -110,7 +114,7 @@ func (q *Queries) CountReceiptsByStatus(ctx context.Context) ([]CountReceiptsByS
 const createReceipt = `-- name: CreateReceipt :one
 INSERT INTO receipts (shop_id, purchased_at, photo_taken_at, date_locked, image_path, image_sha256, status, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at
+RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at, header_json, header_chain, header_number, header_version
 `
 
 type CreateReceiptParams struct {
@@ -158,6 +162,10 @@ func (q *Queries) CreateReceipt(ctx context.Context, arg CreateReceiptParams) (R
 		&i.DateLocked,
 		&i.HeaderEdited,
 		&i.PhotoTakenAt,
+		&i.HeaderJson,
+		&i.HeaderChain,
+		&i.HeaderNumber,
+		&i.HeaderVersion,
 	)
 	return i, err
 }
@@ -175,7 +183,7 @@ func (q *Queries) DeleteReceipt(ctx context.Context, id int64) (int64, error) {
 }
 
 const getReceipt = `-- name: GetReceipt :one
-SELECT id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at FROM receipts WHERE id = ?
+SELECT id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at, header_json, header_chain, header_number, header_version FROM receipts WHERE id = ?
 `
 
 func (q *Queries) GetReceipt(ctx context.Context, id int64) (Receipt, error) {
@@ -203,12 +211,16 @@ func (q *Queries) GetReceipt(ctx context.Context, id int64) (Receipt, error) {
 		&i.DateLocked,
 		&i.HeaderEdited,
 		&i.PhotoTakenAt,
+		&i.HeaderJson,
+		&i.HeaderChain,
+		&i.HeaderNumber,
+		&i.HeaderVersion,
 	)
 	return i, err
 }
 
 const getReceiptBySHA = `-- name: GetReceiptBySHA :one
-SELECT id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at FROM receipts WHERE image_sha256 = ?
+SELECT id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at, header_json, header_chain, header_number, header_version FROM receipts WHERE image_sha256 = ?
 `
 
 func (q *Queries) GetReceiptBySHA(ctx context.Context, imageSha256 string) (Receipt, error) {
@@ -236,8 +248,54 @@ func (q *Queries) GetReceiptBySHA(ctx context.Context, imageSha256 string) (Rece
 		&i.DateLocked,
 		&i.HeaderEdited,
 		&i.PhotoTakenAt,
+		&i.HeaderJson,
+		&i.HeaderChain,
+		&i.HeaderNumber,
+		&i.HeaderVersion,
 	)
 	return i, err
+}
+
+const listHeaderCandidates = `-- name: ListHeaderCandidates :many
+SELECT id, shop_id, header_json FROM receipts
+WHERE confirmed_at IS NULL AND header_chain = ? AND header_number = ? AND id != ?
+ORDER BY id
+`
+
+type ListHeaderCandidatesParams struct {
+	HeaderChain  sql.NullString `json:"header_chain"`
+	HeaderNumber sql.NullString `json:"header_number"`
+	ID           int64          `json:"id"`
+}
+
+type ListHeaderCandidatesRow struct {
+	ID         int64          `json:"id"`
+	ShopID     sql.NullInt64  `json:"shop_id"`
+	HeaderJson sql.NullString `json:"header_json"`
+}
+
+// Unconfirmed receipts whose header names this chain and house number (the street is compared in Go).
+func (q *Queries) ListHeaderCandidates(ctx context.Context, arg ListHeaderCandidatesParams) ([]ListHeaderCandidatesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listHeaderCandidates, arg.HeaderChain, arg.HeaderNumber, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListHeaderCandidatesRow{}
+	for rows.Next() {
+		var i ListHeaderCandidatesRow
+		if err := rows.Scan(&i.ID, &i.ShopID, &i.HeaderJson); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listReceiptIDsForReparse = `-- name: ListReceiptIDsForReparse :many
@@ -274,7 +332,7 @@ func (q *Queries) ListReceiptIDsForReparse(ctx context.Context, status interface
 }
 
 const listReceipts = `-- name: ListReceipts :many
-SELECT receipts.id, receipts.shop_id, receipts.purchased_at, receipts.total_cents, receipts.parsed_sum_cents, receipts.currency, receipts.payment_method, receipts.image_path, receipts.image_sha256, receipts.status, receipts.review_reasons, receipts.ocr_engine, receipts.ocr_ms, receipts.raw_ocr_json, receipts.parser_version, receipts.confirmed_at, receipts.created_at, receipts.updated_at, receipts.date_locked, receipts.header_edited, receipts.photo_taken_at,
+SELECT receipts.id, receipts.shop_id, receipts.purchased_at, receipts.total_cents, receipts.parsed_sum_cents, receipts.currency, receipts.payment_method, receipts.image_path, receipts.image_sha256, receipts.status, receipts.review_reasons, receipts.ocr_engine, receipts.ocr_ms, receipts.raw_ocr_json, receipts.parser_version, receipts.confirmed_at, receipts.created_at, receipts.updated_at, receipts.date_locked, receipts.header_edited, receipts.photo_taken_at, receipts.header_json, receipts.header_chain, receipts.header_number, receipts.header_version,
   CAST((SELECT COUNT(*) FROM receipt_lines l
         WHERE l.receipt_id = receipts.id AND l.kind = 'item') AS INTEGER) AS line_count,
   CAST((SELECT COUNT(*) FROM receipt_lines l
@@ -342,6 +400,10 @@ func (q *Queries) ListReceipts(ctx context.Context, arg ListReceiptsParams) ([]L
 			&i.Receipt.DateLocked,
 			&i.Receipt.HeaderEdited,
 			&i.Receipt.PhotoTakenAt,
+			&i.Receipt.HeaderJson,
+			&i.Receipt.HeaderChain,
+			&i.Receipt.HeaderNumber,
+			&i.Receipt.HeaderVersion,
 			&i.LineCount,
 			&i.UnlinkedCount,
 		); err != nil {
@@ -358,34 +420,33 @@ func (q *Queries) ListReceipts(ctx context.Context, arg ListReceiptsParams) ([]L
 	return items, nil
 }
 
-const listReceiptsForShopSuggestion = `-- name: ListReceiptsForShopSuggestion :many
-SELECT id, shop_id, confirmed_at, raw_ocr_json FROM receipts
-WHERE raw_ocr_json IS NOT NULL
+const listReceiptsWithoutHeader = `-- name: ListReceiptsWithoutHeader :many
+SELECT id, raw_ocr_json FROM receipts
+WHERE raw_ocr_json IS NOT NULL AND (header_version IS NULL OR header_version != ?)
 ORDER BY id
+LIMIT ?
 `
 
-type ListReceiptsForShopSuggestionRow struct {
-	ID          int64          `json:"id"`
-	ShopID      sql.NullInt64  `json:"shop_id"`
-	ConfirmedAt sql.NullString `json:"confirmed_at"`
-	RawOcrJson  sql.NullString `json:"raw_ocr_json"`
+type ListReceiptsWithoutHeaderParams struct {
+	HeaderVersion sql.NullInt64 `json:"header_version"`
+	Limit         int64         `json:"limit"`
 }
 
-func (q *Queries) ListReceiptsForShopSuggestion(ctx context.Context) ([]ListReceiptsForShopSuggestionRow, error) {
-	rows, err := q.db.QueryContext(ctx, listReceiptsForShopSuggestion)
+type ListReceiptsWithoutHeaderRow struct {
+	ID         int64          `json:"id"`
+	RawOcrJson sql.NullString `json:"raw_ocr_json"`
+}
+
+func (q *Queries) ListReceiptsWithoutHeader(ctx context.Context, arg ListReceiptsWithoutHeaderParams) ([]ListReceiptsWithoutHeaderRow, error) {
+	rows, err := q.db.QueryContext(ctx, listReceiptsWithoutHeader, arg.HeaderVersion, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListReceiptsForShopSuggestionRow{}
+	items := []ListReceiptsWithoutHeaderRow{}
 	for rows.Next() {
-		var i ListReceiptsForShopSuggestionRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ShopID,
-			&i.ConfirmedAt,
-			&i.RawOcrJson,
-		); err != nil {
+		var i ListReceiptsWithoutHeaderRow
+		if err := rows.Scan(&i.ID, &i.RawOcrJson); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -397,6 +458,29 @@ func (q *Queries) ListReceiptsForShopSuggestion(ctx context.Context) ([]ListRece
 		return nil, err
 	}
 	return items, nil
+}
+
+const setReceiptHeader = `-- name: SetReceiptHeader :exec
+UPDATE receipts SET header_json = ?, header_chain = ?, header_number = ?, header_version = ? WHERE id = ?
+`
+
+type SetReceiptHeaderParams struct {
+	HeaderJson    sql.NullString `json:"header_json"`
+	HeaderChain   sql.NullString `json:"header_chain"`
+	HeaderNumber  sql.NullString `json:"header_number"`
+	HeaderVersion sql.NullInt64  `json:"header_version"`
+	ID            int64          `json:"id"`
+}
+
+func (q *Queries) SetReceiptHeader(ctx context.Context, arg SetReceiptHeaderParams) error {
+	_, err := q.db.ExecContext(ctx, setReceiptHeader,
+		arg.HeaderJson,
+		arg.HeaderChain,
+		arg.HeaderNumber,
+		arg.HeaderVersion,
+		arg.ID,
+	)
+	return err
 }
 
 const setReceiptOCR = `-- name: SetReceiptOCR :exec
@@ -525,7 +609,7 @@ const updateReceiptHeader = `-- name: UpdateReceiptHeader :one
 UPDATE receipts
 SET shop_id = ?, purchased_at = ?, date_locked = ?, total_cents = ?, header_edited = 1, updated_at = ?
 WHERE id = ?
-RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at
+RETURNING id, shop_id, purchased_at, total_cents, parsed_sum_cents, currency, payment_method, image_path, image_sha256, status, review_reasons, ocr_engine, ocr_ms, raw_ocr_json, parser_version, confirmed_at, created_at, updated_at, date_locked, header_edited, photo_taken_at, header_json, header_chain, header_number, header_version
 `
 
 type UpdateReceiptHeaderParams struct {
@@ -569,6 +653,10 @@ func (q *Queries) UpdateReceiptHeader(ctx context.Context, arg UpdateReceiptHead
 		&i.DateLocked,
 		&i.HeaderEdited,
 		&i.PhotoTakenAt,
+		&i.HeaderJson,
+		&i.HeaderChain,
+		&i.HeaderNumber,
+		&i.HeaderVersion,
 	)
 	return i, err
 }

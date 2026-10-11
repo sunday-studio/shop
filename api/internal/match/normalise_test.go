@@ -1,6 +1,9 @@
 package match
 
-import "testing"
+import (
+	"sync"
+	"testing"
+)
 
 func TestNormalise(t *testing.T) {
 	cases := map[string]string{
@@ -16,4 +19,22 @@ func TestNormalise(t *testing.T) {
 			t.Errorf("Normalise(%q) = %q; want %q", in, got, want)
 		}
 	}
+}
+
+// Fold is called from many goroutines at once (requests and background jobs); run with -race.
+func TestFoldIsSafeForConcurrentUse(t *testing.T) {
+	var wg sync.WaitGroup
+	for g := 0; g < 8; g++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 2000; i++ {
+				if got := Fold("Crème Fraîche ÉCLAIR"); got != "creme fraiche eclair" {
+					t.Errorf("Fold = %q", got)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }

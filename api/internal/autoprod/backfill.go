@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"shop/internal/jobs"
 	"shop/internal/store"
@@ -150,6 +151,9 @@ func (s *Service) RunBackfill(ctx context.Context, dryRun bool, skip []int64) er
 		st.Created += r.Created
 		st.NeedsReview += r.NeedsReview
 		st.ReceiptsDone = i + 1
+		if !dryRun { // let the app's own writes in between receipts
+			time.Sleep(5 * time.Millisecond)
+		}
 		if !dryRun && (i%10 == 9 || i == len(ids)-1) {
 			if err := s.saveBackfill(ctx, st); err != nil {
 				return err

@@ -21,6 +21,7 @@ import (
 	"shop/internal/match"
 	"shop/internal/ocr"
 	"shop/internal/receipt"
+	"shop/internal/shopsuggest"
 	"shop/internal/store"
 	"shop/internal/store/db"
 )
@@ -254,6 +255,9 @@ func (s *Service) persist(ctx context.Context, rec db.Receipt, res ocr.Result, p
 			OcrEngine: store.Str(res.Engine), OcrMs: sql.NullInt64{Int64: res.MS, Valid: true},
 			RawOcrJson: store.Str(string(raw)), UpdatedAt: now, ID: rec.ID,
 		}); err != nil {
+			return err
+		}
+		if err := shopsuggest.StoreHeader(ctx, q, rec.ID, string(raw)); err != nil {
 			return err
 		}
 		if err := q.DeleteLinesForReceipt(ctx, rec.ID); err != nil {
