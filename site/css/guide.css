@@ -48,7 +48,7 @@ body:has(.gmenu[open]) main,body:has(.gmenu[open]) .foot{display:none}
 .letters{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:16.5px}
 .letters li{display:grid;grid-template-columns:28px 1fr}
 .letters i{font-style:normal;color:var(--ink3);font-family:"GT America Mono",ui-monospace,monospace;font-size:14px;padding-top:2px}
-.code,.term pre,table.tb td,.slist li,.call{overflow-wrap:anywhere}
+.doc table.tb td,.slist li,.call{overflow-wrap:anywhere}
 .code{background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:16px 76px 16px 18px;margin:12px 0 0;font-family:"GT America Mono",ui-monospace,monospace;font-size:14px;line-height:1.7;color:var(--ink);overflow:hidden;white-space:pre-wrap}
 .code code{font:inherit;background:none;padding:0;border-radius:0;color:inherit}
 .call{border-radius:16px;padding:16px 18px;margin:18px 0;font-size:15.5px;line-height:1.6;color:var(--ink)}
@@ -73,6 +73,7 @@ table.tb td:first-child{color:var(--ink)}
 .pn a{display:flex;flex-direction:column;gap:4px;padding:18px 20px;border-radius:18px;border:1px solid var(--line);transition:background .15s}
 .pn a:hover{background:var(--sunk)}
 .doc b{font-weight:500;color:var(--ink)}
+.steps+p.b{margin-top:16px}
 .bl{margin:0 0 14px;padding-left:20px;font-size:16.5px;line-height:1.6;color:var(--ink2)}
 .bl li{margin:6px 0}
 .bl .sub{margin-top:6px}

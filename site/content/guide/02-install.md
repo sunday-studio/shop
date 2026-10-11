@@ -8,7 +8,7 @@ summary: Start the Docker stack and get the pairing password.
 
 {lettered}
 - Docker, with about 4 GB of memory to spare
-- git and make
+- `git` and `make`
 - A Mac mini is what it was built on
 
 ## Steps
@@ -25,7 +25,7 @@ summary: Start the Docker stack and get the pairing password.
    ```bash
    make setup
    ```
-   The first build downloads the OCR models and takes several minutes. When it ends it prints the pairing password once. Copy it.
+   The first build downloads the OCR models and takes several minutes. When it ends it prints the **pairing password once**. Copy it.
    ```terminal
    $ make setup
    …
@@ -46,9 +46,9 @@ Set these in `deploy/.env`.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `SHOP_PORT` | `8080` | Port for the API and MCP |
-| `SHOP_BACKUP_DIR` | `backups/` | Where nightly backups go (point it at a NAS) |
-| `BACKUP_AT` | `03:30` | Daily backup time |
-| `BACKUP_KEEP_DAYS` | `30` | How long snapshots are kept |
+| `SHOP_PORT` | 8080 | Port for the API and MCP |
+| `SHOP_BACKUP_DIR` | backups/ | Where nightly backups go (point it at a NAS) |
+| `BACKUP_AT` | 03:30 | Daily backup time |
+| `BACKUP_KEEP_DAYS` | 30 | How long snapshots are kept |
 | `LOGO_DEV_TOKEN` | none | Shop logos |
-| `AUTO_PRODUCTS` | `on` | Create products when you confirm a receipt |
+| `AUTO_PRODUCTS` | on | Create products when you confirm a receipt |
