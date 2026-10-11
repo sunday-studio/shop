@@ -45,7 +45,8 @@
 /* ---- Reset ---- */
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;font-family:"GT America",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;overflow-x:clip}
+body{margin:0;font-family:"GT America",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;overflow-x:clip;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+main{flex:1 0 auto}
 h1,h2,h3,p{margin:0}
 a{color:inherit;text-decoration:none}
 img{display:block}
@@ -89,6 +90,10 @@ img{display:block}
 @media (prefers-reduced-motion:no-preference){
   html{scroll-behavior:smooth}
   @view-transition{navigation:auto}
+  ::view-transition-old(root),::view-transition-new(root){animation-duration:.3s}
+  /* page-load fade for browsers without cross-document view transitions */
+  @keyframes pagein{from{opacity:0}to{opacity:1}}
+  body{animation:pagein .35s ease both}
 }
 [id]{scroll-margin-top:24px}
 @keyframes settle{from{opacity:0;transform:rotate(-17deg) translateY(28px)}to{opacity:1;transform:rotate(-9deg) translateY(0)}}
