@@ -296,7 +296,7 @@ struct HomeView: View {
         let canConfirm = receipt.confirmedAt == nil && (receipt.status == .ok || receipt.status == .needsReview)
         let busy = receipt.status == .processing || receipt.status == .pending
         return SwipeActionRow(
-            leading: canConfirm ? SwipeAction(icon: "checkmark", title: "Confirm", tint: Accent.green, removesRow: true, haptic: .medium) { confirm(receipt) } : nil,
+            leading: canConfirm ? SwipeAction(icon: "checkmark", title: "Confirm", tint: Accent.green, haptic: .medium) { confirm(receipt) } : nil,
             trailing: busy ? nil : SwipeAction(icon: "trash", title: "Delete", tint: Accent.red) { askDelete(receipt) }
         ) {
             receiptRowContent(receipt)
