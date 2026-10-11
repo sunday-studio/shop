@@ -14,13 +14,13 @@ struct UnpackView: View {
     @Environment(\.accessibilityReduceMotion) private var reduce
 
     private let darkTray = Color(hex: 0x1C1C1A)
-    private let darkInk = Color(hex: 0xF4F4F1)
-    private let darkInk2 = Color(hex: 0x8F8F8A)
-    private let darkLine = Color(hex: 0x2A2A27)
+    private let darkInk = Palette.scanInk
+    private let darkInk2 = Palette.scanInk2
+    private let darkLine = Palette.scanField
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            RadialGradient(colors: [Color(hex: 0x3B3F3C), Color(hex: 0x111211)], center: UnitPoint(x: 0.5, y: 0.3), startRadius: 10, endRadius: 560)
+            RadialGradient(colors: [Color(hex: 0x3B3F3C), Palette.scanBg], center: UnitPoint(x: 0.5, y: 0.3), startRadius: 10, endRadius: 560)
                 .ignoresSafeArea()
 
             if BarcodeScanner.isAvailable {
@@ -70,11 +70,11 @@ struct UnpackView: View {
             Spacer()
             HStack(spacing: Space.ml) {
                 HStack(spacing: 5) {
-                    RoundedRectangle.continuous(Radius.xs).fill(Color(hex: 0x3DDC84)).frame(width: 8, height: 8)
+                    RoundedRectangle.continuous(Radius.xs).fill(Palette.scanGreen).frame(width: 8, height: 8)
                     Text("\(model?.knownCount ?? 0) known")
                 }
                 HStack(spacing: 5) {
-                    RoundedRectangle.continuous(Radius.xs).fill(Color(hex: 0xFFB340)).frame(width: 8, height: 8)
+                    RoundedRectangle.continuous(Radius.xs).fill(Palette.scanAmber).frame(width: 8, height: 8)
                     Text("\((model?.addedCount ?? 0) + (model?.toNameCount ?? 0)) new")
                 }
             }
@@ -100,8 +100,6 @@ struct UnpackView: View {
 
     // MARK: Viewfinder
 
-    /// The scan line's slow sweep (no Motion token for it yet).
-    private static let scanSweep = Animation.easeInOut(duration: 1.4).repeatForever(autoreverses: true)
 
     private var viewfinder: some View {
         ZStack {
@@ -113,12 +111,12 @@ struct UnpackView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: [.topLeading, .topTrailing, .bottomTrailing, .bottomLeading][corner])
             }
             Capsule()
-                .fill(Color(hex: 0x3DDC84))
+                .fill(Palette.scanGreen)
                 .frame(height: 2)
-                .shadow(color: Color(hex: 0x3DDC84), radius: 7)
+                .shadow(color: Palette.scanGreen, radius: 7)
                 .padding(.horizontal, 18)
                 .offset(y: scanLine ? 30 : -30)
-                .animation(reduce ? nil : Self.scanSweep, value: scanLine)
+                .animation(reduce ? nil : Motion.scanSweep, value: scanLine)
                 .onAppear { scanLine = true }
         }
         .frame(width: 250, height: 130)
@@ -212,9 +210,9 @@ struct UnpackView: View {
             TypeStyle.trayTitle.sized(17).text("Session done").foregroundStyle(darkInk)
                 .padding(.horizontal, Space.xs)
             HStack(spacing: Space.m) {
-                summaryCell(model.knownCount, "known", Color(hex: 0x3DDC84))
-                summaryCell(model.addedCount, "added", Color(hex: 0x4DA3FF))
-                summaryCell(model.toNameCount, "to name", Color(hex: 0xFFB340))
+                summaryCell(model.knownCount, "known", Palette.scanGreen)
+                summaryCell(model.addedCount, "added", Palette.scanBlue)
+                summaryCell(model.toNameCount, "to name", Palette.scanAmber)
             }
             if model.reviewCount > 0 {
                 Button(model.reviewCount == 1 ? "Review 1 new product" : "Review \(model.reviewCount) new products") {
@@ -222,14 +220,14 @@ struct UnpackView: View {
                     app.tab = .products
                     app.push(.productReview)
                 }
-                .buttonStyle(.shop(.tinted(text: Color(hex: 0x0C0C0B), tint: darkInk)))
+                .buttonStyle(.shop(.tinted(text: Palette.scanBgDeep, tint: darkInk)))
             }
             if model.linkableCount > 0 {
                 Button("Link receipt lines (\(model.linkableCount))") {
                     if let entry = model.entries.first(where: { !$0.receiptLines.isEmpty }) { linkLines(entry) }
                 }
                 .textStyle(.label)
-                .foregroundStyle(Color(hex: 0x4DA3FF))
+                .foregroundStyle(Palette.scanBlue)
                 .buttonStyle(.press(haptic: .selection))
                 .frame(maxWidth: .infinity)
             }
@@ -263,7 +261,7 @@ struct UnpackView: View {
                 model?.scanned(code)
                 manualCode = ""
             }
-            .buttonStyle(.shop(.tinted(text: Color(hex: 0x0C0C0B), tint: darkInk), size: .small, fullWidth: false))
+            .buttonStyle(.shop(.tinted(text: Palette.scanBgDeep, tint: darkInk), size: .small, fullWidth: false))
         }
     }
 

@@ -429,7 +429,7 @@ struct ProductFormTray: View {
                 }
             }
             .frame(width: 84, height: 84)
-            .clipShape(RoundedRectangle.continuous(22))
+            .clipShape(RoundedRectangle.continuous(Radius.hero))
 
             Button { showCamera = true } label: {
                 IconView(.camera, size: 15, weight: .semibold)
@@ -535,7 +535,7 @@ struct NutritionTray: View {
             .tint(.white)
             .padding(.vertical, Space.xl)
             .padding(.horizontal, 18)
-            .background(Accent.orange, in: RoundedRectangle.continuous(22))
+            .background(Accent.orange, in: RoundedRectangle.continuous(Radius.hero))
 
             SegmentedControl(options: ["100g", "100ml"], title: { $0 == "100g" ? "Per 100 g" : "Per 100 ml" }, selection: $per, track: Palette.trayField)
 
@@ -656,7 +656,7 @@ struct BarcodeScanCover: View {
 
     var body: some View {
         ZStack {
-            Color(hex: 0x111211).ignoresSafeArea()
+            Palette.scanBg.ignoresSafeArea()
             if BarcodeScanner.isAvailable {
                 BarcodeScanner { code in
                     guard !found else { return }
@@ -674,21 +674,21 @@ struct BarcodeScanCover: View {
                 .padding(.top, Space.l)
                 Spacer()
                 VStack(spacing: Space.l) {
-                    TypeStyle.body.text(BarcodeScanner.isAvailable ? "Point the camera at the barcode." : "Type the barcode.").foregroundStyle(Color(hex: 0xF4F4F1))
+                    TypeStyle.body.text(BarcodeScanner.isAvailable ? "Point the camera at the barcode." : "Type the barcode.").foregroundStyle(Palette.scanInk)
                     if !BarcodeScanner.isAvailable {
                         HStack(spacing: Space.m) {
-                            TextField("", text: $manual, prompt: Text("Barcode").foregroundStyle(Color(hex: 0x8F8F8A)))
+                            TextField("", text: $manual, prompt: Text("Barcode").foregroundStyle(Palette.scanInk2))
                                 .keyboardType(.numberPad)
                                 .textStyle(TypeStyle.mono.sized(16))
-                                .foregroundStyle(Color(hex: 0xF4F4F1))
+                                .foregroundStyle(Palette.scanInk)
                                 .padding(.horizontal, Space.lx)
                                 .frame(height: 44)
-                                .background(Color(hex: 0x2A2A27), in: Capsule())
+                                .background(Palette.scanField, in: Capsule())
                             Button("Use") {
                                 let code = manual.filter(\.isNumber)
                                 if !code.isEmpty { onCode(code) }
                             }
-                            .buttonStyle(.shop(.tinted(text: Color(hex: 0x0C0C0B), tint: Color(hex: 0xF4F4F1)), size: .small, fullWidth: false))
+                            .buttonStyle(.shop(.tinted(text: Palette.scanBgDeep, tint: Palette.scanInk), size: .small, fullWidth: false))
                         }
                         .padding(.horizontal, Space.edge)
                     }

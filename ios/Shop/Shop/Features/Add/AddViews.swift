@@ -79,7 +79,7 @@ struct ReceiptCaptureView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: 200, maxHeight: 280)
-                    .clipShape(RoundedRectangle.continuous(6))
+                    .clipShape(RoundedRectangle.continuous(Radius.badge))
                     .rotationEffect(.degrees(-3))
                     .shadow(color: .black.opacity(0.5), radius: 25, y: 24)
                     .frame(maxHeight: .infinity, alignment: .top)
@@ -127,9 +127,9 @@ struct ReceiptCaptureView: View {
                 .rotationEffect(.degrees(-3))
                 .opacity(0.9)
             TypeStyle.emptyTitle.text(DocumentScanner.isAvailable ? "Opening the scanner…" : "No camera here")
-                .foregroundStyle(Color(hex: 0xF4F4F1))
+                .foregroundStyle(Palette.scanInk)
             TypeStyle.body.text(DocumentScanner.isAvailable ? "Hold the receipt flat on a dark surface." : "Pick a photo of a receipt instead.")
-                .foregroundStyle(Color(hex: 0x8F8F8A))
+                .foregroundStyle(Palette.scanInk2)
             Spacer()
             VStack(spacing: Space.m) {
                 if DocumentScanner.isAvailable {
@@ -139,11 +139,11 @@ struct ReceiptCaptureView: View {
                 PhotosPicker(selection: $photoItems, maxSelectionCount: Self.maxPages, matching: .images) {
                     Text("Choose a photo")
                 }
-                .buttonStyle(.shop(.tinted(text: Color(hex: 0xF4F4F1), tint: Color(hex: 0x2A2A27))))
+                .buttonStyle(.shop(.tinted(text: Palette.scanInk, tint: Palette.scanField)))
                 Button("Cancel") { app.capture = nil }
                     .buttonStyle(.press(haptic: nil))
                     .textStyle(.rowTitle)
-                    .foregroundStyle(Color(hex: 0x8F8F8A))
+                    .foregroundStyle(Palette.scanInk2)
                     .frame(height: 44)
             }
             .padding(.horizontal, Space.gutter)

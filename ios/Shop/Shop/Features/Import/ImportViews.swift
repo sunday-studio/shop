@@ -201,7 +201,7 @@ struct ImportScreen: View {
             }
             ForEach(model.unreadable) { file in
                 HStack(spacing: Space.l) {
-                    RoundedRectangle.continuous(6).fill(Palette.redTint).frame(width: 40, height: 56)
+                    RoundedRectangle.continuous(Radius.badge).fill(Palette.redTint).frame(width: 40, height: 56)
                     VStack(alignment: .leading, spacing: 2) {
                         TypeStyle.rowTitle.text(file.name).foregroundStyle(Palette.ink).lineLimit(1)
                         TypeStyle.rowSub.text("Can't read this file").foregroundStyle(Palette.redText)
@@ -229,8 +229,7 @@ struct ImportScreen: View {
     @ViewBuilder
     private func cropBadge(_ receipt: ImportModel.Receipt) -> some View {
         if receipt.pages.contains(where: { $0.straighten == .straightened || $0.straighten == .adjusted }) {
-            Image(systemName: "crop")
-                .font(.system(size: 9, weight: .semibold))
+            IconView(.crop, size: 9, weight: .semibold)
                 .foregroundStyle(Palette.ink2)
                 .frame(width: 16, height: 16)
                 .background(Palette.sunk, in: Circle())

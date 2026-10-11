@@ -30,8 +30,7 @@ struct AdjustScreen: View {
                 Button {
                     rotate()
                 } label: {
-                    Image(systemName: "rotate.right")
-                        .font(.system(size: 17, weight: .semibold))
+                    IconView(.rotateRight, size: 17, weight: .semibold)
                         .foregroundStyle(Palette.ink)
                         .frame(width: Size.iconButton, height: Size.iconButton)
                         .background(Palette.sunk, in: Circle())
