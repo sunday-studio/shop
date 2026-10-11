@@ -104,12 +104,12 @@ def build(g):
         return '<nav class="toc"><div class="h">On this page</div>' + ''.join(f'<a href="#" class="{"on" if i==on else ""}">{t}</a>' for i, t in enumerate(items)) + '</nav>'
 
     def terminal():
-        return '''<div class="term"><div class="dots"><i></i><i></i><i></i></div><span class="m">$</span> make setup<br><span class="m">building images…</span><br><span class="g">✓</span> api healthy<br><span class="g">✓</span> ocr models ready<br><br>App pairing password (shown once):<br><span class="g">kestrel-lantern-4182</span></div>'''
+        return '''<div class="term"><div class="dots"><i></i><i></i><i></i></div><span class="m">$</span> make setup<br><span class="m">…</span><br>pairing password (shown once; enter it in the app with the server URL):<br>maple-orbit-cedar-tide-42</div>'''
 
     def install_doc(m):
         s = 15 if m else 16.5
         steps = f'''<ol class="steps">
-<li><i>01</i><div>Get the code.{code(['git clone &lt;repo-url&gt; shop &amp;&amp; cd shop'])}<div class="call draft" style="margin:12px 0 0"><span class="todo">TODO</span>Public repository URL.</div></div></li>
+<li><i>01</i><div>Get the code.{code(['git clone https://github.com/sunday-studio/shop shop &amp;&amp; cd shop'])}</div></li>
 <li><i>02</i><div>Optional: copy the settings file. Add a logo.dev key if you want real shop logos; without it the app shows initials.{code(['cp deploy/.env.example deploy/.env'])}</div></li>
 <li><i>03</i><div>Build and start.{code(['make setup'])}<div class="sub">The first build downloads the OCR models and takes several minutes. When it ends it prints the <b style="color:var(--ink);font-weight:500">pairing password once</b>. Copy it.</div>{terminal()}</div></li>
 <li><i>04</i><div>Check that everything is healthy.{code(['curl localhost:8080/healthz'])}<div class="sub">Every check should say <code>ok</code>.</div></div></li></ol>'''
