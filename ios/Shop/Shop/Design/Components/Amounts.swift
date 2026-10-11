@@ -17,15 +17,12 @@ struct HeroAmount: View {
         let major = TypeStyle.hero.sized(size)
         let minor = TypeStyle.heroMinor.sized((size * 2 / 3).rounded())
         HStack(alignment: .firstTextBaseline, spacing: 2) {
-            Text(parts.symbol)
-                .font(minor.font).tracking(minor.tracking)
+            minor.text(parts.symbol)
                 .foregroundStyle(minorColor)
-            Text(parts.whole)
-                .font(major.font).tracking(major.tracking)
+            major.text(parts.whole)
                 .foregroundStyle(color)
                 .contentTransition(reduce ? .opacity : .numericText(value: Double(cents)))
-            Text(parts.fraction)
-                .font(minor.font).tracking(minor.tracking)
+            minor.text(parts.fraction)
                 .foregroundStyle(minorColor)
                 .contentTransition(reduce ? .opacity : .numericText(value: Double(cents)))
         }
@@ -60,8 +57,7 @@ struct DeltaChip: View {
             .padding(.vertical, 3)
             .background(less ? Palette.greenTint : Palette.redTint, in: RoundedRectangle.continuous(Radius.s))
             if let caption {
-                Text(caption)
-                    .textStyle(TypeStyle.body.sized(13.5))
+                TypeStyle.body.sized(13.5).text(caption)
                     .foregroundStyle(Palette.ink2)
                     .lineLimit(2)
             }

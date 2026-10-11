@@ -108,9 +108,9 @@ struct ReviewCard: View {
             HStack(alignment: .top, spacing: Space.l) {
                 ProductTile(name: name, category: categoryName, categoryToken: categoryToken, imageURL: imageURL, size: 44)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(name).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(2)
+                    TypeStyle.rowTitle.text(name).foregroundStyle(Palette.ink).lineLimit(2)
                     HStack(spacing: 6) {
-                        if let detail { Text(detail).textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1) }
+                        if let detail { TypeStyle.rowSub.text(detail).foregroundStyle(Palette.ink2).lineLimit(1) }
                         categoryChip
                     }
                 }
@@ -122,11 +122,10 @@ struct ReviewCard: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     IconView(reason.icon, size: 12, weight: .semibold)
-                    Text(reason.headline).textStyle(.captionMedium)
+                    TypeStyle.captionMedium.text(reason.headline)
                 }
                 .foregroundStyle(reason.tone.text)
-                Text(reason.explanation(suggestion: suggestionName))
-                    .textStyle(.rowSub)
+                TypeStyle.rowSub.text(reason.explanation(suggestion: suggestionName))
                     .foregroundStyle(Palette.ink2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -155,7 +154,7 @@ struct ReviewCard: View {
             .disabled(isWorking || isOffline)
 
             if isOffline {
-                Text("Needs a connection").textStyle(.caption).foregroundStyle(Palette.ink3)
+                TypeStyle.caption.text("Needs a connection").foregroundStyle(Palette.ink3)
             }
         }
         .padding(Space.lx)
@@ -184,14 +183,14 @@ struct ReviewCard: View {
             Button(action: onCategory) {
                 HStack(spacing: 4) {
                     CategoryDot(color: CategoryColor.swatch(token: categoryToken, name: categoryName).color)
-                    Text(categoryName).textStyle(.caption)
+                    TypeStyle.caption.text(categoryName)
                 }
                 .foregroundStyle(Palette.ink2)
             }
             .buttonStyle(.press(haptic: .selection))
         } else {
             Button(action: onCategory) {
-                Text("No category").textStyle(.captionMedium).foregroundStyle(Palette.amberText)
+                TypeStyle.captionMedium.text("No category").foregroundStyle(Palette.amberText)
                     .padding(.horizontal, 7)
                     .frame(height: 20)
                     .background(Palette.amberTint, in: RoundedRectangle.continuous(6))
@@ -280,7 +279,7 @@ struct ScanEntryRow: View {
                 lead
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title).textStyle(outcomeIsQueued ? TypeStyle.mono.sized(14) : .rowTitle).foregroundStyle(ScanPalette.ink).lineLimit(1)
-                    Text(subtitle).textStyle(.rowSub).foregroundStyle(subtitleColor).lineLimit(1)
+                    TypeStyle.rowSub.text(subtitle).foregroundStyle(subtitleColor).lineLimit(1)
                 }
                 Spacer(minLength: Space.m)
                 trailing
@@ -290,8 +289,7 @@ struct ScanEntryRow: View {
 
             if let mergeSuggestion {
                 HStack(spacing: Space.m) {
-                    Text("Same as \(mergeSuggestion)?")
-                        .textStyle(.label)
+                    TypeStyle.label.text("Same as \(mergeSuggestion)?")
                         .foregroundStyle(ScanPalette.blue)
                         .lineLimit(1)
                     Spacer(minLength: Space.s)
@@ -351,7 +349,7 @@ struct ScanEntryRow: View {
         case .created, .known:
             if receiptLines > 0 {
                 Button(action: onLinkLines) {
-                    Text("\(receiptLines) on receipts").textStyle(.captionMedium)
+                    TypeStyle.captionMedium.text("\(receiptLines) on receipts")
                 }
                 .foregroundStyle(ScanPalette.blue)
                 .buttonStyle(.press(scale: Motion.pillScale, haptic: .light))
@@ -418,8 +416,8 @@ struct ScanTally: View {
     private func item(_ count: Int, _ label: String, _ color: Color) -> some View {
         HStack(spacing: 5) {
             StatusDot(color: color, size: 7)
-            Text("\(count)").textStyle(.label).foregroundStyle(ScanPalette.ink).contentTransition(.numericText(value: Double(count)))
-            Text(label).textStyle(.rowSub).foregroundStyle(ScanPalette.ink2)
+            TypeStyle.label.text("\(count)").foregroundStyle(ScanPalette.ink).contentTransition(.numericText(value: Double(count)))
+            TypeStyle.rowSub.text(label).foregroundStyle(ScanPalette.ink2)
         }
     }
 }

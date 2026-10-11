@@ -289,8 +289,8 @@ struct LoadMoreFooter: View {
         case .failed:
             Button(action: retry) {
                 HStack(spacing: 6) {
-                    Text("Couldn't load more").textStyle(.body).foregroundStyle(Palette.ink2)
-                    Text("Try again").textStyle(TypeStyle.label.sized(14)).foregroundStyle(Palette.blueText)
+                    TypeStyle.body.text("Couldn't load more").foregroundStyle(Palette.ink2)
+                    TypeStyle.label.sized(14).text("Try again").foregroundStyle(Palette.blueText)
                 }
                 .frame(maxWidth: .infinity, minHeight: 56)
                 .contentShape(Rectangle())

@@ -184,10 +184,10 @@ struct TrayHeader: View {
     var body: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).textStyle(.trayTitle).foregroundStyle(Palette.ink)
+                TypeStyle.trayTitle.text(title).foregroundStyle(Palette.ink)
                     .accessibilityAddTraits(.isHeader)
                 if let subtitle {
-                    Text(subtitle).textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                    TypeStyle.rowSub.text(subtitle).foregroundStyle(Palette.ink2)
                 }
             }
             Spacer()
@@ -215,9 +215,9 @@ struct OptionRow: View {
             HStack(spacing: Space.l) {
                 IconView(icon, size: 18)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(title).textStyle(.rowTitle)
+                    TypeStyle.rowTitle.text(title)
                     if let hint {
-                        Text(hint).textStyle(.rowSub)
+                        TypeStyle.rowSub.text(hint)
                             .foregroundStyle(destructive ? Palette.redText : Palette.ink2)
                     }
                 }
@@ -256,9 +256,9 @@ struct FeatureCard<Accessory: View>: View {
                 }
                 Spacer(minLength: Space.l)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title).textStyle(TypeStyle.rowTitle.sized(17))
+                    TypeStyle.rowTitle.sized(17).text(title)
                     if let caption {
-                        Text(caption).textStyle(TypeStyle.body.sized(13))
+                        TypeStyle.body.sized(13).text(caption)
                             .opacity(0.82)
                             .lineSpacing(1)
                             .multilineTextAlignment(.leading)

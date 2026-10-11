@@ -92,9 +92,8 @@ struct CountBadge: View {
     var ring: Color? = nil
 
     var body: some View {
-        Text(count > 99 ? "99+" : "\(count)")
-            .font(.custom(ShopFont.medium, size: size * 0.625))
-            .monospacedDigit()
+        TypeStyle(size: size * 0.625, face: .medium, trackingEm: 0, relativeTo: .caption2)
+            .text(count > 99 ? "99+" : "\(count)")
             .foregroundStyle(Accent.white)
             .padding(.horizontal, count > 9 ? 4 : 0)
             .frame(minWidth: size, minHeight: size)

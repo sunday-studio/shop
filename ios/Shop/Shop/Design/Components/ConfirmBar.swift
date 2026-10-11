@@ -48,8 +48,7 @@ struct ConfirmBar: View {
     var body: some View {
         HStack(spacing: Space.l) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(caption)
-                    .textStyle(.label.withFace(.regular))
+                TypeStyle.label.withFace(.regular).text(caption)
                     .foregroundStyle(Palette.ink2)
                     .contentTransition(reduce ? .opacity : .numericText(value: Double(linesCents)))
                     .lineLimit(1)
@@ -58,8 +57,7 @@ struct ConfirmBar: View {
                     .transition(.asymmetric(insertion: .opacity.animation(Motion.fade.delay(0.06)), removal: .opacity.animation(.easeOut(duration: 0.06))))
                 HStack(spacing: Space.m) {
                     ProgressMeter(fraction: isLoading ? 0 : fraction, color: matches ? Accent.green : Accent.amber)
-                    Text(deltaText)
-                        .textStyle(.label)
+                    TypeStyle.label.text(deltaText)
                         .foregroundStyle(isLoading ? Palette.ink3 : (matches ? Palette.greenText : Palette.amberText))
                         .contentTransition(reduce ? .opacity : .numericText(value: Double(delta ?? 0)))
                         .lineLimit(1)

@@ -139,7 +139,7 @@ struct LinkButton: View {
         Button(action: action) {
             HStack(spacing: Space.m) {
                 if let icon { IconView(icon, size: 16, weight: .semibold) }
-                Text(title).textStyle(TypeStyle.label.sized(14))
+                TypeStyle.label.sized(14).text(title)
             }
             .foregroundStyle(color)
             .frame(minHeight: Size.rowCompact, alignment: .leading)
@@ -186,21 +186,129 @@ struct IconButton: View {
 
 // MARK: - Avatar
 
-/// Top-left yellow square that opens Settings.
+/// Top-left user mark that opens Settings. `plain` is the old yellow square; the others are the
+/// playful options (docs/DESIGN-AVATAR.md). The colour comes from the name, so it is stable.
+enum AvatarStyle: CaseIterable {
+    case plain
+    /// Tilted sticker: bold initial, peeled corner.
+    case sticker
+    /// The icon's receipt with a face, no initial.
+    case buddy
+    /// A mini receipt carrying the initial.
+    case receipt
+}
+
 struct Avatar: View {
     var initial: String = "S"
+    var style: AvatarStyle = .plain
+    var size: CGFloat = Size.avatar
     let action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    @State private var tilt: Double = 0
+
+    private static let tones: [(Color, Color)] = [
+        (Accent.yellow, Accent.onLight), (Accent.pink, .white), (Accent.purple, .white),
+        (Accent.teal, .white), (Accent.orange, Accent.onLight), (Accent.cyan, Accent.onLight),
+        (Accent.blue, .white), (Accent.green, .white),
+    ]
+
+    private var tone: (Color, Color) {
+        style == .plain ? (Accent.avatar, Accent.onLight) : Self.tones[StableHash.index(of: initial.uppercased(), count: Self.tones.count)]
+    }
+
     var body: some View {
-        Button(action: action) {
-            Text(initial.prefix(1).uppercased())
-                .textStyle(TypeStyle.rowTitle)
-                .foregroundStyle(Accent.onLight)
-                .frame(width: Size.avatar, height: Size.avatar)
-                .background(Accent.avatar, in: RoundedRectangle.continuous(Radius.ml))
+        Button {
+            Haptics.play(.light)
+            wiggle()
+            action()
+        } label: {
+            content
+                .frame(width: size, height: size)
+                .background(tone.0, in: RoundedRectangle.continuous(Radius.ml))
+                .clipShape(RoundedRectangle.continuous(Radius.ml))
         }
         .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
         .accessibilityLabel("Settings")
+    }
+
+    private func wiggle() {
+        guard !reduce, style != .plain else { return }
+        tilt = -10
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.4)) { tilt = 0 }
+    }
+
+    private var letter: String { initial.prefix(1).uppercased() }
+
+    @ViewBuilder private var content: some View {
+        switch style {
+        case .plain:
+            TypeStyle.rowTitle.text(letter).foregroundStyle(tone.1)
+        case .sticker:
+            ZStack(alignment: .topTrailing) {
+                Text(letter)
+                    .font(.custom(ShopFont.bold, size: size * 0.52))
+                    .foregroundStyle(tone.1)
+                    .frame(width: size, height: size)
+                    .rotationEffect(.degrees(-6 + tilt))
+                // The peeled corner.
+                Path { p in
+                    p.move(to: CGPoint(x: size * 0.64, y: 0))
+                    p.addLine(to: CGPoint(x: size, y: 0))
+                    p.addLine(to: CGPoint(x: size, y: size * 0.36))
+                    p.closeSubpath()
+                }
+                .fill(Color.white.opacity(0.35))
+                Path { p in
+                    p.move(to: CGPoint(x: size * 0.64, y: 0))
+                    p.addLine(to: CGPoint(x: size * 0.64, y: size * 0.36))
+                    p.addLine(to: CGPoint(x: size, y: size * 0.36))
+                    p.closeSubpath()
+                }
+                .fill(Color.black.opacity(0.12))
+            }
+        case .buddy:
+            ZStack {
+                ReceiptShape()
+                    .fill(Color(hex: 0xF7F9FF))
+                    .frame(width: size * 0.5, height: size * 0.66)
+                    .overlay {
+                        VStack(spacing: size * 0.06) {
+                            HStack(spacing: size * 0.1) {
+                                Circle().fill(Accent.onLight).frame(width: size * 0.07, height: size * 0.07)
+                                Circle().fill(Accent.onLight).frame(width: size * 0.07, height: size * 0.07)
+                            }
+                            Path { p in
+                                p.move(to: CGPoint(x: 0, y: 0))
+                                p.addQuadCurve(to: CGPoint(x: size * 0.16, y: 0), control: CGPoint(x: size * 0.08, y: size * 0.1))
+                            }
+                            .stroke(Accent.onLight, style: StrokeStyle(lineWidth: size * 0.04, lineCap: .round))
+                            .frame(width: size * 0.16, height: size * 0.06)
+                            RoundedRectangle.continuous(size * 0.02).fill(Accent.yellow)
+                                .frame(width: size * 0.34, height: size * 0.08)
+                        }
+                        .offset(y: -size * 0.03)
+                    }
+                    .rotationEffect(.degrees(-9 + tilt))
+                    .offset(y: -size * 0.02)
+            }
+        case .receipt:
+            ReceiptShape()
+                .fill(Color(hex: 0xF7F9FF))
+                .frame(width: size * 0.56, height: size * 0.7)
+                .overlay {
+                    Text(letter)
+                        .font(.custom(ShopFont.bold, size: size * 0.4))
+                        .foregroundStyle(Accent.onLight)
+                        .offset(y: -size * 0.04)
+                }
+                .overlay(alignment: .bottom) {
+                    RoundedRectangle.continuous(size * 0.02).fill(Accent.yellow)
+                        .frame(width: size * 0.4, height: size * 0.07)
+                        .offset(y: -size * 0.1)
+                }
+                .rotationEffect(.degrees(-9 + tilt))
+        }
     }
 }
 
@@ -214,7 +322,7 @@ struct PillMenuButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: Space.s) {
-                Text(title).textStyle(TypeStyle.label.sized(13.5))
+                TypeStyle.label.sized(13.5).text(title)
                 IconView(icon, size: 12, weight: .bold)
             }
             .foregroundStyle(Palette.ink)

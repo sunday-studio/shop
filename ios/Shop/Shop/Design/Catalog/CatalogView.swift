@@ -245,7 +245,7 @@ struct CatalogView: View {
                 section("Navigation icons") {
                     navIconCompare
                 }
-                section("Home logo options") {
+                section("User avatar options") {
                     LogoOptions()
                 }
                 section("Tab bar") {
@@ -270,8 +270,7 @@ struct CatalogView: View {
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title.uppercased())
-                .textStyle(TypeStyle.mono.sized(11))
+            TypeStyle.mono.sized(11).text(title.uppercased())
                 .foregroundStyle(Palette.ink3)
             content()
         }
@@ -305,7 +304,7 @@ struct CatalogView: View {
                         .fill(color)
                         .frame(height: 44)
                         .overlay(RoundedRectangle.continuous(Radius.ml).strokeBorder(Palette.line))
-                    Text(name).textStyle(.caption).foregroundStyle(Palette.ink2)
+                    TypeStyle.caption.text(name).foregroundStyle(Palette.ink2)
                 }
             }
         }
@@ -313,13 +312,13 @@ struct CatalogView: View {
 
     private var typeScale: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Products").textStyle(.screenTitle)
-            Text("Scan receipts on the day").textStyle(.emptyTitle)
-            Text("Add line").textStyle(.trayTitle)
-            Text("Halfvolle melk  1,79").textStyle(.rowTitle)
-            Text("AH HALFV MELK 1,5L · Dairy").textStyle(.rowSub).foregroundStyle(Palette.ink2)
-            Text("Today  €38,12").textStyle(.label).foregroundStyle(Palette.ink2)
-            Text("AH GRIEKS YOGH 0%").textStyle(.mono)
+            TypeStyle.screenTitle.text("Products")
+            TypeStyle.emptyTitle.text("Scan receipts on the day")
+            TypeStyle.trayTitle.text("Add line")
+            TypeStyle.rowTitle.text("Halfvolle melk  1,79")
+            TypeStyle.rowSub.text("AH HALFV MELK 1,5L · Dairy").foregroundStyle(Palette.ink2)
+            TypeStyle.label.text("Today  €38,12").foregroundStyle(Palette.ink2)
+            TypeStyle.mono.text("AH GRIEKS YOGH 0%")
         }
         .foregroundStyle(Palette.ink)
     }
@@ -447,24 +446,30 @@ private struct CatalogMoveTray: View {
 }
 
 
-/// A, B, C on a Home-header mock, light and dark; tap one to replay the tilt.
+/// The user mark options, three names each, light and dark, in the Home header with the chosen blue logo.
 private struct LogoOptions: View {
     @State private var wiggle = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lx) {
-            ForEach(Array(ShopLogoStyle.allCases.enumerated()), id: \.offset) { i, style in
-                Text(["A  Badge + wordmark (recommended)", "B  Torn-receipt wordmark", "C  Total-bar pill"][i])
-                    .textStyle(.label).foregroundStyle(Palette.ink2)
+            ForEach(Array(AvatarStyle.allCases.enumerated()), id: \.offset) { i, style in
+                TypeStyle.label.text(["Today: plain square", "1  Sticker (recommended)", "2  Receipt buddy", "3  Receipt initial"][i]).foregroundStyle(Palette.ink2)
                 ForEach([ColorScheme.light, .dark], id: \.self) { scheme in
-                    HStack {
-                        Avatar(initial: "I") {}
-                        Spacer()
-                        ShopLogo(style: style, height: 30, wiggle: wiggle)
-                        Spacer()
-                        IconView(.search, size: 18).foregroundStyle(Palette.ink)
-                            .frame(width: Size.iconButton, height: Size.iconButton)
-                            .background(Palette.sunk, in: Circle())
+                    VStack(spacing: Space.l) {
+                        HStack {
+                            Avatar(initial: "I", style: style) {}
+                            Spacer()
+                            ShopLogo(height: 30, wiggle: wiggle)
+                            Spacer()
+                            IconView(.search, size: 18).foregroundStyle(Palette.ink)
+                                .frame(width: Size.iconButton, height: Size.iconButton)
+                                .background(Palette.sunk, in: Circle())
+                        }
+                        HStack(spacing: Space.l) {
+                            ForEach(["Anna", "Bas", "Casper", "Dina", "Emre", "Fleur", "Gijs"], id: \.self) { n in
+                                Avatar(initial: n, style: style) {}
+                            }
+                        }
                     }
                     .padding(Space.l)
                     .background(Palette.bg, in: RoundedRectangle.continuous(Radius.l))

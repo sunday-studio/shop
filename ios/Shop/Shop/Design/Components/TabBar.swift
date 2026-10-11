@@ -65,7 +65,7 @@ struct PillTabBar<ID: Hashable>: View {
                 tabIcon(item, on: on)
                     .scaleEffect(on && !reduce ? 1 : 0.96)
                     .animation(reduce ? Motion.reducedFade : Motion.pop, value: on)
-                Text(item.title).textStyle(.tab)
+                TypeStyle.tab.text(item.title)
             }
             .foregroundStyle(on ? Palette.ink : Palette.ink3)
             .frame(maxWidth: .infinity)
