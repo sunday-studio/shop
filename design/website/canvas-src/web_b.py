@@ -20,6 +20,17 @@ CSS = '''
 .w .alsoc h3{font-size:22px;font-weight:500;letter-spacing:-.02em;margin:14px 0 6px}
 .w .alsoc p{font-size:16px;line-height:1.5;color:var(--ink2)}
 .w .ico{width:44px;height:44px;border-radius:14px;background:var(--blueTint);color:var(--blueText);display:flex;align-items:center;justify-content:center}
+
+.w .hb h1{font-weight:400;letter-spacing:-.05em}
+.w .h2.lt{font-weight:400;letter-spacing:-.045em}
+.w .mcta{font-family:'GT America Mono',ui-monospace,monospace;text-transform:uppercase;letter-spacing:.07em;font-size:12.5px;height:44px;padding:0 20px;border-radius:22px;gap:10px}
+.w .burger{width:44px;height:44px;border-radius:50%;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--sunk);flex:none}
+.w .burger i{display:block;width:18px;height:2px;border-radius:1px;background:var(--ink)}
+.w .badge{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px 0 16px;border-radius:17px;background:rgba(20,20,19,.82);color:#F4F4F1;font-size:13.5px;font-weight:500;backdrop-filter:blur(10px)}
+.w .sky{background:radial-gradient(60% 55% at 72% 22%,var(--glow),transparent 70%),linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 42%,var(--sky3) 80%,var(--sky4) 100%)}
+.w .cloud{position:absolute;border-radius:50%;background:radial-gradient(closest-side,var(--cloud),transparent);filter:blur(6px)}
+.w .hills{position:absolute;left:0;bottom:0;width:100%;display:block}
+.w .tilt{transform:perspective(1800px) rotateY(-9deg) rotateX(3deg) rotate(1.5deg);transform-origin:50% 100%}
 '''
 
 ICONS = {
@@ -32,20 +43,27 @@ ICONS = {
 
 def build(g):
     g['CSS'] += CSS
-    for t, v in (('light', dict(band='#141413')), ('dark', dict(band='#1C1C1A'))):
+    for t, v in (('light', dict(band='#141413', sky1='#B7D4FF', sky2='#D9E9FF', sky3='#FCE5D3', sky4='#FFF3E8', glow='#FFFFFFAA', cloud='#FFFFFFCC', hill1='#CDE3F5', hill2='#BFD8C9', hill3='#F2C9B0')), ('dark', dict(band='#1C1C1A', sky1='#0D1830', sky2='#1B2D55', sky3='#5B4B73', sky4='#B98C7C', glow='#7AA7FF40', cloud='#8AA6E026', hill1='#2A3A66', hill2='#243A4A', hill3='#4A3A58'))):
         g['TOK'][t].update(v)
-    g['VARS'] += ['band']
+    g['VARS'] += ['band', 'sky1', 'sky2', 'sky3', 'sky4', 'glow', 'cloud', 'hill1', 'hill2', 'hill3']
     GH, nav, dev, footer, doc, write, dark_wrapper = g['GH'], g['nav'], g['dev'], g['footer'], g['doc'], g['write'], g['dark_wrapper']
+
+    def header(m):
+        pad = '0 20px' if m else '0 80px'
+        return f'<header class="nav" style="padding:{pad};{"height:68px" if m else ""}">{g["brand"](False)}<nav class="links" style="gap:10px"><a class="btn mcta" href="#">{GH.replace("20","16")}GitHub</a><span class="burger" aria-label="Menu"><i></i><i></i></span></nav></header>'
 
     def hero(m):
         pad = '20px 20px 0' if m else '40px 80px 0'
         h1 = 'font-size:46px;line-height:1.03' if m else ''
-        btns = f'<div style="display:flex;gap:12px;justify-content:center;margin-top:30px;flex-direction:{"column" if m else "row"}"><a class="btn" href="#" style="{"justify-content:center" if m else ""}">{GH}View on GitHub</a><a class="btn alt" href="#" style="{"justify-content:center" if m else ""}">Read the guide</a></div>'
+        btns = f'<div style="display:flex;gap:12px;justify-content:center;margin-top:30px;flex-direction:{"column" if m else "row"}"><a class="btn mcta" href="#" style="height:52px;{"justify-content:center" if m else ""}">{GH.replace("20","16")}View on GitHub</a><a class="btn mcta alt" href="#" style="height:52px;{"justify-content:center" if m else ""}">Read the guide</a></div>'
         ph = 250 if m else 340
-        paper = f'<div class="paper a-settle" style="width:{150 if m else 230}px;height:{240 if m else 340}px;left:{"-40px" if m else "120px"};top:{120 if m else 150}px;transform:rotate(-9deg)"><div class="b" style="width:50%;background:var(--ink)"></div><div class="b"></div><div class="b" style="width:72%"></div><div class="b"></div><div style="height:36px;border-radius:12px;background:var(--yellow);margin-top:8px"></div></div>'
-        chips = '' if m else f'<div class="fl a-rise" style="right:110px;top:150px;animation-delay:.3s"><i style="background:var(--green)">{ICONS["check"]}</i><div>Adds up<small>€38,13 matches the receipt</small></div></div><div class="fl a-rise" style="right:70px;top:300px;animation-delay:.4s"><i style="background:var(--blue)">{ICONS["tag"]}</i><div>Cheapest this month<small>Oat milk, Corner Market</small></div></div><div class="fl a-rise" style="left:70px;bottom:120px;animation-delay:.5s"><i style="background:var(--amber)">{ICONS["bars"]}</i><div>Groceries, October<small>€412 across 4 shops</small></div></div>'
-        panel = f'<div class="pnl" style="height:{520 if m else 640}px;margin-top:{40 if m else 56}px;border-radius:{32 if m else 44}px">{paper}<div style="position:absolute;left:50%;margin-left:-{ph//2}px;top:{50 if m else 60}px">{dev("receipt",ph)}</div>{chips}</div>'
-        return f'<section class="hb" style="padding:{pad}"><div style="text-align:center"><span class="eyebrow a-rise"><i></i>Open source · self-hosted · iPhone</span></div><h1 class="a-rise" style="margin-top:22px;{h1}">Photograph the receipt.{'' if m else '<br>'} Keep the data.</h1><p class="lead a-rise" style="{"font-size:17px" if m else ""}">Reads your supermarket receipts on your own server, checks every line adds up to the printed total, and shows what your groceries really cost.</p>{btns}{panel}</section>'
+        hills = '<svg class="hills" viewBox="0 0 1120 260" preserveAspectRatio="none" style="height:%dpx" aria-hidden="true"><path d="M0 150 C140 90 260 110 400 140 S700 70 860 110 1040 150 1120 120 V260 H0Z" fill="var(--hill1)"/><path d="M0 190 C180 130 320 180 520 170 S860 120 1120 175 V260 H0Z" fill="var(--hill2)"/><path d="M0 225 C220 190 420 230 640 215 S980 190 1120 220 V260 H0Z" fill="var(--hill3)"/></svg>' % (150 if m else 260)
+        clouds = '<div class="cloud" style="left:6%%;top:%dpx;width:%dpx;height:%dpx"></div><div class="cloud" style="right:8%%;top:%dpx;width:%dpx;height:%dpx"></div>' % ((70, 200, 90, 120, 160, 70) if m else (90, 420, 150, 150, 340, 120))
+        paper = f'<div class="paper a-settle" style="width:{150 if m else 230}px;height:{240 if m else 340}px;left:{"-40px" if m else "150px"};top:{150 if m else 170}px;transform:rotate(-9deg)"><div class="b" style="width:50%;background:var(--ink)"></div><div class="b"></div><div class="b" style="width:72%"></div><div class="b"></div><div style="height:36px;border-radius:12px;background:var(--yellow);margin-top:8px"></div></div>'
+        chips = '' if m else f'<div class="fl a-rise" style="right:110px;top:150px;animation-delay:.3s"><i style="background:var(--green)">{ICONS["check"]}</i><div>Adds up<small>€38,13 matches the receipt</small></div></div><div class="fl a-rise" style="right:70px;top:300px;animation-delay:.4s"><i style="background:var(--blue)">{ICONS["tag"]}</i><div>Cheapest this month<small>Oat milk, Corner Market</small></div></div><div class="fl a-rise" style="left:70px;bottom:150px;animation-delay:.5s"><i style="background:var(--amber)">{ICONS["bars"]}</i><div>Groceries, October<small>€412 across 4 shops</small></div></div>'
+        panel = f'<div class="pnl sky" style="height:{540 if m else 700}px;margin-top:{40 if m else 56}px;border-radius:{32 if m else 44}px">{clouds}{hills}{paper}<div class="tilt" style="position:absolute;left:50%;margin-left:-{ph//2}px;top:{50 if m else 70}px">{dev("receipt",ph)}</div>{chips}</div>'
+        badge = '<span class="badge a-rise">MIT licence · open source <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>'
+        return f'<section class="hb" style="padding:{pad}"><div style="text-align:center">{badge}</div><h1 class="a-rise" style="margin-top:24px;{h1}">Photograph the receipt.{"" if m else "<br>"} Keep the data.</h1><p class="lead a-rise" style="{"font-size:17px" if m else ""}">Reads your supermarket receipts on your own server, checks every line adds up to the printed total, and shows what your groceries really cost.</p>{btns}{panel}</section>'
 
     def how(m):
         steps = [('01', 'Photograph', 'Scan a paper receipt or import a photo. It uploads in the background, even offline.'),
@@ -53,14 +71,14 @@ def build(g):
                  ('03', 'Understand', 'Spend by month, shop and category, and the cheapest place for each product.')]
         cols = f'grid-template-columns:repeat({1 if m else 3},minmax(0,1fr));gap:{28 if m else 40}px'
         body = ''.join(f'<div class="st a-scroll"><b>{a}</b><h3>{t}</h3><p>{d}</p></div>' for a, t, d in steps)
-        return f'<section style="padding:{"56px 20px 0" if m else "112px 80px 0"}"><h2 class="h2" style="font-size:{32 if m else 52}px;line-height:1.08;margin-bottom:{28 if m else 48}px;max-width:640px">From paper to numbers in three steps.</h2><div class="hw" style="{cols}">{body}</div></section>'
+        return f'<section style="padding:{"56px 20px 0" if m else "112px 80px 0"}"><h2 class="h2 lt" style="font-size:{32 if m else 52}px;line-height:1.08;margin-bottom:{28 if m else 48}px;max-width:640px">From paper to numbers in three steps.</h2><div class="hw" style="{cols}">{body}</div></section>'
 
     def bandsec(m):
         pts = [('Your server, your data', 'Receipts and the database stay on a machine you own. Text recognition runs there too.'),
                ('No account, no analytics', 'The app talks only to your server. Nothing is sold, nothing is sent away.'),
                ('Open source', 'MIT licensed. Read it, change it, run it.')]
         lis = ''.join(f'<div style="padding:18px 0;border-top:1px solid rgba(255,255,255,.14)"><div style="font-size:19px;font-weight:500">{a}</div><p style="font-size:16px;line-height:1.5;margin-top:4px">{b}</p></div>' for a, b in pts)
-        left = f'<div style="flex:1;min-width:0"><div style="font-size:13px;color:#8FC1FF;font-weight:500;margin-bottom:14px">Self-hosted</div><h2 class="h2" style="font-size:{32 if m else 52}px;line-height:1.08;margin-bottom:{24 if m else 32}px;color:#F4F4F1">Yours, on your own server.</h2>{lis}</div>'
+        left = f'<div style="flex:1;min-width:0"><div style="font-size:13px;color:#8FC1FF;font-weight:500;margin-bottom:14px">Self-hosted</div><h2 class="h2 lt" style="font-size:{32 if m else 52}px;line-height:1.08;margin-bottom:{24 if m else 32}px;color:#F4F4F1">Yours, on your own server.</h2>{lis}</div>'
         right = f'<div style="flex:none;{"align-self:center;margin-top:36px" if m else "margin-bottom:-120px;margin-top:20px"}">{dev("analytics",250 if m else 300)}</div>'
         return f'<section style="padding:{"56px 20px 0" if m else "112px 80px 0"}"><div class="band" style="padding:{"36px 24px 0" if m else "72px 72px 0"};display:flex;flex-direction:{"column" if m else "row"};gap:{0 if m else 64}px;height:{"auto" if m else "640px"};{"max-height:none" if m else ""}">{left}{right}</div></section>'
 
@@ -68,10 +86,10 @@ def build(g):
         items = [('check', 'Checks every receipt', 'Lines must add up to the printed total.'), ('tag', 'Finds the cheapest shop', 'Prices per kilo, litre or piece, per shop.'),
                  ('bars', 'Shows where the money goes', 'By month, shop and category.'), ('box', 'Keeps products tidy', 'Clean names, categories, barcodes linked.')]
         cards = ''.join(f'<div class="alsoc a-scroll"><div class="ico">{ICONS[i]}</div><h3>{t}</h3><p>{d}</p></div>' for i, t, d in items)
-        return f'<section style="padding:{"56px 20px 56px" if m else "112px 80px 96px"}"><h2 class="h2" style="font-size:{32 if m else 52}px;line-height:1.08;margin-bottom:{24 if m else 40}px">What it does.</h2><div style="display:grid;grid-template-columns:repeat({1 if m else 4},minmax(0,1fr));gap:16px">{cards}</div></section>'
+        return f'<section style="padding:{"56px 20px 56px" if m else "112px 80px 96px"}"><h2 class="h2 lt" style="font-size:{32 if m else 52}px;line-height:1.08;margin-bottom:{24 if m else 40}px">What it does.</h2><div style="display:grid;grid-template-columns:repeat({1 if m else 4},minmax(0,1fr));gap:16px">{cards}</div></section>'
 
     def body(m):
-        return nav(m, False) + hero(m) + how(m) + bandsec(m) + also(m) + footer(m, False)
+        return header(m) + hero(m) + how(m) + bandsec(m) + also(m) + footer(m, False)
 
     boards = [('HB-Page-Desktop', False, 1280, 3400, 'Website · direction B, desktop, light'), ('HB-Page-Mobile', True, 390, 4300, 'Website · direction B, mobile, light')]
     import re
