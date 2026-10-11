@@ -36,6 +36,8 @@ enum Palette {
     // Surfaces
     static let bg = Color.dynamic(light: 0xFFFFFF, dark: 0x0C0C0B)
     static let sunk = Color.dynamic(light: 0xF4F4F3, dark: 0x1C1C1A)
+    /// Skeleton bars on the page background; on a `sunk` card they use `bg` (`skeletonOnCard`).
+    static let skeleton = Color.dynamic(light: 0xEAEAE7, dark: 0x262624)
     static let tray = Color.dynamic(light: 0xFFFFFF, dark: 0x1C1C1A)
     /// Fields and option rows inside a tray (one step lighter than the tray in dark).
     static let trayField = Color.dynamic(light: 0xF4F4F3, dark: 0x262624)
