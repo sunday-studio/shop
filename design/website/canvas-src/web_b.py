@@ -69,13 +69,13 @@ CSS = '''
 .w .fx{display:flex;flex-direction:column}
 .w .fi,.w .ph{--on:calc(1 - min(1,max(var(--a) - var(--i),var(--i) - var(--a))))}
 .w .fi{padding:22px 0 20px;position:relative}
-.w .fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0;opacity:calc(.5 + .5*var(--on));transition:opacity .35s linear}
-.w .fi .dd{display:grid;grid-template-rows:1fr;opacity:calc(.62 + .38*var(--on));transition:opacity .35s linear}
+.w .fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0;opacity:calc(.5 + .5*var(--on));transition:opacity .2s linear}
+.w .fi .dd{display:grid;grid-template-rows:1fr;opacity:calc(.62 + .38*var(--on));transition:opacity .2s linear}
 .w .fi .dd>div{overflow:hidden}
 .w .fi .dd p{font-size:17px;line-height:1.55;color:var(--ink2);margin:10px 0 0;max-width:400px}
 .w .fi .pr{position:absolute;left:0;top:-1px;height:2px;width:calc(100%*var(--on));background:var(--blue)}
 .w .stage{position:relative;flex:1;border-radius:36px;background:var(--panel);overflow:hidden}
-.w .ph{position:absolute;left:0;right:0;top:70px;display:flex;justify-content:center;opacity:var(--on);transform:translateY(calc((1 - var(--on))*28px));transition-property:opacity,transform;transition-duration:calc(.3s + .15s*var(--on)),calc(.45s*var(--on));transition-delay:calc(.3s*var(--on)),.3s;transition-timing-function:ease-out}
+.w .ph{position:absolute;left:0;right:0;top:70px;display:flex;justify-content:center;opacity:var(--on);transform:translateY(calc((1 - var(--on))*28px));transition-property:opacity,transform;transition-duration:calc(.12s + .08s*var(--on)),calc(.2s*var(--on));transition-delay:calc(.12s*var(--on)),.12s;transition-timing-function:ease-out}
 @media (prefers-reduced-motion:reduce){.w .ph,.w .fi h3,.w .fi .dd{transition:none}}
 @keyframes cyc0{0%{--a:1}25%{--a:2}50%{--a:3}75%{--a:4}100%{--a:1}}
 @keyframes pOn{0%{width:0}25%{width:100%}25.01%,100%{width:0}}

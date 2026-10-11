@@ -77,13 +77,13 @@ body{position:relative}
 .sfr{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
 .fi,.ph{--on:calc(1 - min(1,max(var(--a) - var(--i),var(--i) - var(--a))))}
 .fi{padding:22px 0 20px;position:relative;cursor:pointer;border-radius:12px}
-.fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;opacity:calc(.5 + .5*var(--on));transition:opacity .35s linear}
-.fi .dd{display:grid;grid-template-rows:1fr;opacity:calc(.62 + .38*var(--on));transition:opacity .35s linear}
+.fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;opacity:calc(.5 + .5*var(--on));transition:opacity .2s linear}
+.fi .dd{display:grid;grid-template-rows:1fr;opacity:calc(.62 + .38*var(--on));transition:opacity .2s linear}
 .fi .dd>div{overflow:hidden}
 .fi .dd p{font-size:17px;line-height:1.55;color:var(--ink2);margin:10px 0 0;max-width:400px}
 .fi .pr{position:absolute;left:0;top:-1px;height:2px;width:calc(100%*var(--on));background:var(--blue)}
 .stage{position:relative;flex:none;border-radius:36px;background:var(--panel);overflow:hidden;height:460px;margin-top:28px}
-.ph{position:absolute;left:0;right:0;top:50px;display:flex;justify-content:center;opacity:var(--on);transform:translateY(calc((1 - var(--on))*28px));transition-property:opacity,transform;transition-duration:calc(.3s + .15s*var(--on)),calc(.45s*var(--on));transition-delay:calc(.3s*var(--on)),.3s;transition-timing-function:ease-out}
+.ph{position:absolute;left:0;right:0;top:50px;display:flex;justify-content:center;opacity:var(--on);transform:translateY(calc((1 - var(--on))*28px));transition-property:opacity,transform;transition-duration:calc(.12s + .08s*var(--on)),calc(.2s*var(--on));transition-delay:calc(.12s*var(--on)),.12s;transition-timing-function:ease-out}
 .ph .dev{width:250px}
 /* The cycle is one animated integer (--a = active feature). Phones, titles and descriptions take their opacity
    from it with a transition, so automatic and clicked switches are both true cross-fades. */
