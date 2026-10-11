@@ -201,7 +201,7 @@ def build(g):
 
     def steps(m):
         shops = [('Corner Market', '€1,29', 70, 'var(--green)'), ('Greenfield', '€1,79', 97, 'var(--ink3)'), ('Harvest Hall', '€1,85', 100, 'var(--ink3)')]
-        v1 = '<div class="viz">' + ''.join(f'<div class="brow"><span class="n">{n}</span><span class="t"><b style="width:{w}%;background:{c}"></b></span><span class="p">{p}</span></div>' for n, p, w, c in shops) + '<div style="font-size:12.5px;color:var(--ink2);margin-top:4px">Price per litre, last receipt at each shop</div></div>'
+        v1 = '<div class="viz">' + ''.join(f'<div class="brow"><span class="n">{n}</span><span class="t"><b style="width:{w}%;background:{c}"></b></span><span class="p">{p}</span></div>' for n, p, w, c in shops) + '</div>'
         # stepped price history, Jun to Oct
         pts = [(0, .85), (1, .85), (2, .92), (3, .92), (4, .95)]
         X = lambda i: 12 + i * 69; Y = lambda p: 118 - (p - .80) / .17 * 96
@@ -216,11 +216,11 @@ def build(g):
         v1 = v1.replace('<div class="viz">', '<div class="viz">' + vh('Oat milk, per litre', '−€0,50', 'var(--greenText)'), 1)
         v2 = v2.replace('<div class="viz">', '<div class="viz">' + vh('Halfvolle melk since June', '+12%', 'var(--amberText)'), 1)
         v3 = v3.replace('<div class="viz">', '<div class="viz">' + vh('October, four shops', '€412', 'var(--ink)'), 1)
-        data = [('Where is it cheapest?', 'var(--green)', 'The cheapest shop for each product', 'Shop compares the price per litre, kilo or piece across every shop you scan, so a bigger pack never fools you.', v1, 'var(--greenTint)'),
-                ('What got more expensive?', 'var(--amber)', 'Price rises, as they happen', 'It follows each product\'s price over time and points out the ones that crept up.', v2, 'var(--tintP)'),
-                ('Where does the money go?', 'var(--blue)', 'Spending by month, shop and category', 'It adds up every receipt, including the ones you are still fixing, and splits it the way you shop.', v3, 'var(--blueTint)')]
-        cards = ''.join(f'<article class="qa a-scroll" style="height:{500 if m else 500}px;background:linear-gradient(165deg,{bg},var(--sunk) 75%)"><div class="q"><i style="background:{dot}"></i>{q}<span class="tag">Example</span></div><h3>{t}</h3><div class="sub">{sub}</div>{v}</article>' for q, dot, t, sub, v, bg in data)
-        return f'<section style="padding:{"64px 20px 0" if m else "120px 80px 0"}"><h2 class="h2 lt" style="font-size:{34 if m else 56}px;line-height:1.06;margin-bottom:{10 if m else 14}px;max-width:760px">What your receipts can tell you.</h2><p style="font-size:{16 if m else 18}px;color:var(--ink2);margin-bottom:{28 if m else 44}px;max-width:620px">Once a few receipts are in, Shop can work out answers like these. The examples use demo data.</p><div style="display:grid;grid-template-columns:repeat({1 if m else 3},minmax(0,1fr));gap:{14 if m else 18}px">{cards}</div></section>'
+        data = [('var(--green)', 'The cheapest shop for each product', v1, 'var(--greenTint)'),
+                ('var(--amber)', 'Which prices crept up', v2, 'var(--tintP)'),
+                ('var(--blue)', 'Where the money goes', v3, 'var(--blueTint)')]
+        cards = ''.join(f'<article class="qa a-scroll" style="height:{400 if m else 420}px;background:linear-gradient(165deg,{bg},var(--sunk) 75%)"><div class="q"><i style="background:{dot}"></i><span class="tag" style="margin-left:0">Example</span></div><h3 style="font-size:30px;max-width:300px">{t}</h3>{v}</article>' for dot, t, v, bg in data)
+        return f'<section style="padding:{"64px 20px 0" if m else "120px 80px 0"}"><h2 class="h2 lt" style="font-size:{34 if m else 56}px;line-height:1.06;margin-bottom:{28 if m else 44}px;max-width:760px">What your receipts can tell you.</h2><div style="display:grid;grid-template-columns:repeat({1 if m else 3},minmax(0,1fr));gap:{14 if m else 18}px">{cards}</div></section>'
 
     def showcase(m):
         F = [('Checks every receipt', 'The lines have to add up to the printed total. If they do not, you see exactly which row to fix.', 'receipt'),
