@@ -245,6 +245,9 @@ struct CatalogView: View {
                 section("Navigation icons") {
                     navIconCompare
                 }
+                section("Home logo options") {
+                    LogoOptions()
+                }
                 section("Tab bar") {
                     PillTabBar(items: [
                         TabBarItem(id: 0, title: "Home", icon: .home, selectedIcon: .homeFill, badge: 2),
@@ -440,5 +443,36 @@ private struct CatalogMoveTray: View {
                            ("Meat & fish", Accent.red), ("Other", Palette.neutral), ("Pantry", Accent.yellow)]
                 .enumerated().map { .init(id: Int64($0.offset + 1), name: $0.element.0, colour: $0.element.1) },
             destination: $destination, working: false, onCancel: {}, onDelete: {})
+    }
+}
+
+
+/// A, B, C on a Home-header mock, light and dark; tap one to replay the tilt.
+private struct LogoOptions: View {
+    @State private var wiggle = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.lx) {
+            ForEach(Array(ShopLogoStyle.allCases.enumerated()), id: \.offset) { i, style in
+                Text(["A  Badge + wordmark (recommended)", "B  Torn-receipt wordmark", "C  Total-bar pill"][i])
+                    .textStyle(.label).foregroundStyle(Palette.ink2)
+                ForEach([ColorScheme.light, .dark], id: \.self) { scheme in
+                    HStack {
+                        Avatar(initial: "I") {}
+                        Spacer()
+                        ShopLogo(style: style, height: 30, wiggle: wiggle)
+                        Spacer()
+                        IconView(.search, size: 18).foregroundStyle(Palette.ink)
+                            .frame(width: Size.iconButton, height: Size.iconButton)
+                            .background(Palette.sunk, in: Circle())
+                    }
+                    .padding(Space.l)
+                    .background(Palette.bg, in: RoundedRectangle.continuous(Radius.l))
+                    .overlay(RoundedRectangle.continuous(Radius.l).strokeBorder(Palette.line))
+                    .environment(\.colorScheme, scheme)
+                    .onTapGesture { wiggle += 1 }
+                }
+            }
+        }
     }
 }
