@@ -73,3 +73,14 @@ inline code, `**bold**`, `*italic*`, links (a bare slug such as `connect` links 
 ## Deploying (Cloudflare Workers Builds)
 
 `wrangler.jsonc` publishes this folder as static assets; `.assetsignore` keeps the build script, the markdown sources and the config out of the public site. In Cloudflare: connect the repo, set the project name to `shop`, set **Path** (root directory) to `site`, leave the build command empty (the generated pages are committed; run `python3 build.py` locally after editing `content/`), and use `npx wrangler deploy` as the deploy command.
+
+## Share image (Open Graph)
+
+`img/og.png` is the 1200x630 share card (logo, tagline, one phone). Social sites need an absolute URL, so once the public address is known add these two lines to the `<head>` of `index.html` and to `head()` in `build.py` (then run `python3 build.py`):
+
+```html
+<meta property="og:image" content="https://YOUR-DOMAIN/img/og.png">
+<meta name="twitter:image" content="https://YOUR-DOMAIN/img/og.png">
+```
+
+The card is composed in `design/website/og-image.html` (open it in a browser at 1200x630 and screenshot to regenerate).
