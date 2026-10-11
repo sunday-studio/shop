@@ -285,6 +285,12 @@ def head(title, desc, css):
 <!-- PRODUCT NAME: title and description -->
 <title>{html.escape(title, quote=False)}</title>
 <meta name="description" content="{html.escape(desc)}">
+<meta property="og:type" content="website">
+<!-- PRODUCT NAME: og:site_name -->
+<meta property="og:site_name" content="Shop">
+<meta property="og:title" content="{html.escape(title)}">
+<meta property="og:description" content="{html.escape(desc)}">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0C0C0B" media="(prefers-color-scheme: dark)">
