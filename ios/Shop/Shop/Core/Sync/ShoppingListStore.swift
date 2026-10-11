@@ -5,6 +5,8 @@ import Observation
 nonisolated struct ListOp: Codable, Sendable, Identifiable, Hashable {
     enum Kind: String, Codable, Sendable {
         case add, update, check, uncheck, delete, clearChecked
+        /// `itemId` is the suggestion id (acceptSuggestion, dismissSuggestion) or the receipt id (undoReceiptChecks).
+        case acceptSuggestion, dismissSuggestion, undoReceiptChecks
     }
 
     var id = UUID()
@@ -23,6 +25,8 @@ final class ShoppingListStore {
     private(set) var items: [ListItem] = []
     private(set) var ops: [ListOp] = []
     private(set) var isSyncing = false
+    /// "Looks bought?" suggestions from confirmed receipts; the server's open set replaces this on every sync.
+    private(set) var suggestions: [ListSuggestion] = []
     private(set) var lastSync: Date?
     private(set) var lastError: APIError?
 
@@ -31,10 +35,21 @@ final class ShoppingListStore {
 
     private static let itemsFile = "list.json"
     private static let opsFile = "list-ops.json"
+    private static let suggestionsFile = "list-suggestions.json"
     private static let tempKey = "list.nextTempId"
 
     var open: [ListItem] { items.filter { !$0.isChecked } }
-    var checked: [ListItem] { items.filter(\.isChecked) }
+    /// Checked items, those a receipt checked first (newest receipt first).
+    var checked: [ListItem] {
+        items.filter(\.isChecked).sorted { a, b in
+            switch (a.isReceiptChecked, b.isReceiptChecked) {
+            case (true, false): return true
+            case (false, true): return false
+            case (true, true): return (a.checkedReceiptId ?? 0) > (b.checkedReceiptId ?? 0)
+            default: return false
+            }
+        }
+    }
     var pendingCount: Int { ops.count }
 
     /// Sum of cheapest known prices for open items ("about €21").
@@ -55,6 +70,7 @@ final class ShoppingListStore {
         self.catalog = catalog
         items = DiskStore.load([ListItem].self, from: Self.itemsFile) ?? []
         ops = DiskStore.load([ListOp].self, from: Self.opsFile) ?? []
+        suggestions = DiskStore.load([ListSuggestion].self, from: Self.suggestionsFile) ?? []
         lastGoodSync = UserDefaults.standard.object(forKey: Self.lastSyncKey) as? Date
     }
 
@@ -123,6 +139,58 @@ final class ShoppingListStore {
         persist()
     }
 
+    // MARK: Receipt checks and suggestions
+
+    /// Confirming a receipt answered with what it did to the list: merge it in right away.
+    func receiptConfirmed(_ result: ReceiptListChecks) {
+        for item in result.checked + result.reduced { merge(item) }
+        var known = Set(suggestions.map(\.id))
+        for s in result.suggestions where known.insert(s.id).inserted { suggestions.append(s) }
+        persist()
+    }
+
+    /// "Yes" on a suggestion: the item is checked as bought on that receipt, and it works offline.
+    func accept(_ suggestion: ListSuggestion) {
+        suggestions.removeAll { $0.id == suggestion.id }
+        if let i = items.firstIndex(where: { $0.id == suggestion.itemId }) {
+            items[i].checkedAt = .now
+            items[i].checkSource = "receipt"
+            items[i].checkedReceiptId = suggestion.receiptId
+            items[i].checkedLineId = suggestion.lineId
+        }
+        enqueue(ListOp(kind: .acceptSuggestion, itemId: suggestion.id))
+        persist()
+    }
+
+    /// "Not this": hidden for good.
+    func dismiss(_ suggestion: ListSuggestion) {
+        suggestions.removeAll { $0.id == suggestion.id }
+        enqueue(ListOp(kind: .dismissSuggestion, itemId: suggestion.id))
+        persist()
+    }
+
+    /// Items this receipt still owns (checked because of it), for the receipt screen's Undo row.
+    func receiptCheckedItems(_ receiptId: Int64) -> [ListItem] {
+        items.filter { $0.isChecked && $0.checkedReceiptId == receiptId && $0.checkSource == "receipt" }
+    }
+
+    /// Undo what a receipt did: its items reopen at once; the server puts quantities back at sync.
+    func undoReceiptChecks(_ receiptId: Int64) {
+        for i in items.indices where items[i].checkedReceiptId == receiptId && items[i].checkSource == "receipt" {
+            items[i].checkedAt = nil
+            items[i].checkSource = nil
+            items[i].checkedReceiptId = nil
+            items[i].checkedLineId = nil
+        }
+        suggestions.removeAll { $0.receiptId == receiptId }
+        enqueue(ListOp(kind: .undoReceiptChecks, itemId: receiptId))
+        persist()
+    }
+
+    private func merge(_ item: ListItem) {
+        if let i = items.firstIndex(where: { $0.id == item.id }) { items[i] = item } else { items.insert(item, at: 0) }
+    }
+
     // MARK: Sync
 
     func sync() async {
@@ -148,6 +216,9 @@ final class ShoppingListStore {
 
         do {
             let fresh = try await api.shoppingList(includeChecked: true)
+            // The open suggestions replace the local copy (never merged). An older server without
+            // the endpoint just leaves the current set alone.
+            if let open = try? await api.listSuggestions() { suggestions = open }
             items = fresh
             lastSync = .now
             lastGoodSync = .now
@@ -178,6 +249,13 @@ final class ShoppingListStore {
             do { try await api.deleteListItem(op.itemId) } catch APIError.notFound {}
         case .clearChecked:
             _ = try await api.clearCheckedItems()
+        case .acceptSuggestion:
+            do { merge(try await api.acceptListSuggestion(op.itemId)) } catch APIError.conflict(_) {} catch APIError.notFound {}
+        case .dismissSuggestion:
+            do { try await api.dismissListSuggestion(op.itemId) } catch APIError.conflict(_) {} catch APIError.notFound {}
+        case .undoReceiptChecks:
+            let result = try await api.undoReceiptListChecks(op.itemId)
+            for item in result.restored { merge(item) }
         }
     }
 
@@ -223,11 +301,13 @@ final class ShoppingListStore {
 
     private func persistOps() {
         DiskStore.save(ops, to: Self.opsFile)
+        DiskStore.save(suggestions, to: Self.suggestionsFile)
     }
 
     func reset() {
         items = []
         ops = []
+        suggestions = []
         persist()
     }
 

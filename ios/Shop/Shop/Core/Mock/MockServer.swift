@@ -17,6 +17,10 @@ final class MockServer: HTTPTransport {
         Alias(id: 4, text: "melk halfvol 1.5l", shopId: nil, shopName: nil, productId: 1, createdAt: MockData.ago(days: 20)),
     ]
     private var list = MockData.listItems
+    private var listSuggestions: [ListSuggestion] = []
+    private var reducedBefore: [Int64: (qty: Double?, note: String?)] = [:]
+    private var reducedBy: [Int64: Int64] = [:]
+    private var reconciledReceipts: Set<Int64> = []
     private var nextId: Int64 = 5000
     private var latency: Duration = .milliseconds(250)
 
@@ -222,7 +226,31 @@ final class MockServer: HTTPTransport {
             if ProcessInfo.processInfo.arguments.contains("-mock-auto") {
                 confirmed.autoProducts = AutoProductsSummary(linked: 2, created: 3, needsReview: 2, error: nil)
             }
+            confirmed.list = reconcileList(receiptId: confirmed.id)
             return ok(confirmed)
+        case ("GET", "v1/list/suggestions"):
+            return ok(listSuggestions.sorted { $0.createdAt < $1.createdAt })
+        case ("POST", "v1/list/suggestions/:id/accept"):
+            guard let s = listSuggestions.first(where: { $0.id == id(3) }), let i = list.firstIndex(where: { $0.id == s.itemId }) else { return notFound() }
+            list[i].checkedAt = .now
+            list[i].checkSource = "receipt"
+            list[i].checkedReceiptId = s.receiptId
+            listSuggestions.removeAll { $0.id == s.id }
+            return ok(list[i])
+        case ("POST", "v1/list/suggestions/:id/dismiss"):
+            listSuggestions.removeAll { $0.id == id(3) }
+            return (204, Data())
+        case ("POST", "v1/receipts/:id/list-checks/undo"):
+            var restored: [ListItem] = []
+            for i in list.indices where list[i].checkedReceiptId == id(2) {
+                list[i].checkedAt = nil
+                list[i].checkSource = nil
+                list[i].checkedReceiptId = nil
+                if let before = reducedBefore[list[i].id] { list[i].qty = before.qty; list[i].note = before.note }
+                restored.append(list[i])
+            }
+            for (itemId, before) in reducedBefore { if let i = list.firstIndex(where: { $0.id == itemId }), list[i].checkedReceiptId == nil, !restored.contains(where: { $0.id == itemId }), reducedBy[itemId] == id(2) { list[i].qty = before.qty; list[i].note = before.note; restored.append(list[i]) } }
+            return ok(RestoredListItems(restored: restored))
         case ("POST", "v1/receipts/:id/reparse"), ("POST", "v1/receipts/:id/reocr"):
             guard let i = receipts.firstIndex(where: { $0.id == id(2) }) else { return notFound() }
             if receipts[i].confirmedAt != nil && q["force"] != "true" {
@@ -841,6 +869,39 @@ final class MockServer: HTTPTransport {
         guard id == 102 || unassigned, !acceptedSuggestions.contains(id) else { return nil }
         return ShopSuggestion(kind: .new, key: "new:aldi|lange kerkstraat 34", shopId: nil, name: "Aldi", chain: "Aldi", branch: "Hoofdstraat 12, Teststad", domain: "aldi.nl",
                               confidence: 0.92, evidence: ["ALDI", "Hoofdstraat 12", "Teststad"], waitingReceiptIds: acceptedSuggestions.contains(104) ? [] : [104])
+    }
+
+    /// What confirming a receipt does to the list in `-mock`: the first confirm of a receipt that
+    /// is dated within 3 days checks two items, reduces one and suggests one.
+    private func reconcileList(receiptId: Int64) -> ReceiptListChecks {
+        let empty = ReceiptListChecks(checked: [], reduced: [], suggestions: [])
+        guard !reconciledReceipts.contains(receiptId),
+              let receipt = receipts.first(where: { $0.id == receiptId }),
+              Date().timeIntervalSince(receipt.displayDate) < 3 * 86400 else { return empty }
+        reconciledReceipts.insert(receiptId)
+        var checked: [ListItem] = [], reduced: [ListItem] = []
+        for itemId in [Int64(1), 4] {
+            guard let i = list.firstIndex(where: { $0.id == itemId && !$0.isChecked }) else { continue }
+            list[i].checkedAt = .now
+            list[i].checkSource = "receipt"
+            list[i].checkedReceiptId = receiptId
+            checked.append(list[i])
+        }
+        if let i = list.firstIndex(where: { $0.id == 7 && !$0.isChecked }), let qty = list[i].qty, qty > 1 {
+            reducedBefore[7] = (list[i].qty, list[i].note)
+            reducedBy[7] = receiptId
+            list[i].qty = qty - 1
+            list[i].note = "1 of \(Int(qty)) bought"
+            reduced.append(list[i])
+        }
+        var suggestions: [ListSuggestion] = []
+        if list.contains(where: { $0.id == 8 && !$0.isChecked }) {
+            let s = ListSuggestion(id: newId(), itemId: 8, itemText: "Afwasmiddel", receiptId: receiptId, lineId: nil, lineText: "AFWASMID CITRUS 500ML",
+                                   score: 0.82, reason: "match", createdAt: .now)
+            listSuggestions.append(s)
+            suggestions.append(s)
+        }
+        return ReceiptListChecks(checked: checked, reduced: reduced, suggestions: suggestions)
     }
 
     private func newId() -> Int64 {

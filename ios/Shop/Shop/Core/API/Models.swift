@@ -233,6 +233,8 @@ nonisolated struct Receipt: Codable, Sendable, Hashable, Identifiable {
     var shopSuggestion: ShopSuggestion?
     /// Hint from the photo's EXIF; never the purchase date unless the user picks it.
     var photoTakenAt: Date?
+    /// Confirm only: what the receipt did to the shopping list (openapi 0.14.0).
+    var list: ReceiptListChecks?
 
     var reasons: [ReviewReason] { reviewReasons.compactMap(ReviewReason.init(rawValue:)) }
     /// The date to show and group by: purchase time, else upload time.
@@ -519,9 +521,40 @@ nonisolated struct ListItem: Codable, Sendable, Hashable, Identifiable {
     var cheapest: ShopPrice?
     /// Backend need #6.
     var updatedAt: Date?
+    /// "receipt" when a confirmed receipt checked it (or a suggestion was accepted); nil/"manual" otherwise.
+    var checkSource: String? = nil
+    var checkedReceiptId: Int64? = nil
+    var checkedLineId: Int64? = nil
 
     var isChecked: Bool { checkedAt != nil }
     var title: String { productName ?? text }
+    var isReceiptChecked: Bool { isChecked && checkSource == "receipt" && checkedReceiptId != nil }
+}
+
+/// "Looks bought?": an open list item and the receipt line that probably is it.
+nonisolated struct ListSuggestion: Codable, Sendable, Hashable, Identifiable {
+    var id: Int64
+    var itemId: Int64
+    var itemText: String
+    var receiptId: Int64
+    var lineId: Int64?
+    /// The receipt line as printed.
+    var lineText: String
+    var score: Double
+    /// "match" or "substitute".
+    var reason: String
+    var createdAt: Date
+}
+
+/// What confirming a receipt did to the shopping list.
+nonisolated struct ReceiptListChecks: Codable, Sendable, Hashable {
+    var checked: [ListItem]
+    var reduced: [ListItem]
+    var suggestions: [ListSuggestion]
+}
+
+nonisolated struct RestoredListItems: Codable, Sendable {
+    var restored: [ListItem]
 }
 
 nonisolated struct ListItemInput: Codable, Sendable, Hashable {

@@ -18,6 +18,13 @@ struct ShoppingListView: View {
                 .padding(.top, Space.lx)
                 .shopListRow()
 
+            if !list.suggestions.isEmpty {
+                ListSuggestionsCard()
+                    .padding(.horizontal, Space.edge)
+                    .padding(.top, Space.lx)
+                    .shopListRow()
+            }
+
             if !suggestions.isEmpty {
                 VStack(alignment: .leading, spacing: Space.m) {
                     TypeStyle.label.text("Usually bought by now").foregroundStyle(Palette.ink2)
@@ -142,7 +149,7 @@ struct ShoppingListView: View {
         ListItemRow(
             title: item.title,
             hint: hint(item),
-            hintShop: item.cheapest?.shopName,
+            hintShop: receiptNote(item)?.shop ?? item.cheapest?.shopName,
             quantity: quantity(item),
             isChecked: item.isChecked,
             onToggle: { checked in toggle(item, checked) },
@@ -154,6 +161,9 @@ struct ShoppingListView: View {
         .contextMenu {
             Button("Edit", systemImage: "pencil") { openEdit(item) }
             if let id = item.productId { Button("Open product", systemImage: "shippingbox") { app.push(.product(id)) } }
+            if item.isReceiptChecked, let receiptId = item.checkedReceiptId {
+                Button("Open receipt", systemImage: "doc.text") { app.push(.receipt(receiptId)) }
+            }
             Button("Delete", systemImage: "trash", role: .destructive) { remove(item) }
         }
     }
@@ -174,9 +184,22 @@ struct ShoppingListView: View {
         }
     }
 
+    /// "Bought at Corner Market · Tue" for items a receipt checked.
+    private func receiptNote(_ item: ListItem) -> (text: String, shop: String?)? {
+        guard item.isReceiptChecked, let id = item.checkedReceiptId else { return nil }
+        guard let receipt = app.home.receipts.first(where: { $0.id == id }) else { return ("Bought on a receipt", nil) }
+        let shop = receipt.shopId.map { app.catalog.shopName($0) }
+        let when = Dates.shortDay(receipt.displayDate)
+        return (["Bought" + (shop.map { " at \($0)" } ?? ""), when].joined(separator: " · "), shop)
+    }
+
     private func hint(_ item: ListItem) -> String? {
+        if let note = receiptNote(item) { return note.text }
         if let c = item.cheapest {
-            return "Cheapest at \(c.shopName) · \(Money.perUnit(c.latestUnitCents, unit: c.baseUnit))"
+            let price = "Cheapest at \(c.shopName) · \(Money.perUnit(c.latestUnitCents, unit: c.baseUnit))"
+            // "1 of 2 bought" (a partly bought item) comes first, so the reason for the lower quantity is visible.
+            if let note = item.note, !note.isEmpty, note.contains(" bought") { return note + " · " + price }
+            return price
         }
         if item.productId == nil { return item.note ?? "Not in your catalog" }
         return item.note
