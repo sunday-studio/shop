@@ -5,9 +5,12 @@ import UIKit
 struct ShopApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
+    init() { LaunchTrace.mark("App init") }
+
     var body: some Scene {
         WindowGroup {
             RootView()
+                .onAppear { LaunchTrace.mark("RootView appeared") }
                 .environment(appDelegate.model)
                 .task { if ProcessInfo.processInfo.arguments.contains("-bench") { await Bench.run(appDelegate.model) } }
         }

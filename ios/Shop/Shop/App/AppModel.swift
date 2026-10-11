@@ -122,18 +122,25 @@ final class AppModel {
     private static let appearanceKey = "settings.appearance"
 
     init(mock: Bool = ProcessInfo.processInfo.arguments.contains("-mock")) {
+        LaunchTrace.mark("AppModel init start")
         isMock = mock
         let storedURL = mock ? URL(string: "http://mock.shop.local:8080") : UserDefaults.standard.url(forKey: Self.serverKey)
         let token = mock ? "st_mock" : Keychain.get(Self.tokenAccount)
+        LaunchTrace.mark("keychain done")
         let api = APIClient(transport: mock ? MockServer() : URLSessionTransport(), baseURL: storedURL, token: token)
         self.api = api
+        LaunchTrace.mark("api created")
         serverURL = storedURL
         deviceName = UserDefaults.standard.string(forKey: Self.deviceKey) ?? "iPhone"
         catalog = Catalog(api: api)
+        LaunchTrace.mark("catalog loaded")
         uploads = UploadQueue(api: api)
+        LaunchTrace.mark("upload queue loaded")
         list = ShoppingListStore(api: api, catalog: catalog)
+        LaunchTrace.mark("list loaded")
         network = NetworkMonitor()
         home = HomeModel(api: api, catalog: catalog)
+        LaunchTrace.mark("home loaded")
         appearance = Appearance(rawValue: UserDefaults.standard.string(forKey: Self.appearanceKey) ?? "") ?? .system
         phase = (storedURL != nil && token != nil) ? .ready : .onboarding
 
@@ -142,6 +149,7 @@ final class AppModel {
         uploads.onUploaded = { [weak self] item in self?.uploadFinished(item) }
         network.onReconnect = { [weak self] in self?.reconnected() }
         ShopFont.register()
+        LaunchTrace.mark("AppModel init done")
     }
 
     func setAppearance(_ value: Appearance) {

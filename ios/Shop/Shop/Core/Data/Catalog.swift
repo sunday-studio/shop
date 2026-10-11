@@ -13,6 +13,8 @@ final class Catalog {
     }
     private(set) var lastSync: Date?
     private(set) var isSyncing = false
+    /// The saved product list is still being read from disk (a few tens of ms after launch).
+    private(set) var isLoadingCache = false
 
     @ObservationIgnored private let api: APIClient
 
@@ -29,8 +31,15 @@ final class Catalog {
         self.api = api
         shops = DiskStore.load([Shop].self, from: "shops.json") ?? []
         categories = DiskStore.load([Category].self, from: "categories.json") ?? []
-        let list = DiskStore.load([Product].self, from: "products.json") ?? []
-        products = Dictionary(list.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        // The product cache is the biggest file; read it after the first frame instead of before.
+        isLoadingCache = true
+        Task { [weak self] in
+            let list = await Task.detached(priority: .userInitiated) { DiskStore.load([Product].self, from: "products.json") }.value ?? []
+            guard let self else { return }
+            // A sync that finished first has fresher data; keep it.
+            if self.products.isEmpty { self.products = Dictionary(list.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) }
+            self.isLoadingCache = false
+        }
         lastSync = UserDefaults.standard.object(forKey: "catalog.lastSync") as? Date
         ShopLogos.register(shops, api: api)
     }

@@ -18,6 +18,7 @@ struct RootView: View {
     }
 
     var body: some View {
+        let _ = LaunchTrace.mark("RootView body")
         ZStack {
             Palette.bg.ignoresSafeArea()
             switch model.phase {
@@ -43,7 +44,11 @@ struct RootView: View {
                 Task { await model.refreshOnForeground() }
             }
         }
-        .task { await model.refreshOnForeground() }
+        .task {
+            // Let the first frames finish before the first round of network work lands.
+            try? await Task.sleep(for: .milliseconds(350))
+            await model.refreshOnForeground()
+        }
     }
 }
 
@@ -52,6 +57,9 @@ struct RootView: View {
 struct RootTabView: View {
     @Environment(AppModel.self) private var model
     @State private var previous: AppTab = .home
+    /// Tabs are built the first time they are opened and then kept (their scroll position and
+    /// state stay). Building all four at launch made every launch pay for screens nobody opened.
+    @State private var visited: Set<AppTab> = [.home]
     @State private var pickedPhotos: [PhotosPickerItem] = []
     @Environment(\.accessibilityReduceMotion) private var reduce
 
@@ -59,11 +67,13 @@ struct RootTabView: View {
         @Bindable var model = model
         ZStack(alignment: .bottom) {
             ForEach(AppTab.allCases, id: \.self) { tab in
-                TabStack(tab: tab)
-                    .opacity(tab == model.tab ? 1 : 0)
-                    .offset(x: offset(for: tab))
-                    .allowsHitTesting(tab == model.tab)
-                    .accessibilityHidden(tab != model.tab)
+                if visited.contains(tab) || tab == model.tab {
+                    TabStack(tab: tab)
+                        .opacity(tab == model.tab ? 1 : 0)
+                        .offset(x: offset(for: tab))
+                        .allowsHitTesting(tab == model.tab)
+                        .accessibilityHidden(tab != model.tab)
+                }
             }
 
             if showsBar {
@@ -78,6 +88,7 @@ struct RootTabView: View {
             }
         }
         .animation(Motion.ease, value: showsBar)
+        .onChange(of: model.tab, initial: true) { _, tab in visited.insert(tab) }
         .task {
             // Ask up front so the first scan opens straight into the camera. Onboarding has its
             // own camera step; this covers users who skipped it.
