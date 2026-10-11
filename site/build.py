@@ -278,7 +278,7 @@ def render_blocks(blocks, ctx, toc, nested=False, first_inline=False):
 # ------------------------------------------------------------------ page chrome
 # Public address of the site (for example "https://shop.example.com", no trailing slash). Social sites need an
 # absolute URL for the share image: while this is empty the og:image / twitter:image tags are left out.
-SITE_URL = ""
+SITE_URL = "https://shop.casprine.com"
 OG_ALT = {'landing': 'Shop: Know what your groceries really cost over time', 'guide-index': 'Shop guide'}
 
 
