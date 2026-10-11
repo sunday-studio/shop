@@ -130,6 +130,7 @@ struct ShopFormTray: View {
     @Environment(AppModel.self) private var app
     @Environment(TrayCoordinator.self) private var trays
     @State private var name = ""
+    @State private var chain = ""
     @State private var branch = ""
     @State private var address = ""
     @State private var city = ""
@@ -149,23 +150,19 @@ struct ShopFormTray: View {
             }
             .padding(.horizontal, Space.xs)
 
-            Grid(horizontalSpacing: Space.m, verticalSpacing: Space.m) {
-                GridRow {
-                    FieldTile(label: "Name", text: $name, placeholder: "Albert Heijn", background: Palette.trayField)
-                    FieldTile(label: "Branch", text: $branch, placeholder: "Oudegracht", background: Palette.trayField)
-                }
-                GridRow {
-                    FieldTile(label: "Address", text: $address, placeholder: "Optional", background: Palette.trayField)
-                    FieldTile(label: "City", text: $city, placeholder: "Utrecht", background: Palette.trayField)
-                }
-                GridRow {
-                    FieldTile(label: "Website", text: $website, placeholder: "ah.nl · guessed for big chains", mono: true, background: Palette.trayField)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .gridCellColumns(2)
-                }
+            InlineFieldGroup {
+                InlineField(label: "Name", text: $name, placeholder: "Albert Heijn")
+                InlineField(label: "Chain", text: $chain, placeholder: "Same as the name")
+                InlineField(label: "Branch", text: $branch, placeholder: "Oudegracht")
+                InlineField(label: "Address", text: $address, placeholder: "Optional")
+                InlineField(label: "City", text: $city, placeholder: "Utrecht")
+                InlineField(label: "Website", text: $website, placeholder: "ah.nl", divider: false, mono: true)
             }
+
+            Text("Chain groups branches of one shop. The website gives it a logo; the server guesses it for big chains.")
+                .textStyle(.rowSub)
+                .foregroundStyle(Palette.ink2)
+                .padding(.horizontal, Space.xs)
 
             HStack(spacing: Space.m) {
                 if let shop {
@@ -190,7 +187,7 @@ struct ShopFormTray: View {
                 Button {
                     Task { await save() }
                 } label: {
-                    LoadingLabel(title: "Save", isLoading: saving)
+                    LoadingLabel(title: "Save shop", isLoading: saving)
                 }
                 .buttonStyle(.shop(haptic: .medium))
                 .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || saving)
@@ -201,6 +198,7 @@ struct ShopFormTray: View {
             loaded = true
             if let shop {
                 name = shop.name
+                chain = shop.chain ?? ""
                 branch = shop.branch ?? ""
                 address = shop.address ?? ""
                 city = shop.city ?? ""
@@ -219,7 +217,7 @@ struct ShopFormTray: View {
         let site = website.trimmingCharacters(in: .whitespaces)
         // Omit the domain to keep or let the server guess; "" clears a domain that was set.
         let domain: String? = site.isEmpty ? (shop?.domain == nil ? nil : "") : site
-        let input = ShopInput(name: name.trimmingCharacters(in: .whitespaces), chain: shop?.chain ?? clean(name), branch: clean(branch),
+        let input = ShopInput(name: name.trimmingCharacters(in: .whitespaces), chain: clean(chain) ?? shop?.chain ?? clean(name), branch: clean(branch),
                               address: clean(address), city: clean(city), notes: shop?.notes, domain: domain)
         do {
             let saved: Shop
@@ -260,7 +258,7 @@ struct CategoriesView: View {
                 Button { openForm(nil) } label: {
                     HStack(spacing: 5) {
                         IconView(.plus, size: 13, weight: .bold)
-                        Text("Add").textStyle(.label)
+                        Text("Add category").textStyle(.label)
                     }
                     .foregroundStyle(Palette.btnInk)
                     .padding(.horizontal, Space.l)
@@ -309,6 +307,9 @@ struct CategoriesView: View {
                 }
                 .textStyle(.label)
                 .foregroundStyle(Palette.ink2)
+                .padding(.vertical, 7)
+                .padding(.horizontal, 10)
+                .background(Palette.sunk, in: RoundedRectangle.continuous(10))
                 .padding(.horizontal, Space.gutter)
                 .padding(.top, Space.xl)
                 .padding(.bottom, Space.xs)
@@ -317,13 +318,12 @@ struct CategoriesView: View {
                 ForEach(categories) { category in
                     Button { openForm(category) } label: {
                         HStack(spacing: Space.l) {
-                            CategoryDot(color: category.dotColor, size: 12)
+                            RoundedRectangle.continuous(5).fill(category.dotColor).frame(width: 14, height: 14)
                             Text(category.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
                             Spacer()
                             Text("\(category.productCount ?? 0)").textStyle(.body).foregroundStyle(Palette.ink2)
-                            IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
                         }
-                        .frame(height: 46)
+                        .frame(height: 48)
                         .hairline()
                         .contentShape(Rectangle())
                     }
@@ -407,46 +407,13 @@ struct MoveProductsTray: View {
     private var others: [Category] { app.catalog.categories.filter { $0.id != category.id } }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.l) {
-            TrayHeader(title: "Delete \(category.name)?", subtitle: "\(count) product\(count == 1 ? "" : "s") use it. Pick where they go.")
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(others) { other in row(id: other.id, name: other.name, color: other.dotColor) }
-                    row(id: 0, name: "No category", color: Palette.neutral)
-                }
-                .padding(.horizontal, Space.xs)
-            }
-            .frame(maxHeight: 6 * 46)
-            .scrollBounceBehavior(.basedOnSize)
-            HStack(spacing: Space.m) {
-                Button("Cancel") { trays.dismiss() }.buttonStyle(.shop(.secondary))
-                Button { Task { await delete() } } label: {
-                    LoadingLabel(title: "Delete and move \(count)", isLoading: working)
-                }
-                .buttonStyle(.shop(.destructive, haptic: .medium))
-                .disabled(working)
-            }
-        }
-    }
-
-    private func row(id: Int64, name: String, color: Color) -> some View {
-        Button {
-            Haptics.play(.selection)
-            destination = id
-        } label: {
-            HStack(spacing: Space.l) {
-                CategoryDot(color: color, size: 12)
-                Text(name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                Spacer()
-                if destination == id {
-                    Image(icon: .check).font(.system(size: 13, weight: .bold)).foregroundStyle(Accent.blue)
-                }
-            }
-            .frame(height: 46)
-            .hairline()
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.press(haptic: nil))
+        MoveProductsLayout(
+            categoryName: category.name, count: count,
+            destinations: others.map { .init(id: $0.id, name: $0.name, colour: $0.dotColor) },
+            destination: $destination, working: working,
+            onCancel: { trays.dismiss() },
+            onDelete: { Task { await delete() } }
+        )
     }
 
     private func delete() async {
@@ -493,39 +460,13 @@ struct CategoryFormTray: View {
     private var canSave: Bool { !trimmed.isEmpty && !saving && !isTaken && (category.map { $0.name != trimmed || $0.color != color } ?? true) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.lx) {
-            TrayHeader(title: category == nil ? "New category" : "Rename category")
-            VStack(alignment: .leading, spacing: Space.s) {
-                FieldTile(label: "Name", text: $name, placeholder: "Snacks", error: isTaken, background: Palette.trayField) { Task { await save() } }
-                    .submitLabel(.done)
-                if isTaken {
-                    Text("You already have a category called \(trimmed).")
-                        .textStyle(.caption).foregroundStyle(Palette.redText)
-                        .padding(.horizontal, Space.xs)
-                }
-            }
-            HStack(spacing: Space.m) {
-                ForEach(CategoryTone.tokens, id: \.self) { token in
-                    Button {
-                        Haptics.play(.selection)
-                        color = token
-                    } label: {
-                        Circle()
-                            .fill(Category(id: 0, name: "", color: token).dotColor)
-                            .frame(width: 22, height: 22)
-                            .overlay { if color == token { Circle().strokeBorder(Palette.ink, lineWidth: 2).padding(-4) } }
-                            .frame(maxWidth: .infinity, minHeight: 32)
-                    }
-                    .buttonStyle(.press(haptic: nil))
-                    .accessibilityLabel(token.capitalized)
-                }
-            }
-            Button { Task { await save() } } label: {
-                LoadingLabel(title: "Save", isLoading: saving)
-            }
-            .buttonStyle(.shop(haptic: .medium))
-            .disabled(!canSave)
-        }
+        CategoryFormLayout(
+            title: category == nil ? "Add category" : "Rename category",
+            name: $name, colour: $color,
+            errorText: isTaken ? "You already have a category called \(trimmed)." : nil,
+            canSave: canSave, saving: saving,
+            onSubmit: { Task { await save() } }
+        )
         .onAppear {
             guard !loaded else { return }
             loaded = true
@@ -539,7 +480,7 @@ struct CategoryFormTray: View {
         saving = true
         defer { saving = false }
         do {
-            let input = CategoryInput(name: trimmed, color: color)
+            let input = CategoryInput(name: trimmed, color: color ?? (category == nil ? "blue" : nil))
             let saved = category == nil
                 ? try await app.api.createCategory(input)
                 : try await app.api.updateCategory(category!.id, input)
