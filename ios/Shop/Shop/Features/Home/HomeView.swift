@@ -15,7 +15,7 @@ struct HomeView: View {
     var body: some View {
         List {
             VStack(alignment: .leading, spacing: 0) {
-                HomeHeader(initial: String(app.deviceName.prefix(1)), onSettings: { app.push(.settings) }, onSearch: { app.push(.search) }) {
+                HomeHeader(showsStatus: app.syncStatus != nil, onSettings: { app.push(.settings) }, onSearch: { app.push(.search) }) {
                     if let status = app.syncStatus {
                         SyncPill(title: status.title, dot: status.dot, isBusy: status.busy) { app.push(status.route) }
                     }
