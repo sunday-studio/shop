@@ -307,9 +307,18 @@ struct AddItemTray: View {
             if let editing {
                 HStack(spacing: Space.m) {
                     Button("Delete") {
-                        app.list.delete(editing)
+                        let item = editing
                         trays.dismiss()
-                        Task { await app.list.sync() }
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(350))
+                            app.list.delete(item)
+                            Haptics.play(.soft)
+                            await app.list.sync()
+                            app.toasts.undoable("Removed \(item.title)") {
+                                app.list.add(text: item.title, productId: item.productId, qty: item.qty, note: item.note)
+                                Task { await app.list.sync() }
+                            }
+                        }
                     }
                     .buttonStyle(.shop(.destructive))
                     Button("Save") {
@@ -322,6 +331,8 @@ struct AddItemTray: View {
                 }
             }
         }
+        // The suggestion block growing or shrinking while you type eases the tray's height.
+        .animation(Motion.sheetSwap, value: resultsHeightKey)
         .onAppear {
             guard !loaded else { return }
             loaded = true
@@ -331,6 +342,11 @@ struct AddItemTray: View {
                 note = editing.note ?? ""
             }
         }
+    }
+
+    private var resultsHeightKey: Int {
+        guard editing == nil, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return 0 }
+        return 1 + min(results.count, 3)
     }
 
     private func stepper(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
