@@ -77,6 +77,30 @@ struct SettingsView: View {
                     }
                     .frame(minHeight: Size.rowProduct)
                     .hairline()
+                    HStack(spacing: Space.lx) {
+                        IconTile(icon: .money, color: Accent.green)
+                        VStack(alignment: .leading, spacing: 1) {
+                            TypeStyle.rowTitle.sized(15.5).text("Extra stop cost").foregroundStyle(Palette.ink)
+                            TypeStyle.rowSub.text("What another shop costs you, for the cheapest-store plan").foregroundStyle(Palette.ink2).lineLimit(1)
+                        }
+                        Spacer()
+                        Stepper(value: Binding(get: { app.list.planSettings.extraStopCents }, set: { v in Task { await app.list.setExtraStop(cents: v) } }), in: 0...1000, step: 50) {
+                            TypeStyle.rowTitle.sized(15.5).text(Money.format(Int64(app.list.planSettings.extraStopCents)))
+                        }
+                        .fixedSize()
+                        .onChange(of: app.list.planSettings.extraStopCents) { _, _ in Haptics.play(.selection) }
+                    }
+                    .frame(minHeight: Size.rowProduct)
+                    .hairline()
+                    HStack(spacing: Space.lx) {
+                        IconTile(icon: .list, color: Accent.blue)
+                        TypeStyle.rowTitle.sized(15.5).text("Shops per plan").foregroundStyle(Palette.ink)
+                        Spacer()
+                        SegmentedControl(options: [1, 2, 3], title: { "\($0)" }, selection: Binding(get: { app.list.planSettings.maxStops }, set: { v in Task { await app.list.setExtraStop(maxStops: v) } }))
+                            .frame(width: 130)
+                    }
+                    .frame(minHeight: Size.rowProduct)
+                    .hairline()
                     SettingsRow(icon: .money, color: Accent.yellow, title: "Money format", value: "€1.234,56", showsChevron: false)
                     Button { app.push(.catalog) } label: {
                         SettingsRow(icon: .info, color: Color.dynamic(light: 0x8E8E8A, dark: 0x3A3A37), title: "About Shop", value: appVersion)
@@ -90,7 +114,7 @@ struct SettingsView: View {
         }
         .background(Palette.bg)
         .toolbar(.hidden, for: .navigationBar)
-        .task { await app.refreshHealth() }
+        .task { await app.refreshHealth(); await app.list.refreshPlan() }
     }
 
     private var serverCard: some View {

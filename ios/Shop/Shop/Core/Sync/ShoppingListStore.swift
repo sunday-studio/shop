@@ -163,6 +163,49 @@ final class ShoppingListStore {
         persist()
     }
 
+    // MARK: Plan (cheapest store)
+
+    /// The last plan the server made (kept for offline: "Plan is from Tuesday").
+    private(set) var plan: ListPlan? = DiskStore.load(ListPlan.self, from: "list-plan.json")
+    private(set) var planSettings = ListPlanSettings(extraStopCents: 250, maxStops: 2)
+    private(set) var isPlanning = false
+    private(set) var planFailed = false
+    @ObservationIgnored private var planTask: Task<Void, Never>?
+
+    /// Asks for a fresh plan 600 ms after the last list change (the old figure stays until the new one lands).
+    func schedulePlan() {
+        planTask?.cancel()
+        planTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            await self?.refreshPlan()
+        }
+    }
+
+    func refreshPlan() async {
+        isPlanning = true
+        defer { isPlanning = false }
+        do {
+            if let s = try? await api.listPlanSettings() { planSettings = s }
+            let fresh = try await api.listPlan()
+            plan = fresh
+            planFailed = false
+            DiskStore.saveInBackground(fresh, to: "list-plan.json")
+        } catch {
+            planFailed = true
+        }
+    }
+
+    func setExtraStop(cents: Int? = nil, maxStops: Int? = nil) async {
+        do {
+            planSettings = try await api.updateListPlanSettings(ListPlanSettingsPatch(extraStopCents: cents, maxStops: maxStops))
+            await refreshPlan()
+        } catch {}
+    }
+
+    /// The plan is worth showing: a split is possible (two shops to choose between).
+    var planAvailable: Bool { (plan?.stores.count ?? 0) >= 2 || plan?.status == "one_shop_fine" }
+
     // MARK: Groups
 
     /// Checklists to show, in order: the open ones by `sort`, finished ones last. Archived are not listed.
@@ -428,6 +471,7 @@ final class ShoppingListStore {
 
         do {
             try await fetchChanges()
+            schedulePlan()
             lastSync = .now
             lastGoodSync = .now
             UserDefaults.standard.set(Date.now, forKey: Self.lastSyncKey)

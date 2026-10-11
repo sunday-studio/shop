@@ -781,6 +781,8 @@ nonisolated struct ReviewQueueResponse: Codable, Sendable {
     var total: Int
     var counts: [String: Int]
     var items: [ReviewItem]
+    /// Open "same kind of item" questions (openapi 0.16.0).
+    var sameKindTotal: Int? = nil
 }
 
 nonisolated struct ReviewBody: Codable, Sendable {
@@ -830,4 +832,156 @@ nonisolated struct SplitResult: Codable, Sendable {
 nonisolated struct ProductRefreshResult: Codable, Sendable {
     var product: Product
     var offStatus: String?
+}
+
+// MARK: - Shopping list plan (openapi 0.16.0)
+
+nonisolated struct ListPlanSettings: Codable, Sendable, Hashable {
+    var extraStopCents: Int
+    var maxStops: Int
+}
+
+nonisolated struct ListPlanSettingsPatch: Codable, Sendable {
+    var extraStopCents: Int? = nil
+    var maxStops: Int? = nil
+}
+
+nonisolated struct PlanStore: Codable, Sendable, Hashable, Identifiable {
+    var shopId: Int64
+    var name: String
+    var chain: String? = nil
+    var itemCount: Int
+    var estimateCents: Int64
+    var unpricedCount: Int
+    var isUsual: Bool
+    var id: Int64 { shopId }
+}
+
+nonisolated struct PlanPoint: Codable, Sendable, Hashable {
+    var at: Date
+    var unitCents: Int64
+    var paidCents: Int64
+    var productId: Int64
+    var productName: String
+}
+
+nonisolated struct PlanShopPrice: Codable, Sendable, Hashable, Identifiable {
+    var shopId: Int64
+    var shopName: String
+    var unitCents: Int64
+    var baseUnit: BaseUnit
+    var purchases: Int
+    var latestAt: Date
+    var ageDays: Int
+    var isUsual: Bool
+    var points: [PlanPoint]
+    var id: Int64 { shopId }
+}
+
+nonisolated struct PlanOtherPrice: Codable, Sendable, Hashable {
+    var shopId: Int64
+    var unitCents: Int64
+}
+
+nonisolated struct PairConfirmation: Codable, Sendable, Hashable {
+    var productA: Int64
+    var productB: Int64
+    var nameA: String
+    var nameB: String
+    var shopA: String
+    var shopB: String
+    var shopAId: Int64
+    var shopBId: Int64
+}
+
+nonisolated struct PlanItem: Codable, Sendable, Hashable, Identifiable {
+    var itemId: Int64
+    var text: String
+    var productId: Int64? = nil
+    var qty: Double
+    var shopId: Int64? = nil
+    /// compared | only_here | only_elsewhere | no_price
+    var status: String
+    var noPriceReason: String? = nil
+    var unitCents: Int64? = nil
+    var baseUnit: BaseUnit? = nil
+    var packSizeKnown: Bool
+    var estimateCents: Int64? = nil
+    var savingCents: Int64
+    var otherPrices: [PlanOtherPrice]
+    var prices: [PlanShopPrice]
+    /// seen_once | old_price | different_pack | not_enough_data
+    var confidence: [String]
+    var lastSeen: Date? = nil
+    var lastSeenShopId: Int64? = nil
+    var explanation: String
+    var pairConfirmation: PairConfirmation? = nil
+    var id: Int64 { itemId }
+}
+
+nonisolated struct PlanSummary: Codable, Sendable, Hashable {
+    var itemCount: Int
+    var pricedCount: Int
+    var comparedCount: Int
+    var noPriceCount: Int
+    var perPieceCount: Int
+    var savingCents: Int64
+    var grossSavingCents: Int64
+    var extraStops: Int
+    var extraStopCents: Int64
+    var extraStopTotalCents: Int64
+    var maxStops: Int
+    var oneShopFine: Bool
+    var splitSavingCents: Int64
+    /// none | low | medium | high
+    var confidence: String
+    var coverage: Double
+}
+
+nonisolated struct ListPlan: Codable, Sendable, Hashable {
+    var computedAt: Date
+    var listRev: Int64
+    /// split | one_shop_fine | not_enough_data
+    var status: String
+    var usualShopId: Int64? = nil
+    var stores: [PlanStore]
+    var items: [PlanItem]
+    var summary: PlanSummary
+}
+
+nonisolated struct ProductGroupConfirm: Codable, Sendable {
+    var productIds: [Int64]
+    var name: String? = nil
+}
+
+nonisolated struct ProductGroupResult: Codable, Sendable {
+    var opId: Int64
+}
+
+nonisolated struct ProductPairBody: Codable, Sendable {
+    var productAId: Int64
+    var productBId: Int64
+}
+
+nonisolated struct ProductGroupOp: Codable, Sendable {
+    var opId: Int64
+}
+
+nonisolated struct SuggestedProduct: Codable, Sendable, Hashable {
+    var productId: Int64
+    var name: String
+    var nameEn: String? = nil
+    var shops: [ShopRefLite]
+}
+
+nonisolated struct ShopRefLite: Codable, Sendable, Hashable {
+    var id: Int64
+    var name: String
+}
+
+nonisolated struct ProductGroupSuggestion: Codable, Sendable, Hashable, Identifiable {
+    var a: SuggestedProduct
+    var b: SuggestedProduct
+    var score: Double
+    var id: String { "\(a.productId)-\(b.productId)" }
 }

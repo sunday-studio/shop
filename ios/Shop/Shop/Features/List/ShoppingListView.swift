@@ -7,6 +7,8 @@ struct ShoppingListView: View {
     @State private var frequent: [FrequentItem] = []
     /// Groups the user opened or closed by hand (done groups start collapsed, others expanded).
     @State private var collapseOverrides: [Int64: Bool] = [:]
+    /// "Planned" (the list as it is) or "By store" (grouped by the cheapest shop); remembered per device.
+    @AppStorage("list.byStore") private var byStore = false
 
     private var list: ShoppingListStore { app.list }
 
@@ -27,7 +29,16 @@ struct ShoppingListView: View {
                     .shopListRow()
             }
 
-            if !suggestions.isEmpty {
+            if showsPlanControl {
+                SegmentedControl(options: [false, true], title: { $0 ? "By store" : "Planned" }, selection: Binding(get: { byStore }, set: { value in
+                    withAnimation(Motion.collapse) { byStore = value }
+                }))
+                .padding(.horizontal, Space.edge)
+                .padding(.top, Space.lx)
+                .shopListRow()
+            }
+
+            if !suggestions.isEmpty && !(showsPlanControl && byStore) {
                 VStack(alignment: .leading, spacing: Space.m) {
                     TypeStyle.label.text("Usually bought by now").foregroundStyle(Palette.ink2)
                     FlowLayout(spacing: 6, lineSpacing: 6) {
@@ -57,7 +68,7 @@ struct ShoppingListView: View {
                     .shopListRow()
             }
 
-            items
+            if showsPlanControl && byStore { storeRows } else { items }
         }
         .shopListStyle()
         .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
@@ -69,6 +80,9 @@ struct ShoppingListView: View {
         .background(Palette.bg)
         .toolbar(.hidden, for: .navigationBar)
         .task {
+            await list.refreshPlan()
+        }
+        .task {
             await list.sync()
             frequent = (try? await app.api.frequentItems()) ?? frequent
         }
@@ -78,6 +92,10 @@ struct ShoppingListView: View {
         Menu {
             Button("New group", systemImage: "plus") { app.trays.present("new-group") { NewGroupTray() } }
             Button("New from template", systemImage: "doc.on.doc") { app.trays.present("new-from-template") { NewFromTemplateTray() } }
+            Button(byStore ? "Back to planned list" : "Group by store", systemImage: "storefront") {
+                withAnimation(Motion.collapse) { byStore.toggle() }
+            }
+            .disabled(!showsPlanControl)
             if !list.archivedGroups.isEmpty {
                 Button("Show archived", systemImage: "archivebox") { app.trays.present("archived-groups") { ArchivedGroupsTray() } }
             }
@@ -95,6 +113,77 @@ struct ShoppingListView: View {
                 .background(Palette.sunk, in: Circle())
         }
         .accessibilityLabel("List options")
+    }
+
+    // MARK: By store
+
+    private var showsPlanControl: Bool {
+        guard let plan = list.plan else { return false }
+        return plan.status != "not_enough_data"
+    }
+
+    @ViewBuilder
+    private var storeRows: some View {
+        if let plan = list.plan {
+            if list.planFailed || !app.network.isOnline {
+                StaleBanner(what: "plan", offline: !app.network.isOnline) { Task { await list.refreshPlan() } }
+                    .padding(.horizontal, Space.edge).padding(.top, Space.l).shopListRow()
+                TypeStyle.rowSub.text("Plan is from \(PlanText.weekday(plan.computedAt))").foregroundStyle(Palette.ink2)
+                    .padding(.horizontal, Space.gutter).padding(.top, Space.s).shopListRow()
+            }
+            PlanSummaryCard(plan: plan, loading: list.isPlanning,
+                            onHow: { app.trays.present("plan-how") { PlanHowTray() } },
+                            onChangeStop: { app.push(.settings) })
+                .padding(.horizontal, Space.edge).padding(.top, Space.lx).shopListRow()
+            let byId = Dictionary(plan.items.map { ($0.itemId, $0) }, uniquingKeysWith: { a, _ in a })
+            ForEach(plan.stores) { store in
+                StoreSectionHeader(store: store)
+                    .padding(.horizontal, Space.gutter).shopListRow()
+                let here = plan.items.filter { ($0.shopId ?? plan.usualShopId) == store.shopId && $0.status != "no_price" }
+                ForEach(here.compactMap { p in list.items.first { $0.id == p.itemId } }) { item in
+                    planRow(item, plan: byId[item.id], usualId: plan.usualShopId)
+                }
+                if store.isUsual {
+                    let none = plan.items.filter { $0.status == "no_price" }
+                    if !none.isEmpty {
+                        TypeStyle.label.text("No price yet").foregroundStyle(Palette.ink2)
+                            .padding(.horizontal, Space.gutter).padding(.top, Space.l).shopListRow()
+                        ForEach(none.compactMap { p in list.items.first { $0.id == p.itemId } }) { item in
+                            planRow(item, plan: byId[item.id], usualId: plan.usualShopId)
+                        }
+                    }
+                }
+            }
+            if !list.checked.isEmpty {
+                TypeStyle.body.text("\(list.checked.count) checked off").foregroundStyle(Palette.ink2)
+                    .padding(.horizontal, Space.gutter).padding(.top, Space.l).shopListRow()
+                ForEach(list.checked) { item in row(item) }
+            }
+        } else {
+            SkeletonRows { SkeletonListRow() }.padding(.horizontal, Space.gutter).shopListRow()
+        }
+    }
+
+    private func planRow(_ item: ListItem, plan: PlanItem?, usualId: Int64?) -> some View {
+        row(item, hintOverride: plan.map { planHint($0, usualId: usualId) }, onHint: plan.map { p in { app.trays.present("plan-why") { PlanWhyTray(item: p) } } })
+    }
+
+    /// `€1,29 / l here · €1,79 at Greenfield`, or why there is nothing to compare.
+    private func planHint(_ p: PlanItem, usualId: Int64?) -> String {
+        guard let unit = p.unitCents, let base = p.baseUnit else {
+            switch p.noPriceReason {
+            case "stale": return "Last price is over 90 days old"
+            default: return "Scan a receipt to learn the price"
+            }
+        }
+        var text = "\(Money.perUnit(unit, unit: base)) here"
+        if !p.packSizeKnown { return text + " · Pack size unknown, can't compare" }
+        if let other = p.otherPrices.first(where: { $0.shopId != p.shopId }), let name = p.prices.first(where: { $0.shopId == other.shopId })?.shopName {
+            text += " · \(Money.perUnit(other.unitCents, unit: base)) at \(name)"
+        } else if p.status == "only_here" {
+            text += " · only seen here"
+        }
+        return text
     }
 
     private func isCollapsed(_ group: ListGroup) -> Bool {
@@ -245,19 +334,19 @@ struct ShoppingListView: View {
         }
     }
 
-    private func row(_ item: ListItem) -> some View {
+    private func row(_ item: ListItem, hintOverride: String? = nil, onHint: (() -> Void)? = nil) -> some View {
         SwipeActionRow(
             leading: SwipeAction(icon: "checkmark", title: item.isChecked ? "Uncheck" : "Check off", tint: Accent.green, haptic: .soft) { toggleBySwipe(item) },
             trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red, removesRow: true, haptic: .soft) { remove(item) }
         ) {
         ListItemRow(
             title: item.title,
-            hint: hint(item),
-            hintShop: receiptNote(item)?.shop ?? item.cheapest?.shopName,
+            hint: hintOverride ?? hint(item),
+            hintShop: hintOverride != nil ? nil : (receiptNote(item)?.shop ?? item.cheapest?.shopName),
             quantity: quantity(item),
             isChecked: item.isChecked,
             onToggle: { checked in toggle(item, checked) },
-            onTap: { openEdit(item) }
+            onTap: { if let onHint { onHint() } else { openEdit(item) } }
         )
         .padding(.horizontal, Space.gutter)
         }

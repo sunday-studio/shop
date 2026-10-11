@@ -286,6 +286,17 @@ func deleteCategory(_ id: Int64, moveTo: Int64? = nil) async throws {
     func saveListGroupAsTemplate(_ id: Int64, _ body: ListGroupCopyInput) async throws -> ListGroup { try await send("POST", "/v1/list/groups/\(id)/save-as-template", body: body) }
     func moveListItem(_ id: Int64, groupId: Int64?) async throws -> ListItem { try await send("POST", "/v1/list/\(id)/move", body: ListMoveBody(groupId: groupId)) }
 
+    func listPlan(extraStopCents: Int? = nil, maxStops: Int? = nil) async throws -> ListPlan {
+        try await get("/v1/list/plan", query: ["extra_stop_cents": extraStopCents.map { String($0) }, "max_stops": maxStops.map { String($0) }])
+    }
+    func listPlanSettings() async throws -> ListPlanSettings { try await get("/v1/list/plan/settings") }
+    func updateListPlanSettings(_ patch: ListPlanSettingsPatch) async throws -> ListPlanSettings { try await send("PATCH", "/v1/list/plan/settings", body: patch) }
+
+    func productGroupSuggestions(limit: Int = 50) async throws -> [ProductGroupSuggestion] { try await get("/v1/product-groups/suggestions", query: ["limit": String(limit)]) }
+    func confirmSameKind(_ ids: [Int64]) async throws -> ProductGroupResult { try await send("POST", "/v1/product-groups/confirm", body: ProductGroupConfirm(productIds: ids)) }
+    func denySameKind(_ a: Int64, _ b: Int64) async throws -> ProductGroupOp { try await send("POST", "/v1/product-groups/deny", body: ProductPairBody(productAId: a, productBId: b)) }
+    func undoProductGroupOp(_ id: Int64) async throws { try await perform("POST", "/v1/product-group-ops/\(id)/undo") }
+
     func listSuggestions() async throws -> [ListSuggestion] { try await get("/v1/list/suggestions") }
     func acceptListSuggestion(_ id: Int64) async throws -> ListItem { try await send("POST", "/v1/list/suggestions/\(id)/accept") }
     func dismissListSuggestion(_ id: Int64) async throws { try await perform("POST", "/v1/list/suggestions/\(id)/dismiss") }

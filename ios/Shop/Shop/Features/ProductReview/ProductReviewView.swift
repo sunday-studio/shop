@@ -30,7 +30,7 @@ struct ProductReviewView: View {
         }
         .background(Palette.bg)
         .toolbar(.hidden, for: .navigationBar)
-        .task { await model.load() }
+        .task { await model.load(); await model.loadSameKind() }
     }
 
     @ViewBuilder
@@ -45,9 +45,13 @@ struct ProductReviewView: View {
                     .textStyle(.label).foregroundStyle(Palette.blueText)
                     .buttonStyle(.press(haptic: .selection))
             }
+            ForEach(model.sameKind) { s in
+                SameKindCard(suggestion: s, onYes: { Task { await model.answerSameKind(s, same: true) } }, onNo: { Task { await model.answerSameKind(s, same: false) } })
+                    .transition(.opacity)
+            }
             if !model.hasLoaded && model.items.isEmpty {
                 ForEach(0..<3, id: \.self) { _ in ReviewCardSkeleton() }
-            } else if model.items.isEmpty && model.loadError == nil {
+            } else if model.items.isEmpty && model.sameKind.isEmpty && model.loadError == nil {
                 EmptyState(title: "All caught up", message: "New products show up here when Shop isn't sure about one. Scan or confirm a receipt and they'll appear.") {
                     GlyphIllustration(icon: .check, color: Accent.green)
                 }

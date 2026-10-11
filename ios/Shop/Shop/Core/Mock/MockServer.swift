@@ -21,6 +21,12 @@ final class MockServer: HTTPTransport {
     private var reducedBefore: [Int64: (qty: Double?, note: String?)] = [:]
     private var reducedBy: [Int64: Int64] = [:]
     private var reconciledReceipts: Set<Int64> = []
+    private var planSettings = ListPlanSettings(extraStopCents: 250, maxStops: 2)
+    private var sameKindSuggestions: [ProductGroupSuggestion] = [
+        ProductGroupSuggestion(a: SuggestedProduct(productId: 1, name: "Halfvolle melk", nameEn: "Semi-skimmed milk", shops: [ShopRefLite(id: 1, name: "Albert Heijn")]),
+                               b: SuggestedProduct(productId: 2, name: "Halfvolle melk 1 l", nameEn: nil, shops: [ShopRefLite(id: 2, name: "Lidl")]), score: 0.91),
+    ]
+    private var productGroupOps: Int64 = 0
     private var listGroups: [ListGroup] = []
     private var listRev: Int64 = 1
     /// client_id → what the first call made (offline retries must not duplicate).
@@ -468,6 +474,27 @@ final class MockServer: HTTPTransport {
             return ok(MockData.frequentItems)
 
         // List
+        case ("GET", "v1/list/plan/settings"):
+            return ok(planSettings)
+        case ("PATCH", "v1/list/plan/settings"):
+            guard let patch = try? decoder.decode(ListPlanSettingsPatch.self, from: body) else { return bad() }
+            if let c = patch.extraStopCents { guard (0...2000).contains(c) else { return bad() }; planSettings.extraStopCents = c }
+            if let m = patch.maxStops { guard (1...3).contains(m) else { return bad() }; planSettings.maxStops = m }
+            return ok(planSettings)
+        case ("GET", "v1/list/plan"):
+            return ok(mockPlan(extraStop: Int(q["extra_stop_cents"] ?? "") ?? planSettings.extraStopCents))
+        case ("GET", "v1/product-groups/suggestions"):
+            return ok(sameKindSuggestions)
+        case ("POST", "v1/product-groups/confirm"), ("POST", "v1/product-groups"):
+            productGroupOps += 1
+            sameKindSuggestions.removeAll()
+            return ok(ProductGroupResult(opId: productGroupOps))
+        case ("POST", "v1/product-groups/deny"):
+            productGroupOps += 1
+            sameKindSuggestions.removeAll()
+            return ok(ProductGroupOp(opId: productGroupOps))
+        case ("POST", "v1/product-group-ops/:id/undo"):
+            return (204, Data())
         case ("GET", "v1/list/changes"):
             // Always the complete list (`full_resync`): valid for any cursor.
             listRev += 1
@@ -828,7 +855,7 @@ final class MockServer: HTTPTransport {
         let limit = Int(q["limit"] ?? "") ?? 50
         let offset = Int(q["offset"] ?? "") ?? 0
         let page = limit == 0 ? [] : Array(items.dropFirst(offset).prefix(limit))
-        return ok(ReviewQueueResponse(total: total, counts: counts, items: page))
+        return ok(ReviewQueueResponse(total: total, counts: counts, items: page, sameKindTotal: sameKindSuggestions.count))
     }
 
     private func review(_ pid: Int64?, _ body: Data) -> (Int, Data) {
@@ -939,6 +966,63 @@ final class MockServer: HTTPTransport {
         guard id == 102 || unassigned, !acceptedSuggestions.contains(id) else { return nil }
         return ShopSuggestion(kind: .new, key: "new:aldi|lange kerkstraat 34", shopId: nil, name: "Aldi", chain: "Aldi", branch: "Hoofdstraat 12, Teststad", domain: "aldi.nl",
                               confidence: 0.92, evidence: ["ALDI", "Hoofdstraat 12", "Teststad"], waitingReceiptIds: acceptedSuggestions.contains(104) ? [] : [104])
+    }
+
+    /// `-mock`: the usual shop (Albert Heijn) plus Lidl for the cheaper items, an unpriced item and one
+    /// item that needs a "same kind?" answer.
+    private func mockPlan(extraStop: Int) -> ListPlan {
+        let open = list.filter { !$0.isChecked && $0.groupId == nil }
+        func price(_ shop: Int64, _ name: String, _ cents: Int64, unit: BaseUnit = .kg, usual: Bool, purchases: Int = 4, age: Int = 9) -> PlanShopPrice {
+            PlanShopPrice(shopId: shop, shopName: name, unitCents: cents, baseUnit: unit, purchases: purchases, latestAt: .now.addingTimeInterval(-Double(age) * 86400), ageDays: age, isUsual: usual,
+                          points: [PlanPoint(at: .now.addingTimeInterval(-Double(age) * 86400), unitCents: cents, paidCents: cents, productId: 1, productName: "")])
+        }
+        var items: [PlanItem] = []
+        var lidlCount = 0, lidlCents: Int64 = 0, usualCents: Int64 = 0, usualCount = 0, gross: Int64 = 0, compared = 0, unpriced = 0
+        for item in open {
+            var p = PlanItem(itemId: item.id, text: item.title, productId: item.productId, qty: item.qty ?? 1, shopId: 1, status: "no_price", unitCents: nil, baseUnit: nil,
+                             packSizeKnown: true, estimateCents: nil, savingCents: 0, otherPrices: [], prices: [], confidence: [], lastSeen: nil, explanation: "No recent price for this item.")
+            switch item.productId {
+            case 1:  // milk: cheaper at Lidl
+                p.status = "compared"; p.shopId = 2; p.unitCents = 85; p.baseUnit = .l; p.estimateCents = 255; p.savingCents = 90
+                p.prices = [price(2, "Lidl", 85, unit: .l, usual: false), price(1, "Albert Heijn", 115, unit: .l, usual: true)]
+                p.otherPrices = [PlanOtherPrice(shopId: 1, unitCents: 115)]
+                p.explanation = "Lidl €0,85 per litre, Albert Heijn €1,15."
+                gross += 90; compared += 1; lidlCount += 1; lidlCents += 255
+            case 6:  // hummus: cheaper at Lidl, seen once
+                p.status = "compared"; p.shopId = 2; p.unitCents = 695; p.baseUnit = .kg; p.estimateCents = 280; p.savingCents = 320; p.confidence = ["seen_once"]
+                p.prices = [price(2, "Lidl", 695, usual: false, purchases: 1), price(1, "Albert Heijn", 850, usual: true)]
+                p.otherPrices = [PlanOtherPrice(shopId: 1, unitCents: 850)]
+                p.explanation = "Lidl €6,95 per kilo (seen once), Albert Heijn €8,50."
+                gross += 320; compared += 1; lidlCount += 1; lidlCents += 280
+            case 2, 4, 5, 7:  // usual shop only (yoghurt also asks "same kind?")
+                p.status = "only_here"; p.unitCents = 438; p.baseUnit = .kg; p.estimateCents = 300 + Int64(item.id) * 10
+                p.prices = [price(1, "Albert Heijn", 438, usual: true)]
+                p.explanation = "Only seen at Albert Heijn."
+                if item.productId == 2, let s = sameKindSuggestions.first {
+                    p.confidence = ["not_enough_data"]
+                    p.pairConfirmation = PairConfirmation(productA: s.a.productId, productB: s.b.productId, nameA: s.a.name, nameB: s.b.name, shopA: "Albert Heijn", shopB: "Lidl", shopAId: 1, shopBId: 2)
+                }
+                usualCents += p.estimateCents ?? 0; usualCount += 1
+            default:
+                if item.productId == nil && item.text == "Afwasmiddel" {
+                    p.confidence = ["not_enough_data"]
+                    p.explanation = "Not linked to a product, so there is no price."
+                    p.pairConfirmation = nil
+                }
+                unpriced += 1
+            }
+            items.append(p)
+        }
+        let net = max(0, gross - Int64(extraStop))
+        let split = net > 0
+        let stores = [
+            PlanStore(shopId: 1, name: "Albert Heijn", itemCount: usualCount + unpriced, estimateCents: usualCents, unpricedCount: unpriced, isUsual: true),
+        ] + (split ? [PlanStore(shopId: 2, name: "Lidl", itemCount: lidlCount, estimateCents: lidlCents, unpricedCount: 0, isUsual: false)] : [])
+        if !split { for i in items.indices where items[i].shopId == 2 { items[i].shopId = 1; items[i].savingCents = 0 } }
+        let summary = PlanSummary(itemCount: open.count, pricedCount: open.count - unpriced, comparedCount: compared, noPriceCount: unpriced, perPieceCount: 0, savingCents: split ? net : 0,
+                                  grossSavingCents: gross, extraStops: split ? 1 : 0, extraStopCents: Int64(extraStop), extraStopTotalCents: split ? Int64(extraStop) : 0, maxStops: planSettings.maxStops,
+                                  oneShopFine: !split, splitSavingCents: gross, confidence: "medium", coverage: Double(compared) / Double(max(1, open.count)))
+        return ListPlan(computedAt: .now, listRev: listRev, status: split ? "split" : "one_shop_fine", usualShopId: 1, stores: stores, items: items, summary: summary)
     }
 
     private func seedGroups() {
