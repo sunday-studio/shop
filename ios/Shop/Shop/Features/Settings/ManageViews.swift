@@ -105,13 +105,14 @@ struct ShopsView: View {
                         confirmTitle: "Delete shop", destructive: true) {
                 do {
                     try await app.api.deleteShop(shop.id)
-                    app.catalog.removeShop(shop.id)
-                    Haptics.play(.error)
                     return true
                 } catch let e as APIError {
                     app.toasts.error(e.message)
                     return false
                 } catch { return false }
+            } afterDismiss: {
+                app.catalog.removeShop(shop.id)
+                Haptics.play(.warning)
             }
         }
     }
@@ -174,12 +175,13 @@ struct ShopFormTray: View {
                                         confirmTitle: "Delete shop", destructive: true) {
                                 do {
                                     try await app.api.deleteShop(shop.id)
-                                    app.catalog.removeShop(shop.id)
                                     return true
                                 } catch let e as APIError {
                                     app.toasts.error(e.message)
                                     return false
                                 } catch { return false }
+                            } afterDismiss: {
+                                app.catalog.removeShop(shop.id)
                             }
                         }
                     }
@@ -376,9 +378,6 @@ struct CategoriesView: View {
                 ConfirmTray(title: "Delete \(category.name)?", message: "No products use it.", confirmTitle: "Delete category", destructive: true) {
                     do {
                         try await app.api.deleteCategory(category.id)
-                        app.catalog.removeCategory(category.id)
-                        Haptics.play(.warning)
-                        app.toasts.show("\(category.name) deleted")
                         return true
                     } catch let error as APIError {
                         if case .conflict(let problem) = error, problem.code == "category_has_products" {
@@ -389,6 +388,10 @@ struct CategoriesView: View {
                         }
                         return false
                     } catch { return false }
+                } afterDismiss: {
+                    app.catalog.removeCategory(category.id)
+                    Haptics.play(.warning)
+                    app.toasts.show("\(category.name) deleted")
                 }
             }
         } else {
@@ -463,11 +466,13 @@ struct MoveProductsTray: View {
         defer { working = false }
         do {
             try await app.api.deleteCategory(category.id, moveTo: destination)
+            trays.dismiss()
+            // Let the tray finish sliding away before the list, toast and refreshes change.
+            try? await Task.sleep(for: .milliseconds(350))
             app.catalog.removeCategory(category.id)
             Haptics.play(.warning)
             let target = destination == 0 ? "no category" : app.catalog.category(destination)?.name ?? "another category"
             app.toasts.show("\(category.name) deleted · \(count) product\(count == 1 ? "" : "s") moved to \(target)")
-            trays.dismiss()
             try? await app.catalog.refreshReference()
             try? await app.catalog.refreshProducts()
         } catch let error as APIError {
@@ -555,7 +560,7 @@ struct CategoryFormTray: View {
             if let onSaved { onSaved(saved) } else { trays.dismiss() }
         } catch let error as APIError {
             if case .conflict(let problem) = error, problem.code == "category_name_taken" {
-                takenName = trimmed
+                withAnimation(Motion.sheetSwap) { takenName = trimmed }
                 Haptics.play(.warning)
             } else {
                 Haptics.play(.error)

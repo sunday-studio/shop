@@ -472,6 +472,9 @@ struct ConfirmTray: View {
     let confirmTitle: String
     var destructive: Bool = false
     let action: () async -> Bool
+    /// Runs about 0.35 s after the tray has closed. Put list changes, pops and toasts here:
+    /// mutating them in the same turn as the dismiss makes the tray's slide stutter.
+    var afterDismiss: (@MainActor () -> Void)? = nil
 
     @Environment(TrayCoordinator.self) private var trays
     @State private var working = false
@@ -492,7 +495,15 @@ struct ConfirmTray: View {
                         working = true
                         let ok = await action()
                         working = false
-                        if ok { trays.dismiss() }
+                        if ok {
+                            trays.dismiss()
+                            if let afterDismiss {
+                                Task { @MainActor in
+                                    try? await Task.sleep(for: .milliseconds(350))
+                                    afterDismiss()
+                                }
+                            }
+                        }
                     }
                 } label: {
                     LoadingLabel(title: confirmTitle, isLoading: working)
