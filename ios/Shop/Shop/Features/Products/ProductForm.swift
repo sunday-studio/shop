@@ -425,17 +425,17 @@ struct ProductFormTray: View {
     }
 
     private var photoTile: some View {
-        let swatch = CategoryColor.swatch(for: app.catalog.category(draft.categoryId)?.name)
+        let swatch = CategoryColor.swatch(for: app.catalog.category(draft.categoryId))
         return ZStack(alignment: .bottomTrailing) {
             Group {
                 if let photo = draft.photo {
                     Image(uiImage: photo).resizable().scaledToFill()
                 } else if let existing = draft.existing {
-                    ProductHero(name: existing.name, category: app.catalog.category(existing.categoryId)?.name, imageURL: app.api.productImageURL(existing))
+                    ProductHero(name: existing.name, category: app.catalog.category(existing.categoryId)?.name, categoryToken: app.catalog.category(existing.categoryId)?.color, imageURL: app.api.productImageURL(existing))
                 } else if let url = draft.prefill?.imageUrl.flatMap(URL.init(string:)) {
                     CachedImage(url: url) { $0.resizable().scaledToFill() } placeholder: { swatch.tile }
                 } else {
-                    ProductHero(name: draft.name, category: app.catalog.category(draft.categoryId)?.name)
+                    ProductHero(name: draft.name, category: app.catalog.category(draft.categoryId)?.name, categoryToken: app.catalog.category(draft.categoryId)?.color)
                 }
             }
             .frame(width: 84, height: 84)

@@ -67,7 +67,7 @@ struct ProductReviewView: View {
                             sectionHeader(section.reason, count: section.count)
                         }
                     }
-                    LoadMoreFooter(state: model.isLoadingMore ? .loading : .idle, retry: {})
+                    LoadMoreFooter(state: model.loadMoreFailed ? .failed : (model.isLoadingMore ? .loading : .idle)) { Task { await model.loadMore() } }
                 }
             }
         }
@@ -99,6 +99,7 @@ struct ProductReviewView: View {
                     name: model.displayName(for: item),
                     detail: item.product.sizeText,
                     categoryName: model.categoryName(for: item),
+                    categoryToken: app.catalog.category(model.pickedCategory[item.id] ?? item.product.categoryId)?.color,
                     imageURL: app.api.productImageURL(item.product),
                     reason: reason,
                     suggestionName: item.suggestedMerge?.name,
@@ -277,7 +278,7 @@ private struct ReviewCategoryTray: View {
                             trays.dismiss()
                         } label: {
                             HStack(spacing: Space.l) {
-                                CategoryDot(color: CategoryColor.swatch(for: category.name).color, size: 12)
+                                CategoryDot(color: CategoryColor.swatch(for: category).color, size: 12)
                                 Text(category.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
                                 Spacer()
                                 if (model.pickedCategory[item.id] ?? item.product.categoryId) == category.id {

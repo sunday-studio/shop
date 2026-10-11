@@ -126,7 +126,7 @@ struct ProductsView: View {
                     model.categoryChanged()
                 }
                 ForEach(app.catalog.categories) { c in
-                    Chip(title: c.name, isSelected: model.categoryId == c.id, dot: CategoryColor.swatch(for: c.name).color) {
+                    Chip(title: c.name, isSelected: model.categoryId == c.id, dot: CategoryColor.swatch(for: c).color) {
                         model.categoryId = c.id
                         model.categoryChanged()
                     }
@@ -166,8 +166,15 @@ struct ProductsView: View {
                     }
                     .padding(.top, 30)
                 } else {
-                    EmptyState(title: "No products yet", message: "Unpack your groceries to add products by barcode, or link receipt lines to new products.") {
-                        GlyphIllustration(icon: .products, color: Accent.blue)
+                    VStack(spacing: Space.m) {
+                        EmptyState(title: "No products yet", message: "Unpack your groceries to add products by barcode, or link receipt lines to new products.",
+                                   action: (title: "Scan a barcode", run: { app.startCapture(.unpack) })) {
+                            GlyphIllustration(icon: .products, color: Accent.blue)
+                        }
+                        Button("Add by hand") { addProduct() }
+                            .textStyle(.label)
+                            .foregroundStyle(Palette.blueText)
+                            .buttonStyle(.press(haptic: .selection))
                     }
                     .padding(.top, 30)
                 }
@@ -181,6 +188,7 @@ struct ProductsView: View {
                         name: product.name,
                         meta: meta(product),
                         category: app.catalog.category(product.categoryId)?.name,
+                        categoryToken: app.catalog.category(product.categoryId)?.color,
                         imageURL: app.api.productImageURL(product),
                         price: product.cheapest.map { Money.perUnit($0.latestUnitCents, unit: $0.baseUnit) },
                         priceShop: product.cheapest?.shopName

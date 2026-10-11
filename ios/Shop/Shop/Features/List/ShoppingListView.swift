@@ -41,6 +41,13 @@ struct ShoppingListView: View {
                 .shopListRow()
             }
 
+            if let error = list.lastError, !error.isConnectivity, !list.items.isEmpty {
+                StaleBanner(what: "list") { Task { await list.sync() } }
+                    .padding(.horizontal, Space.edge)
+                    .padding(.top, Space.l)
+                    .shopListRow()
+            }
+
             items
         }
         .shopListStyle()
@@ -242,7 +249,7 @@ struct AddItemTray: View {
                     ForEach(results.prefix(3)) { p in
                         Button { addProduct(p) } label: {
                             HStack(spacing: Space.l) {
-                                ProductTile(name: p.name, category: app.catalog.category(p.categoryId)?.name, size: 34)
+                                ProductTile(name: p.name, category: app.catalog.category(p.categoryId)?.name, categoryToken: app.catalog.category(p.categoryId)?.color, size: 34)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(p.name).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
                                     Text([p.sizeText, app.catalog.category(p.categoryId)?.name].compactMap { $0 }.joined(separator: " · "))
@@ -396,7 +403,7 @@ struct SuggestionsTray: View {
                     ForEach(items.sorted { ($0.due ? 0 : 1, -$0.daysSince) < ($1.due ? 0 : 1, -$1.daysSince) }) { item in
                         let onList = app.list.open.contains { $0.productId == item.productId }
                         HStack(spacing: Space.l) {
-                            ProductTile(name: item.productName, category: app.catalog.categoryName(forProduct: item.productId), size: 34)
+                            ProductTile(name: item.productName, category: app.catalog.categoryName(forProduct: item.productId), categoryToken: app.catalog.category(app.catalog.product(item.productId)?.categoryId)?.color, size: 34)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(item.productName).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
                                 Text("Every \(Int(item.medianIntervalDays.rounded())) days · last \(Int(item.daysSince.rounded())) days ago")

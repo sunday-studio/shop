@@ -94,7 +94,7 @@ final class Catalog {
     }
 
     func categoryColor(forProduct id: Int64?) -> CategoryColor.Swatch {
-        CategoryColor.swatch(for: categoryName(forProduct: id))
+        CategoryColor.swatch(for: category(product(id)?.categoryId))
     }
 
     var sortedProducts: [Product] {

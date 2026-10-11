@@ -18,6 +18,7 @@ final class ProductReviewModel {
     private(set) var hasLoaded = false
     private(set) var isLoading = false
     private(set) var isLoadingMore = false
+    private(set) var loadMoreFailed = false
     private(set) var loadError: APIError?
     private(set) var workingIds: Set<Int64> = []
     /// Category / name picked on a card but not sent yet.
@@ -83,13 +84,24 @@ final class ProductReviewModel {
 
     func loadMoreIfNeeded(current item: ReviewItem) async {
         guard hasMore, !isLoadingMore, let index = items.firstIndex(where: { $0.id == item.id }), index >= items.count - 3 else { return }
+        guard !loadMoreFailed else { return }
+        await loadMore()
+    }
+
+    /// Page 2 and later; a failure leaves a "Try again" row instead of retrying on every scroll.
+    func loadMore() async {
+        guard hasMore, !isLoadingMore else { return }
         isLoadingMore = true
+        loadMoreFailed = false
         defer { isLoadingMore = false }
-        if let response = try? await api.reviewQueue(limit: pageSize, offset: items.count) {
+        do {
+            let response = try await api.reviewQueue(limit: pageSize, offset: items.count)
             let known = Set(items.map(\.id))
             items += response.items.filter { !known.contains($0.id) }
             total = response.total
             counts = response.counts
+        } catch {
+            loadMoreFailed = true
         }
     }
 

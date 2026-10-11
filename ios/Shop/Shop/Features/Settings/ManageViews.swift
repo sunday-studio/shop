@@ -243,19 +243,7 @@ struct ShopFormTray: View {
 extension Category {
     /// The stored colour token as a colour; falls back to the name-based swatch for old caches.
     var dotColor: Color {
-        switch color {
-        case "blue": Accent.blue
-        case "green": Accent.green
-        case "red": Accent.red
-        case "orange": Accent.orange
-        case "yellow": Accent.yellow
-        case "cyan": Accent.cyan
-        case "purple": Accent.purple
-        case "teal": Accent.teal
-        case "pink": Accent.pink
-        case "grey": Palette.neutral
-        default: CategoryColor.swatch(for: name).color
-        }
+        CategoryColor.swatch(for: self).color
     }
 }
 
@@ -502,7 +490,7 @@ struct CategoryFormTray: View {
 
     private var trimmed: String { name.split(separator: " ").joined(separator: " ") }
     private var isTaken: Bool { takenName?.caseInsensitiveCompare(trimmed) == .orderedSame }
-    private var canSave: Bool { !trimmed.isEmpty && !saving && (category.map { $0.name != trimmed || $0.color != color } ?? true) }
+    private var canSave: Bool { !trimmed.isEmpty && !saving && !isTaken && (category.map { $0.name != trimmed || $0.color != color } ?? true) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lx) {

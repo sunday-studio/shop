@@ -176,7 +176,7 @@ struct ProductDetailView: View {
 
     private func header(_ model: ProductDetailModel, _ product: Product) -> some View {
         HStack(spacing: Space.xl) {
-            ProductHero(name: product.name, category: app.catalog.category(product.categoryId)?.name, imageURL: app.api.productImageURL(product))
+            ProductHero(name: product.name, category: app.catalog.category(product.categoryId)?.name, categoryToken: app.catalog.category(product.categoryId)?.color, imageURL: app.api.productImageURL(product))
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text(product.name)
                     .textStyle(TypeStyle.emptyTitle.sized(26))
