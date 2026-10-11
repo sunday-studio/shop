@@ -361,7 +361,8 @@ struct HomeView: View {
                 amount: p.amount,
                 amountColor: p.amountColor,
                 showsSpinner: p.spinner,
-                isUnknownShop: unknownShop
+                isUnknownShop: unknownShop,
+                needsAttention: receipt.status == .ok && (receipt.unlinkedCount ?? 0) > 0
             )
         }
         .buttonStyle(.press(haptic: nil))
