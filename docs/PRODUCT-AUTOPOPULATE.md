@@ -1,9 +1,8 @@
 # Product auto-population: build spec
 
-Status: approved by the user, ready for design, then backend, then swift.
-Written 2026-10-10 by the research/spike agent. Research only, no product code.
+Status: built (backend and iOS app). Written 2026-10-10 from research on 13 real receipts; the backend differences from the original text are listed in [BACKEND-STATUS.md](BACKEND-STATUS.md).
 
-Pipeline: **research spec (this document) → design → backend → swift.** Each step works from this file. If a step finds a gap or changes a decision, edit this file and tell the coordinator.
+This document is the spec for automatic product creation: the rules, data model and API. If you change a decision, edit it here.
 
 ## 1. The decision
 
@@ -286,27 +285,26 @@ Responses: `accept`/`keep_separate` → `200 {product}`. `merge` → `200 {merge
 
 Add `review_new_products` (read: the queue) and `resolve_review(product_id, action, into_product_id?)` (write).
 
-## 7. Who does what, in order
+## 7. Work breakdown
 
-### Step 1: Design (design & experience agent)
+### Design
 
 Deliver as updates to the wireframes/mockups the project already has (same canvas and rules as `design/DESIGN-RULES.md`, motion per `design/MOTION.md`). Light and dark.
 
 1. **Review queue screen** ("New products"): list of cards with the product, why it is here (the six reasons in plain words), and the actions: Accept, Same as X (merge), Keep separate, Discard, pick a category, edit the name. Show the receipt line it came from (shop, date, raw text). States: loading, empty ("All caught up"), one item, many, error/offline, and after an action (the card leaves, count updates). Barcode cards show the scanned code and the OFF photo.
 2. **Undo toast** after merge and discard: text ("Merged into X"), Undo button, duration (proposed 8 s), where it sits above the tab bar, what happens if the user navigates away.
 3. **Catalog badge**: count of products waiting, and where it appears (tab bar and/or catalog header). Empty = no badge.
-4. **Scan creates a product (Unpack)**: in the continuous scanner, three outcomes: *known* (as today: success haptic, "✓ name"), *created with data* (proposed: success haptic and "Added X · Dairy"), *created minimal* (proposed: warning haptic and "New product, add a name"). Haptic types and timing are the design agent's call. **Decided in `docs/DESIGN-PRODUCT-AUTOPOPULATE.md`:** known plays `scanKnown`, created with data, or created minimal because OFF was unreachable (`status:"created_minimal"` with `off_status:"unavailable"`; the app chooses by `off_status`), plays `scanNew` (two quick ticks), created minimal with `off_status:"not_found"` plays `warning`; this replaces IOS-PLAN C.3 "new → warning haptic". The unmatched-lines sheet (C.3.3) does not pop after creation: an "N on receipts" link on the scanner row and the Done summary offer it. The inline merge prompt ("Same as AH BIO MELK?") and the session tally stay.
+4. **Scan creates a product (Unpack)**: in the continuous scanner, three outcomes: *known* (as today: success haptic, "✓ name"), *created with data* (proposed: success haptic and "Added X · Dairy"), *created minimal* (proposed: warning haptic and "New product, add a name"). Haptic types and timing are a design decision. **Decided in `docs/DESIGN-PRODUCT-AUTOPOPULATE.md`:** known plays `scanKnown`, created with data, or created minimal because OFF was unreachable (`status:"created_minimal"` with `off_status:"unavailable"`; the app chooses by `off_status`), plays `scanNew` (two quick ticks), created minimal with `off_status:"not_found"` plays `warning`; this replaces IOS-PLAN C.3 "new → warning haptic". The unmatched-lines sheet (C.3.3) does not pop after creation: an "N on receipts" link on the scanner row and the Done summary offer it. The inline merge prompt ("Same as AH BIO MELK?") and the session tally stay.
 5. **Empty and failed OFF states**: OFF has nothing (ask for a name, take a photo), OFF unavailable (product created, "Details will fill in later", retry happens on the server), offline scanning (barcode queued on the phone, sent when online), duplicate scan of the same code (just "known").
 6. Copy for the review reasons and statuses.
 
-Done when: each state above exists as a frame in light and dark, the handoff names components/tokens, and the haptic mapping is a table the swift agent can implement.
+Done when: each state above exists as a frame in light and dark, the handoff names components/tokens, and the haptic mapping is a table the app can implement.
 
-### Step 2: Backend (backend agent)
+### Backend
 
 1. Migration (§5), config flag, `openapi.yaml` and MCP additions (§6).
 2. `create_or_link` (§3), noise filter, thresholds, category rules (embed the TSV), English rules, glossary additions and tests (§3.5).
 3. Merge, undo-merge, split-line, review queue and review action, backfill job, `off_refresh` job, `POST /barcodes/{code}/product`, `category_hint` on the OFF prefill and its mapping (§4.3.1).
-4. Tell the swift agent when the endpoints are live on the dev server.
 
 **Acceptance criteria and test data:**
 - Fixtures: the 13 OCR files `spike/out/IMG_1463.json` … `IMG_1475.json`, parsed with the current parser, confirmed in date order in a test database. Expected, from the simulation: 98 item lines; 25 linked automatically; no automatic link between any of the six wrong pairs in §2 (`AH BIO MELK`/`AH BIO SAP`, `ARLA BIO HALFV. MELK`/`ARLA MELK`, `AH BROCCOLI`/`AH BIO SAP`, `AH PEPERMIX`/`AH HAVERMOUT`, `AH PLUOT`/`-- AH SPRUITJES`, `KIP LOPPOOT`/`KIP POTEN`); `HHTHN AH ZALMFILET`, `HMHMNTT STARB COFFEE`, `TTNN FIT PIGGY` are cleaned and link to their clean twins; about 69–73 products exist at the end; no product is created from `3,170 kg x 5`; `NUNNUNONNTT BIO ZON OLIE` is flagged `odd_name`.
@@ -318,7 +316,7 @@ Done when: each state above exists as a frame in light and dark, the handoff nam
 - Flag: with `AUTO_PRODUCTS=off`, confirm creates nothing; with `on`, `auto_products` is in the response.
 - `go test ./...` passes; `make` targets for OpenAPI lint pass if they exist.
 
-### Step 3: Swift (swift app agent)
+### iOS app
 
 1. API client types and calls for §6; queue count for the badge (`review-queue?limit=0`).
 2. Review queue screen from the design, actions, undo toast wired to the undo endpoints.

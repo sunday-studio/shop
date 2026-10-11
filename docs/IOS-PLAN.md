@@ -3,7 +3,7 @@
 Detailed plan for the iPhone app. It replaces the M6/M7 bullets in [PLAN.md](PLAN.md) §11 (M6 = iM0–iM5, M7 = iM6–iM10).
 Design sources: the **Shop Wireframes** design project (32 screens, light + dark), [design/DESIGN-RULES.md](../design/DESIGN-RULES.md), [design/ia.html](../design/ia.html). The design system extracted from them is in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md). Things the backend must add are in [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md).
 
-**Status (2026-10-10): approved; all screens written (iM0–iM10 code), not yet built.** Sources in `ios/Shop/` (~14k lines). Project setup: [IOS-SETUP.md](IOS-SETUP.md). Next: you build on Xcode 27, send compile errors, then walk the per-milestone checklists in §4 on the phone.
+**Status (2026-10-11): all screens (iM0–iM10) are built** and run against the mock server (`-mock`) and a real server. Sources in `ios/Shop/`; setup in [IOS-SETUP.md](IOS-SETUP.md). The per-milestone on-device checklists are in §4. The sections below are the original plan and are kept for the reasoning.
 
 Changes from the draft while writing:
 - Design system lives in `ios/Shop/Design/` (not `DesignSystem/`), next to the motion/haptics files that already existed there.
@@ -58,7 +58,7 @@ I design these from the system; you review them in Previews in the milestone tha
 1. Move fonts: `ios/Pantry/Resources/Fonts` → `ios/Shop/Resources/Fonts` (I do the move in iM0, since that's just files).
 2. Xcode → File → New → Project → iOS App: name **Shop**, bundle id `com.sundaystudi.Shop`, SwiftUI, **no** tests, minimum iOS 17. Save the `.xcodeproj` in `ios/`.
 3. Delete the template `ContentView.swift`/`ShopApp.swift`, then drag the `ios/Shop/` folder into the project (create groups, add to the Shop target).
-4. Info tab, add these keys (also listed in `ios/Shop/Resources/INFO-PLIST.md`):
+4. Info tab, add these keys (also listed in [IOS-SETUP.md](IOS-SETUP.md) §2):
    - `UIAppFonts`: the 5 `.otf` file names
    - `NSCameraUsageDescription`: "Scan receipts and barcodes."
    - `NSLocalNetworkUsageDescription`: "Connect to your Shop server on this network."
@@ -97,7 +97,7 @@ ios/Shop/
 │  ├─ List/          L, L.1, L.2
 │  ├─ Search/        X.1
 │  └─ Settings/      S, S.1–S.4
-└─ Resources/        Fonts, Assets (app icon, accent), INFO-PLIST.md
+└─ Resources/        Fonts, Assets (app icon, accent)
 ```
 
 ---
