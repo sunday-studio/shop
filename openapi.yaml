@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.13.0
+  version: 0.13.1
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -1525,8 +1525,9 @@ components:
 
     ShopSuggestion:
       type: object
-      required: [kind, name, confidence, evidence, waiting_receipt_ids]
+      required: [kind, name, key, confidence, evidence, waiting_receipt_ids]
       properties:
+        key: { type: string, description: "identity of the suggested shop: shop:<id> for kind=existing, new:<chain>|<street number> for kind=new. Receipts with the same key show ONE card; name, branch and domain are identical for the same key." }
         kind: { type: string, enum: [existing, new] }
         shop_id: { type: integer, format: int64, description: "set when kind=existing" }
         name: { type: string, description: "existing shop's name, or the proposed name of the new shop" }

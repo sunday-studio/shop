@@ -33,6 +33,10 @@ type Suggestion struct {
 	Conf     float64
 	Evidence []string
 	Waiting  []int64
+	Key      string // identity: "shop:<id>" or "new:<chain>|<street number>"; equal keys are one card
+	Street   string // new shops: canonical street, number and town
+	Number   string
+	Town     string
 }
 
 type Service struct {
@@ -60,6 +64,13 @@ func detectFromJSON(raw sql.NullString) *Detected {
 }
 
 // Suggest computes the suggestion for one receipt; nil when there is nothing safe to say.
+//
+// Identity rules (so the app can show one card per shop):
+//   - kind=existing: name, branch, domain and shop_id come from the shop itself, never from the OCR of this
+//     receipt, so every receipt that matches the shop gets the identical suggestion.
+//   - kind=new: name and branch come from the lowest-numbered unconfirmed receipt of the same branch, so
+//     every receipt of that branch gets the identical suggestion even when OCR spells the street differently.
+//   - kind=new is only offered when no existing shop matches the chain or name.
 func (s *Service) Suggest(ctx context.Context, receiptID int64) (*Suggestion, error) {
 	rec, err := s.q.GetReceipt(ctx, receiptID)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -80,61 +91,116 @@ func (s *Service) Suggest(ctx context.Context, receiptID int64) (*Suggestion, er
 	if err != nil {
 		return nil, err
 	}
-	sug := &Suggestion{Kind: "new", Name: d.Chain, Chain: d.Chain, Branch: d.Branch, Conf: d.Conf, Evidence: d.Evidence,
-		Domain: logos.GuessDomain(d.Chain, d.Chain)}
-	if sh := findShop(shops, d); sh != nil {
-		if rec.ShopID.Valid && sh.ID == rec.ShopID.Int64 {
-			return nil, nil // already on the right shop
-		}
-		sug.Kind, sug.ShopID, sug.Name = "existing", &sh.ID, sh.Name
-		sug.Domain = sh.Domain.String
+	sh := findShop(shops, d)
+	if sh != nil && rec.ShopID.Valid && sh.ID == rec.ShopID.Int64 {
+		return nil, nil // already on the right shop
 	}
 	all, err := s.q.ListReceiptsForShopSuggestion(ctx)
 	if err != nil {
 		return nil, err
 	}
+	// the receipts of this branch that this suggestion would move; for a new shop the cluster also
+	// decides the canonical spelling
+	type member struct {
+		id int64
+		d  *Detected
+	}
+	cluster := []member{{rec.ID, d}}
+	var waiting []int64
 	for _, o := range all {
-		if o.ID == rec.ID || o.ConfirmedAt.Valid || (sug.ShopID != nil && o.ShopID.Valid && o.ShopID.Int64 == *sug.ShopID) {
+		if o.ID == rec.ID || o.ConfirmedAt.Valid || (sh != nil && o.ShopID.Valid && o.ShopID.Int64 == sh.ID) {
 			continue
 		}
-		if SameBranch(d, detectFromJSON(o.RawOcrJson)) {
-			sug.Waiting = append(sug.Waiting, o.ID)
+		if od := detectFromJSON(o.RawOcrJson); SameBranch(d, od) {
+			waiting = append(waiting, o.ID)
+			cluster = append(cluster, member{o.ID, od})
 		}
 	}
+
+	sug := &Suggestion{Conf: d.Conf, Evidence: d.Evidence, Waiting: waiting}
+	if sh != nil {
+		sug.Kind, sug.ShopID, sug.Name, sug.Domain = "existing", &sh.ID, sh.Name, sh.Domain.String
+		sug.Chain, sug.Branch = sh.Chain.String, sh.Branch.String
+		sug.Key = fmt.Sprintf("shop:%d", sh.ID)
+		return sug, nil
+	}
+	canon := cluster[0]
+	for _, m := range cluster {
+		if m.id < canon.id {
+			canon = m
+		}
+	}
+	cd := canon.d
+	sug.Kind, sug.Name, sug.Chain, sug.Branch = "new", cd.Chain, cd.Chain, cd.Branch
+	sug.Street, sug.Number, sug.Town = cd.Street, cd.Number, cd.town
+	sug.Domain = logos.GuessDomain(cd.Chain, cd.Chain)
+	sug.Key = "new:" + cd.Key
 	return sug, nil
 }
 
-// findShop returns the existing shop that is this chain (and branch, when the shop records one).
+// sameShopName: two names are the same shop when they are equal ignoring case and accents, one is the
+// other plus more words ("Dirk" / "Dirk van den Broek"), they are the same built-in chain ("AH" /
+// "Albert Heijn"), or they are almost identical.
+func sameShopName(a, b string) bool {
+	fa, fb := match.Fold(a), match.Fold(b)
+	if fa == "" || fb == "" {
+		return false
+	}
+	if fa == fb || strings.HasPrefix(fa, fb+" ") || strings.HasPrefix(fb, fa+" ") {
+		return true
+	}
+	if ca, ok := CanonicalChain(a); ok {
+		if cb, ok := CanonicalChain(b); ok {
+			return ca == cb
+		}
+	}
+	return match.JaroWinkler(fa, fb) >= 0.94
+}
+
+// findShop returns the existing shop for the detected chain (and branch, when several shops share it).
 func findShop(shops []db.Shop, d *Detected) *db.Shop {
-	chain := match.Fold(d.Chain)
 	var byChain []*db.Shop
 	for i := range shops {
 		sh := &shops[i]
-		name, ch := match.Fold(sh.Name), match.Fold(sh.Chain.String)
-		if name == chain || ch == chain || strings.HasPrefix(name, chain+" ") {
+		if sameShopName(sh.Name, d.Chain) || (sh.Chain.Valid && sameShopName(sh.Chain.String, d.Chain)) {
 			byChain = append(byChain, sh)
 		}
 	}
 	if len(byChain) == 0 {
 		return nil
 	}
-	// A shop whose recorded address/branch mentions the street + number is the branch.
+	if len(byChain) == 1 {
+		return byChain[0] // the only shop of that chain, whatever branch OCR read
+	}
+	// several branches: the one whose recorded address is this street + number (typos tolerated)
 	for _, sh := range byChain {
-		hay := match.Fold(sh.Branch.String + " " + sh.Address.String)
-		if d.Street != "" && strings.Contains(hay, d.Number) && strings.Contains(hay, strings.Fields(d.Street)[0]) {
+		if sameAddress(sh, d) {
 			return sh
 		}
 	}
-	// Otherwise a chain shop with no branch recorded stands for the chain.
+	// a chain shop with no branch recorded stands for the chain
 	for _, sh := range byChain {
 		if !sh.Branch.Valid && !sh.Address.Valid {
 			return sh
 		}
 	}
-	if len(byChain) == 1 {
-		return byChain[0]
-	}
 	return nil
+}
+
+// sameAddress compares a shop's recorded address with the detected street and number.
+func sameAddress(sh *db.Shop, d *Detected) bool {
+	if d.Street == "" {
+		return false
+	}
+	for _, text := range []string{sh.Address.String, sh.Branch.String} {
+		f := glueRe.ReplaceAllString(match.Fold(text), "$1 $2")
+		if m := streetRe.FindStringSubmatch(f); m != nil &&
+			strings.ReplaceAll(strings.TrimSpace(m[2]), " ", "") == d.Number &&
+			match.JaroWinkler(strings.TrimSpace(m[1]), d.Street) >= 0.9 {
+			return true
+		}
+	}
+	return false
 }
 
 // Accept moves the receipt (and, with applyWaiting, the other unconfirmed receipts from the same
@@ -176,7 +242,13 @@ func (s *Service) Accept(ctx context.Context, receiptID int64, shopID *int64, na
 		if d != nil && d.Known {
 			chain = store.Str(d.Chain)
 		}
-		if d != nil && d.Branch != "" {
+		if sug != nil && sug.Kind == "new" && sug.Branch != "" { // the cluster's canonical spelling
+			branch = store.Str(sug.Branch)
+			address = store.Str(strings.TrimSpace(titleCase(sug.Street) + " " + sug.Number))
+			if sug.Town != "" {
+				city = store.Str(titleCase(sug.Town))
+			}
+		} else if d != nil && d.Branch != "" {
 			branch = store.Str(d.Branch)
 			address = store.Str(strings.TrimSpace(titleCase(d.Street) + " " + d.Number))
 			if i := strings.LastIndex(d.Branch, ", "); i >= 0 {

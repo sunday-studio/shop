@@ -14,7 +14,7 @@ func toShopSuggestion(s *shopsuggest.Suggestion) *apitypes.ShopSuggestion {
 		return nil
 	}
 	out := &apitypes.ShopSuggestion{
-		Kind: apitypes.ShopSuggestionKind(s.Kind), ShopId: s.ShopID, Name: s.Name,
+		Kind: apitypes.ShopSuggestionKind(s.Kind), ShopId: s.ShopID, Name: s.Name, Key: s.Key,
 		Confidence: float32(s.Conf), Evidence: s.Evidence, WaitingReceiptIds: s.Waiting,
 	}
 	if out.Evidence == nil {
