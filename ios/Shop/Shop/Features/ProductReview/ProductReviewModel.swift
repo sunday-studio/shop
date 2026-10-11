@@ -53,6 +53,34 @@ final class ProductReviewModel {
         }
     }
 
+    // MARK: Same kind of item (cheapest-store comparisons)
+
+    private(set) var sameKind: [ProductGroupSuggestion] = []
+    private(set) var sameKindTotal = 0
+
+    func loadSameKind() async {
+        if let list = try? await api.productGroupSuggestions() { sameKind = list; sameKindTotal = list.count }
+    }
+
+    func answerSameKind(_ s: ProductGroupSuggestion, same: Bool) async {
+        do {
+            let opId: Int64
+            if same { opId = try await api.confirmSameKind([s.a.productId, s.b.productId]).opId } else { opId = try await api.denySameKind(s.a.productId, s.b.productId).opId }
+            withAnimation(Motion.collapse) { sameKind.removeAll { $0.id == s.id }; sameKindTotal = sameKind.count }
+            app.toasts.undoable(same ? "Grouped as the same kind" : "Kept separate") { [weak self] in
+                Task {
+                    try? await self?.api.undoProductGroupOp(opId)
+                    await self?.loadSameKind()
+                    await self?.app.list.refreshPlan()
+                }
+            }
+            await app.list.refreshPlan()
+        } catch {
+            Haptics.play(.error)
+            app.toasts.error("Couldn't save that. Try again.")
+        }
+    }
+
     // MARK: Loading
 
     /// Cheap: only the counts (`limit=0`). Used for the badge on foreground and after scans.
@@ -60,6 +88,7 @@ final class ProductReviewModel {
         guard let response = try? await api.reviewQueue(limit: 0) else { return }
         total = response.total
         counts = response.counts
+        if let n = response.sameKindTotal { sameKindTotal = n }
     }
 
     func load() async {
