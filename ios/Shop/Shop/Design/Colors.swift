@@ -61,6 +61,14 @@ enum Palette {
     static let scanAmber = Color(hex: 0xFFB340)
     static let scanRed = Color(hex: 0xFF6B61)
     static let scanBlue = Color(hex: 0x4DA3FF)
+    static let scanTray = Color(hex: 0x1C1C1A)
+    static let scanGlow = Color(hex: 0x3A3D3B)
+    // Dark cards that stay dark in light mode (onboarding "connected" card).
+    static let darkCard = Color(hex: 0x17181A)
+    static let darkCardField = Color(hex: 0x2A2B2D)
+    static let darkCardInk = Color(hex: 0xEDEDE9)
+    static let darkCardInk2 = Color(hex: 0x9A9A95)
+    static let darkCardInk3 = Color(hex: 0x77776F)
     static let btnDisabled = Color.dynamic(light: 0xECECEA, dark: 0x2E2E2B)
     static let btnDisabledInk = Color.dynamic(light: 0xB4B4AF, dark: 0x5C5C58)
 
