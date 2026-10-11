@@ -13,15 +13,14 @@ struct UnpackView: View {
     @State private var showSummary = false
     @Environment(\.accessibilityReduceMotion) private var reduce
 
-    private let darkTray = Color(hex: 0x1C1C1A)
+    private let darkTray = Palette.scanTray
     private let darkInk = Palette.scanInk
     private let darkInk2 = Palette.scanInk2
     private let darkLine = Palette.scanField
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            RadialGradient(colors: [Color(hex: 0x3B3F3C), Palette.scanBg], center: UnitPoint(x: 0.5, y: 0.3), startRadius: 10, endRadius: 560)
-                .ignoresSafeArea()
+            ScanBackdrop()
 
             if BarcodeScanner.isAvailable {
                 BarcodeScanner { code in model?.scanned(code) }

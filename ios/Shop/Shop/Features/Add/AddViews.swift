@@ -71,8 +71,7 @@ struct ReceiptCaptureView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            RadialGradient(colors: [Color(hex: 0x3A3D3B), Color(hex: 0x121312)], center: UnitPoint(x: 0.5, y: 0.2), startRadius: 10, endRadius: 520)
-                .ignoresSafeArea()
+            ScanBackdrop(center: UnitPoint(x: 0.5, y: 0.2))
 
             if let preview {
                 Image(uiImage: preview)
