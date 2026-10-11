@@ -35,7 +35,7 @@ type chain struct {
 }
 
 var chains = []chain{
-	{"Albert Heijn", []string{"albert heijn"}},
+	{"Albert Heijn", []string{"albert heijn", "ah"}},
 	{"Dirk", []string{"dirk van den broek", "dirk"}},
 	{"Jumbo", []string{"jumbo"}},
 	{"Lidl", []string{"lidl"}},
@@ -280,4 +280,18 @@ func SameBranch(a, b *Detected) bool {
 	}
 	return match.Fold(a.Chain) == match.Fold(b.Chain) && a.Number == b.Number &&
 		match.JaroWinkler(a.Street, b.Street) >= 0.9
+}
+
+// CanonicalChain returns the built-in chain a shop name starts with ("AH" and "Albert Heijn Zuid" are
+// both "Albert Heijn"; "Dirk van den Broek" is "Dirk").
+func CanonicalChain(name string) (string, bool) {
+	f := strings.TrimSpace(match.Fold(name))
+	if f == "" {
+		return "", false
+	}
+	c, _, _, ok := matchChain(f)
+	if !ok {
+		return "", false
+	}
+	return c.name, true
 }

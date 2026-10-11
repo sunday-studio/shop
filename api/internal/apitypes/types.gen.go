@@ -1522,8 +1522,11 @@ type ShopSuggestion struct {
 	Domain *string `json:"domain,omitempty"`
 
 	// Evidence header rows the suggestion was read from
-	Evidence []string           `json:"evidence"`
-	Kind     ShopSuggestionKind `json:"kind"`
+	Evidence []string `json:"evidence"`
+
+	// Key identity of the suggested shop: shop:<id> for kind=existing, new:<chain>|<street number> for kind=new. Receipts with the same key show ONE card; name, branch and domain are identical for the same key.
+	Key  string             `json:"key"`
+	Kind ShopSuggestionKind `json:"kind"`
 
 	// Name existing shop's name, or the proposed name of the new shop
 	Name string `json:"name"`
