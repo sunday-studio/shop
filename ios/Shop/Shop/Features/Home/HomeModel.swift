@@ -342,6 +342,11 @@ extension Receipt {
             }
             return (join(reason, time), Palette.amberText, amount, Palette.ink, false)
         case .ok:
+            // Accepted, but items are still unlinked: amber, so it shows in the list.
+            if let unlinked = unlinkedCount, unlinked > 0 {
+                let fix = unlinked == 1 ? "1 item to link" : "\(unlinked) items to link"
+                return (join(fix, time), Palette.amberText, amount, Palette.ink, false)
+            }
             let line = join(time, items)
             return (line.isEmpty ? "Done" : line, Palette.ink2, amount, Palette.ink, false)
         }

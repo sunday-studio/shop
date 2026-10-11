@@ -106,7 +106,7 @@ enum MockData {
             receipt(102, shop: 3, at: ago(days: 1, hour: 17, minute: 20), total: 6105, status: .needsReview, reasons: ["no_date"], lineCount: 14, unlinked: 3),
             receipt(103, shop: 4, at: ago(days: 1, hour: 12, minute: 8), total: 1240, status: .ok, lineCount: 9),
             receipt(104, shop: 1, at: ago(days: 2, hour: 18, minute: 10), total: 2245, status: .ok, lineCount: 11),
-            receipt(105, shop: 5, at: ago(days: 2, hour: 9, minute: 32), total: 1895, status: .ok, lineCount: 6),
+            receipt(105, shop: 5, at: ago(days: 2, hour: 9, minute: 32), total: 1895, status: .ok, lineCount: 6, unlinked: 2),
             receipt(106, shop: 1, at: ago(days: 5, hour: 17, minute: 55), total: 4180, status: .ok, lineCount: 19),
             receipt(107, shop: 2, at: ago(days: 5, hour: 12, minute: 40), total: 2740, status: .ok, lineCount: 14),
             receipt(108, shop: 3, at: ago(days: 8, hour: 16, minute: 0), total: 3390, status: .ok, lineCount: 12),
