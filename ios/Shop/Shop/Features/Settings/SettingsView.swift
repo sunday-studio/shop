@@ -284,7 +284,7 @@ struct ServerView: View {
     private func confirmDisconnect(title: String, message: String) {
         app.trays.present("disconnect") {
             ConfirmTray(title: title, message: message, confirmTitle: "Disconnect", destructive: true) {
-                Haptics.play(.error)
+                Haptics.play(.warning)
                 await app.signOut()
                 return true
             }

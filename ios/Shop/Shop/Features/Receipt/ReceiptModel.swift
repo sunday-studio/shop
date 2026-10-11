@@ -380,7 +380,7 @@ final class ReceiptModel {
         do {
             try await api.deleteLine(id)
             receipt?.lines?.removeAll { $0.id == id }
-            Haptics.play(.error)
+            Haptics.play(.warning)
             await refreshHeader()
         } catch let e as APIError {
             app.toasts.error(e.message)
@@ -438,7 +438,7 @@ final class ReceiptModel {
         do {
             try await api.deleteReceipt(receiptId)
             app.home.remove(receiptId)
-            Haptics.play(.error)
+            Haptics.play(.warning)
             return true
         } catch let e as APIError {
             app.toasts.error(e.message)
