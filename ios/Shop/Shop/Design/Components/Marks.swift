@@ -53,13 +53,15 @@ struct CategoryDot: View {
 struct ProductTile: View {
     let name: String
     var category: String? = nil
+    /// The category's stored colour token; wins over the name.
+    var categoryToken: String? = nil
     var imageURL: URL? = nil
     var size: CGFloat = Size.tile
 
     var body: some View {
         let shape = RoundedRectangle.continuous(size * 11 / 36)
         ZStack {
-            shape.fill(CategoryColor.swatch(for: category).tile)
+            shape.fill(CategoryColor.swatch(token: categoryToken, name: category).tile)
             CachedImage(url: imageURL) { image in
                 image.resizable().scaledToFill()
             } placeholder: {

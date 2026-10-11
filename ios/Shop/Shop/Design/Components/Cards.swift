@@ -67,11 +67,13 @@ struct StatCard: View {
 struct ProductHero: View {
     let name: String
     var category: String? = nil
+    /// The category's stored colour token; wins over the name.
+    var categoryToken: String? = nil
     var imageURL: URL? = nil
     var size: CGFloat = 84
 
     var body: some View {
-        let swatch = CategoryColor.swatch(for: category)
+        let swatch = CategoryColor.swatch(token: categoryToken, name: category)
         ZStack(alignment: .bottom) {
             RoundedRectangle.continuous(24).fill(swatch.tile)
             CachedImage(url: imageURL) { image in

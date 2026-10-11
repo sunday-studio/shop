@@ -135,6 +135,8 @@ struct ProductRow: View {
     let name: String
     var meta: String? = nil
     var category: String? = nil
+    /// The category's stored colour token; wins over the name.
+    var categoryToken: String? = nil
     var imageURL: URL? = nil
     var price: String? = nil
     var priceShop: String? = nil
@@ -142,7 +144,7 @@ struct ProductRow: View {
 
     var body: some View {
         HStack(spacing: Space.l) {
-            ProductTile(name: name, category: category, imageURL: imageURL)
+            ProductTile(name: name, category: category, categoryToken: categoryToken, imageURL: imageURL)
             VStack(alignment: .leading, spacing: 1) {
                 Text(name).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
                 if let meta {
