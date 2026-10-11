@@ -276,7 +276,22 @@ def render_blocks(blocks, ctx, toc, nested=False, first_inline=False):
 
 
 # ------------------------------------------------------------------ page chrome
-def head(title, desc, css):
+# Public address of the site (for example "https://shop.example.com", no trailing slash). Social sites need an
+# absolute URL for the share image: while this is empty the og:image / twitter:image tags are left out.
+SITE_URL = ""
+OG_ALT = {'landing': 'Shop: Know what your groceries really cost over time', 'guide-index': 'Shop guide'}
+
+
+def og_tags(name, alt, prefix='img/og/'):
+    if not SITE_URL:
+        return ''
+    url = f'{SITE_URL}/{prefix}{name}.jpg'
+    return (f'<meta property="og:image" content="{url}">\n<meta property="og:image:width" content="2400">\n'
+            f'<meta property="og:image:height" content="1260">\n<meta property="og:image:alt" content="{html.escape(alt)}">\n'
+            f'<meta name="twitter:image" content="{url}">\n<meta name="twitter:image:alt" content="{html.escape(alt)}">')
+
+
+def head(title, desc, css, og=''):
     return f'''<!doctype html>
 <html lang="en">
 <head>
@@ -291,6 +306,7 @@ def head(title, desc, css):
 <meta property="og:title" content="{html.escape(title)}">
 <meta property="og:description" content="{html.escape(desc)}">
 <meta name="twitter:card" content="summary_large_image">
+{og}
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0C0C0B" media="(prefers-color-scheme: dark)">
@@ -328,9 +344,9 @@ def header(groups, cur):
 <div class="gmenu-panel">{sidebar(groups, cur, "nav", "side in-menu")}</div></details></nav></header>'''
 
 
-def page(groups, cur, title, desc, body):
+def page(groups, cur, title, desc, body, og=''):
     css = '<link rel="stylesheet" href="../css/base.css">\n<link rel="stylesheet" href="../css/guide.css">'
-    return (head(title, desc, css) +
+    return (head(title, desc, css, og) +
             f'\n<body>\n<a class="skip" href="#main">Skip to content</a>\n{header(groups, cur)}\n<main id="main">\n{body}\n</main>\n{FOOTER}\n</body>\n</html>\n')
 
 
@@ -429,7 +445,8 @@ def build_page(pages, groups, idx, slugs):
     art = (f'<article class="doc"><p class="kicker">{html.escape(p["group"], quote=False)}</p><h1>{html.escape(p["title"], quote=False)}</h1><p class="lead">{lead}</p>{panel}\n'
            f'{body_html}\n{pn}</article>')
     body = f'<div class="gd"><div class="side-col">{sidebar(groups, p["slug"])}</div>\n{art}{rail}</div>'
-    return page(groups, p['slug'], f'{p["title"]} · Shop Guide', p['fm']['summary'], body)
+    return page(groups, p['slug'], f'{p["title"]} · Shop Guide', p['fm']['summary'], body,
+                og_tags('guide-' + p['slug'], f'{p["title"]} · Shop guide'))
 
 
 def build_index(groups):
@@ -443,7 +460,18 @@ def build_index(groups):
     lead = 'Everything you need to run Shop yourself: install the server, pair the iPhone app, and read your numbers.'
     body = (f'<div class="gd home"><div class="side-col">{sidebar(groups, None)}</div>\n'
             f'<article class="doc wide"><h1>Guide</h1><p class="lead">{lead}</p><div class="gcards">{cards}</div><h2>The path in short</h2>{path}</article></div>')
-    return page(groups, None, 'Guide · Shop', lead, body)
+    return page(groups, None, 'Guide · Shop', lead, body, og_tags('guide-index', OG_ALT['guide-index']))
+
+
+def patch_landing():
+    p = os.path.join(HERE, 'index.html')
+    src = open(p, encoding='utf-8').read()
+    new = re.sub(r'(<!-- OG:IMAGE:START -->).*?(<!-- OG:IMAGE:END -->)',
+                 lambda m: m.group(1) + '\n' + og_tags('landing', OG_ALT['landing']) + ('\n' if SITE_URL else '') + m.group(2), src, flags=re.S)
+    if new != src:
+        open(p, 'w', encoding='utf-8').write(new)
+    if not SITE_URL:
+        print('note: SITE_URL is empty in build.py, so no og:image tags were written')
 
 
 def main():
@@ -467,6 +495,7 @@ def main():
     for fn, content in outputs.items():
         with open(os.path.join(a.out, fn), 'w', encoding='utf-8') as f:
             f.write(content)
+    patch_landing()
     print(f'built {len(pages)} guide pages + index into {a.out}')
 
 

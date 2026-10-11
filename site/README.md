@@ -74,13 +74,14 @@ inline code, `**bold**`, `*italic*`, links (a bare slug such as `connect` links 
 
 `wrangler.jsonc` publishes this folder as static assets; `.assetsignore` keeps the build script, the markdown sources and the config out of the public site. In Cloudflare: connect the repo, set the project name to `shop`, set **Path** (root directory) to `site`, leave the build command empty (the generated pages are committed; run `python3 build.py` locally after editing `content/`), and use `npx wrangler deploy` as the deploy command.
 
-## Share image (Open Graph)
+## Share images (Open Graph and Twitter)
 
-`img/og.png` is the 2400x1260 (1200x630 at 2x, 1.91:1) share card (logo, tagline, one phone). Social sites need an absolute URL, so once the public address is known add these two lines to the `<head>` of `index.html` and to `head()` in `build.py` (then run `python3 build.py`):
+Every page has its own 2x share card in `img/og/` (wide 2400x1260 for each page, plus `landing-square.jpg` 2400x2400):
+`landing.jpg`, `guide-index.jpg` and `guide-<slug>.jpg` for each guide page. Regenerate them all with
+`python3 ../design/website/og/make_og.py` (needs Google Chrome; Pillow is optional). The cards use the flat full-resolution
+app screens, so text stays sharp.
 
-```html
-<meta property="og:image" content="https://YOUR-DOMAIN/img/og.png">
-<meta name="twitter:image" content="https://YOUR-DOMAIN/img/og.png">
-```
-
-The card is composed in `design/website/og-image.html` (render it at 1200x630 with device scale factor 2 to regenerate).
+The tags that attach the images need the public address. Set `SITE_URL` at the top of `build.py` (for example
+`https://shop.example.com`, no trailing slash) and run `python3 build.py`: it writes `og:image`, `og:image:width/height/alt` and
+`twitter:image` into every guide page and into `index.html` (between the `OG:IMAGE` comments). While `SITE_URL` is empty the
+image tags are left out and the build prints a note.
