@@ -69,25 +69,19 @@ def brand():
     return f'<div class="brand"><img src="file://{SITE}/img/logo-badge.svg" alt="">Shop</div>'
 
 
-def cta(label, top):
-    return (f'<div style="position:absolute;left:72px;top:{top}px;height:60px;padding:0 32px;border-radius:30px;background:#1D1D1B;color:#fff;'
-            f'font-size:24px;font-weight:500;display:flex;align-items:center;gap:12px;z-index:2">{label}'
-            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>')
-
-
 def card(w, h, inner, box):
     return f'<!doctype html><meta charset="utf-8"><style>{CSS}</style><div class="card" style="width:{w}px;height:{h}px">{art(w, h, box)}{brand()}{inner}</div>'
 
 
 def landing():
     h = '<br>'.join(TAGLINE)
-    inner = f'<h1 style="position:absolute;left:72px;top:178px;font-size:84px;line-height:1;width:600px;z-index:2">{h}</h1>' + cta('Get started', 540) + phone('receipt', 770, 92, 340)
+    inner = f'<h1 style="position:absolute;left:72px;top:178px;font-size:84px;line-height:1;width:600px;z-index:2">{h}</h1>' + phone('receipt', 770, 92, 340)
     return card(1200, 630, inner, '16 340 1200 630')
 
 
 def square():
     h = '<br>'.join(TAGLINE_SQUARE)
-    inner = f'<h1 style="position:absolute;left:72px;top:190px;font-size:104px;line-height:1;width:1056px;z-index:2">{h}</h1>' + cta('Get started', 540) + phone('receipt', 390, 650, 420)
+    inner = f'<h1 style="position:absolute;left:72px;top:190px;font-size:104px;line-height:1;width:1056px;z-index:2">{h}</h1>' + phone('receipt', 390, 650, 420)
     return card(1200, 1200, inner, '56 0 1120 1120')
 
 
@@ -97,7 +91,7 @@ def wide_page(title, kicker, summary, screen):
              f'<div style="font-size:26px;font-weight:500;color:var(--blueText);margin-bottom:16px">{html.escape(kicker, quote=False)}</div>'
              f'<h1 style="font-size:{size}px;line-height:1.02">{html.escape(title, quote=False)}</h1>'
              f'<p style="font-size:28px;line-height:1.4;color:#4B4E63;margin:22px 0 0;max-width:560px">{html.escape(summary, quote=False)}</p></div>'
-             + cta('Read the guide', 540) + phone(screen, 770, 92, 340))
+             + phone(screen, 770, 92, 340))
     return card(1200, 630, inner, '16 340 1200 630')
 
 
