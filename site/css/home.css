@@ -99,7 +99,7 @@ body{position:relative}
   .fi:nth-child(3)>*,.ph:nth-of-type(3){animation-delay:-10s}
   .fi:nth-child(4)>*,.ph:nth-of-type(4){animation-delay:-5s}
 }
-/* Click-to-select: radio #sfN restarts the 20 s cycle from item N (static state when motion is reduced). */
+/* Click-to-select: radio #sfN restarts the 20 s cycle from item N; the clicked phone fades in on top (0.45 s) while the others stay under it, then drop away. Static state when motion is reduced. */
 #sf1:checked ~ .shrow .fi h3{opacity:.5}#sf1:checked ~ .shrow .fi:nth-child(1) h3{opacity:1}
 #sf1:checked ~ .shrow .fi .dd{opacity:.62}#sf1:checked ~ .shrow .fi:nth-child(1) .dd{opacity:1}
 #sf1:checked ~ .shrow .fi .pr{width:0}#sf1:checked ~ .shrow .fi:nth-child(1) .pr{width:100%}
@@ -108,13 +108,21 @@ body{position:relative}
 @keyframes tOn1{0%,24%{opacity:1}26%,98%{opacity:.5}100%{opacity:1}}
 @keyframes dOn1{0%,24%{opacity:1}26%,98%{opacity:.62}100%{opacity:1}}
 @keyframes pOn1{0%{width:0}25%{width:100%}25.01%,100%{width:0}}
-@keyframes phOn1{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phIn1{0%{opacity:0;transform:translateY(24px)}2.25%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold1_1{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}74.99%{opacity:0}75%,77.25%{opacity:1;transform:none}77.26%{opacity:0}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold1_2{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}49.99%{opacity:0}50%,52.25%{opacity:1;transform:none}52.26%{opacity:0}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold1_3{0%,27.25%{opacity:1;transform:none}27.26%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+#sf1:checked ~ .shrow .ph:nth-of-type(1){z-index:2}
 @media (prefers-reduced-motion:no-preference){
-  #sf1:checked ~ .shrow .fi:nth-child(1) h3,#sf1:checked ~ .shrow .fi:nth-child(1) .dd,#sf1:checked ~ .shrow .fi:nth-child(1) .pr,#sf1:checked ~ .shrow .ph:nth-of-type(1){animation-delay:0s}
-  #sf1:checked ~ .shrow .fi:nth-child(2) h3,#sf1:checked ~ .shrow .fi:nth-child(2) .dd,#sf1:checked ~ .shrow .fi:nth-child(2) .pr,#sf1:checked ~ .shrow .ph:nth-of-type(2){animation-delay:-15s}
-  #sf1:checked ~ .shrow .fi:nth-child(3) h3,#sf1:checked ~ .shrow .fi:nth-child(3) .dd,#sf1:checked ~ .shrow .fi:nth-child(3) .pr,#sf1:checked ~ .shrow .ph:nth-of-type(3){animation-delay:-10s}
-  #sf1:checked ~ .shrow .fi:nth-child(4) h3,#sf1:checked ~ .shrow .fi:nth-child(4) .dd,#sf1:checked ~ .shrow .fi:nth-child(4) .pr,#sf1:checked ~ .shrow .ph:nth-of-type(4){animation-delay:-5s}
-  #sf1:checked ~ .shrow .fi h3{animation-name:tOn1}#sf1:checked ~ .shrow .fi .dd{animation-name:dOn1}#sf1:checked ~ .shrow .fi .pr{animation-name:pOn1}#sf1:checked ~ .shrow .ph{animation-name:phOn1}
+  #sf1:checked ~ .shrow .fi:nth-child(1) h3,#sf1:checked ~ .shrow .fi:nth-child(1) .dd,#sf1:checked ~ .shrow .fi:nth-child(1) .pr{animation-delay:0s}
+  #sf1:checked ~ .shrow .ph:nth-of-type(1){animation-delay:0s;animation-name:phIn1}
+  #sf1:checked ~ .shrow .fi:nth-child(2) h3,#sf1:checked ~ .shrow .fi:nth-child(2) .dd,#sf1:checked ~ .shrow .fi:nth-child(2) .pr{animation-delay:-15s}
+  #sf1:checked ~ .shrow .ph:nth-of-type(2){animation-delay:-15s;animation-name:phHold1_1}
+  #sf1:checked ~ .shrow .fi:nth-child(3) h3,#sf1:checked ~ .shrow .fi:nth-child(3) .dd,#sf1:checked ~ .shrow .fi:nth-child(3) .pr{animation-delay:-10s}
+  #sf1:checked ~ .shrow .ph:nth-of-type(3){animation-delay:-10s;animation-name:phHold1_2}
+  #sf1:checked ~ .shrow .fi:nth-child(4) h3,#sf1:checked ~ .shrow .fi:nth-child(4) .dd,#sf1:checked ~ .shrow .fi:nth-child(4) .pr{animation-delay:-5s}
+  #sf1:checked ~ .shrow .ph:nth-of-type(4){animation-delay:-5s;animation-name:phHold1_3}
+  #sf1:checked ~ .shrow .fi h3{animation-name:tOn1}#sf1:checked ~ .shrow .fi .dd{animation-name:dOn1}#sf1:checked ~ .shrow .fi .pr{animation-name:pOn1}
 }
 #sf2:checked ~ .shrow .fi h3{opacity:.5}#sf2:checked ~ .shrow .fi:nth-child(2) h3{opacity:1}
 #sf2:checked ~ .shrow .fi .dd{opacity:.62}#sf2:checked ~ .shrow .fi:nth-child(2) .dd{opacity:1}
@@ -124,13 +132,21 @@ body{position:relative}
 @keyframes tOn2{0%,24%{opacity:1}26%,98%{opacity:.5}100%{opacity:1}}
 @keyframes dOn2{0%,24%{opacity:1}26%,98%{opacity:.62}100%{opacity:1}}
 @keyframes pOn2{0%{width:0}25%{width:100%}25.01%,100%{width:0}}
-@keyframes phOn2{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phIn2{0%{opacity:0;transform:translateY(24px)}2.25%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold2_1{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}74.99%{opacity:0}75%,77.25%{opacity:1;transform:none}77.26%{opacity:0}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold2_2{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}49.99%{opacity:0}50%,52.25%{opacity:1;transform:none}52.26%{opacity:0}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold2_3{0%,27.25%{opacity:1;transform:none}27.26%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+#sf2:checked ~ .shrow .ph:nth-of-type(2){z-index:2}
 @media (prefers-reduced-motion:no-preference){
-  #sf2:checked ~ .shrow .fi:nth-child(1) h3,#sf2:checked ~ .shrow .fi:nth-child(1) .dd,#sf2:checked ~ .shrow .fi:nth-child(1) .pr,#sf2:checked ~ .shrow .ph:nth-of-type(1){animation-delay:-5s}
-  #sf2:checked ~ .shrow .fi:nth-child(2) h3,#sf2:checked ~ .shrow .fi:nth-child(2) .dd,#sf2:checked ~ .shrow .fi:nth-child(2) .pr,#sf2:checked ~ .shrow .ph:nth-of-type(2){animation-delay:0s}
-  #sf2:checked ~ .shrow .fi:nth-child(3) h3,#sf2:checked ~ .shrow .fi:nth-child(3) .dd,#sf2:checked ~ .shrow .fi:nth-child(3) .pr,#sf2:checked ~ .shrow .ph:nth-of-type(3){animation-delay:-15s}
-  #sf2:checked ~ .shrow .fi:nth-child(4) h3,#sf2:checked ~ .shrow .fi:nth-child(4) .dd,#sf2:checked ~ .shrow .fi:nth-child(4) .pr,#sf2:checked ~ .shrow .ph:nth-of-type(4){animation-delay:-10s}
-  #sf2:checked ~ .shrow .fi h3{animation-name:tOn2}#sf2:checked ~ .shrow .fi .dd{animation-name:dOn2}#sf2:checked ~ .shrow .fi .pr{animation-name:pOn2}#sf2:checked ~ .shrow .ph{animation-name:phOn2}
+  #sf2:checked ~ .shrow .fi:nth-child(1) h3,#sf2:checked ~ .shrow .fi:nth-child(1) .dd,#sf2:checked ~ .shrow .fi:nth-child(1) .pr{animation-delay:-5s}
+  #sf2:checked ~ .shrow .ph:nth-of-type(1){animation-delay:-5s;animation-name:phHold2_3}
+  #sf2:checked ~ .shrow .fi:nth-child(2) h3,#sf2:checked ~ .shrow .fi:nth-child(2) .dd,#sf2:checked ~ .shrow .fi:nth-child(2) .pr{animation-delay:0s}
+  #sf2:checked ~ .shrow .ph:nth-of-type(2){animation-delay:0s;animation-name:phIn2}
+  #sf2:checked ~ .shrow .fi:nth-child(3) h3,#sf2:checked ~ .shrow .fi:nth-child(3) .dd,#sf2:checked ~ .shrow .fi:nth-child(3) .pr{animation-delay:-15s}
+  #sf2:checked ~ .shrow .ph:nth-of-type(3){animation-delay:-15s;animation-name:phHold2_1}
+  #sf2:checked ~ .shrow .fi:nth-child(4) h3,#sf2:checked ~ .shrow .fi:nth-child(4) .dd,#sf2:checked ~ .shrow .fi:nth-child(4) .pr{animation-delay:-10s}
+  #sf2:checked ~ .shrow .ph:nth-of-type(4){animation-delay:-10s;animation-name:phHold2_2}
+  #sf2:checked ~ .shrow .fi h3{animation-name:tOn2}#sf2:checked ~ .shrow .fi .dd{animation-name:dOn2}#sf2:checked ~ .shrow .fi .pr{animation-name:pOn2}
 }
 #sf3:checked ~ .shrow .fi h3{opacity:.5}#sf3:checked ~ .shrow .fi:nth-child(3) h3{opacity:1}
 #sf3:checked ~ .shrow .fi .dd{opacity:.62}#sf3:checked ~ .shrow .fi:nth-child(3) .dd{opacity:1}
@@ -140,13 +156,21 @@ body{position:relative}
 @keyframes tOn3{0%,24%{opacity:1}26%,98%{opacity:.5}100%{opacity:1}}
 @keyframes dOn3{0%,24%{opacity:1}26%,98%{opacity:.62}100%{opacity:1}}
 @keyframes pOn3{0%{width:0}25%{width:100%}25.01%,100%{width:0}}
-@keyframes phOn3{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phIn3{0%{opacity:0;transform:translateY(24px)}2.25%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold3_1{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}74.99%{opacity:0}75%,77.25%{opacity:1;transform:none}77.26%{opacity:0}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold3_2{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}49.99%{opacity:0}50%,52.25%{opacity:1;transform:none}52.26%{opacity:0}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold3_3{0%,27.25%{opacity:1;transform:none}27.26%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+#sf3:checked ~ .shrow .ph:nth-of-type(3){z-index:2}
 @media (prefers-reduced-motion:no-preference){
-  #sf3:checked ~ .shrow .fi:nth-child(1) h3,#sf3:checked ~ .shrow .fi:nth-child(1) .dd,#sf3:checked ~ .shrow .fi:nth-child(1) .pr,#sf3:checked ~ .shrow .ph:nth-of-type(1){animation-delay:-10s}
-  #sf3:checked ~ .shrow .fi:nth-child(2) h3,#sf3:checked ~ .shrow .fi:nth-child(2) .dd,#sf3:checked ~ .shrow .fi:nth-child(2) .pr,#sf3:checked ~ .shrow .ph:nth-of-type(2){animation-delay:-5s}
-  #sf3:checked ~ .shrow .fi:nth-child(3) h3,#sf3:checked ~ .shrow .fi:nth-child(3) .dd,#sf3:checked ~ .shrow .fi:nth-child(3) .pr,#sf3:checked ~ .shrow .ph:nth-of-type(3){animation-delay:0s}
-  #sf3:checked ~ .shrow .fi:nth-child(4) h3,#sf3:checked ~ .shrow .fi:nth-child(4) .dd,#sf3:checked ~ .shrow .fi:nth-child(4) .pr,#sf3:checked ~ .shrow .ph:nth-of-type(4){animation-delay:-15s}
-  #sf3:checked ~ .shrow .fi h3{animation-name:tOn3}#sf3:checked ~ .shrow .fi .dd{animation-name:dOn3}#sf3:checked ~ .shrow .fi .pr{animation-name:pOn3}#sf3:checked ~ .shrow .ph{animation-name:phOn3}
+  #sf3:checked ~ .shrow .fi:nth-child(1) h3,#sf3:checked ~ .shrow .fi:nth-child(1) .dd,#sf3:checked ~ .shrow .fi:nth-child(1) .pr{animation-delay:-10s}
+  #sf3:checked ~ .shrow .ph:nth-of-type(1){animation-delay:-10s;animation-name:phHold3_2}
+  #sf3:checked ~ .shrow .fi:nth-child(2) h3,#sf3:checked ~ .shrow .fi:nth-child(2) .dd,#sf3:checked ~ .shrow .fi:nth-child(2) .pr{animation-delay:-5s}
+  #sf3:checked ~ .shrow .ph:nth-of-type(2){animation-delay:-5s;animation-name:phHold3_3}
+  #sf3:checked ~ .shrow .fi:nth-child(3) h3,#sf3:checked ~ .shrow .fi:nth-child(3) .dd,#sf3:checked ~ .shrow .fi:nth-child(3) .pr{animation-delay:0s}
+  #sf3:checked ~ .shrow .ph:nth-of-type(3){animation-delay:0s;animation-name:phIn3}
+  #sf3:checked ~ .shrow .fi:nth-child(4) h3,#sf3:checked ~ .shrow .fi:nth-child(4) .dd,#sf3:checked ~ .shrow .fi:nth-child(4) .pr{animation-delay:-15s}
+  #sf3:checked ~ .shrow .ph:nth-of-type(4){animation-delay:-15s;animation-name:phHold3_1}
+  #sf3:checked ~ .shrow .fi h3{animation-name:tOn3}#sf3:checked ~ .shrow .fi .dd{animation-name:dOn3}#sf3:checked ~ .shrow .fi .pr{animation-name:pOn3}
 }
 #sf4:checked ~ .shrow .fi h3{opacity:.5}#sf4:checked ~ .shrow .fi:nth-child(4) h3{opacity:1}
 #sf4:checked ~ .shrow .fi .dd{opacity:.62}#sf4:checked ~ .shrow .fi:nth-child(4) .dd{opacity:1}
@@ -156,13 +180,21 @@ body{position:relative}
 @keyframes tOn4{0%,24%{opacity:1}26%,98%{opacity:.5}100%{opacity:1}}
 @keyframes dOn4{0%,24%{opacity:1}26%,98%{opacity:.62}100%{opacity:1}}
 @keyframes pOn4{0%{width:0}25%{width:100%}25.01%,100%{width:0}}
-@keyframes phOn4{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phIn4{0%{opacity:0;transform:translateY(24px)}2.25%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold4_1{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}74.99%{opacity:0}75%,77.25%{opacity:1;transform:none}77.26%{opacity:0}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold4_2{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}49.99%{opacity:0}50%,52.25%{opacity:1;transform:none}52.26%{opacity:0}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+@keyframes phHold4_3{0%,27.25%{opacity:1;transform:none}27.26%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
+#sf4:checked ~ .shrow .ph:nth-of-type(4){z-index:2}
 @media (prefers-reduced-motion:no-preference){
-  #sf4:checked ~ .shrow .fi:nth-child(1) h3,#sf4:checked ~ .shrow .fi:nth-child(1) .dd,#sf4:checked ~ .shrow .fi:nth-child(1) .pr,#sf4:checked ~ .shrow .ph:nth-of-type(1){animation-delay:-15s}
-  #sf4:checked ~ .shrow .fi:nth-child(2) h3,#sf4:checked ~ .shrow .fi:nth-child(2) .dd,#sf4:checked ~ .shrow .fi:nth-child(2) .pr,#sf4:checked ~ .shrow .ph:nth-of-type(2){animation-delay:-10s}
-  #sf4:checked ~ .shrow .fi:nth-child(3) h3,#sf4:checked ~ .shrow .fi:nth-child(3) .dd,#sf4:checked ~ .shrow .fi:nth-child(3) .pr,#sf4:checked ~ .shrow .ph:nth-of-type(3){animation-delay:-5s}
-  #sf4:checked ~ .shrow .fi:nth-child(4) h3,#sf4:checked ~ .shrow .fi:nth-child(4) .dd,#sf4:checked ~ .shrow .fi:nth-child(4) .pr,#sf4:checked ~ .shrow .ph:nth-of-type(4){animation-delay:0s}
-  #sf4:checked ~ .shrow .fi h3{animation-name:tOn4}#sf4:checked ~ .shrow .fi .dd{animation-name:dOn4}#sf4:checked ~ .shrow .fi .pr{animation-name:pOn4}#sf4:checked ~ .shrow .ph{animation-name:phOn4}
+  #sf4:checked ~ .shrow .fi:nth-child(1) h3,#sf4:checked ~ .shrow .fi:nth-child(1) .dd,#sf4:checked ~ .shrow .fi:nth-child(1) .pr{animation-delay:-15s}
+  #sf4:checked ~ .shrow .ph:nth-of-type(1){animation-delay:-15s;animation-name:phHold4_1}
+  #sf4:checked ~ .shrow .fi:nth-child(2) h3,#sf4:checked ~ .shrow .fi:nth-child(2) .dd,#sf4:checked ~ .shrow .fi:nth-child(2) .pr{animation-delay:-10s}
+  #sf4:checked ~ .shrow .ph:nth-of-type(2){animation-delay:-10s;animation-name:phHold4_2}
+  #sf4:checked ~ .shrow .fi:nth-child(3) h3,#sf4:checked ~ .shrow .fi:nth-child(3) .dd,#sf4:checked ~ .shrow .fi:nth-child(3) .pr{animation-delay:-5s}
+  #sf4:checked ~ .shrow .ph:nth-of-type(3){animation-delay:-5s;animation-name:phHold4_3}
+  #sf4:checked ~ .shrow .fi:nth-child(4) h3,#sf4:checked ~ .shrow .fi:nth-child(4) .dd,#sf4:checked ~ .shrow .fi:nth-child(4) .pr{animation-delay:0s}
+  #sf4:checked ~ .shrow .ph:nth-of-type(4){animation-delay:0s;animation-name:phIn4}
+  #sf4:checked ~ .shrow .fi h3{animation-name:tOn4}#sf4:checked ~ .shrow .fi .dd{animation-name:dOn4}#sf4:checked ~ .shrow .fi .pr{animation-name:pOn4}
 }
 
 /* ---- Closing panel ---- */
