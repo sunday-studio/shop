@@ -14,11 +14,11 @@ CSS = '''
 .w .burger i{display:block;width:18px;height:2px;border-radius:1px;background:#2B2D3F}
 .w .badge{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px 0 16px;border-radius:17px;background:rgba(43,45,63,.82);color:#F4F4F1;font-size:13.5px;font-weight:500;backdrop-filter:blur(10px)}
 .w .art{position:absolute;inset:0;width:100%;height:100%;display:block}
-.w .heroP{position:relative;overflow:hidden;background:var(--sk1)}
+.w .heroP{position:relative;overflow:hidden;background:var(--bg)}
 .w .heroP .nav{position:relative;z-index:3}
 .w .heroP .brand{color:#2B2D3F}
 .w .foot{position:relative;z-index:2;background:var(--bg);margin-top:-2px}
-.w .fade{position:absolute;left:0;right:0;bottom:0;z-index:3;pointer-events:none;background:linear-gradient(180deg,transparent,var(--bg) 92%)}
+.w .fade{position:absolute;left:0;right:0;bottom:-2px;z-index:3;pointer-events:none;background:linear-gradient(180deg,transparent,var(--bg) 92%)}
 .w .fadeT{position:absolute;left:0;right:0;top:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg),transparent)}
 .w .fl{position:absolute;background:var(--bg);border-radius:20px;box-shadow:0 18px 40px -16px var(--shadow);padding:14px 18px;display:flex;align-items:center;gap:12px;font-size:15px;font-weight:500;white-space:nowrap;z-index:4}
 .w .fl i{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;font-style:normal;color:#fff;font-size:15px}
@@ -206,7 +206,7 @@ def build(g):
         return f'<section style="padding:{"64px 0 0" if m else "120px 0 0"}"><div class="heroP" style="height:{h}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:{"56px 24px 0" if m else "80px 0 0"}">{art("c", "xMidYMid")}<div class="fadeT" style="height:{160 if m else 220}px"></div><div class="fade" style="height:{140 if m else 180}px"></div><h2 class="h2 lt" style="position:relative;z-index:2;font-size:{40 if m else 72}px;line-height:1.02">Run it at home.</h2><p style="position:relative;z-index:2;font-size:{17 if m else 20}px;line-height:1.5;color:var(--ink2);margin-top:16px;max-width:520px">Yours, on your own server. Install it with Docker on a machine you already have.</p><div style="position:relative;z-index:2;display:flex;gap:10px;margin-top:28px;flex-wrap:wrap;justify-content:center"><a class="btn" href="#" style="min-width:220px">View on GitHub</a></div><div style="position:relative;z-index:2;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:{20 if m else 28}px">{pills}</div></div></section>'
 
     def body(m):
-        return hero(m) + steps(m) + showcase(m) + closing(m) + footer(m, False)
+        return hero(m) + showcase(m) + closing(m) + footer(m, False)
 
     boards = [('HB-Page-Desktop', False, 1280, 3800, 'Website · final page, desktop, light'), ('HB-Page-Mobile', True, 390, 4900, 'Website · final page, mobile, light')]
     for name, m, w, h, title in boards:
@@ -215,10 +215,3 @@ def build(g):
         flat = re.sub(r'<dc-import name="Brand"[^>]*></dc-import>', brand(True), body(m))
         for th in ('light', 'dark'):
             write(f'{name.lower()}-{th}.html', doc('x', title, flat, w, h, th, preview=True), preview=True)
-    for kind, label in (('silk', 'A · silk ribbons'), ('still', 'B · market still life'), ('receipts', 'C · floating receipts')):
-        title = f'Hero background {label}'
-        write(f'HX-{kind}.dc.html', doc('x', title + ', light', hero(False, kind), 1280, 1130, 'light'))
-        dark_wrapper(f'D-HX-{kind}.dc.html', f'HX-{kind}', title + ', dark', 1280, 1130)
-        flat = re.sub(r'<dc-import name="Brand"[^>]*></dc-import>', brand(True), hero(False, kind))
-        for th in ('light', 'dark'):
-            write(f'hx-{kind}-{th}.html', doc('x', title, flat, 1280, 1130, th, preview=True), preview=True)
