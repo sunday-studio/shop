@@ -16,3 +16,5 @@ curl localhost:8080/healthz
 make test      # Go tests
 make help      # all targets
 ```
+
+License: [MIT](LICENSE).
