@@ -85,7 +85,6 @@ CSS = '''
 .w .fi:nth-child(2)>*,.w .ph:nth-of-type(2){animation-delay:-15s}
 .w .fi:nth-child(3)>*,.w .ph:nth-of-type(3){animation-delay:-10s}
 .w .fi:nth-child(4)>*,.w .ph:nth-of-type(4){animation-delay:-5s}
-.w .shw:hover *{animation-play-state:paused}
 }
 .w .gp{display:inline-flex;align-items:center;height:38px;padding:0 16px;border-radius:19px;background:rgba(255,255,255,.5);backdrop-filter:blur(8px);font-size:14.5px;font-weight:500;color:#2B2D3F}
 '''
