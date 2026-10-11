@@ -6,6 +6,9 @@ struct HomeView: View {
     @Environment(AppModel.self) private var app
 
     private var home: HomeModel { app.home }
+    /// The first-paint stagger only plays for the first second; rows the list builds later
+    /// (scrolling) appear at once instead of replaying a fade.
+    @State private var staggerOn = true
 
     /// A typical bar: six categories, two legend rows.
     private static let placeholderShares = ["Dairy", "Produce", "Meat", "Pantry", "Bakery", "Other"].map {
@@ -61,6 +64,10 @@ struct HomeView: View {
         .shopListStyle()
         .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
         .onAppear { app.reviewSequence = [] }
+        .task {
+            try? await Task.sleep(for: .milliseconds(900))
+            staggerOn = false
+        }
         .transaction(value: home.spendLoaded) { $0.animation = nil }
         .refreshable {
             app.uploads.kick(force: true)
@@ -223,7 +230,7 @@ struct HomeView: View {
                     .shopListRow()
                 ForEach(group.receipts) { receipt in
                     receiptRow(receipt)
-                        .staggeredAppear(index: index)
+                        .staggeredAppear(index: staggerOn ? index : Motion.staggerMax)
                 }
             }
             if home.nextCursor != nil {

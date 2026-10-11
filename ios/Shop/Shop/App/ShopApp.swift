@@ -9,6 +9,7 @@ struct ShopApp: App {
         WindowGroup {
             RootView()
                 .environment(appDelegate.model)
+                .task { if ProcessInfo.processInfo.arguments.contains("-bench") { await Bench.run(appDelegate.model) } }
         }
     }
 }

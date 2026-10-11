@@ -75,7 +75,7 @@ struct ProductHero: View {
         let swatch = CategoryColor.swatch(token: categoryToken, name: category)
         ZStack(alignment: .bottom) {
             RoundedRectangle.continuous(24).fill(swatch.tile)
-            CachedImage(url: imageURL) { image in
+            CachedImage(url: imageURL, maxPixel: 720) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
                 UnevenRoundedRectangle(topLeadingRadius: 10, bottomLeadingRadius: 4, bottomTrailingRadius: 4, topTrailingRadius: 10, style: .continuous)

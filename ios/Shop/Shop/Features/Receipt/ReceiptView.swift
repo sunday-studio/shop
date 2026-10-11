@@ -21,6 +21,8 @@ private struct ReceiptScreen: View {
     /// The screen opened on a summary (no lines): its first fill swaps skeleton rows for real
     /// ones in place, without the stagger.
     @State private var openedOnSummary: Bool
+    /// The first-paint stagger only plays for the first second; rows built while scrolling appear at once.
+    @State private var staggerOn = true
 
     init(receiptId: Int64, app: AppModel) {
         let model = ReceiptModel(receiptId: receiptId, app: app)
@@ -32,6 +34,10 @@ private struct ReceiptScreen: View {
         content(model)
             .background(Palette.bg)
             .task { await model.load() }
+            .task {
+                try? await Task.sleep(for: .milliseconds(1200))
+                staggerOn = false
+            }
             .onDisappear { model.stop() }
     }
 
@@ -253,7 +259,7 @@ private struct ReceiptScreen: View {
                         titleColor: p.titleColor, amountColor: p.amountColor, dot: p.dot, indented: p.indented)
             }
             .buttonStyle(.press(haptic: nil))
-            .staggeredAppear(index: openedOnSummary ? Motion.staggerMax : index)
+            .staggeredAppear(index: openedOnSummary || !staggerOn ? Motion.staggerMax : index)
             .padding(.horizontal, Space.gutter)
             }
             .shopListRow()

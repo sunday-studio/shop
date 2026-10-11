@@ -423,7 +423,7 @@ struct ProductFormTray: View {
                 } else if let existing = draft.existing {
                     ProductHero(name: existing.name, category: app.catalog.category(existing.categoryId)?.name, categoryToken: app.catalog.category(existing.categoryId)?.color, imageURL: app.api.productImageURL(existing))
                 } else if let url = draft.prefill?.imageUrl.flatMap(URL.init(string:)) {
-                    CachedImage(url: url) { $0.resizable().scaledToFill() } placeholder: { swatch.tile }
+                    CachedImage(url: url, maxPixel: 720) { $0.resizable().scaledToFill() } placeholder: { swatch.tile }
                 } else {
                     ProductHero(name: draft.name, category: app.catalog.category(draft.categoryId)?.name, categoryToken: app.catalog.category(draft.categoryId)?.color)
                 }

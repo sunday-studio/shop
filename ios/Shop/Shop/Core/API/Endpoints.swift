@@ -8,7 +8,7 @@ extension APIClient {
     /// 200 healthy, 503 degraded; both carry a Health body.
     func health() async throws -> Health {
         let data = try await raw("GET", "/healthz", acceptStatus: [503])
-        return try decode(data)
+        return try await decode(data)
     }
 
     func version() async throws -> VersionInfo { try await get("/version") }

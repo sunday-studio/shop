@@ -23,7 +23,21 @@ final class MockServer: HTTPTransport {
     private let encoder = Coders.encoder()
     private let decoder = Coders.decoder()
 
-    init() {}
+    init() {
+        // Simulator aid for profiling: a catalog and inbox the size of a few years of use.
+        if ProcessInfo.processInfo.arguments.contains("-mock-large") {
+            let words = ["Halfvolle", "Volle", "Biologische", "Verse", "Gerookte", "Gesneden", "Oude", "Jonge", "Roomboter", "Grove"]
+            let things = ["melk", "kaas", "yoghurt", "brood", "pasta", "rijst", "appel", "tomaten", "kipfilet", "koffie", "thee", "chips", "pindakaas", "hummus", "worst", "soep"]
+            for i in 0..<1500 {
+                let name = "\(words[i % words.count]) \(things[(i / 7) % things.count]) \(i)"
+                products.append(MockData.product(Int64(10_000 + i), name, en: name, cat: Int64(i % 10) + 1, size: Double(100 + (i % 9) * 100), unit: i % 2 == 0 ? "g" : "ml", barcode: nil))
+            }
+            for i in 0..<400 {
+                receipts.append(MockData.receipt(Int64(500 + i), shop: Int64(i % 5) + 1, at: MockData.ago(days: 20 + i / 2, hour: 9 + i % 10, minute: i % 60),
+                                                 total: Int64(1500 + (i * 137) % 9000), status: .ok, lineCount: 5 + i % 25))
+            }
+        }
+    }
 
     // MARK: Transport
 

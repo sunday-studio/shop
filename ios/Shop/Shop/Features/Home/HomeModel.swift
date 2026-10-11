@@ -94,7 +94,24 @@ final class HomeModel {
         return monthSpend.totalCents - lastMonthCents
     }
 
+    @ObservationIgnored private var dayGroupsCache: (key: Int, groups: [DayGroup])?
+
+    /// Receipts grouped by day. Rebuilt only when a receipt actually changed.
     var dayGroups: [DayGroup] {
+        var hasher = Hasher()
+        for r in receipts {
+            hasher.combine(r.id); hasher.combine(r.updatedAt); hasher.combine(r.status); hasher.combine(r.shopId)
+            hasher.combine(r.totalCents); hasher.combine(r.purchasedAt); hasher.combine(r.unlinkedCount); hasher.combine(r.lineCount)
+            hasher.combine(r.confirmedAt)
+        }
+        let key = hasher.finalize()
+        if let dayGroupsCache, dayGroupsCache.key == key { return dayGroupsCache.groups }
+        let groups = buildDayGroups()
+        dayGroupsCache = (key, groups)
+        return groups
+    }
+
+    private func buildDayGroups() -> [DayGroup] {
         let grouped = Dictionary(grouping: receipts) { Dates.startOfDay($0.displayDate) }
         return grouped.keys.sorted(by: >).map { day in
             let items = (grouped[day] ?? []).sorted { $0.displayDate > $1.displayDate }
@@ -149,7 +166,7 @@ final class HomeModel {
             attention = (r.items + f.items + unassigned).sorted { $0.displayDate > $1.displayDate }
             error = nil
             hasLoaded = true
-            if !filter.isActive { DiskStore.save(p.items, to: "inbox.json") }
+            if !filter.isActive { DiskStore.saveInBackground(p.items, to: "inbox.json") }
         } catch let e as APIError {
             error = e
         } catch {}

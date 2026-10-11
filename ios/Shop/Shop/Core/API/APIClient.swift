@@ -147,19 +147,19 @@ final class APIClient {
 
     // MARK: Requests
 
-    func get<T: Decodable>(_ path: String, query: [String: String?] = [:], as type: T.Type = T.self) async throws -> T {
+    func get<T: Decodable & Sendable>(_ path: String, query: [String: String?] = [:], as type: T.Type = T.self) async throws -> T {
         let data = try await raw("GET", path, query: query)
-        return try decode(data)
+        return try await decode(data)
     }
 
-    func send<T: Decodable, B: Encodable>(_ method: String, _ path: String, body: B, query: [String: String?] = [:], as type: T.Type = T.self) async throws -> T {
+    func send<T: Decodable & Sendable, B: Encodable>(_ method: String, _ path: String, body: B, query: [String: String?] = [:], as type: T.Type = T.self) async throws -> T {
         let data = try await raw(method, path, query: query, body: try encoder.encode(body), contentType: "application/json")
-        return try decode(data)
+        return try await decode(data)
     }
 
-    func send<T: Decodable>(_ method: String, _ path: String, query: [String: String?] = [:], as type: T.Type = T.self) async throws -> T {
+    func send<T: Decodable & Sendable>(_ method: String, _ path: String, query: [String: String?] = [:], as type: T.Type = T.self) async throws -> T {
         let data = try await raw(method, path, query: query)
-        return try decode(data)
+        return try await decode(data)
     }
 
     /// For endpoints that answer 204.
@@ -171,9 +171,9 @@ final class APIClient {
         _ = try await raw(method, path, body: try encoder.encode(body), contentType: "application/json")
     }
 
-    func upload<T: Decodable>(_ method: String, _ path: String, multipart: Multipart, as type: T.Type = T.self) async throws -> T {
+    func upload<T: Decodable & Sendable>(_ method: String, _ path: String, multipart: Multipart, as type: T.Type = T.self) async throws -> T {
         let data = try await raw(method, path, body: multipart.data, contentType: multipart.contentType, timeout: 120)
-        return try decode(data)
+        return try await decode(data)
     }
 
     /// Full URL for a path (images, logos).
@@ -251,10 +251,13 @@ final class APIClient {
         }
     }
 
-    func decode<T: Decodable>(_ data: Data) throws -> T {
+    /// Small payloads decode in place; big ones (catalog pages, long receipt lists) decode on a
+    /// background thread so the main thread doesn't hitch while you scroll.
+    func decode<T: Decodable & Sendable>(_ data: Data) async throws -> T {
         if T.self == EmptyResponse.self, let empty = EmptyResponse() as? T { return empty }
         do {
-            return try decoder.decode(T.self, from: data)
+            if data.count < 12_000 { return try decoder.decode(T.self, from: data) }
+            return try await Task.detached(priority: .userInitiated) { try Coders.decoder().decode(T.self, from: data) }.value
         } catch {
             throw APIError.decoding(String(describing: error))
         }

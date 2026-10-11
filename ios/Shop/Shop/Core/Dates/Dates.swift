@@ -98,7 +98,59 @@ nonisolated enum Dates {
     }()
 
     static func parseRFC3339(_ s: String) -> Date? {
-        isoFractional.date(from: s) ?? isoPlain.date(from: s)
+        fastRFC3339(s) ?? isoFractional.date(from: s) ?? isoPlain.date(from: s)
+    }
+
+    /// "2026-10-11T03:12:09Z", with optional fraction and "+02:00" offsets. About 100x faster than
+    /// ISO8601DateFormatter, which matters when decoding a few thousand cached products at launch.
+    /// Returns nil for anything unusual so the formatter can have a go.
+    static func fastRFC3339(_ s: String) -> Date? {
+        var s = s
+        return s.withUTF8 { b -> Date? in
+            let n = b.count
+            guard n >= 20, b[4] == 45, b[7] == 45, b[10] == 84 || b[10] == 32, b[13] == 58, b[16] == 58 else { return nil }
+            func num(_ from: Int, _ len: Int) -> Int? {
+                var v = 0
+                for i in from..<(from + len) {
+                    let c = Int(b[i]) - 48
+                    guard c >= 0, c <= 9 else { return nil }
+                    v = v * 10 + c
+                }
+                return v
+            }
+            guard let y = num(0, 4), let mo = num(5, 2), let d = num(8, 2), let h = num(11, 2), let mi = num(14, 2), let sec = num(17, 2),
+                  (1...12).contains(mo), (1...31).contains(d), h < 24, mi < 60, sec < 61 else { return nil }
+            var i = 19
+            var fraction = 0.0
+            if i < n, b[i] == 46 {
+                i += 1
+                var scale = 0.1
+                while i < n, b[i] >= 48, b[i] <= 57 {
+                    fraction += Double(b[i] - 48) * scale
+                    scale /= 10
+                    i += 1
+                }
+            }
+            var offset = 0
+            if i < n, b[i] == 90 || b[i] == 122 {
+                i += 1
+            } else if i + 6 <= n, b[i] == 43 || b[i] == 45, b[i + 3] == 58, let oh = num(i + 1, 2), let om = num(i + 4, 2) {
+                offset = (oh * 3600 + om * 60) * (b[i] == 45 ? -1 : 1)
+                i += 6
+            } else {
+                return nil
+            }
+            guard i == n else { return nil }
+            // Days from 1970-01-01 (proleptic Gregorian civil date).
+            let yy = mo <= 2 ? y - 1 : y
+            let era = (yy >= 0 ? yy : yy - 399) / 400
+            let yoe = yy - era * 400
+            let doy = (153 * (mo + (mo > 2 ? -3 : 9)) + 2) / 5 + d - 1
+            let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
+            let days = era * 146097 + doe - 719468
+            let seconds = Double(days * 86400 + h * 3600 + mi * 60 + sec - offset) + fraction
+            return Date(timeIntervalSince1970: seconds)
+        }
     }
 
     static func rfc3339(_ date: Date) -> String {

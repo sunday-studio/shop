@@ -119,6 +119,16 @@ extension TypeStyle {
     /// Text in this style with tabular digits. Use it for anything that can contain a number:
     /// amounts, prices, counts, dates, times, quantities.
     func text(_ string: String) -> Text {
+        let key = TextCache.Key(size: size, face: face, tracking: trackingEm, relativeTo: relativeTo, string: string)
+        if let hit = TextCache.shared.value(for: key) { return hit }
+        let built = buildText(string)
+        TextCache.shared.store(built, for: key)
+        return built
+    }
+
+    /// Building the attributed string costs about 25 us, and a screen asks for the same few
+    /// hundred strings every time it redraws; see `TextCache`.
+    private func buildText(_ string: String) -> Text {
         var out = AttributedString()
         var run = ""
         var runIsDigit = false
@@ -162,4 +172,32 @@ struct ShopTypography: ViewModifier {
 
 extension View {
     func shopTypography() -> some View { modifier(ShopTypography()) }
+}
+
+/// Remembers the `Text` built for a (style, string) pair, so scrolling a list doesn't rebuild
+/// every amount, date and name on every frame. Bounded: emptied when it grows past 3000 entries.
+private final class TextCache: @unchecked Sendable {
+    static let shared = TextCache()
+
+    struct Key: Hashable {
+        let size: CGFloat
+        let face: TypeStyle.Face
+        let tracking: CGFloat
+        let relativeTo: Font.TextStyle
+        let string: String
+    }
+
+    private let lock = NSLock()
+    private var storage: [Key: Text] = [:]
+
+    func value(for key: Key) -> Text? {
+        lock.lock(); defer { lock.unlock() }
+        return storage[key]
+    }
+
+    func store(_ text: Text, for key: Key) {
+        lock.lock(); defer { lock.unlock() }
+        if storage.count > 3000 { storage.removeAll(keepingCapacity: true) }
+        storage[key] = text
+    }
 }

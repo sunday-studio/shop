@@ -19,14 +19,7 @@ final class ProductsModel {
     /// Search results, or the cached catalog (recently bought first) filtered by category.
     var products: [Product] {
         if let results { return results }
-        let all = app.catalog.products.values.sorted { a, b in
-            switch (a.lastBoughtAt, b.lastBoughtAt) {
-            case let (x?, y?) where x != y: return x > y
-            case (.some, nil): return true
-            case (nil, .some): return false
-            default: return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
-            }
-        }
+        let all = app.catalog.productsRecentFirst
         guard let categoryId else { return all }
         return all.filter { $0.categoryId == categoryId }
     }
