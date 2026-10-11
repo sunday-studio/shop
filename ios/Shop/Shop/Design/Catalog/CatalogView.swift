@@ -34,6 +34,19 @@ struct CatalogView: View {
                 }
                 .padding(.horizontal, -Space.edge)
 
+                section("Swipe actions (pull to act)") {
+                    VStack(spacing: 0) {
+                        ForEach(0..<3, id: \.self) { i in
+                            SwipeActionRow(
+                                leading: SwipeAction(icon: "checkmark", title: "Confirm", tint: Accent.green, haptic: .medium, perform: {}),
+                                trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red, perform: {})
+                            ) {
+                                ReceiptRow(shopName: ["Albert Heijn", "Jumbo", "Dirk"][i], subtitle: "12:08 · 9 items", amount: "€12,40")
+                                    .padding(.horizontal, Space.gutter)
+                            }
+                        }
+                    }
+                }
                 section("Colour") { colours }
                 section("Type") { typeScale }
                 section("Amounts") {
@@ -177,30 +190,6 @@ struct CatalogView: View {
                     }
                     .padding(Space.l)
                     .background(Color(hex: 0x1C1C1A), in: RoundedRectangle.continuous(Radius.l))
-                }
-                section("Swipe actions (native)") {
-                    List {
-                        ForEach(["Albert Heijn", "Jumbo", "Dirk"], id: \.self) { shop in
-                            ReceiptRow(shopName: shop, subtitle: "12:08 · 9 items", amount: "€12,40")
-                                .listRowInsets(EdgeInsets())
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                    Button { } label: { Label("Confirm", systemImage: "checkmark").labelStyle(.iconOnly) }
-                                        .tint(Accent.green)
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) { } label: { Label("Delete", systemImage: "trash").labelStyle(.iconOnly) }
-                                        .tint(Accent.red)
-                                    Button { } label: { Label("Edit", systemImage: "pencil").labelStyle(.iconOnly) }
-                                        .tint(Accent.blue)
-                                }
-                        }
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .scrollDisabled(true)
-                    .frame(height: 200)
                 }
                 section("Trays") {
                     Button("Open a tray") { openTray() }.buttonStyle(.shop(.secondary))
