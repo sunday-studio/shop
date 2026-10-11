@@ -99,9 +99,8 @@ img{display:block}
   ::view-transition-group(root),::view-transition-old(root),::view-transition-new(root),
   ::view-transition-group(page-main),
   ::view-transition-group(site-header),::view-transition-group(guide-nav),::view-transition-group(site-footer){animation:none}
-  ::view-transition-old(site-header),::view-transition-new(site-header),
-  ::view-transition-old(guide-nav),::view-transition-new(guide-nav),
-  ::view-transition-old(site-footer),::view-transition-new(site-footer){animation:none;mix-blend-mode:normal}
+  ::view-transition-new(site-header),::view-transition-new(guide-nav),::view-transition-new(site-footer){animation:none;mix-blend-mode:normal}
+  ::view-transition-old(site-header),::view-transition-old(guide-nav),::view-transition-old(site-footer){display:none}
   ::view-transition-old(page-main),::view-transition-new(page-main){animation-duration:.15s;animation-timing-function:ease-out}
 }
 [id]{scroll-margin-top:24px}
