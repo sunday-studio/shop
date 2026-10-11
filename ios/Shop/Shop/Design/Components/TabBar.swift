@@ -39,7 +39,7 @@ struct PillTabBar<ID: Hashable>: View {
                     .background(Palette.btn, in: Circle())
                     .elevation(.bar)
             }
-            .buttonStyle(.press(scale: Motion.pillScale, haptic: nil)) // the Add tray plays .trayOpen
+            .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection)) // a second impact within 90 ms is dropped, so the Add tray does not double up
             .accessibilityLabel("Add")
         }
         .padding(.horizontal, Space.edge)

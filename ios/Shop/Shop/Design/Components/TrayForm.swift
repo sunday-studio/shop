@@ -128,7 +128,7 @@ struct CategoryColourGrid: View {
                             .animation(Motion.pop, value: on)
                             .frame(maxWidth: .infinity, minHeight: 48)
                     }
-                    .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+                    .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
                     .accessibilityLabel(token.capitalized)
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
@@ -213,7 +213,7 @@ struct ChoiceRow: View {
             .contentShape(RoundedRectangle.continuous(Radius.l))
             .animation(Motion.fade, value: selected)
         }
-        .buttonStyle(.press(haptic: nil))
+        .buttonStyle(.press(haptic: .selection))
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

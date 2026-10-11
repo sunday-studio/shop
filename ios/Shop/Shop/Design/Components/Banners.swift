@@ -209,7 +209,7 @@ struct ToastView: View {
                     .foregroundStyle(message.tone == .neutral ? Accent.blue : Palette.blueText)
                     .padding(.leading, Space.m)
                     .frame(minHeight: 36)
-                    .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+                    .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
             }
         }
         .padding(.leading, Space.xl)
@@ -230,7 +230,10 @@ extension View {
                     .padding(.horizontal, Space.gutter)
                     .padding(.bottom, bottomInset)
                     .transition(.offset(y: 16).combined(with: .opacity))
-                    .onTapGesture { withAnimation(Motion.ease) { center.current = nil } }
+                    .onTapGesture {
+                        Haptics.play(.selection)
+                        withAnimation(Motion.ease) { center.current = nil }
+                    }
                     .id(message.id)
             }
         }
