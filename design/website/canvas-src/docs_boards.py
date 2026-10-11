@@ -84,7 +84,7 @@ def build(g):
         if m:
             right = '<span class="menubtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 16h16"/></svg>Menu</span>' if not menu else '<span class="menubtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>Close</span>'
         else:
-            right = f'<a class="nl" href="#">Features</a><a class="nl hover" href="#" style="color:var(--blueText)">Guide</a><a class="btn sm" href="#">{GH.replace("20","18")}GitHub</a>'
+            right = f'<a class="nl" href="#">Features</a><a class="nl hover" href="#" style="color:var(--blueText)">Guide</a><a class="btn sm" href="https://github.com/sunday-studio/shop">{GH.replace("20","18")}GitHub</a>'
         return f'<header class="nav" style="padding:{pad};{"height:68px" if m else ""}">{brand(pre)}<nav class="links">{right}</nav></header>'
 
     def sidebar(cur, m=False):

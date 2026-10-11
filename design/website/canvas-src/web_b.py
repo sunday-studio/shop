@@ -75,10 +75,10 @@ CSS = '''
 .w .stage{position:relative;flex:1;border-radius:36px;background:var(--panel);overflow:hidden}
 .w .ph{position:absolute;left:0;right:0;top:70px;display:flex;justify-content:center;opacity:0}
 .w .ph:first-of-type{opacity:1}
-@keyframes tOn{0%,24%{opacity:1}26%,100%{opacity:.5}}
-@keyframes dOn{0%,24%{opacity:1}26%,100%{opacity:.62}}
+@keyframes tOn{0%,24%{opacity:1}26%,98%{opacity:.5}100%{opacity:1}}
+@keyframes dOn{0%,24%{opacity:1}26%,98%{opacity:.62}100%{opacity:1}}
 @keyframes pOn{0%{width:0}25%{width:100%}25.01%,100%{width:0}}
-@keyframes phOn{0%{opacity:0;transform:translateY(28px)}4%,23%{opacity:1;transform:none}27%,100%{opacity:0;transform:translateY(-14px)}}
+@keyframes phOn{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
 @media (prefers-reduced-motion:no-preference){
 .w .fi h3{animation:tOn 20s infinite}.w .fi .dd{animation:dOn 20s infinite}.w .fi .pr{animation:pOn 20s linear infinite}.w .ph{animation:phOn 20s infinite}
 .w .fi:nth-child(1)>*,.w .ph:nth-of-type(1){animation-delay:0s}
@@ -174,9 +174,35 @@ def art_receipts(uid, par='xMidYMax'):
 VARIANTS = {'silk': art_silk, 'still': art_still, 'receipts': art_receipts}
 
 
+def showcase_css():
+    out = ['.w .sfr{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}', '.w .fi{cursor:pointer;border-radius:12px}']
+    kf = {'tOn': '0%,24%{opacity:1}26%,98%{opacity:.5}100%{opacity:1}', 'dOn': '0%,24%{opacity:1}26%,98%{opacity:.62}100%{opacity:1}', 'pOn': '0%{width:0}25%{width:100%}25.01%,100%{width:0}',
+          'phOn': '0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}'}
+    for k in range(1, 5):
+        sel = f'#sf{k}:checked ~ .shrow'
+        # static selected state (also used with reduced motion)
+        out.append(f'{sel} .fi h3{{opacity:.5}}{sel} .fi:nth-child({k}) h3{{opacity:1}}')
+        out.append(f'{sel} .fi .dd{{opacity:.62}}{sel} .fi:nth-child({k}) .dd{{opacity:1}}')
+        out.append(f'{sel} .fi .pr{{width:0}}{sel} .fi:nth-child({k}) .pr{{width:100%}}')
+        out.append(f'{sel} .ph{{opacity:0}}{sel} .ph:nth-of-type({k}){{opacity:1}}')
+        out.append(f'#sf{k}:focus-visible ~ .shrow .fi:nth-child({k}){{outline:2px solid var(--blue);outline-offset:6px}}')
+        # animated cycle restarted from the clicked item
+        anim = []
+        for name, frames in kf.items():
+            out.append(f'@keyframes {name}{k}{{{frames}}}')
+        for i in range(1, 5):
+            slot = (i - k) % 4
+            delay = '0s' if slot == 0 else f'-{20 - 5 * slot}s'
+            anim.append(f'{sel} .fi:nth-child({i}) h3,{sel} .fi:nth-child({i}) .dd,{sel} .fi:nth-child({i}) .pr,{sel} .ph:nth-of-type({i}){{animation-delay:{delay}}}')
+        anim.append(f'{sel} .fi h3{{animation-name:tOn{k}}}{sel} .fi .dd{{animation-name:dOn{k}}}{sel} .fi .pr{{animation-name:pOn{k}}}{sel} .ph{{animation-name:phOn{k}}}')
+        out.append('@media (prefers-reduced-motion:no-preference){' + ''.join(anim) + '}')
+    return '\n'.join(out) + '\n'
+
+
 def build(g):
     import re
-    g['CSS'] += CSS
+    g['CSS'] += CSS + showcase_css()
+    g['CSS'] += ".w .heroP .nl{color:var(--ink)}.w .heroP .nl:hover{background:rgba(255,255,255,.5);color:var(--ink)}\n"
     for t in ('light', 'dark'):
         g['TOK'][t].update(TOKS[t])
     g['TOK']['light']['band'] = '#141413'; g['TOK']['dark']['band'] = '#1C1C1A'
@@ -185,7 +211,11 @@ def build(g):
 
     def header(m):
         pad = '0 20px' if m else '0 48px'
-        return f'<header class="nav" style="padding:{pad};{"height:68px" if m else ""}">{brand(False)}<nav class="links" style="gap:10px"><a class="btn sm" href="#">GitHub</a><span class="burger" aria-label="Menu"><i></i><i></i></span></nav></header>'
+        if m:
+            right = '<a class="btn sm" href="https://github.com/sunday-studio/shop">GitHub</a><span class="burger" aria-label="Menu"><i></i><i></i></span>'
+        else:
+            right = '<a class="nl" href="#features">Features</a><a class="nl" href="#">Guide</a><a class="btn sm" href="https://github.com/sunday-studio/shop">GitHub</a>'
+        return f'<header class="nav" style="padding:{pad};{"height:68px" if m else ""}">{brand(False)}<nav class="links" style="gap:{10 if m else 8}px">{right}</nav></header>'
 
     def hero(m, kind='dusk'):
         h = 1010 if m else 1130
@@ -193,7 +223,7 @@ def build(g):
         h1 = 'font-size:46px;line-height:1.03' if m else ''
         paper = f'<div class="paper a-settle" style="width:{150 if m else 230}px;height:{240 if m else 340}px;left:{"-40px" if m else "190px"};top:{690 if m else 720}px;transform:rotate(-9deg);z-index:1"><div class="b" style="width:50%;background:var(--ink)"></div><div class="b"></div><div class="b" style="width:72%"></div><div class="b"></div><div style="height:36px;border-radius:12px;background:var(--yellow);margin-top:8px"></div></div>'
         chips = '' if m else f'<div class="fl a-rise" style="right:170px;top:760px;animation-delay:.3s"><i style="background:var(--green)">{ICONS["check"]}</i><div>Adds up<small>€38,13 matches the receipt</small></div></div><div class="fl a-rise" style="right:120px;top:900px;animation-delay:.4s"><i style="background:var(--blue)">{ICONS["tag"]}</i><div>Cheapest this month<small>Oat milk, Corner Market</small></div></div><div class="fl a-rise" style="left:130px;top:980px;animation-delay:.5s"><i style="background:var(--amber)">{ICONS["bars"]}</i><div>Groceries, October<small>€412 across 4 shops</small></div></div>'
-        btns = f'<div style="display:flex;gap:12px;justify-content:center;margin-top:30px;flex-direction:{"column" if m else "row"};padding:{"0 20px" if m else "0"}"><a class="btn" href="#" style="{"width:100%" if m else "min-width:220px"}">View on GitHub</a><a class="btn alt" href="#" style="{"width:100%" if m else "min-width:220px"}">Read the guide</a></div>'
+        btns = f'<div style="display:flex;gap:12px;justify-content:center;margin-top:30px;flex-direction:{"column" if m else "row"};padding:{"0 20px" if m else "0"}"><a class="btn" href="https://github.com/sunday-studio/shop" style="{"width:100%" if m else "min-width:220px"}">View on GitHub</a><a class="btn alt" href="#" style="{"width:100%" if m else "min-width:220px"}">Read the guide</a></div>'
         badge = '<span class="badge a-rise">MIT licence · open source <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>'
         txt = f'<div class="hb" style="position:relative;z-index:2;padding:{"20px 0 0" if m else "40px 0 0"}"><div style="text-align:center">{badge}</div><h1 class="a-rise" style="margin-top:24px;{h1}">Photograph the receipt.{"" if m else "<br>"} Keep the data.</h1><p class="lead a-rise" style="{"font-size:17px;padding:0 20px" if m else ""}">Reads your supermarket receipts on your own server, checks every line adds up to the printed total, and shows what your groceries really cost.</p>{btns}</div>'
         phone = f'<div class="tilt" style="position:absolute;left:50%;margin-left:-{ph//2}px;top:{640 if m else 690}px;z-index:2">{dev("receipt",ph)}</div>'
@@ -227,17 +257,18 @@ def build(g):
              ('Finds the cheapest shop', 'Prices per kilo, litre or piece, per shop, so the comparison is fair.', 'product'),
              ('Shows where the money goes', 'Spend by month, shop and category, without a spreadsheet.', 'analytics'),
              ('Keeps products tidy', 'Names cleaned up, categories filled in, barcodes linked.', 'products')]
-        items = ''.join(f'<div class="fi"><i class="pr"></i><h3>{t}</h3><div class="dd"><div><p>{d}</p></div></div></div>' for t, d, s in F)
+        items = ''.join(f'<label class="fi" for="sf{i+1}"><i class="pr"></i><h3>{t}</h3><div class="dd"><div><p>{d}</p></div></div></label>' for i, (t, d, s) in enumerate(F))
         pw = 250 if m else 290
         phs = ''.join(f'<div class="ph" style="{"top:50px" if m else ""}">{dev(s, pw)}</div>' for t, d, s in F)
         left = f'<div style="{"" if m else "width:440px;flex:none"}"><h2 class="h2 lt" style="font-size:{34 if m else 56}px;line-height:1.05;margin-bottom:{24 if m else 36}px">Everything a receipt knows.</h2><div class="fx">{items}</div></div>'
         right = f'<div class="stage" style="{"height:460px;margin-top:28px;flex:none" if m else "height:620px"}">{phs}</div>'
-        return f'<section class="shw" style="padding:{"64px 20px 0" if m else "120px 80px 0"}"><div style="display:flex;flex-direction:{"column" if m else "row"};gap:{0 if m else 64}px;align-items:{"stretch" if m else "flex-start"}">{left}{right}</div></section>'
+        inputs = ''.join(f'<input class="sfr" type="radio" name="feat" id="sf{i}" aria-label="Show feature {i}">' for i in range(1, 5))
+        return f'<section class="shw" id="features" style="padding:{"64px 20px 0" if m else "120px 80px 0"}">{inputs}<div class="shrow" style="display:flex;flex-direction:{"column" if m else "row"};gap:{0 if m else 64}px;align-items:{"stretch" if m else "flex-start"}">{left}{right}</div></section>'
 
     def closing(m):
         h = 600
         pills = ''.join(f'<span class="gp">{t}</span>' for t in ['Your server, your data', 'No account, no analytics', 'MIT licensed'])
-        return f'<section style="padding:{"64px 0 0" if m else "120px 0 0"}"><div class="heroP" style="height:{h}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:{"56px 24px 0" if m else "80px 0 0"}">{art("c", "xMidYMid")}<div class="fadeT" style="height:{160 if m else 220}px"></div><div class="fade" style="height:{140 if m else 180}px"></div><h2 class="h2 lt" style="position:relative;z-index:2;font-size:{40 if m else 72}px;line-height:1.02">Run it at home.</h2><p style="position:relative;z-index:2;font-size:{17 if m else 20}px;line-height:1.5;color:var(--ink2);margin-top:16px;max-width:520px">Yours, on your own server. Install it with Docker on a machine you already have.</p><div style="position:relative;z-index:2;display:flex;gap:10px;margin-top:28px;flex-wrap:wrap;justify-content:center"><a class="btn" href="#" style="min-width:220px">View on GitHub</a></div><div style="position:relative;z-index:2;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:{20 if m else 28}px">{pills}</div></div></section>'
+        return f'<section style="padding:{"64px 0 0" if m else "120px 0 0"}"><div class="heroP" style="height:{h}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:{"56px 24px 0" if m else "80px 0 0"}">{art("c", "xMidYMid")}<div class="fadeT" style="height:{160 if m else 220}px"></div><div class="fade" style="height:{140 if m else 180}px"></div><h2 class="h2 lt" style="position:relative;z-index:2;font-size:{40 if m else 72}px;line-height:1.02">Run it at home.</h2><p style="position:relative;z-index:2;font-size:{17 if m else 20}px;line-height:1.5;color:var(--ink2);margin-top:16px;max-width:520px">Yours, on your own server. Install it with Docker on a machine you already have.</p><div style="position:relative;z-index:2;display:flex;gap:10px;margin-top:28px;flex-wrap:wrap;justify-content:center"><a class="btn" href="https://github.com/sunday-studio/shop" style="min-width:220px">View on GitHub</a></div><div style="position:relative;z-index:2;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:{20 if m else 28}px">{pills}</div></div></section>'
 
     def body(m):
         return hero(m) + steps(m) + showcase(m) + closing(m) + footer(m, False)
