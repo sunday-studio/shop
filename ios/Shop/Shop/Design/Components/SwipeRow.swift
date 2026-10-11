@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Pull-to-act rows (replaced the native swipe actions after device testing):
+// Pull-to-act rows:
 // one action per side, a full-bleed colour panel that grows with the finger, the icon pinned near
 // the revealed edge, the panel going from a soft tint to the full colour when the row is "armed"
 // (selection tick), and letting go while armed commits. Nothing stays open.
