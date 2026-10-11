@@ -47,6 +47,10 @@ CSS = '''
 .w .qa{border-radius:34px;overflow:hidden;position:relative;display:flex;flex-direction:column;padding:30px 30px 0}
 .w .qa .q{font-size:14px;font-weight:500;color:var(--ink2);display:flex;align-items:center;gap:8px}
 .w .qa .q i{width:8px;height:8px;border-radius:50%;display:block}
+.w .qa h3{font-size:28px;line-height:1.14;font-weight:500;letter-spacing:-.025em;margin:16px 0 0}
+.w .qa .tag{margin-left:auto;font-size:12px;font-weight:500;color:var(--ink2);background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:11px;padding:3px 10px}
+.w .qa .vh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;font-size:14px;color:var(--ink2)}
+.w .qa .vh b{font-size:26px;font-weight:500;letter-spacing:-.03em;color:var(--ink)}
 .w .qa .big{font-size:64px;line-height:1;font-weight:400;letter-spacing:-.045em;margin-top:18px}
 .w .qa .sub{font-size:16.5px;line-height:1.45;color:var(--ink2);margin-top:10px;max-width:320px}
 .w .qa .viz{margin-top:auto;padding-bottom:28px}
@@ -208,11 +212,15 @@ def build(g):
         v2 = f'<div class="viz"><svg viewBox="0 0 300 152" width="100%" role="img" aria-label="Price of Halfvolle melk rising from 0,85 to 0,95 euro between June and October"><path d="{area}" fill="var(--amber)" opacity=".14"/><path d="{d}" fill="none" stroke="var(--amber)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>{dots}<text x="{X(4)-8}" y="{Y(.95)-12:.1f}" font-size="12" font-weight="500" text-anchor="end" fill="var(--ink)">€0,95</text><text x="{X(0)+8}" y="{Y(.85)+22:.1f}" font-size="12" text-anchor="start" fill="var(--ink2)">€0,85</text>{labels}</svg></div>'
         cats = [('Produce', '€99', 24, 'var(--green)'), ('Meat & fish', '€82', 20, 'var(--amber)'), ('Dairy', '€74', 18, 'var(--blue)'), ('Pantry', '€70', 17, 'var(--yellow)'), ('Other', '€87', 21, 'var(--ink3)')]
         v3 = '<div class="viz"><div class="stk">' + ''.join(f'<i style="width:{w}%;background:{c}"></i>' for n, a_, w, c in cats) + '</div>' + ''.join(f'<div class="lgd"><i style="background:{c}"></i>{n}<b>{a_}</b></div>' for n, a_, w, c in cats[:4]) + '</div>'
-        data = [('Where is it cheapest?', 'var(--green)', '€0,50 less', 'Oat milk costs €0,50 less per litre at Corner Market than at Greenfield.', v1, 'var(--greenTint)', 'var(--greenText)'),
-                ('What got more expensive?', 'var(--amber)', '+12%', 'Halfvolle melk has gone up 12% since June, in two steps.', v2, 'var(--tintP)', 'var(--amberText)'),
-                ('Where does the money go?', 'var(--blue)', '€412', 'Spent on groceries in October, across four shops. A fifth of it on meat and fish.', v3, 'var(--blueTint)', 'var(--ink)')]
-        cards = ''.join(f'<article class="qa a-scroll" style="height:{440 if m else 470}px;background:linear-gradient(165deg,{bg},var(--sunk) 75%)"><div class="q"><i style="background:{dot}"></i>{q}</div><div class="big" style="color:{col}">{big}</div><div class="sub">{sub}</div>{v}</article>' for q, dot, big, sub, v, bg, col in data)
-        return f'<section style="padding:{"64px 20px 0" if m else "120px 80px 0"}"><h2 class="h2 lt" style="font-size:{34 if m else 56}px;line-height:1.06;margin-bottom:{10 if m else 14}px;max-width:760px">What your receipts can tell you.</h2><p style="font-size:{16 if m else 18}px;color:var(--ink2);margin-bottom:{28 if m else 44}px">Figures from demo data.</p><div style="display:grid;grid-template-columns:repeat({1 if m else 3},minmax(0,1fr));gap:{14 if m else 18}px">{cards}</div></section>'
+        vh = lambda l, v, c: f'<div class="vh"><span>{l}</span><b style="color:{c}">{v}</b></div>'
+        v1 = v1.replace('<div class="viz">', '<div class="viz">' + vh('Oat milk, per litre', '−€0,50', 'var(--greenText)'), 1)
+        v2 = v2.replace('<div class="viz">', '<div class="viz">' + vh('Halfvolle melk since June', '+12%', 'var(--amberText)'), 1)
+        v3 = v3.replace('<div class="viz">', '<div class="viz">' + vh('October, four shops', '€412', 'var(--ink)'), 1)
+        data = [('Where is it cheapest?', 'var(--green)', 'The cheapest shop for each product', 'Shop compares the price per litre, kilo or piece across every shop you scan, so a bigger pack never fools you.', v1, 'var(--greenTint)'),
+                ('What got more expensive?', 'var(--amber)', 'Price rises, as they happen', 'It follows each product\'s price over time and points out the ones that crept up.', v2, 'var(--tintP)'),
+                ('Where does the money go?', 'var(--blue)', 'Spending by month, shop and category', 'It adds up every receipt, including the ones you are still fixing, and splits it the way you shop.', v3, 'var(--blueTint)')]
+        cards = ''.join(f'<article class="qa a-scroll" style="height:{500 if m else 500}px;background:linear-gradient(165deg,{bg},var(--sunk) 75%)"><div class="q"><i style="background:{dot}"></i>{q}<span class="tag">Example</span></div><h3>{t}</h3><div class="sub">{sub}</div>{v}</article>' for q, dot, t, sub, v, bg in data)
+        return f'<section style="padding:{"64px 20px 0" if m else "120px 80px 0"}"><h2 class="h2 lt" style="font-size:{34 if m else 56}px;line-height:1.06;margin-bottom:{10 if m else 14}px;max-width:760px">What your receipts can tell you.</h2><p style="font-size:{16 if m else 18}px;color:var(--ink2);margin-bottom:{28 if m else 44}px;max-width:620px">Once a few receipts are in, Shop can work out answers like these. The examples use demo data.</p><div style="display:grid;grid-template-columns:repeat({1 if m else 3},minmax(0,1fr));gap:{14 if m else 18}px">{cards}</div></section>'
 
     def showcase(m):
         F = [('Checks every receipt', 'The lines have to add up to the printed total. If they do not, you see exactly which row to fix.', 'receipt'),
