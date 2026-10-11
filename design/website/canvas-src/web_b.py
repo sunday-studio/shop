@@ -16,7 +16,7 @@ CSS = '''
 .w .art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .w .heroP{position:relative;overflow:hidden;background:var(--bg)}
 .w .heroP .nav{position:relative;z-index:3}
-.w .heroP .brand{color:#2B2D3F}
+.w .heroP .brand{color:var(--ink)}
 .w .foot{position:relative;z-index:2;background:var(--bg);margin-top:-2px}
 .w .fade{position:absolute;left:0;right:0;bottom:-2px;z-index:3;pointer-events:none;background:linear-gradient(180deg,transparent,var(--bg) 92%)}
 .w .fadeT{position:absolute;left:0;right:0;top:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg),transparent)}
