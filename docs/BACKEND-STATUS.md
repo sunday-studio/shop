@@ -1,6 +1,6 @@
 # Backend status (handoff)
 
-_Last updated 2026-10-11 by the backend thread._ Read this first if you're picking up the server side. The detailed spec and milestone checklists are in [PLAN.md](PLAN.md).
+_Last updated 2026-10-11._ Read this first if you're picking up the server side. The detailed spec and milestone checklists are in [PLAN.md](PLAN.md).
 
 ## What it is
 
@@ -57,7 +57,7 @@ All iOS backend needs (#1–#11 in [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md))
 - No LLMs or embeddings: models are for OCR only. Everything must run in Docker on any CPU.
 - All docs live in `docs/`. Commit per milestone. Secrets go in `deploy/.env` (git-ignored), never in commits.
 
-## M11 (backend thread): what is done
+## M11: what is done
 
 - **Parser** (12 of the 13 spike receipts reconcile, sum == printed total): SUBTOTAAL / "N Artikelen" / "Van x voor y" / lone-price / savings-summary rows are ignored; a lost comma ("20015") or trailing junk ("2,49 49") is repaired only when that makes the sum equal the printed total exactly. Receipts 1 and 2 on the real DB were force-reparsed (their doubled sums are fixed: 8468 and 9980).
 - **Uploads:** `shop_id` is optional on `POST /v1/receipts` (receipts show as Unassigned; they count in spend under an "Unassigned" bucket) and `photo_taken_at` is an optional hint that is never the purchase date. HEIC/HEIF get an explicit 415 (the app converts to JPEG); `purchased_at` is the client override or the date parsed from the receipt, else NULL. Never the upload time or EXIF.

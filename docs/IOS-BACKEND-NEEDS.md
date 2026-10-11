@@ -1,6 +1,6 @@
 # Backend needs from the iOS app
 
-What the iPhone app asked the API for (started at `openapi.yaml` v0.5.0). **All 11 are live as of v0.9.0**; new needs get added below. The app stays local-only: it only talks to the Shop server, so anything external (logos, Open Food Facts) has to come through the backend.
+What the iPhone app asked the API for (started at `openapi.yaml` v0.5.0). **All 11 are live as of v0.9.0**; later API additions are in `openapi.yaml`, and new needs get added below. The app stays local-only: it only talks to the Shop server, so anything external (logos, Open Food Facts) has to come through the backend.
 Each item lists the screen that needs it and the milestone in [IOS-PLAN.md](IOS-PLAN.md) that is blocked without it. Until an item lands, the app uses the fallback shown.
 
 | # | Need | Screen | Milestone | App fallback until then |
