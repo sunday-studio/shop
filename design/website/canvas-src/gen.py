@@ -7,7 +7,7 @@ A=json.load(open(f'{HERE}/assets.json'))
 OUT=sys.argv[1] if len(sys.argv)>1 else 'out'
 os.makedirs(f'{OUT}/project',exist_ok=True); os.makedirs(f'{OUT}/preview',exist_ok=True)
 
-TOK={'light':dict(bg='#FFFFFF',sunk='#F3F4F8',line='#E4E6EE',ink='#2B2D3F',ink2='#686B7E',ink3='#B2B5C4',btn='#33364D',btnInk='#FFFFFF',blue='#0A84FF',blueText='#0071E3',blueTint='#E5F1FF',panel='#DCEBFF',yellow='#FFCC1A',green='#18B663',greenText='#0B8A47',amber='#FF9500',amberText='#B25E00',paper='#F7F9FF',shadow='rgba(29,29,27,.16)',bezel='#1D1D1B'),
+TOK={'light':dict(bg='#FFFFFF',sunk='#F3F4F8',line='#E4E6EE',ink='#2B2D3F',ink2='#686B7E',ink3='#B2B5C4',btn='#1D1D1B',btnInk='#FFFFFF',blue='#0A84FF',blueText='#0071E3',blueTint='#E5F1FF',panel='#DCEBFF',yellow='#FFCC1A',green='#18B663',greenText='#0B8A47',amber='#FF9500',amberText='#B25E00',paper='#F7F9FF',shadow='rgba(29,29,27,.16)',bezel='#1D1D1B'),
      'dark':dict(bg='#0C0C0B',sunk='#1A1A18',line='#2A2A27',ink='#F4F4F1',ink2='#9B9B95',ink3='#5C5C58',btn='#F4F4F1',btnInk='#0C0C0B',blue='#4DA3FF',blueText='#4DA3FF',blueTint='#0E2236',panel='#12304F',yellow='#FFCC1A',green='#3DDC84',greenText='#3DDC84',amber='#FFB340',amberText='#FFB340',paper='#E9ECF4',shadow='rgba(0,0,0,.55)',bezel='#2A2A27')}
 VARS=['bg','sunk','line','ink','ink2','ink3','btn','btnInk','blue','blueText','blueTint','panel','yellow','green','greenText','amber','amberText','paper','shadow','bezel']
 SHOTS=['home','receipt','analytics','products','product']
@@ -32,10 +32,10 @@ body{margin:0}
 .w .nav .nl{height:40px;padding:0 14px;display:inline-flex;align-items:center;border-radius:20px;font-size:15px;font-weight:500;color:var(--ink2);transition:color .15s,background .15s}
 .w .nav .nl:hover,.w .nav .nl.hover{color:var(--ink);background:var(--sunk)}
 .w .nav .nl:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
-.w .btn{display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 24px;border-radius:26px;font-weight:500;font-size:16px;background:var(--btn);color:var(--btnInk);transition:transform .16s cubic-bezier(.22,1,.36,1),box-shadow .2s,opacity .2s}
-.w .btn.sm{height:40px;padding:0 16px;font-size:14px;gap:8px;border-radius:20px}
-.w .btn:hover,.w .btn.hover{transform:translateY(-1px);box-shadow:0 8px 20px var(--shadow)}
-.w .btn:active,.w .btn.press{transform:scale(.97);box-shadow:none}
+.w .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:56px;padding:0 28px;border-radius:28px;font-weight:500;font-size:16.5px;background:var(--btn);color:var(--btnInk);transition:transform .16s cubic-bezier(.22,1,.36,1),opacity .2s}
+.w .btn.sm{height:36px;padding:0 18px;font-size:14px;border-radius:18px}
+.w .btn:hover,.w .btn.hover{opacity:.9}
+.w .btn:active,.w .btn.press{transform:scale(.97)}
 .w .btn:focus-visible,.w .btn.focus,.w .link:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 .w .link{color:var(--blueText);font-weight:500;border-radius:6px}
 .w .link:hover{text-decoration:underline;text-underline-offset:3px}
@@ -49,7 +49,6 @@ body{margin:0}
 .w .paper .b{height:9px;border-radius:5px;background:#CBD3E0}
 .w .card{position:relative;background:var(--sunk);border-radius:28px;overflow:hidden;border:1px solid var(--line)}
 .w .card .ct{font-weight:500;letter-spacing:-.02em}
-.w .foot{border-top:1px solid var(--line)}
 @keyframes settle{from{opacity:0;transform:rotate(-17deg) translateY(28px)}to{opacity:1;transform:rotate(-9deg) translateY(0)}}
 @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 .w .a-settle{animation:settle .9s cubic-bezier(.22,1,.36,1) both}

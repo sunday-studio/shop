@@ -8,8 +8,8 @@ CSS = '''
 .w .hb .lead{font-size:21px;line-height:1.5;color:var(--ink2);text-align:center;max-width:620px;margin:22px auto 0}
 .w .heroP .lead,.w .heroP p{color:var(--ink)!important;opacity:.82}
 .w .h2.lt{font-weight:400;letter-spacing:-.045em}
-.w .btn.alt{background:rgba(255,255,255,.55);color:#2B2D3F;backdrop-filter:blur(8px)}
-.w .mcta{font-family:'GT America Mono',ui-monospace,monospace;text-transform:uppercase;letter-spacing:.07em;font-size:12.5px;height:44px;padding:0 20px;border-radius:22px;gap:10px}
+.w .btn.alt{background:rgba(255,255,255,.6);color:var(--ink);backdrop-filter:blur(8px)}
+.w .dk .btn.alt{background:rgba(255,255,255,.14)}
 .w .burger{width:44px;height:44px;border-radius:50%;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.55);flex:none}
 .w .burger i{display:block;width:18px;height:2px;border-radius:1px;background:#2B2D3F}
 .w .badge{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px 0 16px;border-radius:17px;background:rgba(43,45,63,.82);color:#F4F4F1;font-size:13.5px;font-weight:500;backdrop-filter:blur(10px)}
@@ -23,9 +23,9 @@ CSS = '''
 .w .fl i{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;font-style:normal;color:#fff;font-size:15px}
 .w .fl small{display:block;font-size:12.5px;font-weight:400;color:var(--ink2)}
 .w .tilt{transform:perspective(1800px) rotateY(-9deg) rotateX(3deg) rotate(1.5deg);transform-origin:50% 100%}
-.w .sx{border-radius:34px;background:var(--sunk);border:1px solid var(--line);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.w .sx{border-radius:34px;background:var(--sunk);overflow:hidden;position:relative;display:flex;flex-direction:column}
 .w .sx .tx{padding:30px 30px 0}
-.w .sx .num{width:34px;height:34px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+.w .sx .num{width:34px;height:34px;border-radius:50%;background:var(--blueTint);color:var(--blueText);font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;margin-bottom:18px}
 .w .sx h3{font-size:28px;line-height:1.12;font-weight:500;letter-spacing:-.025em;margin:0 0 8px}
 .w .sx p{font-size:16.5px;line-height:1.5;color:var(--ink2);margin:0;max-width:310px}
 .w .sx .vis{margin-top:auto;height:240px;position:relative}
@@ -33,22 +33,22 @@ CSS = '''
 .w .vf .b{height:9px;border-radius:5px;background:var(--line)}
 .w .cb{position:absolute;width:26px;height:26px;border:3px solid var(--blue);z-index:2}
 .w .sv{position:absolute;left:0;right:0;top:34px;display:flex;align-items:center;justify-content:center;gap:0}
-.w .sv .ph1{width:62px;height:112px;border-radius:16px;border:3px solid var(--ink);background:var(--bg);position:relative;flex:none}
+.w .sv .ph1{width:62px;height:112px;border-radius:16px;border:3px solid var(--ink3);background:var(--bg);position:relative;flex:none}
 .w .sv .ph1:after{content:"";position:absolute;left:12px;right:12px;top:16px;height:8px;border-radius:4px;background:var(--line);box-shadow:0 16px 0 var(--line),0 32px 0 var(--line)}
 .w .sv .ln{width:70px;border-top:3px dashed var(--ink3);flex:none}
-.w .sv .mini{width:150px;height:84px;border-radius:22px;background:var(--ink);position:relative;flex:none}
+.w .sv .mini{width:150px;height:84px;border-radius:22px;background:var(--ink2);position:relative;flex:none}
 .w .sv .mini:after{content:"";position:absolute;right:16px;bottom:16px;width:9px;height:9px;border-radius:50%;background:var(--green)}
 .w .lk{position:absolute;left:50%;margin-left:-98px;top:170px;width:196px;height:40px;border-radius:20px;background:var(--bg);box-shadow:0 14px 30px -14px var(--shadow);display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:500}
 .w .nc{position:absolute;left:34px;right:34px;background:var(--bg);border-radius:20px;box-shadow:0 24px 50px -22px var(--shadow);padding:16px 18px;display:flex;align-items:center;gap:14px;font-size:15px;font-weight:500}
 .w .nc i{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none;color:#fff;font-style:normal}
 .w .nc small{display:block;font-size:13px;font-weight:400;color:var(--ink2)}
 .w .fx{display:flex;flex-direction:column}
-.w .fi{padding:22px 0 20px;border-top:1px solid var(--line);position:relative}
+.w .fi{padding:22px 0 20px;position:relative}
 .w .fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0;opacity:.4}
 .w .fi .dd{display:grid;grid-template-rows:0fr;opacity:0}
 .w .fi .dd>div{overflow:hidden}
 .w .fi .dd p{font-size:17px;line-height:1.55;color:var(--ink2);margin:10px 0 0;max-width:400px}
-.w .fi .pr{position:absolute;left:0;top:-1px;height:2px;width:0;background:var(--ink)}
+.w .fi .pr{position:absolute;left:0;top:-1px;height:2px;width:0;background:var(--blue)}
 .w .fi:first-child h3{opacity:1}.w .fi:first-child .dd{grid-template-rows:1fr;opacity:1}.w .fi:first-child .pr{width:100%}
 .w .stage{position:relative;flex:1;border-radius:36px;background:var(--panel);overflow:hidden}
 .w .ph{position:absolute;left:0;right:0;top:70px;display:flex;justify-content:center;opacity:0}
@@ -119,7 +119,7 @@ def build(g):
 
     def header(m):
         pad = '0 20px' if m else '0 48px'
-        return f'<header class="nav" style="padding:{pad};{"height:68px" if m else ""}">{brand(False)}<nav class="links" style="gap:10px"><a class="btn mcta" href="#">{GH.replace("20","16")}GitHub</a><span class="burger" aria-label="Menu"><i></i><i></i></span></nav></header>'
+        return f'<header class="nav" style="padding:{pad};{"height:68px" if m else ""}">{brand(False)}<nav class="links" style="gap:10px"><a class="btn sm" href="#">GitHub</a><span class="burger" aria-label="Menu"><i></i><i></i></span></nav></header>'
 
     def hero(m):
         h = 1010 if m else 1130
@@ -127,7 +127,7 @@ def build(g):
         h1 = 'font-size:46px;line-height:1.03' if m else ''
         paper = f'<div class="paper a-settle" style="width:{150 if m else 230}px;height:{240 if m else 340}px;left:{"-40px" if m else "190px"};top:{690 if m else 720}px;transform:rotate(-9deg);z-index:1"><div class="b" style="width:50%;background:var(--ink)"></div><div class="b"></div><div class="b" style="width:72%"></div><div class="b"></div><div style="height:36px;border-radius:12px;background:var(--yellow);margin-top:8px"></div></div>'
         chips = '' if m else f'<div class="fl a-rise" style="right:170px;top:760px;animation-delay:.3s"><i style="background:var(--green)">{ICONS["check"]}</i><div>Adds up<small>€38,13 matches the receipt</small></div></div><div class="fl a-rise" style="right:120px;top:900px;animation-delay:.4s"><i style="background:var(--blue)">{ICONS["tag"]}</i><div>Cheapest this month<small>Oat milk, Corner Market</small></div></div><div class="fl a-rise" style="left:130px;top:980px;animation-delay:.5s"><i style="background:var(--amber)">{ICONS["bars"]}</i><div>Groceries, October<small>€412 across 4 shops</small></div></div>'
-        btns = f'<div style="display:flex;gap:12px;justify-content:center;margin-top:30px;flex-direction:{"column" if m else "row"};padding:{"0 20px" if m else "0"}"><a class="btn mcta" href="#" style="height:52px;{"justify-content:center" if m else ""}">{GH.replace("20","16")}View on GitHub</a><a class="btn mcta alt" href="#" style="height:52px;{"justify-content:center" if m else ""}">Read the guide</a></div>'
+        btns = f'<div style="display:flex;gap:12px;justify-content:center;margin-top:30px;flex-direction:{"column" if m else "row"};padding:{"0 20px" if m else "0"}"><a class="btn" href="#" style="{"flex:1" if m else "min-width:220px"}">View on GitHub</a><a class="btn alt" href="#" style="{"flex:1" if m else "min-width:220px"}">Read the guide</a></div>'
         badge = '<span class="badge a-rise">MIT licence · open source <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>'
         txt = f'<div class="hb" style="position:relative;z-index:2;padding:{"20px 0 0" if m else "40px 0 0"}"><div style="text-align:center">{badge}</div><h1 class="a-rise" style="margin-top:24px;{h1}">Photograph the receipt.{"" if m else "<br>"} Keep the data.</h1><p class="lead a-rise" style="{"font-size:17px;padding:0 20px" if m else ""}">Reads your supermarket receipts on your own server, checks every line adds up to the printed total, and shows what your groceries really cost.</p>{btns}</div>'
         phone = f'<div class="tilt" style="position:absolute;left:50%;margin-left:-{ph//2}px;top:{640 if m else 690}px;z-index:2">{dev("receipt",ph)}</div>'
@@ -157,7 +157,7 @@ def build(g):
     def closing(m):
         h = 600
         pills = ''.join(f'<span class="gp">{t}</span>' for t in ['Your server, your data', 'No account, no analytics', 'MIT licensed'])
-        return f'<section style="padding:{"64px 0 0" if m else "120px 0 0"}"><div class="heroP" style="height:{h}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:{"56px 24px 0" if m else "80px 0 0"}">{art("c", "xMidYMid")}<div class="fadeT" style="height:{160 if m else 220}px"></div><div class="fade" style="height:{140 if m else 180}px"></div><h2 class="h2 lt" style="position:relative;z-index:2;font-size:{40 if m else 72}px;line-height:1.02">Run it at home.</h2><p style="position:relative;z-index:2;font-size:{17 if m else 20}px;line-height:1.5;color:var(--ink2);margin-top:16px;max-width:520px">Yours, on your own server. Install it with Docker on a machine you already have.</p><div style="position:relative;z-index:2;display:flex;gap:10px;margin-top:28px;flex-wrap:wrap;justify-content:center"><a class="btn mcta" href="#" style="height:52px">{GH.replace("20","16")}View on GitHub</a></div><div style="position:relative;z-index:2;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:{20 if m else 28}px">{pills}</div></div></section>'
+        return f'<section style="padding:{"64px 0 0" if m else "120px 0 0"}"><div class="heroP" style="height:{h}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:{"56px 24px 0" if m else "80px 0 0"}">{art("c", "xMidYMid")}<div class="fadeT" style="height:{160 if m else 220}px"></div><div class="fade" style="height:{140 if m else 180}px"></div><h2 class="h2 lt" style="position:relative;z-index:2;font-size:{40 if m else 72}px;line-height:1.02">Run it at home.</h2><p style="position:relative;z-index:2;font-size:{17 if m else 20}px;line-height:1.5;color:var(--ink2);margin-top:16px;max-width:520px">Yours, on your own server. Install it with Docker on a machine you already have.</p><div style="position:relative;z-index:2;display:flex;gap:10px;margin-top:28px;flex-wrap:wrap;justify-content:center"><a class="btn" href="#" style="min-width:220px">View on GitHub</a></div><div style="position:relative;z-index:2;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:{20 if m else 28}px">{pills}</div></div></section>'
 
     def body(m):
         return hero(m) + steps(m) + showcase(m) + closing(m) + footer(m, False)
