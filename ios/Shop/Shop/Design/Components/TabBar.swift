@@ -16,6 +16,7 @@ struct PillTabBar<ID: Hashable>: View {
     let onAdd: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduce
+    @Environment(\.navIconStyle) private var iconStyle
 
     var body: some View {
         HStack(spacing: Space.ml) {
@@ -44,6 +45,15 @@ struct PillTabBar<ID: Hashable>: View {
         .padding(.horizontal, Space.edge)
     }
 
+    @ViewBuilder
+    private func tabIcon(_ item: TabBarItem<ID>, on: Bool) -> some View {
+        if let nav = NavIcon(item.icon) {
+            NavIconView(icon: nav, selected: on, size: 24, style: iconStyle)
+        } else {
+            IconView(on ? item.selectedIcon : item.icon, size: 22, weight: on ? .semibold : .medium)
+        }
+    }
+
     private func tab(_ item: TabBarItem<ID>) -> some View {
         let on = item.id == selection
         return Button {
@@ -52,7 +62,7 @@ struct PillTabBar<ID: Hashable>: View {
             selection = item.id
         } label: {
             VStack(spacing: 3) {
-                IconView(on ? item.selectedIcon : item.icon, size: 22, weight: on ? .semibold : .medium)
+                tabIcon(item, on: on)
                     .scaleEffect(on && !reduce ? 1 : 0.96)
                     .animation(reduce ? Motion.reducedFade : Motion.pop, value: on)
                 Text(item.title).textStyle(.tab)
