@@ -7,71 +7,73 @@ struct ShopsView: View {
     @State private var counts: [Int64: Int] = [:]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                NavHeader {
-                    Button { openForm(nil) } label: {
-                        HStack(spacing: 5) {
-                            IconView(.plus, size: 13, weight: .bold)
-                            Text("Add shop").textStyle(.label)
-                        }
-                        .foregroundStyle(Palette.btnInk)
-                        .padding(.horizontal, Space.l)
-                        .frame(height: Size.iconButton)
-                        .background(Palette.btn, in: Capsule())
+        List {
+            NavHeader {
+                Button { openForm(nil) } label: {
+                    HStack(spacing: 5) {
+                        IconView(.plus, size: 13, weight: .bold)
+                        Text("Add shop").textStyle(.label)
                     }
-                    .buttonStyle(.pill)
+                    .foregroundStyle(Palette.btnInk)
+                    .padding(.horizontal, Space.l)
+                    .frame(height: Size.iconButton)
+                    .background(Palette.btn, in: Capsule())
                 }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Shops").textStyle(.screenTitle).foregroundStyle(Palette.ink)
-                    Text("You pick one of these for every receipt.").textStyle(.body).foregroundStyle(Palette.ink2)
-                }
-                .padding(.horizontal, Space.gutter)
-                .padding(.top, Space.lx)
-
-                VStack(spacing: 0) {
-                    HStack {
-                        Text(app.catalog.shops.count == 1 ? "1 shop" : "\(app.catalog.shops.count) shops")
-                        Spacer()
-                        Text("Receipts")
-                    }
-                    .textStyle(.label)
-                    .foregroundStyle(Palette.ink2)
-                    .padding(.bottom, Space.xs)
-
-                    ForEach(app.catalog.shops) { shop in
-                        SwipeRow(
-                            leading: SwipeAction(title: "Edit", icon: .edit, color: Accent.blue, haptic: nil) { openForm(shop) },
-                            trailing: SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: nil) { askDeleteShop(shop) }
-                        ) {
-                        Button { guard !app.rowSwipeActive else { return }; openForm(shop) } label: {
-                            HStack(spacing: Space.l) {
-                                ShopMark(name: shop.name, size: Size.shopMarkHeader)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(shop.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                                    Text([shop.branch, shop.city].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
-                                        .textStyle(.rowSub).foregroundStyle(Palette.ink2)
-                                }
-                                Spacer()
-                                if let n = counts[shop.id] {
-                                    Text("\(n)").textStyle(.body).foregroundStyle(Palette.ink2)
-                                }
-                                IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
-                            }
-                            .frame(height: Size.rowReceipt)
-                            .hairline()
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.press(haptic: nil))
-                        }
-                        .accessibilityAction(named: "Delete") { askDeleteShop(shop) }
-                    }
-                }
-                .padding(.horizontal, Space.gutter)
-                .padding(.top, Space.xl)
+                .buttonStyle(.pill)
             }
-            .padding(.bottom, 40)
+            .shopListRow()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Shops").textStyle(.screenTitle).foregroundStyle(Palette.ink)
+                Text("You pick one of these for every receipt.").textStyle(.body).foregroundStyle(Palette.ink2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.lx)
+            .shopListRow()
+
+            HStack {
+                Text(app.catalog.shops.count == 1 ? "1 shop" : "\(app.catalog.shops.count) shops")
+                Spacer()
+                Text("Receipts")
+            }
+            .textStyle(.label)
+            .foregroundStyle(Palette.ink2)
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.xl)
+            .padding(.bottom, Space.xs)
+            .shopListRow()
+
+            ForEach(app.catalog.shops) { shop in
+                Button { openForm(shop) } label: {
+                    HStack(spacing: Space.l) {
+                        ShopMark(name: shop.name, size: Size.shopMarkHeader)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(shop.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                            Text([shop.branch, shop.city].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                                .textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                        }
+                        Spacer()
+                        if let n = counts[shop.id] {
+                            Text("\(n)").textStyle(.body).foregroundStyle(Palette.ink2)
+                        }
+                        IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
+                    }
+                    .frame(height: Size.rowReceipt)
+                    .hairline()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.press(haptic: nil))
+                .padding(.horizontal, Space.gutter)
+                .shopListRow()
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDeleteShop(shop) }
+                    SwipeButton(title: "Edit", systemImage: "pencil", tint: Accent.blue) { openForm(shop) }
+                }
+            }
         }
+        .shopListStyle()
+        .contentMargins(.bottom, 40, for: .scrollContent)
         .background(Palette.bg)
         .toolbar(.hidden, for: .navigationBar)
         .task {

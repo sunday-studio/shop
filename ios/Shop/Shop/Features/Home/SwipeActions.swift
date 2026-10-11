@@ -1,137 +1,45 @@
 import SwiftUI
 
-/// One button revealed by swiping a row.
-struct SwipeAction {
-    var title: String
-    var icon: Icon
-    var color: Color
-    /// Played when the action runs. nil when the action opens something that plays its own.
-    var haptic: HapticEvent? = .light
-    var run: () -> Void
-}
-
-/// Haptics (docs: design agent's taxonomy). A swipe has two moments:
-/// - "Armed": crossing the 190 pt commit line plays `selection`, once per change of side.
-/// - "Committed": the action plays its own haptic, the same one its button or tap equivalent
-///   plays (set per action in `SwipeAction.haptic`; nil when the action opens a tray, which
-///   plays its own `trayOpen`). A tap on the revealed button plays only that action haptic.
-/// Nothing removes data instantly: a removal either opens a confirmation tray or shows an
-/// Undo toast.
+/// Swipe actions use the system `List` + `.swipeActions` (docs/DESIGN-SWIPE-ACTIONS.md): icon
+/// only, at most two actions per side, only the leading (safe) action may full-swipe, and Delete
+/// never full-swipes: it opens the existing confirmation tray.
 ///
-/// Swipe a list row sideways to reveal an action (right → `leading`, left → `trailing`). The rows
-/// live in a plain ScrollView, so this is a small drag gesture that only wins when the move is
-/// clearly horizontal. A long swipe runs the action; a short one leaves the button open.
-struct SwipeRow<Content: View>: View {
-    var leading: SwipeAction? = nil
-    var trailing: SwipeAction? = nil
-    @ViewBuilder var content: () -> Content
+/// Haptics: the system plays the threshold tick. An action plays only its own haptic, the same
+/// one its button or tap equivalent plays (nil when it opens a tray, which plays `trayOpen`).
+/// Nothing removes data instantly: a removal opens a confirmation tray or shows an Undo toast.
 
-    @State private var offset: CGFloat = 0
-    @State private var dragging = false
-    /// Stays true a moment after a drag so the row's own tap doesn't fire on release.
-    @State private var suppressTap = false
-    @State private var pastCommit = false
-    @Environment(\.accessibilityReduceMotion) private var reduce
-    @Environment(AppModel.self) private var app
-    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
-
-    private let reveal: CGFloat = 92
-    private let commit: CGFloat = 190
+/// One icon-only swipe button. The label keeps its title for VoiceOver.
+struct SwipeButton: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+    var haptic: HapticEvent? = nil
+    let run: () -> Void
 
     var body: some View {
-        ZStack {
-            content()
-                .background(Palette.bg)
-                .offset(x: offset)
-                .allowsHitTesting(!suppressTap && offset == 0)
-                .overlay {
-                    // While open, a tap on the row itself closes it.
-                    if offset != 0 && !dragging { Color.clear.contentShape(Rectangle()).onTapGesture { close() } }
-                }
-            // The revealed button sits above the row so its tap is never swallowed.
-            if let leading, offset > 0 { button(leading, alignment: .leading).zIndex(2) }
-            if let trailing, offset < 0 { button(trailing, alignment: .trailing).zIndex(2) }
-        }
-        .clipped()
-        .onAppear { nudgeOnce() }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 18)
-                .onChanged { value in
-                    let horizontal = abs(value.translation.width) > abs(value.translation.height) * 1.6
-                    guard dragging || horizontal else { return }
-                    dragging = true
-                    suppressTap = true
-                    app.rowSwipeActive = true
-                    var x = value.translation.width
-                    if x > 0 && leading == nil { x = 0 }
-                    if x < 0 && trailing == nil { x = 0 }
-                    offset = max(-commit - 30, min(commit + 30, x))
-                    // One tick when the drag crosses the "it will fire now" line, and back.
-                    let past = abs(offset) >= commit
-                    if past != pastCommit { pastCommit = past; Haptics.play(.selection) }
-                }
-                .onEnded { _ in
-                    guard dragging else { return }
-                    dragging = false
-                    pastCommit = false
-                    Task {
-                        try? await Task.sleep(for: .milliseconds(250))
-                        suppressTap = false
-                        app.rowSwipeActive = false
-                    }
-                    if offset >= commit, let leading { fire(leading) }
-                    else if offset <= -commit, let trailing { fire(trailing) }
-                    else if offset > reveal / 2 { settle(reveal) }
-                    else if offset < -reveal / 2 { settle(-reveal) }
-                    else { close() }
-                }
-        )
-    }
-
-    /// Once per install, on the first swipeable row that shows: slide it 40 pt and back so the
-    /// gesture is discoverable. Skipped with VoiceOver or Reduce Motion.
-    private func nudgeOnce() {
-        let key = "swipe.nudged"
-        guard !UserDefaults.standard.bool(forKey: key), !reduce, !voiceOver, leading != nil || trailing != nil else { return }
-        UserDefaults.standard.set(true, forKey: key)
-        Task {
-            try? await Task.sleep(for: .milliseconds(900))
-            guard !dragging, offset == 0 else { return }
-            withAnimation(Motion.spring) { offset = leading != nil ? 40 : -40 }
-            try? await Task.sleep(for: .milliseconds(450))
-            if !dragging { close() }
-        }
-    }
-
-    private func button(_ action: SwipeAction, alignment: Alignment) -> some View {
         Button {
-            fire(action)
+            if let haptic { Haptics.play(haptic) }
+            run()
         } label: {
-            VStack(spacing: 4) {
-                IconView(action.icon, size: 18, weight: .semibold)
-                Text(action.title).textStyle(.captionMedium)
-            }
-            .foregroundStyle(.white)
-            .frame(width: max(reveal, abs(offset)), alignment: alignment == .leading ? .leading : .trailing)
-            .padding(alignment == .leading ? .leading : .trailing, 26)
-            .frame(maxHeight: .infinity)
-            .background(action.color)
+            Label(title, systemImage: systemImage).labelStyle(.iconOnly)
         }
-        .buttonStyle(.press(haptic: nil))
-        .frame(maxWidth: .infinity, alignment: alignment)
+        .tint(tint)
+    }
+}
+
+extension View {
+    /// Row chrome for rows that live in a plain full-width `List`.
+    func shopListRow() -> some View {
+        listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
     }
 
-    private func fire(_ action: SwipeAction) {
-        if let haptic = action.haptic { Haptics.play(haptic) }
-        close()
-        action.run()
-    }
-
-    private func settle(_ value: CGFloat) {
-        withAnimation(reduce ? Motion.reducedFade : Motion.spring) { offset = value }
-    }
-
-    private func close() {
-        withAnimation(reduce ? Motion.reducedFade : Motion.spring) { offset = 0 }
+    /// A `List` that looks like the surrounding scroll view.
+    func shopListStyle() -> some View {
+        listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollIndicators(.hidden)
+            .environment(\.defaultMinListRowHeight, 1)
     }
 }

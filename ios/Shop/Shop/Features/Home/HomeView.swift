@@ -13,7 +13,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        ScrollView {
+        List {
             VStack(alignment: .leading, spacing: 0) {
                 HomeHeader(initial: String(app.deviceName.prefix(1)), onSettings: { app.push(.settings) }, onSearch: { app.push(.search) }) {
                     if let status = app.syncStatus {
@@ -53,13 +53,13 @@ struct HomeView: View {
                     .padding(.top, 18)
                 }
 
-                inbox
-                    .padding(.horizontal, Space.gutter)
-                    .padding(.top, 18)
             }
-            .padding(.bottom, Space.tabBarClearance)
+            .shopListRow()
+
+            inbox
         }
-        .scrollIndicators(.hidden)
+        .shopListStyle()
+        .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
         .onAppear { app.reviewSequence = [] }
         .transaction(value: home.spendLoaded) { $0.animation = nil }
         .refreshable {
@@ -185,46 +185,59 @@ struct HomeView: View {
 
     @ViewBuilder
     private var inbox: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            let carded = app.uploads.cardBatchIds(online: onlineNow)
-            let pendingRows = app.uploads.pending.filter { $0.batchId == nil || !carded.contains($0.batchId!) }
-            if !pendingRows.isEmpty {
-                DaySectionHeader(title: "Today", trailing: "On this iPhone")
-                ForEach(pendingRows) { item in
-                    Button { app.push(.uploadQueue) } label: {
-                        ReceiptRow(
-                            shopName: item.shopName,
-                            subtitle: uploadSubtitle(item),
-                            subtitleColor: item.state == .failed ? Palette.redText : Palette.ink2,
-                            amount: "",
-                            showsSpinner: item.state == .uploading,
-                            trailingIcon: item.state == .failed ? .retry : .upload
-                        )
-                    }
-                    .buttonStyle(.press(haptic: nil))
+        let carded = app.uploads.cardBatchIds(online: onlineNow)
+        let pendingRows = app.uploads.pending.filter { $0.batchId == nil || !carded.contains($0.batchId!) }
+        if !pendingRows.isEmpty {
+            DaySectionHeader(title: "Today", trailing: "On this iPhone")
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, 18)
+                .shopListRow()
+            ForEach(pendingRows) { item in
+                Button { app.push(.uploadQueue) } label: {
+                    ReceiptRow(
+                        shopName: item.shopName,
+                        subtitle: uploadSubtitle(item),
+                        subtitleColor: item.state == .failed ? Palette.redText : Palette.ink2,
+                        amount: "",
+                        showsSpinner: item.state == .uploading,
+                        trailingIcon: item.state == .failed ? .retry : .upload
+                    )
                 }
+                .buttonStyle(.press(haptic: nil))
+                .padding(.horizontal, Space.gutter)
+                .shopListRow()
             }
+        }
 
-            filterBar
+        filterBar
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, pendingRows.isEmpty ? 18 : 0)
+            .shopListRow()
 
-            if home.receipts.isEmpty {
+        if home.receipts.isEmpty {
+            Group {
                 if home.hasLoaded || home.error != nil || !app.uploads.pending.isEmpty {
                     emptyState
                 } else {
                     LoadingState()
                 }
-            } else {
-                ForEach(Array(home.dayGroups.enumerated()), id: \.element.id) { index, group in
-                    DaySectionHeader(title: group.title, trailing: group.totalCents > 0 ? Money.format(group.totalCents) : nil)
-                    ForEach(group.receipts) { receipt in
-                        receiptRow(receipt)
-                            .staggeredAppear(index: index)
-                    }
+            }
+            .padding(.horizontal, Space.gutter)
+            .shopListRow()
+        } else {
+            ForEach(Array(home.dayGroups.enumerated()), id: \.element.id) { index, group in
+                DaySectionHeader(title: group.title, trailing: group.totalCents > 0 ? Money.format(group.totalCents) : nil)
+                    .padding(.horizontal, Space.gutter)
+                    .shopListRow()
+                ForEach(group.receipts) { receipt in
+                    receiptRow(receipt)
+                        .staggeredAppear(index: index)
                 }
-                if home.nextCursor != nil {
-                    LoadingState()
-                        .onAppear { Task { await home.loadMore() } }
-                }
+            }
+            if home.nextCursor != nil {
+                LoadingState()
+                    .onAppear { Task { await home.loadMore() } }
+                    .shopListRow()
             }
         }
     }
@@ -270,15 +283,21 @@ struct HomeView: View {
 
     private func receiptRow(_ receipt: Receipt) -> some View {
         let canConfirm = receipt.confirmedAt == nil && (receipt.status == .ok || receipt.status == .needsReview)
-        return SwipeRow(
-            leading: canConfirm ? SwipeAction(title: "Confirm", icon: .check, color: Accent.green, haptic: .medium) { confirm(receipt) } : nil,
-            trailing: receipt.status == .processing || receipt.status == .pending ? nil
-                : SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: nil) { askDelete(receipt) }
-        ) {
-            receiptRowContent(receipt)
-        }
-        .accessibilityAction(named: "Confirm") { if canConfirm { confirm(receipt) } }
-        .accessibilityAction(named: "Delete") { askDelete(receipt) }
+        let busy = receipt.status == .processing || receipt.status == .pending
+        return receiptRowContent(receipt)
+            .padding(.horizontal, Space.gutter)
+            .shopListRow()
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                if canConfirm {
+                    SwipeButton(title: "Confirm", systemImage: "checkmark", tint: Accent.green, haptic: .medium) { confirm(receipt) }
+                }
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                if !busy {
+                    SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDelete(receipt) }
+                    SwipeButton(title: "Edit", systemImage: "pencil", tint: Accent.blue) { app.push(.receipt(receipt.id)) }
+                }
+            }
     }
 
     private func confirm(_ receipt: Receipt) {
@@ -327,7 +346,6 @@ struct HomeView: View {
             }
         }
         return Button {
-            guard !app.rowSwipeActive else { return }
             app.push(.receipt(receipt.id))
         } label: {
             ReceiptRow(

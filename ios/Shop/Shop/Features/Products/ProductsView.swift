@@ -82,37 +82,36 @@ struct ProductsView: View {
     @ViewBuilder
     private func content(_ model: ProductsModel) -> some View {
         @Bindable var model = model
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                LargeTitleHeader(title: "Products", detail: app.catalog.products.isEmpty ? nil : "\(app.catalog.products.count)") {
-                    IconButton(icon: .barcode, label: "Scan barcode") { app.startCapture(.unpack) }
-                }
-
-                if app.productReview.total > 0 {
-                    AttentionCard(count: app.productReview.total, title: "New products to check", hint: "about 2 min") {
-                        app.push(.productReview)
-                    }
-                    .padding(.horizontal, Space.edge)
-                    .padding(.top, Space.lx)
-                    .transition(.opacity)
-                }
-
-                SearchField(placeholder: "Products or receipt names", text: $model.query)
-                    .padding(.horizontal, Space.edge)
-                    .padding(.top, Space.lx)
-                    .onChange(of: model.query) { _, _ in model.queryChanged() }
-
-                categoryChips(model)
-                    .padding(.top, Space.l)
-
-                list(model)
-                    .padding(.horizontal, Space.gutter)
-                    .padding(.top, Space.ml)
+        List {
+            LargeTitleHeader(title: "Products", detail: app.catalog.products.isEmpty ? nil : "\(app.catalog.products.count)") {
+                IconButton(icon: .barcode, label: "Scan barcode") { app.startCapture(.unpack) }
             }
-            .padding(.bottom, Space.tabBarClearance)
+            .shopListRow()
+
+            if app.productReview.total > 0 {
+                AttentionCard(count: app.productReview.total, title: "New products to check", hint: "about 2 min") {
+                    app.push(.productReview)
+                }
+                .padding(.horizontal, Space.edge)
+                .padding(.top, Space.lx)
+                .shopListRow()
+            }
+
+            SearchField(placeholder: "Products or receipt names", text: $model.query)
+                .padding(.horizontal, Space.edge)
+                .padding(.top, Space.lx)
+                .onChange(of: model.query) { _, _ in model.queryChanged() }
+                .shopListRow()
+
+            categoryChips(model)
+                .padding(.top, Space.l)
+                .shopListRow()
+
+            productRows(model)
         }
+        .shopListStyle()
+        .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
         .scrollDismissesKeyboard(.immediately)
-        .scrollIndicators(.hidden)
         .refreshable { await model.refresh() }
     }
 
@@ -136,20 +135,22 @@ struct ProductsView: View {
     }
 
     @ViewBuilder
-    private func list(_ model: ProductsModel) -> some View {
+    private func productRows(_ model: ProductsModel) -> some View {
         let products = model.products
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(model.isSearching ? (model.searching ? "Searching…" : "Results") : "Recently bought")
-                Spacer()
-                Text("Best per unit")
-            }
-            .textStyle(.label)
-            .foregroundStyle(Palette.ink2)
-            .padding(.top, 6)
-            .padding(.bottom, 2)
+        HStack {
+            Text(model.isSearching ? (model.searching ? "Searching…" : "Results") : "Recently bought")
+            Spacer()
+            Text("Best per unit")
+        }
+        .textStyle(.label)
+        .foregroundStyle(Palette.ink2)
+        .padding(.horizontal, Space.gutter)
+        .padding(.top, Space.ml + 6)
+        .padding(.bottom, 2)
+        .shopListRow()
 
-            if products.isEmpty {
+        if products.isEmpty {
+            Group {
                 if model.isSearching {
                     newProductRow(name: model.query)
                 } else if app.catalog.isSyncing {
@@ -160,36 +161,35 @@ struct ProductsView: View {
                     }
                     .padding(.top, 30)
                 }
-            } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(products.enumerated()), id: \.element.id) { index, product in
-                        SwipeRow(
-                            leading: SwipeAction(title: "Add to list", icon: .plus, color: Accent.blue, haptic: .light) { addToList(product) },
-                            trailing: SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: nil) { askDelete(product) }
-                        ) {
-                            Button {
-                                guard !app.rowSwipeActive else { return }
-                                app.push(.product(product.id))
-                            } label: {
-                                ProductRow(
-                                    name: product.name,
-                                    meta: meta(product),
-                                    category: app.catalog.category(product.categoryId)?.name,
-                                    imageURL: app.api.productImageURL(product),
-                                    price: product.cheapest.map { Money.perUnit($0.latestUnitCents, unit: $0.baseUnit) },
-                                    priceShop: product.cheapest?.shopName
-                                )
-                            }
-                            .buttonStyle(.press(haptic: nil))
-                        }
-                        .accessibilityAction(named: "Add to list") { addToList(product) }
-                        .accessibilityAction(named: "Delete") { askDelete(product) }
-                        .staggeredAppear(index: index)
-                    }
-                    if model.isSearching {
-                        newProductRow(name: model.query)
-                    }
+            }
+            .padding(.horizontal, Space.gutter)
+            .shopListRow()
+        } else {
+            ForEach(products) { product in
+                Button { app.push(.product(product.id)) } label: {
+                    ProductRow(
+                        name: product.name,
+                        meta: meta(product),
+                        category: app.catalog.category(product.categoryId)?.name,
+                        imageURL: app.api.productImageURL(product),
+                        price: product.cheapest.map { Money.perUnit($0.latestUnitCents, unit: $0.baseUnit) },
+                        priceShop: product.cheapest?.shopName
+                    )
                 }
+                .buttonStyle(.press(haptic: nil))
+                .padding(.horizontal, Space.gutter)
+                .shopListRow()
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    SwipeButton(title: "Add to list", systemImage: "cart.badge.plus", tint: Accent.green, haptic: .light) { addToList(product) }
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDelete(product) }
+                }
+            }
+            if model.isSearching {
+                newProductRow(name: model.query)
+                    .padding(.horizontal, Space.gutter)
+                    .shopListRow()
             }
         }
     }

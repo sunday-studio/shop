@@ -38,7 +38,7 @@ private struct ReceiptScreen: View {
     @ViewBuilder
     private func content(_ model: ReceiptModel) -> some View {
         ZStack(alignment: .bottom) {
-            ScrollView {
+            List {
                 VStack(alignment: .leading, spacing: 0) {
                     NavHeader(title: reviewTitle(model)) {
                         IconButton(icon: .more, label: "More actions") { openActions(model) }
@@ -107,10 +107,6 @@ private struct ReceiptScreen: View {
                                 .padding(.top, Space.xl)
                         } else if receipt.status == .failed && model.lines.isEmpty {
                             failedActions(model)
-                        } else {
-                            lineList(model)
-                                .padding(.horizontal, Space.gutter)
-                                .padding(.top, Space.xl)
                         }
                     } else if let error = model.error {
                         ErrorState(message: error.message) { Task { await model.load() } }
@@ -120,9 +116,12 @@ private struct ReceiptScreen: View {
                             .padding(.top, 60)
                     }
                 }
-                .padding(.bottom, 130)
+                .shopListRow()
+
+                if showsLines(model) { lineRows(model) }
             }
-            .scrollIndicators(.hidden)
+            .shopListStyle()
+            .contentMargins(.bottom, 130, for: .scrollContent)
             .refreshable { await model.load() }
 
             if let receipt = model.receipt, receipt.status == .needsReview {
@@ -225,67 +224,73 @@ private struct ReceiptScreen: View {
         .accessibilityHidden(true)
     }
 
-    private func lineList(_ model: ReceiptModel) -> some View {
+    private func showsLines(_ model: ReceiptModel) -> Bool {
+        guard let receipt = model.receipt, receipt.lines != nil else { return false }
+        if receipt.status == .processing || receipt.status == .pending { return false }
+        return !(receipt.status == .failed && model.lines.isEmpty)
+    }
+
+    @ViewBuilder
+    private func lineRows(_ model: ReceiptModel) -> some View {
         @Bindable var model = model
-        return VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(title: "Lines") {
-                HStack(spacing: 6) {
-                    Chip(title: "All \(model.lines.count)", isSelected: model.lineFilter == .all, size: .small) {
-                        withAnimation(Motion.ease) { model.lineFilter = .all }
-                    }
-                    if !model.toFix.isEmpty || model.lineFilter == .toFix {
-                        ToneChip(title: "To fix \(model.toFix.count)", tone: .amber, isSelected: model.lineFilter == .toFix) {
-                            withAnimation(Motion.ease) { model.lineFilter = .toFix }
-                        }
+        SectionLabel(title: "Lines") {
+            HStack(spacing: 6) {
+                Chip(title: "All \(model.lines.count)", isSelected: model.lineFilter == .all, size: .small) {
+                    withAnimation(Motion.ease) { model.lineFilter = .all }
+                }
+                if !model.toFix.isEmpty || model.lineFilter == .toFix {
+                    ToneChip(title: "To fix \(model.toFix.count)", tone: .amber, isSelected: model.lineFilter == .toFix) {
+                        withAnimation(Motion.ease) { model.lineFilter = .toFix }
                     }
                 }
             }
-
-            if model.visibleLines.isEmpty {
-                Text(model.lineFilter == .toFix ? "Nothing left to fix." : "No lines were read.")
-                    .textStyle(.body)
-                    .foregroundStyle(Palette.ink2)
-                    .padding(.vertical, Space.xxl)
-            }
-
-            ForEach(Array(model.visibleLines.enumerated()), id: \.element.id) { index, line in
-                let p = model.present(line)
-                SwipeRow(
-                    leading: line.kind == .item
-                        ? SwipeAction(title: line.productId == nil ? "Link" : "Change", icon: .link, color: Accent.blue, haptic: nil) { openLink(line, model: model) }
-                        : nil,
-                    trailing: SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: nil) { askDeleteLine(line, model: model) }
-                ) {
-                    Button {
-                        guard !app.rowSwipeActive else { return }
-                        tap(line, model: model)
-                    } label: {
-                        LineRow(title: p.title, isRaw: p.isRaw, subtitle: p.subtitle, subtitleColor: p.subtitleColor, amount: p.amount,
-                                titleColor: p.titleColor, amountColor: p.amountColor, dot: p.dot, indented: p.indented)
-                    }
-                    .buttonStyle(.press(haptic: nil))
-                }
-                .accessibilityAction(named: "Edit") { openEdit(line, model: model) }
-                .accessibilityAction(named: "Delete") { askDeleteLine(line, model: model) }
-                .staggeredAppear(index: openedOnSummary ? Motion.staggerMax : index)
-                .contextMenu {
-                    Button("Edit line", systemImage: "pencil") { openEdit(line, model: model) }
-                    if line.kind == .item {
-                        Button(line.productId == nil ? "Link product" : "Change product", systemImage: "link") { openLink(line, model: model) }
-                    }
-                    if line.kind == .item && line.productId != nil {
-                        Button("This isn't the same product", systemImage: "square.split.2x1") {
-                            Task { await model.splitProduct(of: line) }
-                        }
-                    }
-                    Button("Delete line", systemImage: "trash", role: .destructive) {
-                        askDeleteLine(line, model: model)
-                    }
-                }
-            }
-
-            LinkButton(title: "Add line") { openEdit(nil, model: model) }
         }
+        .padding(.horizontal, Space.gutter)
+        .padding(.top, Space.xl)
+        .shopListRow()
+
+        if model.visibleLines.isEmpty {
+            Text(model.lineFilter == .toFix ? "Nothing left to fix." : "No lines were read.")
+                .textStyle(.body)
+                .foregroundStyle(Palette.ink2)
+                .padding(.vertical, Space.xxl)
+                .padding(.horizontal, Space.gutter)
+                .shopListRow()
+        }
+
+        ForEach(Array(model.visibleLines.enumerated()), id: \.element.id) { index, line in
+            let p = model.present(line)
+            Button { tap(line, model: model) } label: {
+                LineRow(title: p.title, isRaw: p.isRaw, subtitle: p.subtitle, subtitleColor: p.subtitleColor, amount: p.amount,
+                        titleColor: p.titleColor, amountColor: p.amountColor, dot: p.dot, indented: p.indented)
+            }
+            .buttonStyle(.press(haptic: nil))
+            .staggeredAppear(index: openedOnSummary ? Motion.staggerMax : index)
+            .padding(.horizontal, Space.gutter)
+            .shopListRow()
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDeleteLine(line, model: model) }
+                SwipeButton(title: "Edit", systemImage: "pencil", tint: Accent.blue) { openEdit(line, model: model) }
+            }
+            .contextMenu {
+                Button("Edit line", systemImage: "pencil") { openEdit(line, model: model) }
+                if line.kind == .item {
+                    Button(line.productId == nil ? "Link product" : "Change product", systemImage: "link") { openLink(line, model: model) }
+                }
+                if line.kind == .item && line.productId != nil {
+                    Button("This isn't the same product", systemImage: "square.split.2x1") {
+                        Task { await model.splitProduct(of: line) }
+                    }
+                }
+                Button("Delete line", systemImage: "trash", role: .destructive) {
+                    askDeleteLine(line, model: model)
+                }
+            }
+        }
+
+        LinkButton(title: "Add line") { openEdit(nil, model: model) }
+            .padding(.horizontal, Space.gutter)
+            .shopListRow()
     }
 
     private var processing: some View {
