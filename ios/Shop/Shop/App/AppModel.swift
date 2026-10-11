@@ -95,7 +95,6 @@ final class AppModel {
     /// opens the next; Home clears it when it comes back into view.
     var reviewSequence: [Int64] = []
     /// True while a list row is being swiped (and just after), so the row's tap doesn't fire.
-    @ObservationIgnored var rowSwipeActive = false
     /// Which system picker the root view should show for "Import receipts".
     var importPicker: ImportSource?
     /// The Import screen (full screen) while receipts are being arranged.

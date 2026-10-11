@@ -9,42 +9,43 @@ struct ShoppingListView: View {
     private var list: ShoppingListStore { app.list }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                LargeTitleHeader(title: "List", detail: summary)
+        List {
+            LargeTitleHeader(title: "List", detail: summary)
+                .shopListRow()
 
-                FieldButton(title: "Add an item") { openAdd() }
-                    .padding(.horizontal, Space.edge)
-                    .padding(.top, Space.lx)
+            FieldButton(title: "Add an item") { openAdd() }
+                .padding(.horizontal, Space.edge)
+                .padding(.top, Space.lx)
+                .shopListRow()
 
-                if !suggestions.isEmpty {
-                    VStack(alignment: .leading, spacing: Space.m) {
-                        Text("Usually bought by now").textStyle(.label).foregroundStyle(Palette.ink2)
-                        FlowLayout(spacing: 6, lineSpacing: 6) {
-                            ForEach(suggestions) { s in
-                                SuggestionChip(title: s.productName, color: CategoryColor.swatch(for: app.catalog.categoryName(forProduct: s.productId)).color) {
-                                    list.add(text: s.productName, productId: s.productId, qty: 1)
-                                    Haptics.play(.light)
-                                    Task { await list.sync() }
-                                }
+            if !suggestions.isEmpty {
+                VStack(alignment: .leading, spacing: Space.m) {
+                    Text("Usually bought by now").textStyle(.label).foregroundStyle(Palette.ink2)
+                    FlowLayout(spacing: 6, lineSpacing: 6) {
+                        ForEach(suggestions) { s in
+                            SuggestionChip(title: s.productName, color: CategoryColor.swatch(for: app.catalog.categoryName(forProduct: s.productId)).color) {
+                                list.add(text: s.productName, productId: s.productId, qty: 1)
+                                Haptics.play(.light)
+                                Task { await list.sync() }
                             }
                         }
-                        Button("See all suggestions") { openSuggestions() }
-                            .textStyle(.label)
-                            .foregroundStyle(Palette.blueText)
-                            .buttonStyle(.press(haptic: nil))
                     }
-                    .padding(.horizontal, Space.gutter)
-                    .padding(.top, Space.lx)
+                    Button("See all suggestions") { openSuggestions() }
+                        .textStyle(.label)
+                        .foregroundStyle(Palette.blueText)
+                        .buttonStyle(.press(haptic: nil))
                 }
-
-                items
-                    .padding(.horizontal, Space.gutter)
-                    .padding(.top, Space.ml)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, Space.lx)
+                .shopListRow()
             }
-            .padding(.bottom, Space.tabBarClearance)
+
+            items
         }
-        .scrollIndicators(.hidden)
+        .shopListStyle()
+        .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
+        .animation(Motion.collapse, value: list.items.map(\.id))
         .refreshable {
             await list.sync()
             frequent = (try? await app.api.frequentItems()) ?? frequent
@@ -72,69 +73,72 @@ struct ShoppingListView: View {
 
     @ViewBuilder
     private var items: some View {
-        VStack(spacing: 0) {
-            if list.items.isEmpty {
-                EmptyState(title: "Nothing on the list", message: "Add things as you run out. The list works without signal and syncs when you're back online.") {
-                    GlyphIllustration(icon: .list, color: Accent.green)
-                }
-                .padding(.top, 40)
+        if list.items.isEmpty {
+            EmptyState(title: "Nothing on the list", message: "Add things as you run out. The list works without signal and syncs when you're back online.") {
+                GlyphIllustration(icon: .list, color: Accent.green)
             }
+            .padding(.top, 40 + Space.ml)
+            .padding(.horizontal, Space.gutter)
+            .shopListRow()
+        }
 
-            ForEach(Array(list.open.enumerated()), id: \.element.id) { index, item in
+        ForEach(Array(list.open.enumerated()), id: \.element.id) { index, item in
+            row(item)
+                .padding(.top, index == 0 ? Space.ml : 0)
+        }
+
+        if !list.checked.isEmpty {
+            HStack {
+                Text("\(list.checked.count) checked off").textStyle(.body).foregroundStyle(Palette.ink2)
+                Spacer()
+                Button("Clear") {
+                    Haptics.play(.light)
+                    withAnimation(Motion.collapse) { list.clearChecked() }
+                    Task { await list.sync() }
+                }
+                .textStyle(TypeStyle.label.sized(14))
+                .foregroundStyle(Palette.blueText)
+                .buttonStyle(.press(haptic: nil))
+            }
+            .frame(height: 46)
+            .padding(.horizontal, Space.gutter)
+            .shopListRow()
+            ForEach(list.checked) { item in
                 row(item)
-                    .staggeredAppear(index: index)
-                    .transition(.opacity)
-            }
-
-            if !list.checked.isEmpty {
-                HStack {
-                    Text("\(list.checked.count) checked off").textStyle(.body).foregroundStyle(Palette.ink2)
-                    Spacer()
-                    Button("Clear") {
-                        Haptics.play(.light)
-                        withAnimation(Motion.collapse) { list.clearChecked() }
-                        Task { await list.sync() }
-                    }
-                    .textStyle(TypeStyle.label.sized(14))
-                    .foregroundStyle(Palette.blueText)
-                    .buttonStyle(.press(haptic: nil))
-                }
-                .frame(height: 46)
-                ForEach(list.checked) { item in
-                    row(item)
-                }
-            }
-
-            if list.pendingCount > 0 {
-                HStack(spacing: Space.s) {
-                    StatusDot(color: app.network.isOnline ? Accent.blue : Palette.ink3)
-                    Text(app.network.isOnline ? "Syncing \(list.pendingCount) change\(list.pendingCount == 1 ? "" : "s")…" : "\(list.pendingCount) change\(list.pendingCount == 1 ? "" : "s") sync when you're online")
-                        .textStyle(.rowSub)
-                        .foregroundStyle(Palette.ink2)
-                }
-                .padding(.top, Space.l)
             }
         }
-        .animation(Motion.collapse, value: list.items.map(\.id))
+
+        if list.pendingCount > 0 {
+            HStack(spacing: Space.s) {
+                StatusDot(color: app.network.isOnline ? Accent.blue : Palette.ink3)
+                Text(app.network.isOnline ? "Syncing \(list.pendingCount) change\(list.pendingCount == 1 ? "" : "s")…" : "\(list.pendingCount) change\(list.pendingCount == 1 ? "" : "s") sync when you're online")
+                    .textStyle(.rowSub)
+                    .foregroundStyle(Palette.ink2)
+            }
+            .padding(.top, Space.l)
+            .padding(.horizontal, Space.gutter)
+            .shopListRow()
+        }
     }
 
     private func row(_ item: ListItem) -> some View {
-        SwipeRow(
-            leading: SwipeAction(title: item.isChecked ? "Uncheck" : "Check off", icon: .check, color: Accent.green, haptic: .soft) { toggleBySwipe(item) },
-            trailing: SwipeAction(title: "Delete", icon: .trash, color: Accent.red, haptic: .soft) { remove(item) }
-        ) {
-            ListItemRow(
-                title: item.title,
-                hint: hint(item),
-                hintShop: item.cheapest?.shopName,
-                quantity: quantity(item),
-                isChecked: item.isChecked,
-                onToggle: { checked in guard !app.rowSwipeActive else { return }; toggle(item, checked) },
-                onTap: { guard !app.rowSwipeActive else { return }; openEdit(item) }
-            )
+        ListItemRow(
+            title: item.title,
+            hint: hint(item),
+            hintShop: item.cheapest?.shopName,
+            quantity: quantity(item),
+            isChecked: item.isChecked,
+            onToggle: { checked in toggle(item, checked) },
+            onTap: { openEdit(item) }
+        )
+        .padding(.horizontal, Space.gutter)
+        .shopListRow()
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            SwipeButton(title: item.isChecked ? "Uncheck" : "Check off", systemImage: "checkmark", tint: Accent.green, haptic: .soft) { toggleBySwipe(item) }
         }
-        .accessibilityAction(named: item.isChecked ? "Uncheck" : "Check off") { toggleBySwipe(item) }
-        .accessibilityAction(named: "Delete") { remove(item) }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red, haptic: .soft) { remove(item) }
+        }
         .contextMenu {
             Button("Edit", systemImage: "pencil") { openEdit(item) }
             if let id = item.productId { Button("Open product", systemImage: "shippingbox") { app.push(.product(id)) } }

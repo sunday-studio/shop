@@ -326,56 +326,62 @@ struct UploadQueueView: View {
     private var duplicates: [UploadItem] { app.uploads.items.filter { $0.state == .done && $0.wasDuplicate } }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                NavHeader(title: "Upload queue") {
-                    if !waiting.isEmpty || !failed.isEmpty {
-                        IconButton(icon: .plus, label: "Import receipts") { app.openImportSources() }
-                    }
+        List {
+            NavHeader(title: "Upload queue") {
+                if !waiting.isEmpty || !failed.isEmpty {
+                    IconButton(icon: .plus, label: "Import receipts") { app.openImportSources() }
                 }
-
-                if !app.network.isOnline {
-                    HStack(spacing: Space.ml) {
-                        StatusDot(color: Palette.ink3, size: 8)
-                        Text("Offline. Scans upload when you reconnect.").textStyle(.body).foregroundStyle(Palette.ink)
-                    }
-                    .padding(Space.lx)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Palette.sunk, in: RoundedRectangle.continuous(Radius.l))
-                    .padding(.horizontal, Space.edge)
-                    .padding(.top, 18)
-                }
-
-                VStack(alignment: .leading, spacing: 0) {
-                    if !waiting.isEmpty {
-                        DaySectionHeader(title: "Waiting · \(waiting.count)", trailing: "On this iPhone")
-                        ForEach(Array(waitingGroups.enumerated()), id: \.offset) { _, group in
-                            if group.batch != nil, group.items.count >= 2 {
-                                DaySectionHeader(title: batchTitle(group.items), trailing: "\(group.items.count) receipts")
-                                    .padding(.top, Space.m)
-                            }
-                            ForEach(group.items) { item in itemRow(item) }
-                        }
-                    }
-                    if !failed.isEmpty || !duplicates.isEmpty {
-                        DaySectionHeader(title: "Didn't upload · \(failed.count + duplicates.count)")
-                            .padding(.top, Space.l)
-                        ForEach(failed) { item in problemRow(item, duplicate: false) }
-                        ForEach(duplicates) { item in problemRow(item, duplicate: true) }
-                    }
-                    if waiting.isEmpty && failed.isEmpty && duplicates.isEmpty {
-                        EmptyState(title: "All uploaded", message: "Scans wait here when you're offline or the server can't be reached, and upload on their own.",
-                                   action: (title: "Import receipts", run: { app.openImportSources() })) {
-                            GlyphIllustration(icon: .upload, color: Accent.blue)
-                        }
-                        .padding(.top, 60)
-                    }
-                }
-                .padding(.horizontal, Space.gutter)
-                .padding(.top, Space.l)
             }
-            .padding(.bottom, 120)
+            .shopListRow()
+
+            if !app.network.isOnline {
+                HStack(spacing: Space.ml) {
+                    StatusDot(color: Palette.ink3, size: 8)
+                    Text("Offline. Scans upload when you reconnect.").textStyle(.body).foregroundStyle(Palette.ink)
+                }
+                .padding(Space.lx)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Palette.sunk, in: RoundedRectangle.continuous(Radius.l))
+                .padding(.horizontal, Space.edge)
+                .padding(.top, 18)
+                .shopListRow()
+            }
+
+            if !waiting.isEmpty {
+                DaySectionHeader(title: "Waiting · \(waiting.count)", trailing: "On this iPhone")
+                    .padding(.horizontal, Space.gutter)
+                    .padding(.top, Space.l)
+                    .shopListRow()
+                ForEach(Array(waitingGroups.enumerated()), id: \.offset) { _, group in
+                    if group.batch != nil, group.items.count >= 2 {
+                        DaySectionHeader(title: batchTitle(group.items), trailing: "\(group.items.count) receipts")
+                            .padding(.horizontal, Space.gutter)
+                            .padding(.top, Space.m)
+                            .shopListRow()
+                    }
+                    ForEach(group.items) { item in itemRow(item) }
+                }
+            }
+            if !failed.isEmpty || !duplicates.isEmpty {
+                DaySectionHeader(title: "Didn't upload · \(failed.count + duplicates.count)")
+                    .padding(.horizontal, Space.gutter)
+                    .padding(.top, Space.l + (waiting.isEmpty ? Space.l : 0))
+                    .shopListRow()
+                ForEach(failed) { item in problemRow(item, duplicate: false).padding(.horizontal, Space.gutter).shopListRow() }
+                ForEach(duplicates) { item in problemRow(item, duplicate: true).padding(.horizontal, Space.gutter).shopListRow() }
+            }
+            if waiting.isEmpty && failed.isEmpty && duplicates.isEmpty {
+                EmptyState(title: "All uploaded", message: "Scans wait here when you're offline or the server can't be reached, and upload on their own.",
+                           action: (title: "Import receipts", run: { app.openImportSources() })) {
+                    GlyphIllustration(icon: .upload, color: Accent.blue)
+                }
+                .padding(.top, 60)
+                .padding(.horizontal, Space.gutter)
+                .shopListRow()
+            }
         }
+        .shopListStyle()
+        .contentMargins(.bottom, 120, for: .scrollContent)
         .safeAreaInset(edge: .bottom) {
             if !waiting.isEmpty || !failed.isEmpty {
                 Button(app.network.isOnline ? "Retry now" : "Retry when online") {
@@ -393,13 +399,12 @@ struct UploadQueueView: View {
     }
 
     private func itemRow(_ item: UploadItem) -> some View {
-        SwipeRow(
-            leading: item.state == .waiting ? SwipeAction(title: "Retry", icon: .retry, color: Accent.blue, haptic: .light) { app.uploads.retry(item.id); app.uploads.kick(force: true) } : nil,
-            trailing: SwipeAction(title: "Remove", icon: .trash, color: Accent.red, haptic: .soft) { removeWithUndo(item) }
-        ) {
-            itemRowContent(item)
-        }
-        .accessibilityAction(named: "Remove") { removeWithUndo(item) }
+        itemRowContent(item)
+            .padding(.horizontal, Space.gutter)
+            .shopListRow()
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                SwipeButton(title: "Remove", systemImage: "xmark", tint: Accent.red, haptic: .soft) { removeWithUndo(item) }
+            }
     }
 
     /// Takes the item off the queue but keeps its files for the 8 s the Undo toast is up.
