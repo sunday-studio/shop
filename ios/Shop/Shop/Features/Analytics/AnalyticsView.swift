@@ -329,23 +329,29 @@ struct RangeTray: View {
         VStack(alignment: .leading, spacing: Space.lx) {
             TrayHeader(title: "Date range")
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
-                ForEach(presets, id: \.self) { p in
-                    Button {
-                        Haptics.play(.selection)
-                        preset = p
-                        let r = DateRange.preset(p)
-                        from = r.from
-                        to = r.to
-                        bars = r.grouping
-                    } label: {
-                        TypeStyle.label.sized(14).text(DateRange.gridTitle(p))
-                            .foregroundStyle(preset == p ? Accent.white : Palette.ink)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 46)
-                            .background(preset == p ? Accent.blue : Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
+            // An eager Grid, not a LazyVGrid: a lazy grid reports its height late, so the tray
+            // surface was measured too short and the buttons showed before the background.
+            Grid(horizontalSpacing: 6, verticalSpacing: 6) {
+                ForEach(Array(stride(from: 0, to: presets.count, by: 3)), id: \.self) { start in
+                    GridRow {
+                        ForEach(presets[start..<min(start + 3, presets.count)], id: \.self) { p in
+                            Button {
+                                Haptics.play(.selection)
+                                preset = p
+                                let r = DateRange.preset(p)
+                                from = r.from
+                                to = r.to
+                                bars = r.grouping
+                            } label: {
+                                TypeStyle.label.sized(14).text(DateRange.gridTitle(p))
+                                    .foregroundStyle(preset == p ? Accent.white : Palette.ink)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 46)
+                                    .background(preset == p ? Accent.blue : Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
+                            }
+                            .buttonStyle(.press(haptic: nil))
+                        }
                     }
-                    .buttonStyle(.press(haptic: nil))
                 }
             }
 
