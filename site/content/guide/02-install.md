@@ -9,7 +9,7 @@ summary: Start the Docker stack and get the pairing password.
 {lettered}
 - Docker, with about 4 GB of memory to spare
 - `git` and `make`
-- A Mac mini is what it was built on
+- A computer that can stay switched on at home
 
 ## Steps
 
@@ -47,7 +47,7 @@ Set these in `deploy/.env`.
 | Setting | Default | Meaning |
 |---|---|---|
 | `SHOP_PORT` | 8080 | Port for the API and MCP |
-| `SHOP_BACKUP_DIR` | backups/ | Where nightly backups go (point it at a NAS) |
+| `SHOP_BACKUP_DIR` | backups/ | Where nightly backups go (point it at another disk or a network share) |
 | `BACKUP_AT` | 03:30 | Daily backup time |
 | `BACKUP_KEEP_DAYS` | 30 | How long snapshots are kept |
 | `LOGO_DEV_TOKEN` | none | Shop logos |

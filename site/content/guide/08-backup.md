@@ -15,9 +15,9 @@ When the server starts, it applies any new database migration. Before it does, i
 
 ## Back up
 
-A backup service saves a snapshot of the database every night and mirrors the images to a folder. Point that folder at a NAS.
+A backup service saves a snapshot of the database every night and mirrors the images to a folder. Point that folder at another disk or a network share, so a copy lives off the machine.
 
-1. Mount your NAS share on the machine, and make sure Docker is allowed to use that path.
+1. Mount the disk or network share on the machine, and make sure Docker is allowed to use that path.
 2. Set `SHOP_BACKUP_DIR` in `deploy/.env`, for example `/Volumes/backups/shop`.
 3. Start the stack again, then run a backup now to check it works.
    ```bash

@@ -20,7 +20,7 @@ summary: Let an AI assistant that supports MCP read your spending.
 ## Things to ask
 
 - "How much did I spend on groceries last month, per shop?"
-- "Is oat milk cheaper at Lidl or Albert Heijn?"
+- "Which of my shops sells oat milk for less?"
 - "Which products went up more than 10% since summer?"
 - "Show me the receipts that still need review."
 
