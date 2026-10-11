@@ -17,6 +17,7 @@ CSS = '''
 .w .heroP{position:relative;overflow:hidden;background:var(--sk1)}
 .w .heroP .nav{position:relative;z-index:3}
 .w .heroP .brand{color:#2B2D3F}
+.w .foot{position:relative;z-index:2;background:var(--bg);margin-top:-2px}
 .w .fade{position:absolute;left:0;right:0;bottom:0;z-index:3;pointer-events:none;background:linear-gradient(180deg,transparent,var(--bg) 92%)}
 .w .fadeT{position:absolute;left:0;right:0;top:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg),transparent)}
 .w .fl{position:absolute;background:var(--bg);border-radius:20px;box-shadow:0 18px 40px -16px var(--shadow);padding:14px 18px;display:flex;align-items:center;gap:12px;font-size:15px;font-weight:500;white-space:nowrap;z-index:4}
@@ -44,17 +45,17 @@ CSS = '''
 .w .nc small{display:block;font-size:13px;font-weight:400;color:var(--ink2)}
 .w .fx{display:flex;flex-direction:column}
 .w .fi{padding:22px 0 20px;position:relative}
-.w .fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0;opacity:.4}
-.w .fi .dd{display:grid;grid-template-rows:0fr;opacity:0}
+.w .fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0;opacity:.5}
+.w .fi .dd{display:grid;grid-template-rows:1fr;opacity:.62}
 .w .fi .dd>div{overflow:hidden}
 .w .fi .dd p{font-size:17px;line-height:1.55;color:var(--ink2);margin:10px 0 0;max-width:400px}
 .w .fi .pr{position:absolute;left:0;top:-1px;height:2px;width:0;background:var(--blue)}
-.w .fi:first-child h3{opacity:1}.w .fi:first-child .dd{grid-template-rows:1fr;opacity:1}.w .fi:first-child .pr{width:100%}
+.w .fi:first-child h3{opacity:1}.w .fi:first-child .dd{opacity:1}.w .fi:first-child .pr{width:100%}
 .w .stage{position:relative;flex:1;border-radius:36px;background:var(--panel);overflow:hidden}
 .w .ph{position:absolute;left:0;right:0;top:70px;display:flex;justify-content:center;opacity:0}
 .w .ph:first-of-type{opacity:1}
-@keyframes tOn{0%,24%{opacity:1}26%,100%{opacity:.4}}
-@keyframes dOn{0%,24%{grid-template-rows:1fr;opacity:1}26%,100%{grid-template-rows:0fr;opacity:0}}
+@keyframes tOn{0%,24%{opacity:1}26%,100%{opacity:.5}}
+@keyframes dOn{0%,24%{opacity:1}26%,100%{opacity:.62}}
 @keyframes pOn{0%{width:0}25%{width:100%}25.01%,100%{width:0}}
 @keyframes phOn{0%{opacity:0;transform:translateY(28px)}4%,23%{opacity:1;transform:none}27%,100%{opacity:0;transform:translateY(-14px)}}
 @media (prefers-reduced-motion:no-preference){
@@ -77,12 +78,12 @@ ICONS = {
 }
 
 TOKS = {
-    'light': dict(sk1='#C4D3F2', sk2='#E2DCF1', sk3='#F8DCCB', sk4='#F2C4A2', sun='#FFE6C7', cl1='#FFF4EA', cl2='#F7C9AB',
+    'light': dict(tintP='#FFF1E6', tintL='#F0ECFB', sk1='#C4D3F2', sk2='#E2DCF1', sk3='#F8DCCB', sk4='#F2C4A2', sun='#FFE6C7', cl1='#FFF4EA', cl2='#F7C9AB',
                   mt1='#D9C9E8', mt2='#B9A5D6', mt3='#8E80BE', gr1='#7F72B0', gr2='#6A5FA0', gr3='#574E8C'),
-    'dark': dict(sk1='#080D24', sk2='#16204A', sk3='#3E3270', sk4='#8A5868', sun='#C98A86', cl1='#6872B8', cl2='#8C5E78',
+    'dark': dict(tintP='#2A1F22', tintL='#1F1B33', sk1='#080D24', sk2='#16204A', sk3='#3E3270', sk4='#8A5868', sun='#C98A86', cl1='#6872B8', cl2='#8C5E78',
                  mt1='#4A4380', mt2='#352F6A', mt3='#251F52', gr1='#1A1840', gr2='#141233', gr3='#0F0D28'),
 }
-SKYV = ['sk1', 'sk2', 'sk3', 'sk4', 'sun', 'cl1', 'cl2', 'mt1', 'mt2', 'mt3', 'gr1', 'gr2', 'gr3']
+SKYV = ['tintP', 'tintL', 'sk1', 'sk2', 'sk3', 'sk4', 'sun', 'cl1', 'cl2', 'mt1', 'mt2', 'mt3', 'gr1', 'gr2', 'gr3']
 
 
 def art(uid, par='xMidYMax'):
@@ -108,6 +109,50 @@ def art(uid, par='xMidYMax'):
 <rect width="1232" height="1120" filter="url(#gn{uid})" opacity=".5" style="mix-blend-mode:soft-light"/></svg>'''
 
 
+def _base(uid, extra_blobs=''):
+    return f'''<defs><linearGradient id="sk{uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--sk1)"/><stop offset=".4" stop-color="var(--sk2)"/><stop offset=".7" stop-color="var(--sk3)"/><stop offset="1" stop-color="var(--sk4)"/></linearGradient>
+<filter id="bl{uid}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="48"/></filter>
+<filter id="b6{uid}" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="7"/></filter>
+<filter id="b2{uid}" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.5"/></filter>
+<filter id="rf{uid}" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="3" seed="5" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="R" yChannelSelector="G"/></filter>
+<filter id="sh{uid}" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#2B2D3F" flood-opacity=".22"/></filter>
+<filter id="gn{uid}" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="2" seed="3" result="t"/><feColorMatrix in="t" type="matrix" values="0 0 0 0 .45  0 0 0 0 .4  0 0 0 0 .5  1.6 0 0 0 -.55"/></filter></defs>
+<rect width="1232" height="1120" fill="url(#sk{uid})"/>
+<g filter="url(#bl{uid})"><ellipse cx="170" cy="190" rx="340" ry="190" fill="var(--sk1)" opacity=".9"/><ellipse cx="1000" cy="560" rx="420" ry="170" fill="var(--cl2)" opacity=".7"/><ellipse cx="700" cy="470" rx="380" ry="120" fill="var(--sun)" opacity=".8"/>{extra_blobs}</g>'''
+
+
+def art_silk(uid, par='xMidYMax'):
+    """Variant: flowing silk ribbons."""
+    ribbons = [('M-100 760 C180 560 420 860 700 700 S1120 470 1400 620 V1120 H-100Z', 'var(--mt1)', .75), ('M-100 840 C220 700 480 940 760 800 S1120 640 1400 740 V1120 H-100Z', 'var(--cl2)', .55),
+               ('M-100 930 C260 820 520 1010 820 900 S1160 800 1400 860 V1120 H-100Z', 'var(--mt2)', .7), ('M-100 1010 C300 940 600 1070 900 1000 S1200 950 1400 990 V1120 H-100Z', 'var(--mt3)', .85)]
+    paths = ''.join(f'<path d="{d}" fill="{c}" opacity="{o}" filter="url(#b2{uid})"/><path d="{d.split(" V")[0]}" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2" filter="url(#b2{uid})"/>' for d, c, o in ribbons)
+    return f'<svg class="art" viewBox="0 0 1232 1120" preserveAspectRatio="{par} slice" aria-hidden="true">{_base(uid)}{paths}<rect width="1232" height="1120" filter="url(#gn{uid})" opacity=".5" style="mix-blend-mode:soft-light"/></svg>'
+
+
+def art_still(uid, par='xMidYMax'):
+    """Variant: market still life, soft produce shapes in the corners."""
+    def blob(cx, cy, rx, ry, col, rot=0, blur=''):
+        return f'<g transform="rotate({rot} {cx} {cy})"{blur}><ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" fill="{col}"/><ellipse cx="{cx-rx*.28}" cy="{cy-ry*.3}" rx="{rx*.38}" ry="{ry*.26}" fill="#fff" opacity=".28"/></g>'
+    b6 = f' filter="url(#b6{uid})"'
+    L = (blob(120, 930, 200, 180, '#E98C7B', -8) + blob(330, 1010, 150, 140, '#F4D58A', 12) + blob(40, 760, 120, 110, '#F2B27C', 0, b6) + blob(250, 810, 130, 70, '#9CC49A', -28) + blob(430, 930, 70, 60, '#9A86B8', 0, b6))
+    R = (blob(1110, 940, 210, 190, '#9A86B8', 10) + blob(900, 1030, 150, 130, '#F2B27C', -6) + blob(1210, 760, 120, 110, '#E98C7B', 0, b6) + blob(990, 800, 140, 60, '#9CC49A', 24) + blob(790, 930, 70, 60, '#F4D58A', 0, b6))
+    return f'<svg class="art" viewBox="0 0 1232 1120" preserveAspectRatio="{par} slice" aria-hidden="true">{_base(uid)}<g filter="url(#rf{uid})" opacity=".92">{L}{R}</g><rect y="900" width="1232" height="220" fill="var(--sk3)" opacity=".25"/><rect width="1232" height="1120" filter="url(#gn{uid})" opacity=".5" style="mix-blend-mode:soft-light"/></svg>'
+
+
+def art_receipts(uid, par='xMidYMax'):
+    """Variant: floating paper receipts at different depths."""
+    def rc(x, y, w, h, rot, blur=False, lines=7):
+        ls = ''.join(f'<rect x="{x+22}" y="{y+34+i*24}" width="{(w-44)*(0.5 if i in (0, lines-1) else (0.9 if i%2 else 0.72))}" height="9" rx="4.5" fill="var(--line)"/>' for i in range(lines))
+        tot = f'<rect x="{x+22}" y="{y+h-70}" width="{w-44}" height="34" rx="10" fill="var(--yellow)"/>'
+        paper = f'<g transform="rotate({rot} {x+w/2} {y+h/2})"{" filter=url(#b6"+uid+")" if blur else ""}><g filter="url(#sh{uid})"><rect x="{x}" y="{y}" width="{w}" height="{h}" rx="18" fill="var(--bg)"/></g>{ls}{tot}</g>'
+        return paper
+    items = rc(40, 620, 250, 400, -12, True) + rc(960, 590, 260, 420, 14, True) + rc(150, 760, 230, 380, -7) + rc(870, 780, 230, 380, 9) + rc(-60, 380, 200, 320, -18, True) + rc(1090, 330, 200, 320, 16, True)
+    return f'<svg class="art" viewBox="0 0 1232 1120" preserveAspectRatio="{par} slice" aria-hidden="true">{_base(uid)}{items}<rect width="1232" height="1120" filter="url(#gn{uid})" opacity=".5" style="mix-blend-mode:soft-light"/></svg>'
+
+
+VARIANTS = {'silk': art_silk, 'still': art_still, 'receipts': art_receipts}
+
+
 def build(g):
     import re
     g['CSS'] += CSS
@@ -121,25 +166,26 @@ def build(g):
         pad = '0 20px' if m else '0 48px'
         return f'<header class="nav" style="padding:{pad};{"height:68px" if m else ""}">{brand(False)}<nav class="links" style="gap:10px"><a class="btn sm" href="#">GitHub</a><span class="burger" aria-label="Menu"><i></i><i></i></span></nav></header>'
 
-    def hero(m):
+    def hero(m, kind='dusk'):
         h = 1010 if m else 1130
         ph = 250 if m else 340
         h1 = 'font-size:46px;line-height:1.03' if m else ''
         paper = f'<div class="paper a-settle" style="width:{150 if m else 230}px;height:{240 if m else 340}px;left:{"-40px" if m else "190px"};top:{690 if m else 720}px;transform:rotate(-9deg);z-index:1"><div class="b" style="width:50%;background:var(--ink)"></div><div class="b"></div><div class="b" style="width:72%"></div><div class="b"></div><div style="height:36px;border-radius:12px;background:var(--yellow);margin-top:8px"></div></div>'
         chips = '' if m else f'<div class="fl a-rise" style="right:170px;top:760px;animation-delay:.3s"><i style="background:var(--green)">{ICONS["check"]}</i><div>Adds up<small>€38,13 matches the receipt</small></div></div><div class="fl a-rise" style="right:120px;top:900px;animation-delay:.4s"><i style="background:var(--blue)">{ICONS["tag"]}</i><div>Cheapest this month<small>Oat milk, Corner Market</small></div></div><div class="fl a-rise" style="left:130px;top:980px;animation-delay:.5s"><i style="background:var(--amber)">{ICONS["bars"]}</i><div>Groceries, October<small>€412 across 4 shops</small></div></div>'
-        btns = f'<div style="display:flex;gap:12px;justify-content:center;margin-top:30px;flex-direction:{"column" if m else "row"};padding:{"0 20px" if m else "0"}"><a class="btn" href="#" style="{"flex:1" if m else "min-width:220px"}">View on GitHub</a><a class="btn alt" href="#" style="{"flex:1" if m else "min-width:220px"}">Read the guide</a></div>'
+        btns = f'<div style="display:flex;gap:12px;justify-content:center;margin-top:30px;flex-direction:{"column" if m else "row"};padding:{"0 20px" if m else "0"}"><a class="btn" href="#" style="{"width:100%" if m else "min-width:220px"}">View on GitHub</a><a class="btn alt" href="#" style="{"width:100%" if m else "min-width:220px"}">Read the guide</a></div>'
         badge = '<span class="badge a-rise">MIT licence · open source <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>'
         txt = f'<div class="hb" style="position:relative;z-index:2;padding:{"20px 0 0" if m else "40px 0 0"}"><div style="text-align:center">{badge}</div><h1 class="a-rise" style="margin-top:24px;{h1}">Photograph the receipt.{"" if m else "<br>"} Keep the data.</h1><p class="lead a-rise" style="{"font-size:17px;padding:0 20px" if m else ""}">Reads your supermarket receipts on your own server, checks every line adds up to the printed total, and shows what your groceries really cost.</p>{btns}</div>'
         phone = f'<div class="tilt" style="position:absolute;left:50%;margin-left:-{ph//2}px;top:{640 if m else 690}px;z-index:2">{dev("receipt",ph)}</div>'
-        return f'<section><div class="heroP" style="height:{h}px">{art("h")}{header(m)}{txt}{paper}{phone}<div class="fade" style="height:{220 if m else 300}px"></div>{chips}</div></section>'
+        return f'<section><div class="heroP" style="height:{h}px">{art("h") if kind == "dusk" else VARIANTS[kind]("h")}{header(m)}{txt}{paper}{phone}<div class="fade" style="height:{220 if m else 300}px"></div>{chips}</div></section>'
 
     def steps(m):
         cb = lambda pos: f'<i class="cb" style="{pos}"></i>'
         v1 = f'<div class="vis">{cb("left:78px;top:20px;border-right:0;border-bottom:0;border-radius:8px 0 0 0")}{cb("right:78px;top:20px;border-left:0;border-bottom:0;border-radius:0 8px 0 0")}<div class="vf"><div class="b" style="width:46%;background:var(--ink)"></div><div class="b"></div><div class="b" style="width:70%"></div><div class="b"></div><div class="b" style="width:55%"></div><div style="height:30px;border-radius:10px;background:var(--yellow);margin-top:6px"></div></div></div>'
         v2 = f'<div class="vis"><div class="sv"><div class="ph1"></div><div class="ln"></div><div class="mini"></div></div><div class="lk">{ICONS["lock"]}Stays on your network</div></div>'
         v3 = f'<div class="vis"><div class="nc" style="top:26px"><i style="background:var(--green)">{ICONS["check"].replace("22","20")}</i><div>Receipt ready<small>Corner Market · 15 lines</small></div></div><div class="nc" style="top:108px;transform:translateX(10px)"><i style="background:var(--amber)">{ICONS["warn"]}</i><div>One row needs a look<small>Tap to fix it in the app</small></div></div></div>'
-        data = [('1', 'Snap it', 'Photograph the receipt at the till, or import a photo later. No signal? It waits and sends when you are back.', v1), ('2', 'Your server reads it', 'The photo goes to a machine you own. Text recognition runs there and nothing leaves your network.', v2), ('3', 'Open the app', 'A few seconds later the receipt is in your list, with anything doubtful marked for a quick look.', v3)]
-        cards = ''.join(f'<article class="sx a-scroll" style="height:{500 if m else 520}px"><div class="tx"><div class="num">{n}</div><h3>{t}</h3><p>{d}</p></div>{v}</article>' for n, t, d, v in data)
+        data = [('1', 'Snap it', 'Photograph the receipt at the till, or import a photo later.', v1), ('2', 'It stays home', 'Your own server reads the receipt. Nothing leaves your network.', v2), ('3', 'Check it in the app', 'The receipt appears in your list. Anything doubtful is flagged for a quick look.', v3)]
+        bgs = ['linear-gradient(165deg,var(--blueTint),var(--sunk) 70%)', 'linear-gradient(165deg,var(--tintP),var(--sunk) 70%)', 'linear-gradient(165deg,var(--tintL),var(--sunk) 70%)']
+        cards = ''.join(f'<article class="sx a-scroll" style="height:{500 if m else 520}px;background:{bgs[int(n)-1]}"><div class="tx"><div class="num">{n}</div><h3>{t}</h3><p>{d}</p></div>{v}</article>' for n, t, d, v in data)
         return f'<section style="padding:{"64px 20px 0" if m else "120px 80px 0"}"><h2 class="h2 lt" style="font-size:{34 if m else 56}px;line-height:1.06;margin-bottom:{28 if m else 48}px;max-width:760px">From the till to your phone.</h2><div style="display:grid;grid-template-columns:repeat({1 if m else 3},minmax(0,1fr));gap:{14 if m else 18}px">{cards}</div></section>'
 
     def showcase(m):
@@ -169,3 +215,10 @@ def build(g):
         flat = re.sub(r'<dc-import name="Brand"[^>]*></dc-import>', brand(True), body(m))
         for th in ('light', 'dark'):
             write(f'{name.lower()}-{th}.html', doc('x', title, flat, w, h, th, preview=True), preview=True)
+    for kind, label in (('silk', 'A · silk ribbons'), ('still', 'B · market still life'), ('receipts', 'C · floating receipts')):
+        title = f'Hero background {label}'
+        write(f'HX-{kind}.dc.html', doc('x', title + ', light', hero(False, kind), 1280, 1130, 'light'))
+        dark_wrapper(f'D-HX-{kind}.dc.html', f'HX-{kind}', title + ', dark', 1280, 1130)
+        flat = re.sub(r'<dc-import name="Brand"[^>]*></dc-import>', brand(True), hero(False, kind))
+        for th in ('light', 'dark'):
+            write(f'hx-{kind}-{th}.html', doc('x', title, flat, 1280, 1130, th, preview=True), preview=True)
