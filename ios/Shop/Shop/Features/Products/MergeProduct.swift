@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// P.1.5 · "Merge into another product" (docs/DESIGN-CATEGORIES-PRODUCTS.md §3.4): pick the
+/// "Merge into another product" on product detail: pick the
 /// product to keep, confirm, and the server moves receipt names and purchases across.
 struct MergeProductTray: View {
     let source: Product

@@ -1,7 +1,7 @@
 import SwiftUI
 
 // One system for loading, refreshing, empty and error states.
-// Rules and the page-by-page list: docs/DESIGN-LOADING-STATES.md.
+// Every screen picks its state from `ScreenPhase`; the rules are the table below.
 //
 //   first load, shape known  -> skeleton (after 250 ms, held 400 ms), never a spinner
 //   cached data              -> show it, refresh silently, never a skeleton

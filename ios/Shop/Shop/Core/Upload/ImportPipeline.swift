@@ -99,7 +99,7 @@ nonisolated enum Straightener {
         return result.cgImage ?? image
     }
 
-    /// Document outline for a receipt photo (PLAN: docs/DESIGN-UPLOAD-FLOW.md §5a). Runs on a
+    /// Document outline for a receipt photo (straighten step of the import flow). Runs on a
     /// 1024 px copy; accepts only confident, large, convex quads.
     static func detect(in image: CGImage) -> Detection {
         let long = CGFloat(max(image.width, image.height))

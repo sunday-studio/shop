@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Rows with swipe actions use `SwipeActionRow` (Design/Components/SwipeRow.swift, docs/DESIGN-SWIPE-ACTIONS.md):
+/// Rows with swipe actions use `SwipeActionRow` (Design/Components/SwipeRow.swift):
 /// pull to act, one action per side, release while armed commits. They live in a plain `List`.
 
 extension View {

@@ -317,7 +317,7 @@ struct CatalogView: View {
         .foregroundStyle(Palette.ink)
     }
 
-    /// Repeatable tray workload for hitch recording on a device (docs/DESIGN-STATUS.md, device check pack):
+    /// Repeatable tray workload for hitch recording on a device (for the on-device check):
     /// open a light tray, swap to a heavier form tray, close, ten times, hands off the screen.
     private func runTrayStress() {
         stressRunning = true
