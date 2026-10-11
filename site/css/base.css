@@ -89,19 +89,6 @@ img{display:block}
 /* ---- Motion ---- */
 @media (prefers-reduced-motion:no-preference){
   html{scroll-behavior:smooth}
-  /* Page-to-page navigation: only the main content crossfades (150 ms, opacity only).
-     Header, guide sidebar and footer keep their own names and never animate; no animation in browsers without support. */
-  @view-transition{navigation:auto}
-  .nav{view-transition-name:site-header}
-  .foot{view-transition-name:site-footer}
-  main{view-transition-name:page-main}
-  .side-col .side{view-transition-name:guide-nav}
-  ::view-transition-group(root),::view-transition-old(root),::view-transition-new(root),
-  ::view-transition-group(page-main),
-  ::view-transition-group(site-header),::view-transition-group(guide-nav),::view-transition-group(site-footer){animation:none}
-  ::view-transition-new(site-header),::view-transition-new(guide-nav),::view-transition-new(site-footer){animation:none;mix-blend-mode:normal}
-  ::view-transition-old(site-header),::view-transition-old(guide-nav),::view-transition-old(site-footer){display:none}
-  ::view-transition-old(page-main),::view-transition-new(page-main){animation-duration:.15s;animation-timing-function:ease-out}
 }
 [id]{scroll-margin-top:24px}
 @keyframes settle{from{opacity:0;transform:rotate(-17deg) translateY(28px)}to{opacity:1;transform:rotate(-9deg) translateY(0)}}
