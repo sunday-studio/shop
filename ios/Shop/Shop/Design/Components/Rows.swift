@@ -59,10 +59,22 @@ struct ReceiptRow: View {
     var trailingIcon: Icon? = nil
     /// Receipt has no shop yet ("Unassigned"): dashed "?" mark instead of a monogram.
     var isUnknownShop: Bool = false
+    /// Amber dot on the shop mark: the receipt is accepted but still needs something (items to link).
+    var needsAttention: Bool = false
 
     var body: some View {
         HStack(spacing: Space.l) {
-            if isUnknownShop { UnknownShopMark() } else { ShopMark(name: shopName) }
+            Group {
+                if isUnknownShop { UnknownShopMark() } else { ShopMark(name: shopName) }
+            }
+            .overlay(alignment: .topTrailing) {
+                if needsAttention {
+                    Circle().fill(Accent.amber)
+                        .frame(width: 9, height: 9)
+                        .overlay(Circle().strokeBorder(Palette.bg, lineWidth: 2))
+                        .offset(x: 3, y: -3)
+                }
+            }
             VStack(alignment: .leading, spacing: 1) {
                 TypeStyle.rowTitle.text(shopName).foregroundStyle(Palette.ink)
                     .lineLimit(1)
