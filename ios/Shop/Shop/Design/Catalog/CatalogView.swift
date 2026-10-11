@@ -14,6 +14,8 @@ struct CatalogView: View {
     @State private var tab = 0
     @State private var trays = TrayCoordinator()
     @State private var toasts = ToastCenter()
+    @State private var stressRunning = false
+    @State private var stressCycle = 0
     @Environment(\.colorScheme) private var systemScheme
 
     var body: some View {
@@ -202,6 +204,9 @@ struct CatalogView: View {
                 }
                 section("Trays") {
                     Button("Open a tray") { openTray() }.buttonStyle(.shop(.secondary))
+                    Button(stressRunning ? "Running… \(stressCycle)/10" : "Tray stress: 10 open, swap, close cycles") { runTrayStress() }
+                        .buttonStyle(.shop(.secondary))
+                        .disabled(stressRunning)
                 }
                 section("Charts") {
                     SpendBars(bars: MockData.spendBars)
@@ -308,6 +313,47 @@ struct CatalogView: View {
             Text("AH GRIEKS YOGH 0%").textStyle(.mono)
         }
         .foregroundStyle(Palette.ink)
+    }
+
+    /// Repeatable tray workload for hitch recording on a device (docs/DESIGN-STATUS.md, device check pack):
+    /// open a light tray, swap to a heavier form tray, close, ten times, hands off the screen.
+    private func runTrayStress() {
+        stressRunning = true
+        stressCycle = 0
+        Task {
+            for i in 1...10 {
+                stressCycle = i
+                trays.present("stress-a") {
+                    VStack(spacing: 14) {
+                        TrayHeader(title: "Options")
+                        OptionRow(icon: .edit, title: "Edit details", hint: "Shop, date and printed total") {}
+                        OptionRow(icon: .reparse, title: "Reparse", hint: "Apply the latest rules") {}
+                        OptionRow(icon: .trash, title: "Delete receipt", hint: "Removes the receipt and its image", destructive: true) {}
+                    }
+                }
+                try? await Task.sleep(for: .milliseconds(900))
+                trays.present("stress-b") {
+                    VStack(alignment: .leading, spacing: Space.lx) {
+                        TrayHeader(title: "New shop")
+                        Grid(horizontalSpacing: Space.m, verticalSpacing: Space.m) {
+                            GridRow {
+                                FieldTile(label: "Name", text: .constant(""), placeholder: "Albert Heijn", background: Palette.trayField)
+                                FieldTile(label: "Branch", text: .constant(""), placeholder: "Oudegracht", background: Palette.trayField)
+                            }
+                            GridRow {
+                                FieldTile(label: "Address", text: .constant(""), placeholder: "Optional", background: Palette.trayField)
+                                FieldTile(label: "City", text: .constant(""), placeholder: "Utrecht", background: Palette.trayField)
+                            }
+                        }
+                        Button("Save") {}.buttonStyle(.shop(haptic: .medium))
+                    }
+                }
+                try? await Task.sleep(for: .milliseconds(900))
+                trays.dismiss()
+                try? await Task.sleep(for: .milliseconds(700))
+            }
+            stressRunning = false
+        }
     }
 
     private func openTray() {
