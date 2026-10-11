@@ -17,6 +17,8 @@ final class AnalyticsModel {
     private(set) var priceChanges: [PriceChange] = []
     private(set) var error: APIError?
     private(set) var isLoading = false
+    /// A new range is loading: the old numbers stay on screen at half opacity (no skeleton).
+    private(set) var isSwitchingRange = false
 
     @ObservationIgnored private let app: AppModel
     @ObservationIgnored private static let rangeKey = "analytics.range"
@@ -29,13 +31,14 @@ final class AnalyticsModel {
 
     func setRange(_ new: DateRange) {
         range = new
+        isSwitchingRange = true
         if new.preset != .custom { UserDefaults.standard.set(new.preset.rawValue, forKey: Self.rangeKey) }
         Task { await load() }
     }
 
     func load() async {
         isLoading = true
-        defer { isLoading = false }
+        defer { isLoading = false; isSwitchingRange = false }
         let r = range
         do {
             async let t = app.api.spend(from: r.from, to: r.to, groupBy: r.grouping, splitBy: .category)
@@ -68,12 +71,14 @@ final class AnalyticsModel {
 
     // MARK: Presentation
 
-    /// The five biggest categories get the palette; everything else is grey.
+    /// The five biggest categories get their own (stored) colour, the same one every other screen
+    /// shows; everything else is grey.
     var categoryColors: [String: Color] {
-        let palette = [Accent.blue, Accent.green, Accent.red, Accent.yellow, Accent.orange]
         let top = (byCategory?.buckets ?? []).filter { $0.key != "none" && $0.cents > 0 }.sorted { $0.cents > $1.cents }.prefix(5)
         var map: [String: Color] = [:]
-        for (i, b) in top.enumerated() { map[b.key] = palette[i] }
+        for b in top {
+            map[b.key] = CategoryColor.swatch(for: Int64(b.key).flatMap { app.catalog.category($0) }).color
+        }
         return map
     }
 
@@ -203,10 +208,14 @@ struct AnalyticsView: View {
                     }
                     .padding(.horizontal, Space.gutter)
                     .padding(.top, 18)
+                    .opacity(model.isSwitchingRange ? 0.5 : 1)
+                    .animation(Motion.stateSwap, value: model.isSwitchingRange)
 
                     SpendBars(bars: model.bars)
                         .padding(.horizontal, Space.gutter)
                         .padding(.top, 22)
+                        .opacity(model.isSwitchingRange ? 0.5 : 1)
+                        .animation(Motion.stateSwap, value: model.isSwitchingRange)
 
                     SegmentedControl(options: AnalyticsModel.Breakdown.allCases, title: { $0.rawValue }, selection: $model.breakdown)
                         .padding(.horizontal, Space.edge)
@@ -215,6 +224,8 @@ struct AnalyticsView: View {
                     breakdown(model)
                         .padding(.horizontal, Space.gutter)
                         .padding(.top, 6)
+                        .opacity(model.isSwitchingRange ? 0.5 : 1)
+                        .animation(Motion.stateSwap, value: model.isSwitchingRange)
 
                 }
 
