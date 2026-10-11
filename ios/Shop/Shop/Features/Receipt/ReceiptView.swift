@@ -181,6 +181,7 @@ private struct ReceiptScreen: View {
                 }
                 TypeStyle.label.withFace(.regular).text(model.metaLine)
                     .foregroundStyle(Palette.ink2)
+                listChecksRow(receipt.id)
             }
             Spacer(minLength: 0)
             Button {
@@ -190,6 +191,27 @@ private struct ReceiptScreen: View {
             }
             .buttonStyle(.press(haptic: .light))
             .accessibilityLabel("Open receipt image")
+        }
+    }
+
+    /// "Checked 4 items on your list · Undo": stays until the items are reverted or edited by hand.
+    @ViewBuilder
+    private func listChecksRow(_ receiptId: Int64) -> some View {
+        let count = app.list.receiptCheckedItems(receiptId).count
+        if count > 0 {
+            HStack(spacing: Space.s) {
+                TypeStyle.rowSub.text("Checked \(count == 1 ? "1 item" : "\(count) items") on your list")
+                    .foregroundStyle(Palette.ink2)
+                Button("Undo") {
+                    Haptics.play(.light)
+                    withAnimation(Motion.collapse) { app.list.undoReceiptChecks(receiptId) }
+                    Task { await app.list.sync() }
+                }
+                .textStyle(TypeStyle.label.sized(13.5))
+                .foregroundStyle(Palette.blueText)
+                .buttonStyle(.press(haptic: nil))
+            }
+            .transition(.opacity)
         }
     }
 

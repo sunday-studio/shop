@@ -270,4 +270,9 @@ func deleteCategory(_ id: Int64, moveTo: Int64? = nil) async throws {
     func checkListItem(_ id: Int64) async throws -> ListItem { try await send("POST", "/v1/list/\(id)/check") }
     func uncheckListItem(_ id: Int64) async throws -> ListItem { try await send("POST", "/v1/list/\(id)/uncheck") }
     func clearCheckedItems() async throws -> RemovedCount { try await send("DELETE", "/v1/list/checked") }
+
+    func listSuggestions() async throws -> [ListSuggestion] { try await get("/v1/list/suggestions") }
+    func acceptListSuggestion(_ id: Int64) async throws -> ListItem { try await send("POST", "/v1/list/suggestions/\(id)/accept") }
+    func dismissListSuggestion(_ id: Int64) async throws { try await perform("POST", "/v1/list/suggestions/\(id)/dismiss") }
+    func undoReceiptListChecks(_ receiptId: Int64) async throws -> RestoredListItems { try await send("POST", "/v1/receipts/\(receiptId)/list-checks/undo") }
 }

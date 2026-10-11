@@ -301,7 +301,18 @@ final class ReceiptModel {
         do {
             let r = try await api.confirmReceipt(receiptId)
             replace(r)
-            if let auto = r.autoProducts, auto.created > 0 {
+            let listText = r.list.map { applyListChecks($0) } ?? nil
+            if let listText {
+                app.toasts.show(listText, tone: .green, haptic: .success, duration: .seconds(6), action: (title: "Undo", run: { [app, receiptId] in
+                    Haptics.play(.light)
+                    app.list.undoReceiptChecks(receiptId)
+                    Task { await app.list.sync() }
+                }))
+                if let auto = r.autoProducts, auto.created > 0 {
+                    app.productReview.bump(by: auto.needsReview)
+                    Task { await app.productReview.refreshCount() }
+                }
+            } else if let auto = r.autoProducts, auto.created > 0 {
                 showAutoProductsToast(auto)
                 app.productReview.bump(by: auto.needsReview)
                 Task { await app.productReview.refreshCount() }
@@ -313,6 +324,19 @@ final class ReceiptModel {
             app.toasts.error(e.message)
             return false
         } catch { return false }
+    }
+
+    /// Merges what the receipt did to the shopping list; returns the toast text, or nil when it checked nothing.
+    private func applyListChecks(_ result: ReceiptListChecks) -> String? {
+        app.list.receiptConfirmed(result)
+        let checked = result.checked.count, partly = result.reduced.count
+        func items(_ n: Int) -> String { n == 1 ? "1 item" : "\(n) items" }
+        switch (checked, partly) {
+        case (0, 0): return nil
+        case (let c, 0): return "Checked \(items(c)) on your list"
+        case (0, let p): return "\(items(p)) on your list partly bought"
+        case (let c, let p): return "Checked \(items(c)), \(p) partly bought"
+        }
     }
 
     private func showAutoProductsToast(_ auto: AutoProductsSummary) {
