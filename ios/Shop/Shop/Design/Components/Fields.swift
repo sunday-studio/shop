@@ -41,7 +41,7 @@ struct FieldTile: View {
                         .foregroundStyle(Palette.ink2)
                         .frame(width: 32, height: 32)
                 }
-                .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+                .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
                 .accessibilityLabel(revealed ? "Hide password" : "Show password")
             }
         }

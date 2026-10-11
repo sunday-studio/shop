@@ -227,7 +227,7 @@ struct ListItemRow: View {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+            .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
             .padding(.horizontal, -10)
             .accessibilityLabel(shownChecked ? "Uncheck \(title)" : "Check off \(title)")
 
@@ -245,7 +245,11 @@ struct ListItemRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
-            .onTapGesture { onTap?() }
+            .onTapGesture {
+                guard let onTap else { return }
+                Haptics.play(.selection)
+                onTap()
+            }
 
             if let quantity {
                 TypeStyle.body.sized(13.5).text(quantity).foregroundStyle(Palette.ink2)

@@ -215,7 +215,7 @@ struct Avatar: View {
                     }
                 }
         }
-        .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+        .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
         .accessibilityLabel(badge == nil ? "Settings" : "Settings, needs attention")
     }
 }

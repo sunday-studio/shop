@@ -40,7 +40,7 @@ struct Chip: View {
             .contentShape(shape)
             .animation(Motion.fade, value: isSelected)
         }
-        .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+        .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
@@ -91,7 +91,7 @@ struct ToneChip: View {
                 .frame(height: Size.chipSmall)
                 .background(isSelected ? tone.solid : tone.tint, in: RoundedRectangle.continuous(Radius.s))
         }
-        .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+        .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
     }
 }
 
@@ -138,7 +138,7 @@ struct SuggestionChip: View {
             .frame(height: Size.chip)
             .background(color.opacity(0.22), in: Capsule())
         }
-        .buttonStyle(.press(scale: Motion.pillScale, haptic: nil)) // the add action plays its own light tap; touch-down + action was a double
+        .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection)) // the add action's own tap lands within 90 ms and is dropped
     }
 }
 

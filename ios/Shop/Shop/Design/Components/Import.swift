@@ -251,7 +251,7 @@ struct UploadProgressCard: View {
             .frame(minHeight: Size.attention + 8)
             .background(tone.tint, in: RoundedRectangle.continuous(Radius.l))
         }
-        .buttonStyle(.press(haptic: nil))
+        .buttonStyle(.press(haptic: .selection))
         .animation(reduce ? Motion.reducedFade : Motion.numberRoll, value: state)
         .accessibilityElement(children: .combine)
     }
