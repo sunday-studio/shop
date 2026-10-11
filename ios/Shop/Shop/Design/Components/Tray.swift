@@ -122,14 +122,14 @@ private struct TrayDrag: ViewModifier {
     let onDismiss: () -> Void
 
     @State private var drag: CGFloat = 0
-    @State private var height: CGFloat = 400
+    /// The tray's height, read only when a drag ends. A plain box, not @State: while a tray swaps,
+    /// the height changes every frame and writing @State would re-run this body 60 to 120 times
+    /// a second for nothing.
+    @State private var height = HeightBox()
 
     func body(content: Content) -> some View {
         content
-            .background(GeometryReader { geo in
-                Color.clear.onAppear { height = geo.size.height }
-                    .onChange(of: geo.size.height) { _, new in height = new }
-            })
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height.value = $0 }
             .offset(y: drag)
             .gesture(
                 DragGesture(minimumDistance: 8)
@@ -143,7 +143,7 @@ private struct TrayDrag: ViewModifier {
                     }
                     .onEnded { value in
                         let velocity = value.velocity.height
-                        let shouldClose = dismissible && (velocity > 400 || value.translation.height > height * 0.25)
+                        let shouldClose = dismissible && (velocity > 400 || value.translation.height > height.value * 0.25)
                         if shouldClose {
                             Haptics.play(.trayDismiss)
                             // Keep `drag` where the finger left it: the exit slides on from there.
@@ -155,6 +155,8 @@ private struct TrayDrag: ViewModifier {
             )
             .onChange(of: resetKey) { _, _ in drag = 0 }
     }
+
+    private final class HeightBox { var value: CGFloat = 400 }
 
     /// Diminishing movement: the first points follow, later ones barely move.
     private static func rubber(_ x: CGFloat, limit: CGFloat) -> CGFloat {

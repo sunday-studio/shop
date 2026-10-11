@@ -147,3 +147,31 @@ Turn the phone's volume and Silent mode off; haptics work in Silent mode. In Sho
 
 ### 4. Tell us
 Send the trace paths and one line per checklist item (felt right / wrong / didn't test). The design agent reads the traces and reports hitches per screen with the cause where it can find one.
+
+## Tray animation pass 2 (real-device review), 2026-10-11
+
+Everything before this was verified on the simulator at about 9 fps, so this is a code review for what a 120 Hz iPhone does differently, plus a repeatable workload for recording it. No device numbers yet.
+
+What I changed (Design/Components/Tray.swift): `TrayDrag` no longer writes the tray height into @State on every layout pass. During a tray-to-tray swap the height changes every frame, so that was 60 to 120 extra body evaluations a second inside the animation. It is read once when a drag ends, from a plain box.
+
+What I checked and left alone:
+- One surface, one transform, no opacity on the surface itself, drag state isolated: unchanged and correct.
+- No `.shadow`, blur or `compositingGroup` on the tray (the ring is a 1 pt stroke). The only shadows are the tab bar's, which don't animate.
+- Swap: container height and the content fade are the same transaction on `Motion.sheetSwap`; the fades inside (`.traySwap`) are intentionally shorter than the height move, so the new content appears while the surface is still growing. That is the design, not stacking.
+- Haptic generators are prepared at launch and after every play, so `trayOpen` costs nothing on the first frame.
+- Animations are time-based, so 120 Hz needs no change to the curves.
+
+Open items:
+1. **Info.plist: `CADisableMinimumFrameDurationOnPhone` = YES is not set** (`ios/Shop/Config/ATS.plist` is where Info.plist keys are merged). Without it, Core Animation driven animations on a ProMotion iPhone can be held to 60 Hz, which reads as "less smooth than other apps". One boolean, no downside. Not a Design file, so someone with project config ownership should add it.
+2. **Features: do not mutate big state in the same frame as `trays.dismiss()`.** A confirm tray that deletes a row, pops a screen or shows a toast in the same turn as the dismiss makes the list animation and the 350 ms exit fight for the main thread. Run the mutation from `onDismiss`, or after `Motion.sheetExit` (0.35 s). Worst offenders to look at: delete receipt, delete product, delete shop (ConfirmTray actions in Features/).
+3. **Height changes inside an open tray are not animated** (e.g. the barcode feedback line in the product form, error text under a field). They jump. Fix in the feature: wrap the change in `withAnimation(Motion.sheetSwap)`. I am not adding a global measured-height animation to the surface without a device to check the keyboard behaviour.
+4. **Keyboard inside a tray** is still unverified on hardware: the keyboard lifts the tray with its own system curve while the field is focused (autofocus waits 450 ms for the enter animation).
+
+### Record it (phone connected: Midgard)
+Repeatable workload, hands off: Settings, About Shop (Design catalog), scroll to **Trays**, tap **Tray stress: 10 open, swap, close cycles**. It opens a light tray, swaps to a form tray, closes, ten times (about 25 s), with no finger variance. Record while it runs, with a Release build per the check pack above:
+
+```bash
+xcrun xctrace record --template 'Animation Hitches' --device 00008130-000430CC0083401C --attach Shop --time-limit 30s --output ~/Desktop/shop-trays-stress.trace
+```
+
+Also record one run of real use (open Add, pick a shop, open a form tray, drag it down) as `shop-trays-hand.trace`. Send me the paths and I report hitch count and longest hitch per phase (open, swap, close), and whether the swap or the drag is the cause.
