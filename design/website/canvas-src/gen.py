@@ -7,7 +7,7 @@ A=json.load(open(f'{HERE}/assets.json'))
 OUT=sys.argv[1] if len(sys.argv)>1 else 'out'
 os.makedirs(f'{OUT}/project',exist_ok=True); os.makedirs(f'{OUT}/preview',exist_ok=True)
 
-TOK={'light':dict(bg='#FFFFFF',sunk='#F4F4F3',line='#E6E6E2',ink='#1D1D1B',ink2='#6B6B66',ink3='#B4B4AF',btn='#1D1D1B',btnInk='#FFFFFF',blue='#0A84FF',blueText='#0071E3',blueTint='#E5F1FF',panel='#DCEBFF',yellow='#FFCC1A',green='#18B663',greenText='#0B8A47',amber='#FF9500',amberText='#B25E00',paper='#F7F9FF',shadow='rgba(29,29,27,.16)',bezel='#1D1D1B'),
+TOK={'light':dict(bg='#FFFFFF',sunk='#F3F4F8',line='#E4E6EE',ink='#2B2D3F',ink2='#686B7E',ink3='#B2B5C4',btn='#33364D',btnInk='#FFFFFF',blue='#0A84FF',blueText='#0071E3',blueTint='#E5F1FF',panel='#DCEBFF',yellow='#FFCC1A',green='#18B663',greenText='#0B8A47',amber='#FF9500',amberText='#B25E00',paper='#F7F9FF',shadow='rgba(29,29,27,.16)',bezel='#1D1D1B'),
      'dark':dict(bg='#0C0C0B',sunk='#1A1A18',line='#2A2A27',ink='#F4F4F1',ink2='#9B9B95',ink3='#5C5C58',btn='#F4F4F1',btnInk='#0C0C0B',blue='#4DA3FF',blueText='#4DA3FF',blueTint='#0E2236',panel='#12304F',yellow='#FFCC1A',green='#3DDC84',greenText='#3DDC84',amber='#FFB340',amberText='#FFB340',paper='#E9ECF4',shadow='rgba(0,0,0,.55)',bezel='#2A2A27')}
 VARS=['bg','sunk','line','ink','ink2','ink3','btn','btnInk','blue','blueText','blueTint','panel','yellow','green','greenText','amber','amberText','paper','shadow','bezel']
 SHOTS=['home','receipt','analytics','products','product']
