@@ -67,6 +67,17 @@ func MigrateTo(ctx context.Context, db *sql.DB, version int64) error {
 	return err
 }
 
+// MigrateDownTo rolls migrations back to version (0 = everything); used by tests.
+func MigrateDownTo(ctx context.Context, db *sql.DB, version int64) error {
+	p, err := newProvider(db)
+	if err != nil {
+		return err
+	}
+	_, err = p.DownTo(ctx, version)
+	dropPooledConns(db)
+	return err
+}
+
 // PendingMigrations reports whether Migrate would change the schema, and
 // the current version (0 for a fresh database).
 func PendingMigrations(ctx context.Context, db *sql.DB) (bool, int64, error) {

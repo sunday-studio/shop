@@ -110,15 +110,6 @@ func Recommend(scores []EngineScore, dockerOnly map[string]bool) (def, fallback 
 	return def, fallback, why
 }
 
-func rateOf(scores []EngineScore, engine string) float64 {
-	for _, e := range scores {
-		if e.Engine == engine {
-			return e.Rate(e.TotalCorrect)
-		}
-	}
-	return 0
-}
-
 // WriteReport renders the markdown report.
 func WriteReport(path string, scores []EngineScore, engines []Engine, labelled, lineLabelled, images int, generated time.Time) error {
 	dockerOnly := map[string]bool{}

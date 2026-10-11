@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"shop/internal/jobs"
@@ -297,8 +296,6 @@ func upsertAlias(ctx context.Context, q *db.Queries, shop sql.NullInt64, norm st
 	_, err := q.UpsertAlias(ctx, db.UpsertAliasParams{NormText: norm, ProductID: productID, CreatedAt: now})
 	return err
 }
-
-func fold(s string) string { return strings.TrimSpace(match.Fold(s)) }
 
 func errf(base error, format string, a ...any) error {
 	return fmt.Errorf("%w: %s", base, fmt.Sprintf(format, a...))

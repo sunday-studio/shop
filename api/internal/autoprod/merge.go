@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 )
 
 // ErrDifferentBarcodes is shown to the user as is.
+//
+//lint:ignore ST1005 the text is shown to the user as written
 var ErrDifferentBarcodes = errors.New("These two have different barcodes.")
 
 // ProductRef names a product in a result.
@@ -280,17 +283,24 @@ func (s *Service) Undo(ctx context.Context, mergeID int64) (UndoResult, error) {
 		}
 		now := store.TS(s.now())
 		var lineIDs, aliasIDs []int64
-		_ = json.Unmarshal([]byte(m.LineIds), &lineIDs)
-		_ = json.Unmarshal([]byte(m.AliasIds), &aliasIDs)
 		var rb reviewBefore
-		_ = json.Unmarshal([]byte(m.FromReviewBefore), &rb)
+		for _, f := range []struct {
+			raw string
+			dst any
+		}{{m.LineIds, &lineIDs}, {m.AliasIds, &aliasIDs}, {m.FromReviewBefore, &rb}} {
+			if err := json.Unmarshal([]byte(f.raw), f.dst); err != nil {
+				return fmt.Errorf("merge %d has unreadable undo data: %w", mergeID, err)
+			}
+		}
 		res.Kind = m.Kind
 
 		switch m.Kind {
 		case "merge":
 			intoID := m.IntoProductID.Int64
 			var f filled
-			_ = json.Unmarshal([]byte(m.IntoFieldsBefore), &f)
+			if err := json.Unmarshal([]byte(m.IntoFieldsBefore), &f); err != nil {
+				return fmt.Errorf("merge %d has unreadable undo data: %w", mergeID, err)
+			}
 			if err := s.clearFilled(ctx, q, intoID, f, now); err != nil {
 				return err
 			}
@@ -318,9 +328,11 @@ func (s *Service) Undo(ctx context.Context, mergeID int64) (UndoResult, error) {
 				return err
 			}
 			var rows []db.ProductAlias
-			_ = json.Unmarshal([]byte(m.AliasRows), &rows)
+			if err := json.Unmarshal([]byte(m.AliasRows), &rows); err != nil {
+				return fmt.Errorf("merge %d has unreadable undo data: %w", mergeID, err)
+			}
 			for _, a := range rows {
-				if err := q.InsertAliasRow(ctx, db.InsertAliasRowParams{ID: a.ID, ShopID: a.ShopID, NormText: a.NormText, ProductID: a.ProductID, CreatedAt: a.CreatedAt}); err != nil {
+				if err := q.InsertAliasRow(ctx, db.InsertAliasRowParams(a)); err != nil {
 					return err
 				}
 			}

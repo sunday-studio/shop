@@ -96,7 +96,10 @@ func TestReviewQueueAndActions(t *testing.T) {
 
 	// discard
 	after, _ := s.ReviewQueue(ctx, 100, 0, "")
-	for _, it := range after.Items {
+	if len(after.Items) == 0 {
+		t.Fatal("nothing left to discard")
+	}
+	for _, it := range after.Items[:1] {
 		d, err := s.Review(ctx, it.Product.ID, ReviewInput{Action: "discard"})
 		if err != nil || d.Discard == nil || d.Discard.Kind != "discard" {
 			t.Fatalf("discard = %+v, %v", d.Discard, err)
@@ -104,6 +107,5 @@ func TestReviewQueueAndActions(t *testing.T) {
 		if _, err := s.Review(ctx, it.Product.ID, ReviewInput{Action: "discard"}); err == nil {
 			t.Error("discarding twice must fail")
 		}
-		break
 	}
 }

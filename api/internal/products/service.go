@@ -165,7 +165,7 @@ func (s *Service) Create(ctx context.Context, in Input) (Product, error) {
 			CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {
-			if isUnique(err) {
+			if store.IsUniqueViolation(err) {
 				return fmt.Errorf("%w: a product with barcode %s exists", ErrConflict, *in.Barcode)
 			}
 			return err
@@ -249,7 +249,7 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (Product, erro
 			Barcode: store.NullStr(in.Barcode), NetQuantity: floatNull(in.NetQuantity),
 			NetUnit: store.NullStr(in.NetUnit), UpdatedAt: store.Now(), ID: id,
 		})
-		if isUnique(err) {
+		if store.IsUniqueViolation(err) {
 			return fmt.Errorf("%w: barcode already used by another product", ErrConflict)
 		}
 		if err != nil {
@@ -572,8 +572,4 @@ func (s *Service) DeleteAlias(ctx context.Context, id int64) error {
 // Suggest proxies the matcher for receipt lines.
 func (s *Service) Suggest(ctx context.Context, shopID int64, text string) ([]match.Candidate, error) {
 	return s.matcher.Suggest(ctx, shopID, text)
-}
-
-func isUnique(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }

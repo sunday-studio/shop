@@ -135,7 +135,7 @@ func (s *Service) CreateFromBarcode(ctx context.Context, code string) (BarcodeOu
 		return nil
 	})
 	if err != nil {
-		if isUnique(err) { // lost a race with a concurrent scan of the same code
+		if store.IsUniqueViolation(err) { // lost a race with a concurrent scan of the same code
 			if ex, gerr := s.q.GetProductByBarcode(ctx, store.Str(code)); gerr == nil {
 				return BarcodeOutcome{Status: "known", Product: ex}, nil
 			}
@@ -325,7 +325,7 @@ func (s *Service) refresh(ctx context.Context, id int64) (db.Product, string, er
 	if err != nil {
 		return p, "", err
 	}
-	if p.ImagePath.Valid == false && pre.ImageURL != "" && s.prod != nil {
+	if !p.ImagePath.Valid && pre.ImageURL != "" && s.prod != nil {
 		if img, err := s.off.FetchImage(ctx, pre.ImageURL); err == nil {
 			_, _ = s.prod.SetImage(ctx, id, img)
 		}
@@ -364,8 +364,4 @@ func last4(s string) string {
 		return s
 	}
 	return s[len(s)-4:]
-}
-
-func isUnique(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
