@@ -64,27 +64,27 @@ CSS = '''
 .w .lgd b{margin-left:auto;font-weight:500;color:var(--ink)}
 .w .stk{display:flex;height:16px;border-radius:8px;overflow:hidden;gap:2px;margin-bottom:12px}
 .w .stk i{display:block;height:100%}
+@property --a{syntax:'<integer>';inherits:true;initial-value:1}
+.w .shrow{--a:1}
 .w .fx{display:flex;flex-direction:column}
+.w .fi,.w .ph{--on:calc(1 - min(1,max(var(--a) - var(--i),var(--i) - var(--a))))}
 .w .fi{padding:22px 0 20px;position:relative}
-.w .fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0;opacity:.5}
-.w .fi .dd{display:grid;grid-template-rows:1fr;opacity:.62}
+.w .fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0;opacity:calc(.5 + .5*var(--on));transition:opacity .35s linear}
+.w .fi .dd{display:grid;grid-template-rows:1fr;opacity:calc(.62 + .38*var(--on));transition:opacity .35s linear}
 .w .fi .dd>div{overflow:hidden}
 .w .fi .dd p{font-size:17px;line-height:1.55;color:var(--ink2);margin:10px 0 0;max-width:400px}
-.w .fi .pr{position:absolute;left:0;top:-1px;height:2px;width:0;background:var(--blue)}
-.w .fi:first-child h3{opacity:1}.w .fi:first-child .dd{opacity:1}.w .fi:first-child .pr{width:100%}
+.w .fi .pr{position:absolute;left:0;top:-1px;height:2px;width:calc(100%*var(--on));background:var(--blue)}
 .w .stage{position:relative;flex:1;border-radius:36px;background:var(--panel);overflow:hidden}
-.w .ph{position:absolute;left:0;right:0;top:70px;display:flex;justify-content:center;opacity:0}
-.w .ph:first-of-type{opacity:1}
-@keyframes tOn{0%,24%{opacity:1}26%,98%{opacity:.5}100%{opacity:1}}
-@keyframes dOn{0%,24%{opacity:1}26%,98%{opacity:.62}100%{opacity:1}}
+.w .ph{position:absolute;left:0;right:0;top:70px;display:flex;justify-content:center;opacity:var(--on);transition:opacity .45s linear}
+@keyframes cyc0{0%{--a:1}25%{--a:2}50%{--a:3}75%{--a:4}100%{--a:1}}
 @keyframes pOn{0%{width:0}25%{width:100%}25.01%,100%{width:0}}
-@keyframes phOn{0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}}
 @media (prefers-reduced-motion:no-preference){
-.w .fi h3{animation:tOn 20s infinite}.w .fi .dd{animation:dOn 20s infinite}.w .fi .pr{animation:pOn 20s linear infinite}.w .ph{animation:phOn 20s infinite}
-.w .fi:nth-child(1)>*,.w .ph:nth-of-type(1){animation-delay:0s}
-.w .fi:nth-child(2)>*,.w .ph:nth-of-type(2){animation-delay:-15s}
-.w .fi:nth-child(3)>*,.w .ph:nth-of-type(3){animation-delay:-10s}
-.w .fi:nth-child(4)>*,.w .ph:nth-of-type(4){animation-delay:-5s}
+.w .shrow{animation:cyc0 20s steps(1,end) infinite}
+.w .fi .pr{animation:pOn 20s linear infinite}
+.w .fi:nth-child(1) .pr{animation-delay:0s}
+.w .fi:nth-child(2) .pr{animation-delay:-15s}
+.w .fi:nth-child(3) .pr{animation-delay:-10s}
+.w .fi:nth-child(4) .pr{animation-delay:-5s}
 }
 .w .gp{display:inline-flex;align-items:center;height:38px;padding:0 16px;border-radius:19px;background:rgba(255,255,255,.5);backdrop-filter:blur(8px);font-size:14.5px;font-weight:500;color:#2B2D3F}
 '''
@@ -174,35 +174,21 @@ VARIANTS = {'silk': art_silk, 'still': art_still, 'receipts': art_receipts}
 
 
 def showcase_css():
+    """Click-to-select. The cycle is one animated integer (--a = active feature); phones, titles and descriptions derive
+    their opacity from it with a CSS transition, so every change (auto or clicked) is a true cross-fade."""
     out = ['.w .sfr{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}', '.w .fi{cursor:pointer;border-radius:12px}']
-    kf = {'tOn': '0%,24%{opacity:1}26%,98%{opacity:.5}100%{opacity:1}', 'dOn': '0%,24%{opacity:1}26%,98%{opacity:.62}100%{opacity:1}', 'pOn': '0%{width:0}25%{width:100%}25.01%,100%{width:0}',
-          'phOn': '0%,23%{opacity:1;transform:none}25%{opacity:0;transform:translateY(-14px)}98%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:none}'}
     for k in range(1, 5):
         sel = f'#sf{k}:checked ~ .shrow'
-        # static selected state (also used with reduced motion)
-        out.append(f'{sel} .fi h3{{opacity:.5}}{sel} .fi:nth-child({k}) h3{{opacity:1}}')
-        out.append(f'{sel} .fi .dd{{opacity:.62}}{sel} .fi:nth-child({k}) .dd{{opacity:1}}')
-        out.append(f'{sel} .fi .pr{{width:0}}{sel} .fi:nth-child({k}) .pr{{width:100%}}')
-        out.append(f'{sel} .ph{{opacity:0}}{sel} .ph:nth-of-type({k}){{opacity:1}}')
+        out.append(f'{sel}{{--a:{k}}}')
         out.append(f'#sf{k}:focus-visible ~ .shrow .fi:nth-child({k}){{outline:2px solid var(--blue);outline-offset:6px}}')
-        # animated cycle restarted from the clicked item
-        anim = []
-        for name, frames in kf.items():
-            if name != 'phOn':
-                out.append(f'@keyframes {name}{k}{{{frames}}}')
-        # phones: the clicked phone fades in on top (0.45 s) while the others stay under it, then they go
-        out.append(f'@keyframes phIn{k}{{0%{{opacity:0;transform:translateY(24px)}}2.25%,23%{{opacity:1;transform:none}}25%{{opacity:0;transform:translateY(-14px)}}98%{{opacity:0;transform:translateY(28px)}}100%{{opacity:1;transform:none}}}}')
-        out.append(f'@keyframes phHold{k}_1{{0%,23%{{opacity:1;transform:none}}25%{{opacity:0;transform:translateY(-14px)}}74.99%{{opacity:0}}75%,77.25%{{opacity:1;transform:none}}77.26%{{opacity:0}}98%{{opacity:0;transform:translateY(28px)}}100%{{opacity:1;transform:none}}}}')
-        out.append(f'@keyframes phHold{k}_2{{0%,23%{{opacity:1;transform:none}}25%{{opacity:0;transform:translateY(-14px)}}49.99%{{opacity:0}}50%,52.25%{{opacity:1;transform:none}}52.26%{{opacity:0}}98%{{opacity:0;transform:translateY(28px)}}100%{{opacity:1;transform:none}}}}')
-        out.append(f'@keyframes phHold{k}_3{{0%,27.25%{{opacity:1;transform:none}}27.26%{{opacity:0;transform:translateY(-14px)}}98%{{opacity:0;transform:translateY(28px)}}100%{{opacity:1;transform:none}}}}')
-        out.append(f'{sel} .ph:nth-of-type({k}){{z-index:2}}')
+        seq = ''.join(f'{p}%{{--a:{(k - 1 + j) % 4 + 1}}}' for j, p in enumerate((0, 25, 50, 75))) + f'100%{{--a:{k}}}'
+        out.append(f'@keyframes cyc{k}{{{seq}}}')
+        out.append(f'@keyframes pOn{k}{{0%{{width:0}}25%{{width:100%}}25.01%,100%{{width:0}}}}')
+        anim = [f'{sel}{{animation-name:cyc{k}}}']
         for i in range(1, 5):
             slot = (i - k) % 4
             delay = '0s' if slot == 0 else f'-{20 - 5 * slot}s'
-            pname = f'phIn{k}' if slot == 0 else f'phHold{k}_{slot}'
-            anim.append(f'{sel} .fi:nth-child({i}) h3,{sel} .fi:nth-child({i}) .dd,{sel} .fi:nth-child({i}) .pr{{animation-delay:{delay}}}')
-            anim.append(f'{sel} .ph:nth-of-type({i}){{animation-delay:{delay};animation-name:{pname}}}')
-        anim.append(f'{sel} .fi h3{{animation-name:tOn{k}}}{sel} .fi .dd{{animation-name:dOn{k}}}{sel} .fi .pr{{animation-name:pOn{k}}}')
+            anim.append(f'{sel} .fi:nth-child({i}) .pr{{animation-name:pOn{k};animation-delay:{delay}}}')
         out.append('@media (prefers-reduced-motion:no-preference){' + ''.join(anim) + '}')
     return '\n'.join(out) + '\n'
 
@@ -265,9 +251,9 @@ def build(g):
              ('Finds the cheapest shop', 'Prices per kilo, litre or piece, per shop, so the comparison is fair.', 'product'),
              ('Shows where the money goes', 'Spend by month, shop and category, without a spreadsheet.', 'analytics'),
              ('Keeps products tidy', 'Names cleaned up, categories filled in, barcodes linked.', 'products')]
-        items = ''.join(f'<label class="fi" for="sf{i+1}"><i class="pr"></i><h3>{t}</h3><div class="dd"><div><p>{d}</p></div></div></label>' for i, (t, d, s) in enumerate(F))
+        items = ''.join(f'<label class="fi" for="sf{i+1}" style="--i:{i+1}"><i class="pr"></i><h3>{t}</h3><div class="dd"><div><p>{d}</p></div></div></label>' for i, (t, d, s) in enumerate(F))
         pw = 250 if m else 290
-        phs = ''.join(f'<div class="ph" style="{"top:50px" if m else ""}">{dev(s, pw)}</div>' for t, d, s in F)
+        phs = ''.join(f'<div class="ph" style="--i:{i+1};{"top:50px" if m else ""}">{dev(s, pw)}</div>' for i, (t, d, s) in enumerate(F))
         left = f'<div style="{"" if m else "width:440px;flex:none"}"><h2 class="h2 lt" style="font-size:{34 if m else 56}px;line-height:1.05;margin-bottom:{24 if m else 36}px">Everything a receipt knows.</h2><div class="fx">{items}</div></div>'
         right = f'<div class="stage" style="{"height:460px;margin-top:28px;flex:none" if m else "height:620px"}">{phs}</div>'
         inputs = ''.join(f'<input class="sfr" type="radio" name="feat" id="sf{i}" aria-label="Show feature {i}">' for i in range(1, 5))
