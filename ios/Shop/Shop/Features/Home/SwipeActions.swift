@@ -28,6 +28,11 @@ struct SwipeButton: View {
 }
 
 extension View {
+    /// Swipe haptics for any `List` with swipe actions (see `SwipeHapticHost`).
+    func swipeHaptics(leading: Int = 0, trailing: Int = 0) -> some View {
+        background(SwipeHapticHost(leading: leading, trailing: trailing).allowsHitTesting(false))
+    }
+
     /// Row chrome for rows that live in a plain full-width `List`.
     func shopListRow() -> some View {
         listRowInsets(EdgeInsets())
@@ -40,7 +45,7 @@ extension View {
     /// `leading` / `trailing`: how many swipe actions the rows on that side have, so the swipe
     /// haptic can fire when all of them are showing.
     func shopListStyle(leading: Int = 0, trailing: Int = 0) -> some View {
-        background(SwipeHapticHost(leading: leading, trailing: trailing).allowsHitTesting(false))
+        swipeHaptics(leading: leading, trailing: trailing)
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)

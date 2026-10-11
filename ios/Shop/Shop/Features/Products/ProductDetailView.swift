@@ -508,8 +508,8 @@ struct ReceiptNamesView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: Space.gutter, bottom: 0, trailing: Space.gutter))
                         .listRowBackground(Palette.bg)
                         .listRowSeparatorTint(Palette.line)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) { delete(alias) } label: { Label("Delete", systemImage: "trash") }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { delete(alias) }
                         }
                     }
                 } header: {
@@ -532,6 +532,7 @@ struct ReceiptNamesView: View {
                     .listRowInsets(EdgeInsets(top: Space.lx, leading: Space.gutter, bottom: 0, trailing: Space.gutter))
             }
         }
+        .swipeHaptics(trailing: 1)
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Palette.bg)
