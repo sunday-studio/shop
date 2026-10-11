@@ -302,7 +302,7 @@ private struct UnpackNameTray: View {
             Button("Cancel") { trays.dismiss() }
                 .textStyle(.label).foregroundStyle(Palette.ink2)
                 .frame(maxWidth: .infinity)
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
         }
     }
 }
@@ -390,7 +390,7 @@ struct LinkLineTray: View {
             .hairline()
             .contentShape(Rectangle())
         }
-        .buttonStyle(.press(haptic: nil))
+        .buttonStyle(.press(haptic: .selection))
     }
 
     private func link() async {

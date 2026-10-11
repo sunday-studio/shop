@@ -66,6 +66,7 @@ struct SettingsView: View {
                         TypeStyle.rowTitle.sized(15.5).text("Straighten imported photos").foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.85)
                         Spacer()
                         Toggle("", isOn: $straightenOn)
+                            .onChange(of: straightenOn) { _, _ in Haptics.play(.selection) }
                             .labelsHidden()
                             .tint(Accent.blue)
                             .padding(.trailing, 2)
@@ -81,7 +82,7 @@ struct SettingsView: View {
                         SettingsRow(icon: .info, color: Color.dynamic(light: 0x8E8E8A, dark: 0x3A3A37), title: "About Shop", value: appVersion)
                     }
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
                 .padding(.horizontal, Space.gutter)
                 .padding(.top, Space.lx)
             }

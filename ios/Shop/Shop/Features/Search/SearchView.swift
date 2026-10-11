@@ -21,7 +21,7 @@ struct SearchView: View {
                 Button("Cancel") { dismiss() }
                     .textStyle(TypeStyle.rowTitle)
                     .foregroundStyle(Palette.blueText)
-                    .buttonStyle(.press(haptic: nil))
+                    .buttonStyle(.press(haptic: .selection))
             }
             .padding(.horizontal, Space.edge)
             .padding(.top, Space.l)
@@ -77,7 +77,7 @@ struct SearchView: View {
                     ProductRow(name: p.name, meta: [p.sizeText, app.catalog.category(p.categoryId)?.name].compactMap { $0 }.joined(separator: " · "),
                                category: app.catalog.category(p.categoryId)?.name, categoryToken: app.catalog.category(p.categoryId)?.color, imageURL: app.api.productImageURL(p), showsChevron: true)
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
             }
         }
         if (section == .all || section == .names) && !r.aliases.isEmpty {
@@ -94,7 +94,7 @@ struct SearchView: View {
                     .hairline()
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
             }
         }
         if (section == .all || section == .receipts) && !r.receipts.isEmpty {
@@ -107,7 +107,7 @@ struct SearchView: View {
                         amount: hit.receipt.totalCents.map(Money.format) ?? "—"
                     )
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
             }
         }
     }

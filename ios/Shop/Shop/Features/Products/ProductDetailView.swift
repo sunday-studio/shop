@@ -135,13 +135,13 @@ struct ProductDetailView: View {
                         Button("Merge into another product") { startMerge(model) }
                             .textStyle(.label)
                             .foregroundStyle(Palette.ink2)
-                            .buttonStyle(.press(haptic: nil))
+                            .buttonStyle(.press(haptic: .selection))
                             .padding(.horizontal, Space.gutter)
                             .padding(.top, Space.xxl)
                         Button("Delete product") { confirmDelete(model) }
                             .textStyle(.label)
                             .foregroundStyle(Palette.redText)
-                            .buttonStyle(.press(haptic: nil))
+                            .buttonStyle(.press(haptic: .selection))
                             .padding(.horizontal, Space.gutter)
                             .padding(.top, Space.l)
                     } else {
@@ -230,7 +230,7 @@ struct ProductDetailView: View {
                         IconView(.forward, size: 12, weight: .bold).foregroundStyle(Palette.ink3)
                     }
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
                 PriceChart(series: model.series)
                 VStack(spacing: 0) {
                     ForEach(model.compare) { price in
@@ -340,7 +340,7 @@ struct ProductDetailView: View {
             .frame(height: 50)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.press(haptic: nil))
+        .buttonStyle(.press(haptic: .selection))
         .padding(.horizontal, Space.gutter)
         .padding(.top, Space.ml)
     }

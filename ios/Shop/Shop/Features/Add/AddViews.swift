@@ -140,7 +140,7 @@ struct ReceiptCaptureView: View {
                 }
                 .buttonStyle(.shop(.tinted(text: Palette.scanInk, tint: Palette.scanField)))
                 Button("Cancel") { app.capture = nil }
-                    .buttonStyle(.press(haptic: nil))
+                    .buttonStyle(.press(haptic: .selection))
                     .textStyle(.rowTitle)
                     .foregroundStyle(Palette.scanInk2)
                     .frame(height: 44)
@@ -217,7 +217,7 @@ struct ReceiptCaptureView: View {
                         .frame(height: 50)
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.press(haptic: nil))
+                    .buttonStyle(.press(haptic: .selection))
                 }
                 .padding(.horizontal, Space.xs)
             }
@@ -240,14 +240,14 @@ struct ReceiptCaptureView: View {
                 .frame(height: 48)
                 .background(Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
             }
-            .buttonStyle(.press(haptic: nil))
+            .buttonStyle(.press(haptic: .selection))
 
             Button {
                 add()
             } label: {
                 LoadingLabel(title: "Add receipt", isLoading: adding)
             }
-            .buttonStyle(.shop(haptic: nil))
+            .buttonStyle(.shop(haptic: .light))
             .disabled(shopId == nil || adding)
         }
         .padding(.top, 22)
@@ -288,7 +288,7 @@ struct ReceiptCaptureView: View {
             .hairline()
             .contentShape(Rectangle())
         }
-        .buttonStyle(.press(haptic: nil))
+        .buttonStyle(.press(haptic: .selection))
     }
 
     // MARK: Actions

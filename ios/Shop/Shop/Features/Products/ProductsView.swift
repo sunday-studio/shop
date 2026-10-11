@@ -191,7 +191,7 @@ struct ProductsView: View {
                         priceShop: product.cheapest?.shopName
                     )
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
                 .padding(.horizontal, Space.gutter)
                 }
                 .shopListRow()

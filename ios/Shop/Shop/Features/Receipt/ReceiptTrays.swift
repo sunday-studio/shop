@@ -62,7 +62,7 @@ struct EditLineTray: View {
                             .keyboardType(.decimalPad)
                         Menu {
                             ForEach(LineUnit.allCases, id: \.self) { u in
-                                Button(u.title) { unit = u }
+                                Button(u.title) { Haptics.play(.selection); unit = u }
                             }
                         } label: {
                             IconView(.down, size: 12, weight: .bold)
@@ -226,6 +226,7 @@ struct LinkProductTray: View {
                 }
                 Spacer()
                 Toggle("", isOn: $remember)
+                    .onChange(of: remember) { _, _ in Haptics.play(.selection) }
                     .labelsHidden()
                     .tint(Accent.blue)
                     .onChange(of: remember) { _, _ in Haptics.play(.selection) }
@@ -303,7 +304,7 @@ struct LinkProductTray: View {
             .hairline()
             .contentShape(Rectangle())
         }
-        .buttonStyle(.press(haptic: nil))
+        .buttonStyle(.press(haptic: .selection))
     }
 
     private var newProductRow: some View {

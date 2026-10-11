@@ -245,7 +245,7 @@ struct AnalyticsView: View {
                     .frame(height: Size.rowReceipt)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
                 .padding(.horizontal, Space.gutter)
             }
             .padding(.bottom, Space.tabBarClearance)
@@ -302,7 +302,7 @@ struct AnalyticsView: View {
                     .hairline()
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
                 .disabled(b.key == "none")
             }
         }
@@ -360,7 +360,7 @@ struct RangeTray: View {
                                     .frame(height: 46)
                                     .background(preset == p ? Accent.blue : Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
                             }
-                            .buttonStyle(.press(haptic: nil))
+                            .buttonStyle(.press(haptic: .selection))
                         }
                     }
                 }
@@ -416,7 +416,7 @@ struct RangeTray: View {
             .background(Palette.trayField, in: RoundedRectangle.continuous(Radius.l))
             .contentShape(RoundedRectangle.continuous(Radius.l))
         }
-        .buttonStyle(.press(haptic: nil))
+        .buttonStyle(.press(haptic: .selection))
     }
 }
 

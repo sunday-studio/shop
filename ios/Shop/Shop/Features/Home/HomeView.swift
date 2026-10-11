@@ -122,7 +122,7 @@ struct HomeView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.press(haptic: nil))
+        .buttonStyle(.press(haptic: .selection))
         .disabled(!hasSpend)
         .accessibilityHint("Opens Analytics")
     }
@@ -206,7 +206,7 @@ struct HomeView: View {
                         trailingIcon: item.state == .failed ? .retry : .upload
                     )
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
                 .padding(.horizontal, Space.gutter)
                 .shopListRow()
             }
@@ -373,7 +373,7 @@ struct HomeView: View {
                 needsAttention: receipt.status == .ok && (receipt.unlinkedCount ?? 0) > 0
             )
         }
-        .buttonStyle(.press(haptic: nil))
+        .buttonStyle(.press(haptic: .selection))
         .contextMenu {
             if receipt.status == .needsReview {
                 Button("Review", systemImage: "checkmark.circle") { app.push(.receipt(receipt.id)) }
