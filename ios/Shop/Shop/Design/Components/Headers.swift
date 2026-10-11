@@ -34,18 +34,25 @@ struct SyncPill: View {
 
 // MARK: - Tab root header (Home)
 
-/// Avatar (Settings) · optional sync pill · search.
+/// User button (Settings) · logo in the middle · search. While a sync status is showing
+/// (`showsStatus`), the status pill takes the middle and the logo fades out until it clears.
 struct HomeHeader<Center: View>: View {
-    var initial: String = "S"
+    var initial: String = ""
+    var badge: Color? = nil
+    var showsStatus = false
     let onSettings: () -> Void
     let onSearch: () -> Void
     @ViewBuilder var center: () -> Center
 
     var body: some View {
         HStack {
-            Avatar(initial: initial, action: onSettings)
+            Avatar(initial: initial, badge: badge, action: onSettings)
             Spacer()
-            center()
+            ZStack {
+                ShopLogo(height: 30).opacity(showsStatus ? 0 : 1)
+                if showsStatus { center().transition(.opacity) }
+            }
+            .animation(Motion.fade, value: showsStatus)
             Spacer()
             IconButton(icon: .search, label: "Search", action: onSearch)
         }
@@ -55,8 +62,9 @@ struct HomeHeader<Center: View>: View {
 }
 
 extension HomeHeader where Center == EmptyView {
-    init(initial: String = "S", onSettings: @escaping () -> Void, onSearch: @escaping () -> Void) {
+    init(initial: String = "", badge: Color? = nil, onSettings: @escaping () -> Void, onSearch: @escaping () -> Void) {
         self.initial = initial
+        self.badge = badge
         self.onSettings = onSettings
         self.onSearch = onSearch
         self.center = { EmptyView() }
