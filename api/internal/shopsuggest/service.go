@@ -78,7 +78,10 @@ func (s *Service) Suggest(ctx context.Context, receiptID int64) (*Suggestion, er
 	} else if err != nil {
 		return nil, err
 	}
-	d := detectFromJSON(rec.RawOcrJson)
+	d, err := s.headerOf(ctx, rec)
+	if err != nil {
+		return nil, err
+	}
 	if d == nil || d.Key == "" {
 		return nil, nil // no readable header, or no branch to key on
 	}
@@ -95,10 +98,6 @@ func (s *Service) Suggest(ctx context.Context, receiptID int64) (*Suggestion, er
 	if sh != nil && rec.ShopID.Valid && sh.ID == rec.ShopID.Int64 {
 		return nil, nil // already on the right shop
 	}
-	all, err := s.q.ListReceiptsForShopSuggestion(ctx)
-	if err != nil {
-		return nil, err
-	}
 	// the receipts of this branch that this suggestion would move; for a new shop the cluster also
 	// decides the canonical spelling
 	type member struct {
@@ -107,11 +106,15 @@ func (s *Service) Suggest(ctx context.Context, receiptID int64) (*Suggestion, er
 	}
 	cluster := []member{{rec.ID, d}}
 	var waiting []int64
-	for _, o := range all {
-		if o.ID == rec.ID || o.ConfirmedAt.Valid || (sh != nil && o.ShopID.Valid && o.ShopID.Int64 == sh.ID) {
+	cands, err := s.q.ListHeaderCandidates(ctx, db.ListHeaderCandidatesParams{HeaderChain: sql.NullString{String: match.Fold(d.Chain), Valid: true}, HeaderNumber: sql.NullString{String: d.Number, Valid: true}, ID: rec.ID})
+	if err != nil {
+		return nil, err
+	}
+	for _, o := range cands {
+		if sh != nil && o.ShopID.Valid && o.ShopID.Int64 == sh.ID {
 			continue
 		}
-		if od := detectFromJSON(o.RawOcrJson); SameBranch(d, od) {
+		if od := unmarshalHeader(o.HeaderJson.String); SameBranch(d, od) {
 			waiting = append(waiting, o.ID)
 			cluster = append(cluster, member{o.ID, od})
 		}
@@ -215,7 +218,10 @@ func (s *Service) Accept(ctx context.Context, receiptID int64, shopID *int64, na
 	if rec.ConfirmedAt.Valid {
 		return db.Shop{}, nil, ErrConfirmed
 	}
-	d := detectFromJSON(rec.RawOcrJson)
+	d, err := s.headerOf(ctx, rec)
+	if err != nil {
+		return db.Shop{}, nil, err
+	}
 
 	var shop db.Shop
 	switch {
@@ -276,12 +282,12 @@ func (s *Service) Accept(ctx context.Context, receiptID int64, shopID *int64, na
 
 	ids := []int64{rec.ID}
 	if applyWaiting && d != nil {
-		all, err := s.q.ListReceiptsForShopSuggestion(ctx)
+		cands, err := s.q.ListHeaderCandidates(ctx, db.ListHeaderCandidatesParams{HeaderChain: sql.NullString{String: match.Fold(d.Chain), Valid: true}, HeaderNumber: sql.NullString{String: d.Number, Valid: true}, ID: rec.ID})
 		if err != nil {
 			return db.Shop{}, nil, err
 		}
-		for _, o := range all {
-			if o.ID != rec.ID && !o.ConfirmedAt.Valid && (!o.ShopID.Valid || o.ShopID.Int64 != shop.ID) && SameBranch(d, detectFromJSON(o.RawOcrJson)) {
+		for _, o := range cands {
+			if (!o.ShopID.Valid || o.ShopID.Int64 != shop.ID) && SameBranch(d, unmarshalHeader(o.HeaderJson.String)) {
 				ids = append(ids, o.ID)
 			}
 		}
@@ -306,7 +312,11 @@ func (s *Service) Reject(ctx context.Context, receiptID int64) error {
 	} else if err != nil {
 		return err
 	}
-	if d := detectFromJSON(rec.RawOcrJson); d != nil && d.Key != "" {
+	d, err := s.headerOf(ctx, rec)
+	if err != nil {
+		return err
+	}
+	if d != nil && d.Key != "" {
 		return s.q.RejectShopSuggestion(ctx, db.RejectShopSuggestionParams{BranchKey: d.Key, CreatedAt: store.Now()})
 	}
 	return nil

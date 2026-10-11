@@ -5,6 +5,7 @@ package match
 import (
 	"regexp"
 	"strings"
+	"sync"
 	"unicode"
 
 	"golang.org/x/text/runes"
@@ -12,11 +13,17 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-var accentStripper = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+// A transform.Chain keeps state between calls, so it must not be shared by goroutines (concurrent requests
+// and background jobs all call Fold): each caller takes one from the pool.
+var accentStrippers = sync.Pool{New: func() any {
+	return transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+}}
 
 // Fold lowercases and strips accents: "Crème Fraîche" → "creme fraiche".
 func Fold(s string) string {
-	out, _, err := transform.String(accentStripper, s)
+	t := accentStrippers.Get().(transform.Transformer)
+	out, _, err := transform.String(t, s)
+	accentStrippers.Put(t)
 	if err != nil {
 		out = s
 	}

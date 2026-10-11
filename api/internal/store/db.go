@@ -26,6 +26,9 @@ func Open(path string) (*sql.DB, error) {
 		"&_pragma=foreign_keys(1)" +
 		"&_pragma=busy_timeout(5000)" +
 		"&_pragma=synchronous(NORMAL)" +
+		"&_pragma=cache_size(-32768)" + // 32 MB page cache per connection
+		"&_pragma=temp_store(MEMORY)" +
+		"&_pragma=mmap_size(268435456)" +
 		"&_txlock=immediate"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {

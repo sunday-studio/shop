@@ -25,6 +25,7 @@ import (
 	"shop/internal/receipts"
 	"shop/internal/search"
 	"shop/internal/shopping"
+	"shop/internal/shopsuggest"
 	"shop/internal/stats"
 	"shop/internal/store"
 	"shop/internal/version"
@@ -141,6 +142,14 @@ func serve(ctx context.Context, log *slog.Logger) error {
 	}
 
 	workerCtx, stopWorkers := context.WithCancel(ctx)
+	// Read the shop-suggestion header of receipts that have none yet (first start after an upgrade).
+	go func() {
+		if n, err := shopsuggest.NewService(a.db).Reindex(workerCtx); err != nil {
+			log.Warn("reindex receipt headers", "err", err)
+		} else if n > 0 {
+			log.Info("receipt headers indexed", "receipts", n)
+		}
+	}()
 	workersDone := make(chan struct{})
 	go func() {
 		a.queue.Run(workerCtx, a.cfg.Workers)

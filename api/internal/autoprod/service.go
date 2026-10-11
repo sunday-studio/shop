@@ -88,117 +88,221 @@ func (a *Stats) add(b Stats) {
 	a.Skipped += b.Skipped
 }
 
-// ProcessReceipt links or creates a product for every unlinked item line of a receipt (§3.2) in one
-// transaction. via is "receipt" or "backfill". With dry the work is rolled back after counting.
+// ProcessReceipt links or creates a product for every unlinked item line of a receipt (§3.2). via is
+// "receipt" or "backfill".
+//
+// The matching (the slow part, many reads) runs first without a transaction; only the resulting writes
+// run in one short transaction, so a background run never holds the database's single write lock for
+// longer than a few milliseconds and the app's own writes are not starved.
 func (s *Service) ProcessReceipt(ctx context.Context, receiptID int64, via string) (Stats, error) {
-	tx, err := s.conn.BeginTx(ctx, nil)
+	rec, lines, err := s.loadForLinking(ctx, s.q, receiptID)
 	if err != nil {
 		return Stats{}, err
 	}
-	defer tx.Rollback() //nolint:errcheck
-	st, err := s.processReceiptTx(ctx, tx, receiptID, via)
-	if err != nil {
-		return Stats{}, err
-	}
-	return st, tx.Commit()
-}
-
-func (s *Service) processReceiptTx(ctx context.Context, tx *sql.Tx, receiptID int64, via string) (Stats, error) {
-	q := db.New(tx)
-	m := s.matcher.On(tx)
-	rec, err := q.GetReceipt(ctx, receiptID)
-	if err != nil {
-		return Stats{}, err
-	}
-	lines, err := q.ItemLinesToLink(ctx, receiptID)
+	pl, err := s.planLinks(ctx, s.q, s.matcher, rec, lines, via)
 	if err != nil {
 		return Stats{}, err
 	}
 	var st Stats
-	for _, l := range lines {
-		o, err := s.createOrLink(ctx, q, m, rec, l, via)
-		if err != nil {
-			return Stats{}, err
-		}
-		st.add(o)
-	}
-	return st, nil
+	err = store.InTx(ctx, s.conn, func(q *db.Queries) error {
+		var err error
+		st, err = s.applyPlan(ctx, q, rec, pl, via)
+		return err
+	})
+	return st, err
 }
 
-// createOrLink handles one item line.
-func (s *Service) createOrLink(ctx context.Context, q *db.Queries, m *match.Matcher, rec db.Receipt, line db.ReceiptLine, via string) (Stats, error) {
-	c := CleanLine(line.RawText)
-	if c.Skip || c.Norm == "" {
-		return Stats{Skipped: 1}, nil
+// processReceiptTx does plan and apply inside the caller's transaction, so later receipts of a dry run see
+// the products earlier ones would have created.
+func (s *Service) processReceiptTx(ctx context.Context, tx *sql.Tx, receiptID int64, via string) (Stats, error) {
+	q := db.New(tx)
+	rec, lines, err := s.loadForLinking(ctx, q, receiptID)
+	if err != nil {
+		return Stats{}, err
 	}
+	pl, err := s.planLinks(ctx, q, s.matcher.On(tx), rec, lines, via)
+	if err != nil {
+		return Stats{}, err
+	}
+	return s.applyPlan(ctx, q, rec, pl, via)
+}
+
+func (s *Service) loadForLinking(ctx context.Context, q *db.Queries, receiptID int64) (db.Receipt, []db.ReceiptLine, error) {
+	rec, err := q.GetReceipt(ctx, receiptID)
+	if err != nil {
+		return db.Receipt{}, nil, err
+	}
+	lines, err := q.ItemLinesToLink(ctx, receiptID)
+	return rec, lines, err
+}
+
+// step is what to do with one line.
+type step struct {
+	line     db.ReceiptLine
+	skip     bool
+	existing int64 // link to this existing product
+	pending  int   // link to the product created by step creates[pending-1] earlier in this plan
+	create   bool  // this line creates a product
+	in       newProduct
+	sugExist int64 // near match: suggested merge with an existing product
+	sugPend  int   // near match: suggested merge with a pending one (1-based)
+	norms    []string
+	viaAlias bool // found by an alias: nothing new to learn
+}
+
+type plan struct {
+	steps   []step
+	creates []string // normalised names of the products the plan creates, in order
+}
+
+// planLinks decides, for each line, to link to an existing product, to link to a product created by an
+// earlier line of the same receipt, or to create one. It only reads.
+func (s *Service) planLinks(ctx context.Context, q *db.Queries, m *match.Matcher, rec db.Receipt, lines []db.ReceiptLine, via string) (plan, error) {
+	var pl plan
+	localAlias := map[string]int{} // norm -> 1-based index into pl.creates
+	for _, line := range lines {
+		c := CleanLine(line.RawText)
+		if c.Skip || c.Norm == "" {
+			pl.steps = append(pl.steps, step{line: line, skip: true})
+			continue
+		}
+		st := step{line: line}
+		for _, norm := range uniq(c.Norm, line.NormText) {
+			if norm != "" {
+				st.norms = append(st.norms, norm)
+			}
+		}
+		// 1. alias on the cleaned or the raw text
+		found := false
+		for _, norm := range st.norms {
+			if idx, ok := localAlias[norm]; ok {
+				st.pending, found = idx, true
+				break
+			}
+			pid, err := q.LookupAlias(ctx, db.LookupAliasParams{NormText: norm, ShopID: rec.ShopID})
+			if err == nil {
+				st.existing, found = pid, true
+				break
+			} else if !errors.Is(err, sql.ErrNoRows) {
+				return plan{}, err
+			}
+		}
+		if found {
+			st.viaAlias = true
+			pl.steps = append(pl.steps, st)
+			continue
+		}
+
+		// 2. fuzzy: against the catalogue and against products this receipt is about to create.
+		// shopID 0: the matcher's same-shop alias bonus (+0.05) would push a 0.87 near match over the 0.92
+		// auto-link line; the thresholds of the spec are on the plain score.
+		cands, err := m.Search(ctx, c.Name, 0, 20, ReviewScore)
+		if err != nil {
+			return plan{}, err
+		}
+		bestScore, bestExist, bestPend := 0.0, int64(0), 0
+		if len(cands) > 0 {
+			bestScore, bestExist = cands[0].Score, cands[0].ProductID
+		}
+		for i, n := range pl.creates {
+			if sc := match.Score(c.Norm, n); sc > bestScore && sc >= ReviewScore {
+				bestScore, bestExist, bestPend = sc, 0, i+1
+			}
+		}
+		if bestScore >= AutoLinkScore {
+			st.existing, st.pending = bestExist, bestPend
+			for _, norm := range st.norms {
+				if bestPend > 0 {
+					localAlias[norm] = bestPend
+				}
+			}
+			pl.steps = append(pl.steps, st)
+			continue
+		}
+
+		// 3. create
+		st.create = true
+		st.in = newProduct{name: c.Name, createdVia: via, odd: c.Odd}
+		if bestScore >= ReviewScore {
+			st.in.reason = ReasonNearMatch
+			st.sugExist, st.sugPend = bestExist, bestPend
+		}
+		pl.creates = append(pl.creates, c.Norm)
+		for _, norm := range st.norms {
+			localAlias[norm] = len(pl.creates)
+		}
+		pl.steps = append(pl.steps, st)
+	}
+	return pl, nil
+}
+
+// applyPlan writes a plan: products, line links and aliases.
+func (s *Service) applyPlan(ctx context.Context, q *db.Queries, rec db.Receipt, pl plan, via string) (Stats, error) {
 	now := store.TS(s.now())
-	link := func(productID int64) error {
-		_, err := q.SetLineProduct(ctx, db.SetLineProductParams{ProductID: sql.NullInt64{Int64: productID, Valid: true}, ID: line.ID})
+	var st Stats
+	created := make([]int64, 0, len(pl.creates))
+	link := func(lineID, productID int64) error {
+		_, err := q.SetLineProduct(ctx, db.SetLineProductParams{ProductID: sql.NullInt64{Int64: productID, Valid: true}, ID: lineID})
 		return err
 	}
-	writeAlias := func(productID int64) error {
-		for _, norm := range uniq(c.Norm, line.NormText) {
-			if norm == "" {
-				continue
-			}
+	aliases := func(norms []string, productID int64) error {
+		for _, norm := range norms {
 			if err := upsertAlias(ctx, q, rec.ShopID, norm, productID, now); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
-
-	// 1. alias on the cleaned or the raw text
-	for _, norm := range uniq(c.Norm, line.NormText) {
-		if norm == "" {
-			continue
+	for _, step := range pl.steps {
+		switch {
+		case step.skip:
+			st.Skipped++
+		case step.create:
+			in := step.in
+			switch {
+			case step.sugPend > 0:
+				in.suggested = created[step.sugPend-1]
+			case step.sugExist > 0:
+				in.suggested = step.sugExist
+			}
+			p, err := s.insertProduct(ctx, q, in, now)
+			if err != nil {
+				return Stats{}, err
+			}
+			created = append(created, p.ID)
+			if err := link(step.line.ID, p.ID); err != nil {
+				return Stats{}, err
+			}
+			if err := aliases(step.norms, p.ID); err != nil {
+				return Stats{}, err
+			}
+			st.Created++
+			if p.NeedsReview != 0 {
+				st.NeedsReview++
+			}
+		default:
+			pid := step.existing
+			if step.pending > 0 {
+				pid = created[step.pending-1]
+			} else if _, err := q.GetProduct(ctx, pid); err != nil {
+				// merged or deleted since the plan was made: leave the line, the next run decides again
+				if errors.Is(err, sql.ErrNoRows) {
+					st.Skipped++
+					continue
+				}
+				return Stats{}, err
+			}
+			if err := link(step.line.ID, pid); err != nil {
+				return Stats{}, err
+			}
+			// a link found through an alias already has its alias; a fuzzy link learns this spelling
+			if !step.viaAlias {
+				if err := aliases(step.norms, pid); err != nil {
+					return Stats{}, err
+				}
+			}
+			st.Linked++
 		}
-		pid, err := q.LookupAlias(ctx, db.LookupAliasParams{NormText: norm, ShopID: rec.ShopID})
-		if err == nil {
-			return Stats{Linked: 1}, link(pid)
-		} else if !errors.Is(err, sql.ErrNoRows) {
-			return Stats{}, err
-		}
-	}
-
-	// 2. fuzzy
-	// shopID 0: the matcher's same-shop alias bonus (+0.05) would push a 0.87 near match over the 0.92
-	// auto-link line; the thresholds of the spec are on the plain score.
-	const shop = int64(0)
-	cands, err := m.Search(ctx, c.Name, shop, 20, ReviewScore)
-	if err != nil {
-		return Stats{}, err
-	}
-	var best *match.Candidate
-	if len(cands) > 0 {
-		best = &cands[0]
-	}
-	if best != nil && best.Score >= AutoLinkScore {
-		if err := link(best.ProductID); err != nil {
-			return Stats{}, err
-		}
-		return Stats{Linked: 1}, writeAlias(best.ProductID)
-	}
-
-	// 3. create
-	in := newProduct{name: c.Name, createdVia: via, odd: c.Odd}
-	if best != nil {
-		in.suggested = best.ProductID
-		in.reason = ReasonNearMatch
-	}
-	p, err := s.insertProduct(ctx, q, in, now)
-	if err != nil {
-		return Stats{}, err
-	}
-	if err := link(p.ID); err != nil {
-		return Stats{}, err
-	}
-	if err := writeAlias(p.ID); err != nil {
-		return Stats{}, err
-	}
-	st := Stats{Created: 1}
-	if p.NeedsReview != 0 {
-		st.NeedsReview = 1
 	}
 	return st, nil
 }

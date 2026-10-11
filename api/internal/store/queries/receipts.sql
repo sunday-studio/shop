@@ -78,10 +78,20 @@ UPDATE receipts SET header_edited = 0, confirmed_at = NULL, updated_at = ? WHERE
 -- name: SetReview :exec
 UPDATE receipts SET parsed_sum_cents = ?, review_reasons = ?, status = ?, updated_at = ? WHERE id = ?;
 
--- name: ListReceiptsForShopSuggestion :many
-SELECT id, shop_id, confirmed_at, raw_ocr_json FROM receipts
-WHERE raw_ocr_json IS NOT NULL
+-- name: SetReceiptHeader :exec
+UPDATE receipts SET header_json = ?, header_chain = ?, header_number = ?, header_version = ? WHERE id = ?;
+
+-- name: ListHeaderCandidates :many
+-- Unconfirmed receipts whose header names this chain and house number (the street is compared in Go).
+SELECT id, shop_id, header_json FROM receipts
+WHERE confirmed_at IS NULL AND header_chain = ? AND header_number = ? AND id != ?
 ORDER BY id;
+
+-- name: ListReceiptsWithoutHeader :many
+SELECT id, raw_ocr_json FROM receipts
+WHERE raw_ocr_json IS NOT NULL AND (header_version IS NULL OR header_version != ?)
+ORDER BY id
+LIMIT ?;
 
 -- name: SetReceiptShop :execrows
 UPDATE receipts SET shop_id = ?, updated_at = ?

@@ -18,15 +18,16 @@ import (
 )
 
 type Service struct {
-	q   *db.Queries
-	loc *time.Location
+	conn *sql.DB
+	q    *db.Queries
+	loc  *time.Location
 }
 
 func New(conn *sql.DB, loc *time.Location) *Service {
 	if loc == nil {
 		loc = time.UTC
 	}
-	return &Service{q: db.New(conn), loc: loc}
+	return &Service{conn: conn, q: db.New(conn), loc: loc}
 }
 
 // ---------------------------------------------------------------- spend
@@ -486,7 +487,7 @@ func (s *Service) ProductSummaries(ctx context.Context, ids []int64) (map[int64]
 	if len(ids) == 0 {
 		return out, nil
 	}
-	rows, err := s.q.ProductPricePoints(ctx, db.ProductPricePointsParams{})
+	rows, err := s.pricePointsFor(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -505,7 +506,7 @@ func (s *Service) ProductSummaries(ctx context.Context, ids []int64) (map[int64]
 			out[id] = ProductSummary{Cheapest: &c}
 		}
 	}
-	sums, err := s.q.ProductPurchaseSummary(ctx)
+	sums, err := s.purchaseSummaryFor(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
