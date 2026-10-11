@@ -8,8 +8,7 @@ CSS = '''
 .w .hb .lead{font-size:21px;line-height:1.5;color:var(--ink2);text-align:center;max-width:620px;margin:22px auto 0}
 .w .heroP .lead,.w .heroP p{color:var(--ink)!important;opacity:.82}
 .w .h2.lt{font-weight:400;letter-spacing:-.045em}
-.w .btn.alt{background:rgba(255,255,255,.6);color:var(--ink);backdrop-filter:blur(8px)}
-.w .dk .btn.alt{background:rgba(255,255,255,.14)}
+.w .btn.alt{background:var(--sunk);color:var(--ink)}
 .w .burger{width:44px;height:44px;border-radius:50%;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.55);flex:none}
 .w .burger i{display:block;width:18px;height:2px;border-radius:1px;background:#2B2D3F}
 .w .badge{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px 0 16px;border-radius:17px;background:rgba(43,45,63,.82);color:#F4F4F1;font-size:13.5px;font-weight:500;backdrop-filter:blur(10px)}
