@@ -278,6 +278,34 @@ func (s *Service) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
+// RestoreWindow is how long a manually deleted product can be brought back.
+const RestoreWindow = 30 * 24 * time.Hour
+
+// Restore undoes a manual delete within RestoreWindow. The barcode returns only if nobody took it since.
+// Products merged into another one are restored with the merge undo, not here.
+func (s *Service) Restore(ctx context.Context, id int64) (Product, error) {
+	p, err := s.q.GetProductAny(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Product{}, ErrNotFound
+	} else if err != nil {
+		return Product{}, err
+	}
+	switch {
+	case !p.DeletedAt.Valid:
+		return Product{}, fmt.Errorf("%w: the product is not deleted", ErrConflict)
+	case p.MergedIntoID.Valid:
+		return Product{}, fmt.Errorf("%w: the product was merged into another one; undo the merge instead", ErrConflict)
+	}
+	n, err := s.q.RestoreDeletedProduct(ctx, db.RestoreDeletedProductParams{UpdatedAt: store.Now(), ID: id, Since: store.Str(store.TS(time.Now().Add(-RestoreWindow)))})
+	if err != nil {
+		return Product{}, err
+	}
+	if n == 0 {
+		return Product{}, fmt.Errorf("%w: deleted more than 30 days ago", ErrConflict)
+	}
+	return s.Get(ctx, id)
+}
+
 func (s *Service) SetNutrition(ctx context.Context, id int64, n *Nutrition) (Product, error) {
 	if _, err := s.Get(ctx, id); err != nil {
 		return Product{}, err

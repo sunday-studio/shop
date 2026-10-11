@@ -14,7 +14,7 @@ import (
 const createProduct = `-- name: CreateProduct :one
 INSERT INTO products (name, name_en, name_en_source, brand, category_id, barcode, net_quantity, net_unit, off_code, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source
+RETURNING id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source, deleted_barcode
 `
 
 type CreateProductParams struct {
@@ -67,6 +67,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.SuggestedMergeID,
 		&i.MergedIntoID,
 		&i.CategorySource,
+		&i.DeletedBarcode,
 	)
 	return i, err
 }
@@ -152,7 +153,7 @@ func (q *Queries) GetNutrition(ctx context.Context, productID int64) (Nutrition,
 }
 
 const getProduct = `-- name: GetProduct :one
-SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source FROM products WHERE id = ? AND deleted_at IS NULL
+SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source, deleted_barcode FROM products WHERE id = ? AND deleted_at IS NULL
 `
 
 func (q *Queries) GetProduct(ctx context.Context, id int64) (Product, error) {
@@ -179,12 +180,13 @@ func (q *Queries) GetProduct(ctx context.Context, id int64) (Product, error) {
 		&i.SuggestedMergeID,
 		&i.MergedIntoID,
 		&i.CategorySource,
+		&i.DeletedBarcode,
 	)
 	return i, err
 }
 
 const getProductByBarcode = `-- name: GetProductByBarcode :one
-SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source FROM products WHERE barcode = ? AND deleted_at IS NULL
+SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source, deleted_barcode FROM products WHERE barcode = ? AND deleted_at IS NULL
 `
 
 func (q *Queries) GetProductByBarcode(ctx context.Context, barcode sql.NullString) (Product, error) {
@@ -211,12 +213,13 @@ func (q *Queries) GetProductByBarcode(ctx context.Context, barcode sql.NullStrin
 		&i.SuggestedMergeID,
 		&i.MergedIntoID,
 		&i.CategorySource,
+		&i.DeletedBarcode,
 	)
 	return i, err
 }
 
 const getProductsByIDs = `-- name: GetProductsByIDs :many
-SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source FROM products WHERE deleted_at IS NULL AND id IN (/*SLICE:ids*/?)
+SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source, deleted_barcode FROM products WHERE deleted_at IS NULL AND id IN (/*SLICE:ids*/?)
 `
 
 func (q *Queries) GetProductsByIDs(ctx context.Context, ids []int64) ([]Product, error) {
@@ -259,6 +262,7 @@ func (q *Queries) GetProductsByIDs(ctx context.Context, ids []int64) ([]Product,
 			&i.SuggestedMergeID,
 			&i.MergedIntoID,
 			&i.CategorySource,
+			&i.DeletedBarcode,
 		); err != nil {
 			return nil, err
 		}
@@ -344,7 +348,7 @@ func (q *Queries) ListAliasesForProduct(ctx context.Context, productID int64) ([
 }
 
 const listProducts = `-- name: ListProducts :many
-SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source FROM products
+SELECT id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source, deleted_barcode FROM products
 WHERE deleted_at IS NULL
   AND (?1 IS NULL OR category_id = ?1)
 ORDER BY name
@@ -387,6 +391,7 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]P
 			&i.SuggestedMergeID,
 			&i.MergedIntoID,
 			&i.CategorySource,
+			&i.DeletedBarcode,
 		); err != nil {
 			return nil, err
 		}
@@ -402,7 +407,7 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]P
 }
 
 const listProductsByPurchases = `-- name: ListProductsByPurchases :many
-SELECT p.id, p.name, p.brand, p.category_id, p.barcode, p.net_quantity, p.net_unit, p.image_path, p.off_code, p.created_at, p.updated_at, p.deleted_at, p.name_en, p.name_en_source, p.created_via, p.needs_review, p.review_reason, p.suggested_merge_id, p.merged_into_id, p.category_source FROM products p
+SELECT p.id, p.name, p.brand, p.category_id, p.barcode, p.net_quantity, p.net_unit, p.image_path, p.off_code, p.created_at, p.updated_at, p.deleted_at, p.name_en, p.name_en_source, p.created_via, p.needs_review, p.review_reason, p.suggested_merge_id, p.merged_into_id, p.category_source, p.deleted_barcode FROM products p
 LEFT JOIN (
   SELECT l.product_id AS pid, COUNT(DISTINCT r.id) AS n
   FROM receipt_lines l JOIN receipts r ON r.id = l.receipt_id
@@ -456,6 +461,7 @@ func (q *Queries) ListProductsByPurchases(ctx context.Context, arg ListProductsB
 			&i.Product.SuggestedMergeID,
 			&i.Product.MergedIntoID,
 			&i.Product.CategorySource,
+			&i.Product.DeletedBarcode,
 		); err != nil {
 			return nil, err
 		}
@@ -471,7 +477,7 @@ func (q *Queries) ListProductsByPurchases(ctx context.Context, arg ListProductsB
 }
 
 const listProductsByRecent = `-- name: ListProductsByRecent :many
-SELECT p.id, p.name, p.brand, p.category_id, p.barcode, p.net_quantity, p.net_unit, p.image_path, p.off_code, p.created_at, p.updated_at, p.deleted_at, p.name_en, p.name_en_source, p.created_via, p.needs_review, p.review_reason, p.suggested_merge_id, p.merged_into_id, p.category_source FROM products p
+SELECT p.id, p.name, p.brand, p.category_id, p.barcode, p.net_quantity, p.net_unit, p.image_path, p.off_code, p.created_at, p.updated_at, p.deleted_at, p.name_en, p.name_en_source, p.created_via, p.needs_review, p.review_reason, p.suggested_merge_id, p.merged_into_id, p.category_source, p.deleted_barcode FROM products p
 LEFT JOIN (
   SELECT l.product_id AS pid, MAX(COALESCE(r.purchased_at, r.created_at)) AS last_at
   FROM receipt_lines l JOIN receipts r ON r.id = l.receipt_id
@@ -526,6 +532,7 @@ func (q *Queries) ListProductsByRecent(ctx context.Context, arg ListProductsByRe
 			&i.Product.SuggestedMergeID,
 			&i.Product.MergedIntoID,
 			&i.Product.CategorySource,
+			&i.Product.DeletedBarcode,
 		); err != nil {
 			return nil, err
 		}
@@ -613,6 +620,28 @@ func (q *Queries) RecentUnmatchedLines(ctx context.Context, since sql.NullString
 	return items, nil
 }
 
+const restoreDeletedProduct = `-- name: RestoreDeletedProduct :execrows
+UPDATE products SET deleted_at = NULL,
+  barcode = CASE WHEN deleted_barcode IS NOT NULL AND NOT EXISTS (SELECT 1 FROM products o WHERE o.barcode = products.deleted_barcode AND o.deleted_at IS NULL) THEN deleted_barcode ELSE NULL END,
+  deleted_barcode = NULL, updated_at = ?1
+WHERE products.id = ?2 AND products.deleted_at IS NOT NULL AND products.merged_into_id IS NULL AND products.deleted_at >= ?3
+`
+
+type RestoreDeletedProductParams struct {
+	UpdatedAt string         `json:"updated_at"`
+	ID        int64          `json:"id"`
+	Since     sql.NullString `json:"since"`
+}
+
+// Undo of a manual delete (within 30 days); the barcode comes back only if nobody else took it.
+func (q *Queries) RestoreDeletedProduct(ctx context.Context, arg RestoreDeletedProductParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, restoreDeletedProduct, arg.UpdatedAt, arg.ID, arg.Since)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const setAliasProduct = `-- name: SetAliasProduct :exec
 UPDATE product_aliases SET product_id = ? WHERE id = ?
 `
@@ -690,7 +719,7 @@ func (q *Queries) SetProductImage(ctx context.Context, arg SetProductImageParams
 }
 
 const softDeleteProduct = `-- name: SoftDeleteProduct :execrows
-UPDATE products SET deleted_at = ?, barcode = NULL, updated_at = ? WHERE id = ? AND deleted_at IS NULL
+UPDATE products SET deleted_at = ?, deleted_barcode = barcode, barcode = NULL, updated_at = ? WHERE id = ? AND deleted_at IS NULL
 `
 
 type SoftDeleteProductParams struct {
@@ -712,7 +741,7 @@ const updateProduct = `-- name: UpdateProduct :one
 UPDATE products
 SET name = ?, name_en = ?, name_en_source = ?, brand = ?, category_id = ?, barcode = ?, net_quantity = ?, net_unit = ?, updated_at = ?
 WHERE id = ? AND deleted_at IS NULL
-RETURNING id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source
+RETURNING id, name, brand, category_id, barcode, net_quantity, net_unit, image_path, off_code, created_at, updated_at, deleted_at, name_en, name_en_source, created_via, needs_review, review_reason, suggested_merge_id, merged_into_id, category_source, deleted_barcode
 `
 
 type UpdateProductParams struct {
@@ -763,6 +792,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.SuggestedMergeID,
 		&i.MergedIntoID,
 		&i.CategorySource,
+		&i.DeletedBarcode,
 	)
 	return i, err
 }

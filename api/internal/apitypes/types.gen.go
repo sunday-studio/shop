@@ -93,6 +93,48 @@ func (e BarcodeLookupSource) Valid() bool {
 	}
 }
 
+// Defines values for CategoryColor.
+const (
+	Blue   CategoryColor = "blue"
+	Cyan   CategoryColor = "cyan"
+	Green  CategoryColor = "green"
+	Grey   CategoryColor = "grey"
+	Orange CategoryColor = "orange"
+	Pink   CategoryColor = "pink"
+	Purple CategoryColor = "purple"
+	Red    CategoryColor = "red"
+	Teal   CategoryColor = "teal"
+	Yellow CategoryColor = "yellow"
+)
+
+// Valid indicates whether the value is a known member of the CategoryColor enum.
+func (e CategoryColor) Valid() bool {
+	switch e {
+	case Blue:
+		return true
+	case Cyan:
+		return true
+	case Green:
+		return true
+	case Grey:
+		return true
+	case Orange:
+		return true
+	case Pink:
+		return true
+	case Purple:
+		return true
+	case Red:
+		return true
+	case Teal:
+		return true
+	case Yellow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatus.
 const (
 	HealthStatusDegraded HealthStatus = "degraded"
@@ -930,15 +972,31 @@ type BarcodeLookupSource string
 
 // Category defines model for Category.
 type Category struct {
-	Id   int64  `json:"id"`
-	Name string `json:"name"`
-	Sort int    `json:"sort"`
+	Color *CategoryColor `json:"color,omitempty"`
+	Id    int64          `json:"id"`
+	Name  string         `json:"name"`
+
+	// ProductCount non-deleted products in the category
+	ProductCount int `json:"product_count"`
+
+	// Sort always 0; categories are alphabetical. Kept so older app builds still decode.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Sort int `json:"sort"`
 }
+
+// CategoryColor defines model for CategoryColor.
+type CategoryColor string
 
 // CategoryInput defines model for CategoryInput.
 type CategoryInput struct {
+	Color *CategoryColor `json:"color,omitempty"`
+
+	// Name trimmed; unique ignoring case (409 code category_name_taken)
 	Name string `json:"name"`
-	Sort *int   `json:"sort,omitempty"`
+
+	// Sort accepted and ignored
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Sort *int `json:"sort,omitempty"`
 }
 
 // Check defines model for Check.
@@ -1146,10 +1204,15 @@ type PricePointUnit string
 
 // Problem defines model for Problem.
 type Problem struct {
+	// Code stable machine-readable reason, e.g. category_name_taken, category_has_products
+	Code   *string `json:"code,omitempty"`
 	Detail *string `json:"detail,omitempty"`
-	Status int     `json:"status"`
-	Title  string  `json:"title"`
-	Type   *string `json:"type,omitempty"`
+
+	// ProductCount category_has_products: how many products would be orphaned
+	ProductCount *int    `json:"product_count,omitempty"`
+	Status       int     `json:"status"`
+	Title        string  `json:"title"`
+	Type         *string `json:"type,omitempty"`
 }
 
 // Product defines model for Product.
@@ -1598,6 +1661,12 @@ type PairDeviceJSONBody struct {
 
 // GetAuthStatus200JSONResponseBodyServer defines parameters for GetAuthStatus.
 type GetAuthStatus200JSONResponseBodyServer string
+
+// DeleteCategoryParams defines parameters for DeleteCategory.
+type DeleteCategoryParams struct {
+	// MoveTo where the products go; 0 = no category
+	MoveTo *int64 `form:"move_to,omitempty" json:"move_to,omitempty"`
+}
 
 // PreviewGlossaryTermJSONBody defines parameters for PreviewGlossaryTerm.
 type PreviewGlossaryTermJSONBody struct {

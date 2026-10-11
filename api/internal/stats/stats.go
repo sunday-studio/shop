@@ -10,6 +10,7 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"shop/internal/store"
@@ -273,7 +274,7 @@ func (g *grouper) buckets(bySpend bool) []Bucket {
 				if b.Split[i].Cents != b.Split[j].Cents {
 					return b.Split[i].Cents > b.Split[j].Cents
 				}
-				return b.Split[i].Key < b.Split[j].Key
+				return lessByName(b.Split[i].Label, b.Split[i].Key, b.Split[j].Label, b.Split[j].Key)
 			})
 		}
 		// Quantity in the unit bought most (a product is rarely both weighed and counted).
@@ -292,6 +293,9 @@ func (g *grouper) buckets(bySpend bool) []Bucket {
 	sort.SliceStable(out, func(i, j int) bool {
 		if bySpend && out[i].Cents != out[j].Cents {
 			return out[i].Cents > out[j].Cents
+		}
+		if bySpend {
+			return lessByName(out[i].Label, out[i].Key, out[j].Label, out[j].Key)
 		}
 		return out[i].Key < out[j].Key
 	})
@@ -705,4 +709,12 @@ func shopKey(id sql.NullInt64) string {
 		return "none"
 	}
 	return strconv.FormatInt(id.Int64, 10)
+}
+
+// lessByName orders equal-spend buckets alphabetically (ignoring case), then by key for stability.
+func lessByName(la, ka, lb, kb string) bool {
+	if a, b := strings.ToLower(la), strings.ToLower(lb); a != b {
+		return a < b
+	}
+	return ka < kb
 }

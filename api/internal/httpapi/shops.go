@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"shop/internal/apitypes"
+	"shop/internal/categories"
 	"shop/internal/logos"
 	"shop/internal/store"
 	"shop/internal/store/db"
@@ -192,8 +194,13 @@ func (s *Server) deleteShop(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func toCategory(c db.Category) apitypes.Category {
-	return apitypes.Category{Id: c.ID, Name: c.Name, Sort: int(c.Sort)}
+func toCategory(c categories.Item) apitypes.Category {
+	out := apitypes.Category{Id: c.ID, Name: c.Name, Sort: 0, ProductCount: int(c.ProductCount)}
+	if c.Color.Valid {
+		col := apitypes.CategoryColor(c.Color.String)
+		out.Color = &col
+	}
+	return out
 }
 
 func decodeCategory(r *http.Request) (apitypes.CategoryInput, error) {
@@ -201,15 +208,19 @@ func decodeCategory(r *http.Request) (apitypes.CategoryInput, error) {
 	if err := decode(r, &in); err != nil {
 		return in, err
 	}
-	in.Name = strings.TrimSpace(in.Name)
-	if in.Name == "" {
-		return in, badf("name is required")
+	return in, nil // `sort` is accepted and ignored: categories are alphabetical
+}
+
+func colorOf(in apitypes.CategoryInput) *string {
+	if in.Color == nil {
+		return nil
 	}
-	return in, nil
+	c := string(*in.Color)
+	return &c
 }
 
 func (s *Server) listCategories(w http.ResponseWriter, r *http.Request) {
-	cats, err := s.q.ListCategories(r.Context())
+	cats, err := s.categories.List(r.Context())
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -227,16 +238,8 @@ func (s *Server) createCategory(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	sort := int64(0)
-	if in.Sort != nil {
-		sort = int64(*in.Sort)
-	}
-	c, err := s.q.CreateCategory(r.Context(), db.CreateCategoryParams{Name: in.Name, Sort: sort})
+	c, err := s.categories.Create(r.Context(), in.Name, colorOf(in))
 	if err != nil {
-		if isUniqueViolation(err) {
-			writeProblem(w, http.StatusConflict, "category exists", in.Name)
-			return
-		}
 		s.writeErr(w, r, err)
 		return
 	}
@@ -254,21 +257,8 @@ func (s *Server) updateCategory(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	cur, err := s.q.GetCategory(r.Context(), id)
+	c, err := s.categories.Update(r.Context(), id, in.Name, colorOf(in))
 	if err != nil {
-		s.writeErr(w, r, err)
-		return
-	}
-	sort := cur.Sort
-	if in.Sort != nil {
-		sort = int64(*in.Sort)
-	}
-	c, err := s.q.UpdateCategory(r.Context(), db.UpdateCategoryParams{Name: in.Name, Sort: sort, ID: id})
-	if err != nil {
-		if isUniqueViolation(err) {
-			writeProblem(w, http.StatusConflict, "category exists", in.Name)
-			return
-		}
 		s.writeErr(w, r, err)
 		return
 	}
@@ -281,13 +271,17 @@ func (s *Server) deleteCategory(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	n, err := s.q.SoftDeleteCategory(r.Context(), db.SoftDeleteCategoryParams{DeletedAt: store.Str(store.Now()), ID: id})
-	if err != nil {
-		s.writeErr(w, r, err)
-		return
+	var moveTo *int64
+	if v := r.URL.Query().Get("move_to"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n < 0 {
+			s.writeErr(w, r, badf("move_to must be a category id, or 0 for no category"))
+			return
+		}
+		moveTo = &n
 	}
-	if n == 0 {
-		writeProblem(w, http.StatusNotFound, "not found", "")
+	if err := s.categories.Delete(r.Context(), id, moveTo); err != nil {
+		s.writeErr(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

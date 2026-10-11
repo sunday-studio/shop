@@ -10,30 +10,85 @@ import (
 	"database/sql"
 )
 
+const countCategoryProducts = `-- name: CountCategoryProducts :one
+SELECT COUNT(*) FROM products WHERE category_id = ? AND deleted_at IS NULL
+`
+
+func (q *Queries) CountCategoryProducts(ctx context.Context, categoryID sql.NullInt64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCategoryProducts, categoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCategory = `-- name: CreateCategory :one
-INSERT INTO categories (name, sort) VALUES (?, ?)
-RETURNING id, name, sort, deleted_at
+INSERT INTO categories (name, sort, color) VALUES (?, 0, ?)
+RETURNING id, name, sort, deleted_at, color
 `
 
 type CreateCategoryParams struct {
-	Name string `json:"name"`
-	Sort int64  `json:"sort"`
+	Name  string         `json:"name"`
+	Color sql.NullString `json:"color"`
 }
 
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, createCategory, arg.Name, arg.Sort)
+	row := q.db.QueryRowContext(ctx, createCategory, arg.Name, arg.Color)
 	var i Category
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Sort,
 		&i.DeletedAt,
+		&i.Color,
 	)
 	return i, err
 }
 
+const deleteCategoryKeywords = `-- name: DeleteCategoryKeywords :exec
+DELETE FROM category_keywords WHERE category_id = ?
+`
+
+func (q *Queries) DeleteCategoryKeywords(ctx context.Context, categoryID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteCategoryKeywords, categoryID)
+	return err
+}
+
+const findCategoriesByName = `-- name: FindCategoriesByName :many
+SELECT id, name, sort, deleted_at, color FROM categories WHERE name = ? COLLATE NOCASE ORDER BY deleted_at IS NOT NULL, id
+`
+
+// Case-insensitive, including soft-deleted rows.
+func (q *Queries) FindCategoriesByName(ctx context.Context, name string) ([]Category, error) {
+	rows, err := q.db.QueryContext(ctx, findCategoriesByName, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Category{}
+	for rows.Next() {
+		var i Category
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Sort,
+			&i.DeletedAt,
+			&i.Color,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCategory = `-- name: GetCategory :one
-SELECT id, name, sort, deleted_at FROM categories WHERE id = ? AND deleted_at IS NULL
+SELECT id, name, sort, deleted_at, color FROM categories WHERE id = ? AND deleted_at IS NULL
 `
 
 func (q *Queries) GetCategory(ctx context.Context, id int64) (Category, error) {
@@ -44,12 +99,13 @@ func (q *Queries) GetCategory(ctx context.Context, id int64) (Category, error) {
 		&i.Name,
 		&i.Sort,
 		&i.DeletedAt,
+		&i.Color,
 	)
 	return i, err
 }
 
 const listCategories = `-- name: ListCategories :many
-SELECT id, name, sort, deleted_at FROM categories WHERE deleted_at IS NULL ORDER BY sort, name
+SELECT id, name, sort, deleted_at, color FROM categories WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE
 `
 
 func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
@@ -66,6 +122,51 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 			&i.Name,
 			&i.Sort,
 			&i.DeletedAt,
+			&i.Color,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCategoriesWithCounts = `-- name: ListCategoriesWithCounts :many
+SELECT c.id, c.name, c.sort, c.deleted_at, c.color, CAST((SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.deleted_at IS NULL) AS INTEGER) AS product_count
+FROM categories c WHERE c.deleted_at IS NULL ORDER BY c.name COLLATE NOCASE
+`
+
+type ListCategoriesWithCountsRow struct {
+	ID           int64          `json:"id"`
+	Name         string         `json:"name"`
+	Sort         int64          `json:"sort"`
+	DeletedAt    sql.NullString `json:"deleted_at"`
+	Color        sql.NullString `json:"color"`
+	ProductCount int64          `json:"product_count"`
+}
+
+func (q *Queries) ListCategoriesWithCounts(ctx context.Context) ([]ListCategoriesWithCountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCategoriesWithCounts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCategoriesWithCountsRow{}
+	for rows.Next() {
+		var i ListCategoriesWithCountsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Sort,
+			&i.DeletedAt,
+			&i.Color,
+			&i.ProductCount,
 		); err != nil {
 			return nil, err
 		}
@@ -107,6 +208,69 @@ func (q *Queries) ListCategoryKeywords(ctx context.Context) ([]CategoryKeyword, 
 	return items, nil
 }
 
+const moveCategoryProducts = `-- name: MoveCategoryProducts :execrows
+UPDATE products SET category_id = ?1, category_source = ?2, updated_at = ?3
+WHERE category_id = ?4 AND deleted_at IS NULL
+`
+
+type MoveCategoryProductsParams struct {
+	ToCategory   sql.NullInt64  `json:"to_category"`
+	Source       sql.NullString `json:"source"`
+	UpdatedAt    string         `json:"updated_at"`
+	FromCategory sql.NullInt64  `json:"from_category"`
+}
+
+func (q *Queries) MoveCategoryProducts(ctx context.Context, arg MoveCategoryProductsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, moveCategoryProducts,
+		arg.ToCategory,
+		arg.Source,
+		arg.UpdatedAt,
+		arg.FromCategory,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const repointCategoryKeywords = `-- name: RepointCategoryKeywords :exec
+UPDATE category_keywords SET category_id = ? WHERE category_id = ?
+`
+
+type RepointCategoryKeywordsParams struct {
+	CategoryID   int64 `json:"category_id"`
+	CategoryID_2 int64 `json:"category_id_2"`
+}
+
+func (q *Queries) RepointCategoryKeywords(ctx context.Context, arg RepointCategoryKeywordsParams) error {
+	_, err := q.db.ExecContext(ctx, repointCategoryKeywords, arg.CategoryID, arg.CategoryID_2)
+	return err
+}
+
+const reviveCategory = `-- name: ReviveCategory :one
+UPDATE categories SET deleted_at = NULL, name = ?, color = ? WHERE id = ?
+RETURNING id, name, sort, deleted_at, color
+`
+
+type ReviveCategoryParams struct {
+	Name  string         `json:"name"`
+	Color sql.NullString `json:"color"`
+	ID    int64          `json:"id"`
+}
+
+func (q *Queries) ReviveCategory(ctx context.Context, arg ReviveCategoryParams) (Category, error) {
+	row := q.db.QueryRowContext(ctx, reviveCategory, arg.Name, arg.Color, arg.ID)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Sort,
+		&i.DeletedAt,
+		&i.Color,
+	)
+	return i, err
+}
+
 const softDeleteCategory = `-- name: SoftDeleteCategory :execrows
 UPDATE categories SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL
 `
@@ -124,25 +288,35 @@ func (q *Queries) SoftDeleteCategory(ctx context.Context, arg SoftDeleteCategory
 	return result.RowsAffected()
 }
 
+const tombstoneCategoryName = `-- name: TombstoneCategoryName :exec
+UPDATE categories SET name = name || ' (deleted ' || id || ')' WHERE id = ?
+`
+
+func (q *Queries) TombstoneCategoryName(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, tombstoneCategoryName, id)
+	return err
+}
+
 const updateCategory = `-- name: UpdateCategory :one
-UPDATE categories SET name = ?, sort = ? WHERE id = ? AND deleted_at IS NULL
-RETURNING id, name, sort, deleted_at
+UPDATE categories SET name = ?, color = ? WHERE id = ? AND deleted_at IS NULL
+RETURNING id, name, sort, deleted_at, color
 `
 
 type UpdateCategoryParams struct {
-	Name string `json:"name"`
-	Sort int64  `json:"sort"`
-	ID   int64  `json:"id"`
+	Name  string         `json:"name"`
+	Color sql.NullString `json:"color"`
+	ID    int64          `json:"id"`
 }
 
 func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, updateCategory, arg.Name, arg.Sort, arg.ID)
+	row := q.db.QueryRowContext(ctx, updateCategory, arg.Name, arg.Color, arg.ID)
 	var i Category
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Sort,
 		&i.DeletedAt,
+		&i.Color,
 	)
 	return i, err
 }
