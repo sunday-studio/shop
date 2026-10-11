@@ -214,7 +214,7 @@ struct Avatar: View {
     ]
 
     private var tone: (Color, Color) {
-        style == .plain ? (Accent.avatar, Accent.onLight) : Self.tones[StableHash.index(of: initial.uppercased(), count: Self.tones.count)]
+        style == .plain ? (Accent.avatar, Accent.onLight) : Self.tones[Int(initial.uppercased().unicodeScalars.first?.value ?? 0) % Self.tones.count]
     }
 
     var body: some View {
