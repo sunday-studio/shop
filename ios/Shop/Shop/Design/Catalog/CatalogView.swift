@@ -204,6 +204,12 @@ struct CatalogView: View {
                 }
                 section("Trays") {
                     Button("Open a tray") { openTray() }.buttonStyle(.shop(.secondary))
+                    Button("New category tray") { trays.present("cat-new") { CatalogCategoryTray(duplicate: false) } }
+                        .buttonStyle(.shop(.secondary))
+                    Button("Duplicate name state") { trays.present("cat-dup") { CatalogCategoryTray(duplicate: true) } }
+                        .buttonStyle(.shop(.secondary))
+                    Button("Delete category, move products") { trays.present("cat-move") { CatalogMoveTray() } }
+                        .buttonStyle(.shop(.secondary))
                     Button(stressRunning ? "Running… \(stressCycle)/10" : "Tray stress: 10 open, swap, close cycles") { runTrayStress() }
                         .buttonStyle(.shop(.secondary))
                         .disabled(stressRunning)
@@ -407,5 +413,32 @@ private struct NavIconPanel: View {
             .background(Palette.bg)
             .clipShape(RoundedRectangle.continuous(Radius.l))
             .overlay(RoundedRectangle.continuous(Radius.l).strokeBorder(Palette.line))
+    }
+}
+
+
+private struct CatalogCategoryTray: View {
+    let duplicate: Bool
+    @State private var name = ""
+    @State private var colour: String?
+
+    var body: some View {
+        CategoryFormLayout(title: "Add category", name: $name, colour: $colour,
+                           errorText: duplicate && !name.isEmpty ? "You already have a category called \(name)." : nil,
+                           canSave: !name.isEmpty && !duplicate, saving: false) {}
+            .onAppear { if duplicate { name = "Dairy" } }
+    }
+}
+
+private struct CatalogMoveTray: View {
+    @State private var destination: Int64 = 0
+
+    var body: some View {
+        MoveProductsLayout(
+            categoryName: "Dairy", count: 4,
+            destinations: [("Bakery", Accent.orange), ("Drinks", Accent.purple), ("Frozen", Accent.cyan), ("Household", Accent.teal),
+                           ("Meat & fish", Accent.red), ("Other", Palette.neutral), ("Pantry", Accent.yellow)]
+                .enumerated().map { .init(id: Int64($0.offset + 1), name: $0.element.0, colour: $0.element.1) },
+            destination: $destination, working: false, onCancel: {}, onDelete: {})
     }
 }
