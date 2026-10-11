@@ -169,7 +169,7 @@ struct ImportScreen: View {
                         )
                         .overlay(alignment: .topLeading) { cropBadge(receipt) }
                         .contentShape(Rectangle())
-                        .onTapGesture { openDetails(receipt.id) }
+                        .onTapGesture { Haptics.play(.selection); openDetails(receipt.id) }
                         .accessibilityAction(named: "Pick shop") { trays.present("import-shop") { ImportShopTray(model: model, target: receipt.id, fallbackShopId: fallbackShopId) } }
                         .accessibilityAction(named: "Set date") { openDetails(receipt.id) }
                         .accessibilityAction(named: "Remove") { model.remove(receipt.id) }
@@ -250,7 +250,7 @@ struct ImportScreen: View {
                 LoadingLabel(title: buttonTitle, isLoading: committing)
                     .contentTransition(.numericText())
             }
-            .buttonStyle(.shop(haptic: nil))
+            .buttonStyle(.shop(haptic: .light))
             .disabled(committing || model.receipts.isEmpty || missing > 0)
             statusLine
         }
@@ -274,7 +274,7 @@ struct ImportScreen: View {
             } label: {
                 TypeStyle.rowSub.text(missing == 1 ? "Choose a shop for 1 receipt" : "Choose a shop for \(missing) receipts").foregroundStyle(Palette.amberText)
             }
-            .buttonStyle(.press(haptic: nil))
+            .buttonStyle(.press(haptic: .selection))
         } else if !model.unreadable.isEmpty {
             TypeStyle.rowSub.text(model.unreadable.count == 1 ? "1 file can't be read · remove it or import the rest" : "\(model.unreadable.count) files can't be read · remove them or import the rest").foregroundStyle(Palette.amberText)
         } else if !app.network.isOnline {
@@ -428,7 +428,7 @@ struct ImportShopTray: View {
             .hairline()
             .contentShape(Rectangle())
         }
-        .buttonStyle(.press(haptic: nil))
+        .buttonStyle(.press(haptic: .selection))
     }
 }
 
@@ -525,7 +525,7 @@ struct ImportDetailsTray: View {
                 .textStyle(.label)
                 .foregroundStyle(Palette.redText)
                 .frame(maxWidth: .infinity)
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
             }
             .onAppear { syncFromModel(receipt) }
             .onChange(of: mode) { _, new in apply(new) }

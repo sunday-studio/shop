@@ -78,7 +78,7 @@ struct ShopsView: View {
                     .hairline()
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
                 .padding(.horizontal, Space.gutter)
                 }
                 .shopListRow()
@@ -323,7 +323,7 @@ struct CategoriesView: View {
                         .hairline()
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.press(haptic: nil))
+                    .buttonStyle(.press(haptic: .selection))
                     .padding(.horizontal, Space.gutter)
                     }
                     .shopListRow()

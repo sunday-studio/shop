@@ -232,7 +232,7 @@ private struct ReviewNameTray: View {
             Button("Cancel") { trays.dismiss() }
                 .textStyle(.label).foregroundStyle(Palette.ink2)
                 .frame(maxWidth: .infinity)
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
         }
         .onAppear {
             guard !loaded else { return }
@@ -287,7 +287,7 @@ private struct ReviewCategoryTray: View {
                             .hairline()
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.press(haptic: nil))
+                        .buttonStyle(.press(haptic: .selection))
                     }
                 }
                 .padding(.horizontal, Space.xs)

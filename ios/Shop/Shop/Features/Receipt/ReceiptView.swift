@@ -258,7 +258,7 @@ private struct ReceiptScreen: View {
                 LineRow(title: p.title, isRaw: p.isRaw, subtitle: p.subtitle, subtitleColor: p.subtitleColor, amount: p.amount,
                         titleColor: p.titleColor, amountColor: p.amountColor, dot: p.dot, indented: p.indented)
             }
-            .buttonStyle(.press(haptic: nil))
+            .buttonStyle(.press(haptic: .selection))
             .staggeredAppear(index: openedOnSummary || !staggerOn ? Motion.staggerMax : index)
             .padding(.horizontal, Space.gutter)
             }
@@ -517,7 +517,7 @@ struct ReceiptShopTray: View {
                             .hairline()
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.press(haptic: nil))
+                        .buttonStyle(.press(haptic: .selection))
                         .disabled(working)
                     }
                     Button {

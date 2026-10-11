@@ -34,6 +34,8 @@ struct RootView: View {
             }
         }
         .shopTypography()
+        // Any Button without its own style still gets the press feel and a haptic tick.
+        .buttonStyle(.press(haptic: .selection))
         .tint(Accent.blue)
         .toastHost(model.toasts, bottomInset: toastInset)
         .trayHost(model.trays)

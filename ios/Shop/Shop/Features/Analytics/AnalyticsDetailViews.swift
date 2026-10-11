@@ -95,7 +95,7 @@ struct ShopSpendView: View {
                         .hairline()
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.press(haptic: nil))
+                    .buttonStyle(.press(haptic: .selection))
                 }
             }
             if loaded && receipts.isEmpty {
@@ -247,7 +247,7 @@ struct CategorySpendView: View {
                     .hairline()
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
             }
             if loaded && rows.isEmpty {
                 TypeStyle.body.text("No linked products in this category for the range.").foregroundStyle(Palette.ink2).padding(.vertical, Space.xxl)
@@ -379,7 +379,7 @@ struct PriceChangesView: View {
                     .hairline()
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
             }
         }
     }

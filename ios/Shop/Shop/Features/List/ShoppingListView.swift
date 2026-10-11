@@ -33,7 +33,7 @@ struct ShoppingListView: View {
                     Button("See all suggestions") { openSuggestions() }
                         .textStyle(.label)
                         .foregroundStyle(Palette.blueText)
-                        .buttonStyle(.press(haptic: nil))
+                        .buttonStyle(.press(haptic: .selection))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Space.gutter)
@@ -112,7 +112,7 @@ struct ShoppingListView: View {
                 }
                 .textStyle(TypeStyle.label.sized(14))
                 .foregroundStyle(Palette.blueText)
-                .buttonStyle(.press(haptic: nil))
+                .buttonStyle(.press(haptic: .selection))
             }
             .frame(height: 46)
             .padding(.horizontal, Space.gutter)
@@ -359,7 +359,7 @@ struct AddItemTray: View {
                 .frame(width: 30, height: 30)
                 .background(Palette.tray, in: Circle())
         }
-        .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+        .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
         .accessibilityLabel(label)
     }
 
@@ -433,7 +433,7 @@ struct SuggestionsTray: View {
                                     .frame(width: 30, height: 30)
                                     .background(onList ? Accent.green : Palette.trayField, in: Circle())
                             }
-                            .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+                            .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
                             .accessibilityLabel(onList ? "On the list" : "Add \(item.productName)")
                         }
                         .frame(height: 54)

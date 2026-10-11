@@ -181,7 +181,7 @@ struct ServerScreen: View {
                                         .frame(height: Size.chip)
                                         .background(Palette.sunk, in: Capsule())
                                 }
-                                .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+                                .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
                             }
                         }
                     }
@@ -341,7 +341,7 @@ struct PasswordScreen: View {
                         .frame(width: 34, height: 34)
                         .background(Palette.darkCardField, in: Circle())
                 }
-                .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
+                .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
                 .accessibilityLabel("Copy command")
             }
             TypeStyle.mono.sized(12).withFace(.monoRegular).text("or: docker compose exec api shop password generate")
