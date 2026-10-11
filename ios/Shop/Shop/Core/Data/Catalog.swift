@@ -34,7 +34,7 @@ final class Catalog {
         async let c = api.categories()
         let (shops, categories) = try await (s, c)
         self.shops = shops.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        self.categories = categories.sorted { ($0.sort, $0.name) < ($1.sort, $1.name) }
+        self.categories = categories.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         DiskStore.save(self.shops, to: "shops.json")
         DiskStore.save(self.categories, to: "categories.json")
         ShopLogos.register(self.shops, api: api)
@@ -127,7 +127,7 @@ final class Catalog {
 
     func upsert(_ category: Category) {
         if let i = categories.firstIndex(where: { $0.id == category.id }) { categories[i] = category } else { categories.append(category) }
-        categories.sort { ($0.sort, $0.name) < ($1.sort, $1.name) }
+        categories.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         DiskStore.save(categories, to: "categories.json")
     }
 

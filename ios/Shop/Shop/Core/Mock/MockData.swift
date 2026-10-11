@@ -28,7 +28,7 @@ enum MockData {
 
     static let categories: [Category] = [
         "Dairy", "Produce", "Meat & fish", "Bakery", "Pantry", "Frozen", "Drinks", "Household", "Personal care", "Other",
-    ].enumerated().map { Category(id: Int64($0.offset + 1), name: $0.element, sort: $0.offset) }
+    ].enumerated().map { Category(id: Int64($0.offset + 1), name: $0.element) }
 
     static let products: [Product] = [
         product(1, "Halfvolle melk", en: "Semi-skimmed milk", cat: 1, size: 1500, unit: "ml", barcode: "8718907400718"),

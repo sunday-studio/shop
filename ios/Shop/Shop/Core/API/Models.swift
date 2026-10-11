@@ -29,6 +29,9 @@ nonisolated struct Problem: Codable, Sendable, Hashable, Error {
     var title: String
     var status: Int
     var detail: String?
+    /// Stable machine code, e.g. "category_name_taken", "category_has_products".
+    var code: String?
+    var productCount: Int?
 }
 
 // MARK: - Auth
@@ -110,12 +113,20 @@ nonisolated struct ShopInput: Codable, Sendable, Hashable {
 nonisolated struct Category: Codable, Sendable, Hashable, Identifiable {
     var id: Int64
     var name: String
-    var sort: Int
+    /// Non-deleted products in it (server count; nil in older cached copies).
+    var productCount: Int? = nil
+    /// One of `CategoryTone.tokens`; nil in older cached copies.
+    var color: String? = nil
 }
 
 nonisolated struct CategoryInput: Codable, Sendable, Hashable {
     var name: String
-    var sort: Int?
+    var color: String?
+}
+
+/// The ten colour tokens a category can have.
+nonisolated enum CategoryTone {
+    static let tokens = ["blue", "green", "red", "orange", "yellow", "cyan", "purple", "teal", "pink", "grey"]
 }
 
 // MARK: - Receipts
