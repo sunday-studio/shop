@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Logo badge">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2E9BFF"/><stop offset="1" stop-color="#0A84FF"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#g)"/>
+  <g transform="rotate(-9 256 262)">
+    <path d="M154 66H358Q374 66 374 82V392L357 420L340 392L323 420L306 392L289 420L272 392L255 420L238 392L221 420L204 392L187 420L170 392L154 420Z" transform="translate(0 0)" fill="#F7F9FF"/>
+    <rect x="178" y="98" width="100" height="14" rx="7" fill="#1D1D1B"/>
+    <circle cx="336" cy="105" r="11" fill="#18B663"/>
+    <rect x="178" y="158" width="130" height="11" rx="5.5" fill="#CBD3E0"/>
+    <rect x="178" y="190" width="96" height="11" rx="5.5" fill="#CBD3E0"/>
+    <rect x="178" y="232" width="172" height="58" rx="14" fill="#FFCC1A"/>
+    <rect x="196" y="252" width="48" height="14" rx="7" fill="#1D1D1B"/>
+    <rect x="270" y="252" width="62" height="14" rx="7" fill="#1D1D1B"/>
+    <rect x="178" y="318" width="4" height="40" fill="#1D1D1B"/><rect x="190" y="318" width="10" height="40" fill="#1D1D1B"/><rect x="208" y="318" width="4" height="40" fill="#1D1D1B"/><rect x="220" y="318" width="7" height="40" fill="#1D1D1B"/><rect x="236" y="318" width="4" height="40" fill="#1D1D1B"/><rect x="248" y="318" width="10" height="40" fill="#1D1D1B"/><rect x="266" y="318" width="4" height="40" fill="#1D1D1B"/><rect x="278" y="318" width="7" height="40" fill="#1D1D1B"/><rect x="294" y="318" width="10" height="40" fill="#1D1D1B"/><rect x="312" y="318" width="4" height="40" fill="#1D1D1B"/><rect x="324" y="318" width="10" height="40" fill="#1D1D1B"/>
+  </g>
+</svg>
