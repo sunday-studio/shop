@@ -91,12 +91,12 @@ table.tb td:first-child{color:var(--ink)}
 .doc.wide .lead{max-width:600px}
 
 @media (min-width:800px){
-  .nav{padding:0 80px}
+  .nav{padding:0 max(80px,calc(50% - 560px))}
   .nav .nl{display:inline-flex}
   .nav .links>.btn{display:inline-flex}
   .gmenu{display:none}
-  .gd{padding:24px 80px 96px}
-  .gd.home{padding:24px 80px 80px}
+  .gd{padding:24px max(80px,calc(50% - 560px)) 96px}
+  .gd.home{padding:24px max(80px,calc(50% - 560px)) 80px}
   .side-col{display:block;width:256px;flex:none;align-self:stretch}
   .side-col .side{position:sticky;top:24px}
   .doc h1{font-size:52px}

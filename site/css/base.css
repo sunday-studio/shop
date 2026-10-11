@@ -78,6 +78,7 @@ img{display:block}
 .foot{position:relative;z-index:2;background:var(--bg);margin-top:-2px;padding:36px 20px 40px}
 .foot-row{display:flex;flex-direction:column;justify-content:space-between;gap:24px;align-items:flex-start}
 .foot-link{display:inline-flex;align-items:center;gap:8px;font-size:16px}
+.foot .made{margin-top:14px;max-width:none}
 .foot p{margin-top:28px;font-size:13.5px;line-height:1.6;color:var(--ink2);max-width:640px}
 
 /* ---- Phone frame ---- */
@@ -85,6 +86,11 @@ img{display:block}
 .dev img{width:100%;height:auto;border-radius:39px}
 
 /* ---- Motion ---- */
+@media (prefers-reduced-motion:no-preference){
+  html{scroll-behavior:smooth}
+  @view-transition{navigation:auto}
+}
+[id]{scroll-margin-top:24px}
 @keyframes settle{from{opacity:0;transform:rotate(-17deg) translateY(28px)}to{opacity:1;transform:rotate(-9deg) translateY(0)}}
 @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 .a-settle{animation:settle .9s cubic-bezier(.22,1,.36,1) both}
@@ -101,7 +107,7 @@ img{display:block}
 
 @media (min-width:800px){
   .nav{height:88px}
-  .foot{padding:56px 80px 64px}
+  .foot{padding:56px max(80px,calc(50% - 560px)) 64px}
   .foot-row{flex-direction:row;gap:40px;align-items:center}
   .foot p{margin-top:36px}
 }

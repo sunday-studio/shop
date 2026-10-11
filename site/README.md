@@ -30,14 +30,22 @@ Regenerate an image (source PNGs are in `design/website/screens/`, 1206x2622):
 
     grep -rn "Shop" index.html guide/
 
-Places that carry the name: `<title>` and meta description of every page; the header brand (`.brand`, landing: `index.html`, guide:
-each page) and the footer brand; a few copy lines ("What Shop can tell you...", "Everything you need to run Shop yourself...",
+Places that carry the name: `<title>` and meta description of every page; the header brand (`.brand`) and the footer brand on every page; a few copy lines ("What Shop can tell you...", "Everything you need to run Shop yourself...",
 the "What Shop is" sidebar and previous-link entries). Marked with `PRODUCT NAME` HTML comments where it is a brand or meta.
 
-## Placeholders
+## Links
 
-GitHub links are `href="#"`, each marked with a `GITHUB URL placeholder` HTML comment (`grep -rn "GITHUB URL" .`).
+GitHub links point to https://github.com/sunday-studio/shop (header pill, mobile menu, hero and closing buttons, footer, guide header);
+`grep -rn "sunday-studio/shop" .` finds them all. The footer also links to https://www.thesunday.studio/.
 Other guide pages are not built yet; their sidebar and previous/next links point to `#`.
+
+## Layout, motion
+
+- Content sits in a centred 1280 px column (80 px side padding); the hero and closing sky art stay full-bleed.
+- `html{scroll-behavior:smooth}` and the cross-document view transition (`@view-transition`) are only enabled with
+  `prefers-reduced-motion: no-preference`.
+- Feature showcase: four hidden radios (`#sf1`..`#sf4`) before `.shrow`; the list items are `<label>`s. The per-selection rules in
+  `css/home.css` ("Click-to-select") restart the 20 s cycle from the clicked item.
 
 ## Licences
 
