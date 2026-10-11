@@ -103,12 +103,17 @@ final class HomeModel {
         }
     }
 
+    private static func legendColor(for bucket: SpendBucket, catalog: Catalog) -> Color {
+        if let id = Int64(bucket.key), let category = catalog.category(id) { return CategoryColor.swatch(for: category).color }
+        return CategoryColor.swatch(for: bucket.label).color
+    }
+
     /// Top five categories plus "Other" for the rest.
     var categoryShares: [CategoryShare] {
         guard let spend = monthSpend, spend.totalCents > 0 else { return [] }
         let buckets = spend.buckets.filter { $0.cents > 0 }.sorted { $0.cents > $1.cents }
         let named = buckets.filter { $0.key != "none" }.prefix(5)
-        var shares = named.map { CategoryShare(name: Self.shortName($0.label), cents: $0.cents, color: CategoryColor.swatch(for: $0.label).color) }
+        var shares = named.map { CategoryShare(name: Self.shortName($0.label), cents: $0.cents, color: Self.legendColor(for: $0, catalog: catalog)) }
         let rest = spend.totalCents - named.reduce(Int64(0)) { $0 + $1.cents }
         if rest > 0 { shares.append(CategoryShare(name: "Other", cents: rest, color: Palette.neutral)) }
         return shares

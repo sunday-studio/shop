@@ -16,7 +16,8 @@ struct ReceiptImageView: View {
                 ZoomableImage(image: image)
                     .ignoresSafeArea(edges: .bottom)
             } else if failed {
-                EmptyState(title: "Image unavailable", message: "The server couldn't send this image.") {
+                EmptyState(title: "Image unavailable", message: "The server couldn't send this image.",
+                           action: (title: "Try again", run: { Task { await loadImage() } })) {
                     GlyphIllustration(icon: .image, color: Accent.red)
                 }
                 .environment(\.colorScheme, .dark)
@@ -42,13 +43,16 @@ struct ReceiptImageView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .statusBarHidden(false)
-        .task {
-            guard let url = app.api.receiptImageURL(receiptId) else { failed = true; return }
-            let key = "receipt:\(receiptId)"
-            if let hit = ImageCache.shared.cached(key) { image = hit; return }
-            image = await ImageCache.shared.image(for: url, key: key)
-            failed = image == nil
-        }
+        .task { await loadImage() }
+    }
+
+    private func loadImage() async {
+        failed = false
+        guard let url = app.api.receiptImageURL(receiptId) else { failed = true; return }
+        let key = "receipt:\(receiptId)"
+        if let hit = ImageCache.shared.cached(key) { image = hit; return }
+        image = await ImageCache.shared.image(for: url, key: key)
+        failed = image == nil
     }
 }
 

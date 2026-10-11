@@ -182,7 +182,7 @@ final class ReceiptModel {
         let product = catalog.product(line.productId)
         // Prefer the server's name/category on the line; fall back to the cached catalog.
         let categoryName = catalog.category(line.categoryId)?.name ?? catalog.categoryName(forProduct: line.productId)
-        let swatch = CategoryColor.swatch(for: categoryName)
+        let swatch = CategoryColor.swatch(for: catalog.category(line.categoryId ?? product?.categoryId))
         let productName = line.productName ?? product?.name
         let amount = Money.plain(line.lineTotalCents)
 

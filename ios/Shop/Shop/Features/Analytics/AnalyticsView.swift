@@ -256,7 +256,7 @@ struct AnalyticsView: View {
             ForEach(buckets) { b in
                 let fraction = Double(b.cents) / Double(total)
                 let color = model.breakdown == .category
-                    ? (colors[b.key] ?? (b.key == "none" ? Palette.neutral : CategoryColor.swatch(for: b.label).color))
+                    ? (colors[b.key] ?? (b.key == "none" ? Palette.neutral : CategoryColor.swatch(for: Int64(b.key).flatMap { app.catalog.category($0) }).color))
                     : ShopBrand.chartColor(for: b.label)
                 Button {
                     if model.breakdown == .category {
