@@ -65,9 +65,11 @@ CSS = '''
 .w .stk{display:flex;height:16px;border-radius:8px;overflow:hidden;gap:2px;margin-bottom:12px}
 .w .stk i{display:block;height:100%}
 @property --a{syntax:'<integer>';inherits:true;initial-value:1}
-.w .shrow{--a:1}
+@property --b{syntax:'<integer>';inherits:true;initial-value:1}
+.w .shrow{--a:1;--b:var(--a);transition:--b 0s linear .15s}
 .w .fx{display:flex;flex-direction:column}
-.w .fi,.w .ph{--on:calc(1 - min(1,max(var(--a) - var(--i),var(--i) - var(--a))))}
+.w .fi{--on:calc(1 - min(1,max(var(--a) - var(--i),var(--i) - var(--a))))}
+.w .ph{--on:calc(1 - min(1,max(var(--a) - var(--i),var(--i) - var(--a),var(--b) - var(--i),var(--i) - var(--b))));--onb:calc(1 - min(1,max(var(--b) - var(--i),var(--i) - var(--b))))}
 .w .fi{padding:22px 0 20px;position:relative}
 .w .fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0;opacity:calc(.5 + .5*var(--on));transition:opacity .2s linear}
 .w .fi .dd{display:grid;grid-template-rows:1fr;opacity:calc(.62 + .38*var(--on));transition:opacity .2s linear}
@@ -75,8 +77,8 @@ CSS = '''
 .w .fi .dd p{font-size:17px;line-height:1.55;color:var(--ink2);margin:10px 0 0;max-width:400px}
 .w .fi .pr{position:absolute;left:0;top:-1px;height:2px;width:calc(100%*var(--on));background:var(--blue)}
 .w .stage{position:relative;flex:1;border-radius:36px;background:var(--panel);overflow:hidden}
-.w .ph{position:absolute;left:0;right:0;top:70px;display:flex;justify-content:center;opacity:var(--on);transform:translateY(calc((1 - var(--on))*28px));transition-property:opacity,transform;transition-duration:calc(.12s + .08s*var(--on)),calc(.2s*var(--on));transition-delay:calc(.12s*var(--on)),.12s;transition-timing-function:ease-out}
-@media (prefers-reduced-motion:reduce){.w .ph,.w .fi h3,.w .fi .dd{transition:none}}
+.w .ph{position:absolute;left:0;right:0;top:70px;display:flex;justify-content:center;opacity:var(--on);transform:translateY(calc((1 - var(--onb))*28px));transition:opacity .15s linear,transform .2s ease-out}
+@media (prefers-reduced-motion:reduce){.w .shrow,.w .ph,.w .fi h3,.w .fi .dd{transition:none}}
 @keyframes cyc0{0%{--a:1}25%{--a:2}50%{--a:3}75%{--a:4}100%{--a:1}}
 @keyframes pOn{0%{width:0}25%{width:100%}25.01%,100%{width:0}}
 @media (prefers-reduced-motion:no-preference){
