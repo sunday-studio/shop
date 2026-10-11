@@ -108,3 +108,13 @@ struct ProductHero: View {
     .padding(16)
     .background(Palette.bg)
 }
+
+/// The dark camera backdrop: a soft glow near the top fading to `Palette.scanBg`. Unpack and Add scan.
+struct ScanBackdrop: View {
+    var center = UnitPoint(x: 0.5, y: 0.3)
+
+    var body: some View {
+        RadialGradient(colors: [Palette.scanGlow, Palette.scanBg], center: center, startRadius: 10, endRadius: 520)
+            .ignoresSafeArea()
+    }
+}
