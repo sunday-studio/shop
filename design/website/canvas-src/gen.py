@@ -30,7 +30,7 @@ body{margin:0}
 .w .nav{display:flex;align-items:center;justify-content:space-between;height:88px}
 .w .nav .links{display:flex;align-items:center;gap:8px}
 .w .nav .nl{height:40px;padding:0 14px;display:inline-flex;align-items:center;border-radius:20px;font-size:15px;font-weight:500;color:var(--ink2);transition:color .15s,background .15s}
-.w .nav .nl:hover,.w .nav .nl.hover{color:var(--ink);background:var(--sunk)}
+.w .nav .nl:hover,.w .nav .nl.hover{color:var(--btnInk)!important;background:var(--btn)}
 .w .nav .nl:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .w .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:56px;padding:0 28px;border-radius:28px;font-weight:500;font-size:16.5px;background:var(--btn);color:var(--btnInk);transition:transform .16s cubic-bezier(.22,1,.36,1),opacity .2s}
 .w .btn.sm{height:36px;padding:0 18px;font-size:14px;border-radius:18px}

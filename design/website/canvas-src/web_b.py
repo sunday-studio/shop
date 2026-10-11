@@ -206,7 +206,7 @@ def showcase_css():
 def build(g):
     import re
     g['CSS'] += CSS + showcase_css()
-    g['CSS'] += ".w .heroP .nl{color:var(--ink)}.w .heroP .nl:hover{background:rgba(255,255,255,.5);color:var(--ink)}\n"
+    g['CSS'] += ".w .heroP .nl{color:var(--ink)}.w .heroP .nl:hover{background:var(--btn);color:var(--btnInk)!important}\n"
     for t in ('light', 'dark'):
         g['TOK'][t].update(TOKS[t])
     g['TOK']['light']['band'] = '#141413'; g['TOK']['dark']['band'] = '#1C1C1A'
