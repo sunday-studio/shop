@@ -79,7 +79,7 @@ table.tb td:first-child{color:var(--ink)}
 .bl .sub{margin-top:6px}
 .call .sub{margin-top:8px}
 .call .code{margin-top:12px}
-.shot{display:flex;justify-content:center;height:340px;padding-top:28px;overflow:hidden;background:var(--panel);border-radius:28px;margin-top:24px}
+.shot{display:flex;justify-content:center;align-items:flex-start;height:340px;padding-top:28px;overflow:hidden;background:var(--panel);border-radius:28px;margin-top:24px}
 .shot .dev{width:250px}
 .pn small{font-size:13px;color:var(--ink2)}
 .pn span{font-size:17px;font-weight:500}
