@@ -53,7 +53,7 @@ const checkShoppingItemFromReceipt = `-- name: CheckShoppingItemFromReceipt :one
 UPDATE shopping_list_items
 SET checked_at = ?, updated_at = ?, check_source = 'receipt', checked_receipt_id = ?, checked_line_id = ?
 WHERE id = ? AND checked_at IS NULL
-RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id
+RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id, group_id, source, rev
 `
 
 type CheckShoppingItemFromReceiptParams struct {
@@ -85,12 +85,15 @@ func (q *Queries) CheckShoppingItemFromReceipt(ctx context.Context, arg CheckSho
 		&i.CheckSource,
 		&i.CheckedReceiptID,
 		&i.CheckedLineID,
+		&i.GroupID,
+		&i.Source,
+		&i.Rev,
 	)
 	return i, err
 }
 
 const checkedShoppingItemIDs = `-- name: CheckedShoppingItemIDs :many
-SELECT id FROM shopping_list_items WHERE checked_at IS NOT NULL
+SELECT id FROM shopping_list_items WHERE checked_at IS NOT NULL AND group_id IS NULL
 `
 
 func (q *Queries) CheckedShoppingItemIDs(ctx context.Context) ([]int64, error) {
@@ -116,10 +119,24 @@ func (q *Queries) CheckedShoppingItemIDs(ctx context.Context) ([]int64, error) {
 	return items, nil
 }
 
+const clearShoppingTombstone = `-- name: ClearShoppingTombstone :exec
+DELETE FROM shopping_list_tombstones WHERE kind = ? AND id = ?
+`
+
+type ClearShoppingTombstoneParams struct {
+	Kind string `json:"kind"`
+	ID   int64  `json:"id"`
+}
+
+func (q *Queries) ClearShoppingTombstone(ctx context.Context, arg ClearShoppingTombstoneParams) error {
+	_, err := q.db.ExecContext(ctx, clearShoppingTombstone, arg.Kind, arg.ID)
+	return err
+}
+
 const createShoppingItem = `-- name: CreateShoppingItem :one
-INSERT INTO shopping_list_items (product_id, text, qty, note, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)
-RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id
+INSERT INTO shopping_list_items (product_id, text, qty, note, group_id, source, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id, group_id, source, rev
 `
 
 type CreateShoppingItemParams struct {
@@ -127,6 +144,8 @@ type CreateShoppingItemParams struct {
 	Text      string          `json:"text"`
 	Qty       sql.NullFloat64 `json:"qty"`
 	Note      sql.NullString  `json:"note"`
+	GroupID   sql.NullInt64   `json:"group_id"`
+	Source    string          `json:"source"`
 	CreatedAt string          `json:"created_at"`
 	UpdatedAt sql.NullString  `json:"updated_at"`
 }
@@ -137,6 +156,8 @@ func (q *Queries) CreateShoppingItem(ctx context.Context, arg CreateShoppingItem
 		arg.Text,
 		arg.Qty,
 		arg.Note,
+		arg.GroupID,
+		arg.Source,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -153,6 +174,9 @@ func (q *Queries) CreateShoppingItem(ctx context.Context, arg CreateShoppingItem
 		&i.CheckSource,
 		&i.CheckedReceiptID,
 		&i.CheckedLineID,
+		&i.GroupID,
+		&i.Source,
+		&i.Rev,
 	)
 	return i, err
 }
@@ -170,11 +194,17 @@ func (q *Queries) DeleteShoppingItem(ctx context.Context, id int64) (int64, erro
 }
 
 const findOpenShoppingItemByProduct = `-- name: FindOpenShoppingItemByProduct :one
-SELECT id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id FROM shopping_list_items WHERE product_id = ? AND checked_at IS NULL LIMIT 1
+SELECT id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id, group_id, source, rev FROM shopping_list_items WHERE product_id = ? AND checked_at IS NULL AND group_id IS ?2 LIMIT 1
 `
 
-func (q *Queries) FindOpenShoppingItemByProduct(ctx context.Context, productID sql.NullInt64) (ShoppingListItem, error) {
-	row := q.db.QueryRowContext(ctx, findOpenShoppingItemByProduct, productID)
+type FindOpenShoppingItemByProductParams struct {
+	ProductID sql.NullInt64 `json:"product_id"`
+	GroupID   sql.NullInt64 `json:"group_id"`
+}
+
+// One open item per product and group (group NULL = the main list).
+func (q *Queries) FindOpenShoppingItemByProduct(ctx context.Context, arg FindOpenShoppingItemByProductParams) (ShoppingListItem, error) {
+	row := q.db.QueryRowContext(ctx, findOpenShoppingItemByProduct, arg.ProductID, arg.GroupID)
 	var i ShoppingListItem
 	err := row.Scan(
 		&i.ID,
@@ -188,19 +218,43 @@ func (q *Queries) FindOpenShoppingItemByProduct(ctx context.Context, productID s
 		&i.CheckSource,
 		&i.CheckedReceiptID,
 		&i.CheckedLineID,
+		&i.GroupID,
+		&i.Source,
+		&i.Rev,
 	)
 	return i, err
 }
 
 const getClientID = `-- name: GetClientID :one
-SELECT item_id FROM shopping_list_client_ids WHERE client_id = ?
+SELECT item_id, kind FROM shopping_list_client_ids WHERE client_id = ?
 `
 
-func (q *Queries) GetClientID(ctx context.Context, clientID string) (int64, error) {
+type GetClientIDRow struct {
+	ItemID int64  `json:"item_id"`
+	Kind   string `json:"kind"`
+}
+
+func (q *Queries) GetClientID(ctx context.Context, clientID string) (GetClientIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getClientID, clientID)
-	var item_id int64
-	err := row.Scan(&item_id)
-	return item_id, err
+	var i GetClientIDRow
+	err := row.Scan(&i.ItemID, &i.Kind)
+	return i, err
+}
+
+const getListRev = `-- name: GetListRev :one
+SELECT rev, pruned_rev FROM shopping_list_rev WHERE id = 1
+`
+
+type GetListRevRow struct {
+	Rev       int64 `json:"rev"`
+	PrunedRev int64 `json:"pruned_rev"`
+}
+
+func (q *Queries) GetListRev(ctx context.Context) (GetListRevRow, error) {
+	row := q.db.QueryRowContext(ctx, getListRev)
+	var i GetListRevRow
+	err := row.Scan(&i.Rev, &i.PrunedRev)
+	return i, err
 }
 
 const getListSuggestion = `-- name: GetListSuggestion :one
@@ -225,7 +279,7 @@ func (q *Queries) GetListSuggestion(ctx context.Context, id int64) (ShoppingList
 }
 
 const getShoppingItem = `-- name: GetShoppingItem :one
-SELECT id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id FROM shopping_list_items WHERE id = ?
+SELECT id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id, group_id, source, rev FROM shopping_list_items WHERE id = ?
 `
 
 func (q *Queries) GetShoppingItem(ctx context.Context, id int64) (ShoppingListItem, error) {
@@ -243,6 +297,9 @@ func (q *Queries) GetShoppingItem(ctx context.Context, id int64) (ShoppingListIt
 		&i.CheckSource,
 		&i.CheckedReceiptID,
 		&i.CheckedLineID,
+		&i.GroupID,
+		&i.Source,
+		&i.Rev,
 	)
 	return i, err
 }
@@ -459,12 +516,61 @@ func (q *Queries) ListReceiptSuggestions(ctx context.Context, receiptID int64) (
 	return items, nil
 }
 
-const listShoppingItems = `-- name: ListShoppingItems :many
-SELECT id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id FROM shopping_list_items
-WHERE checked_at IS NULL OR (?1 = 1)
-ORDER BY checked_at IS NOT NULL, created_at, id
+const listReconcilableItems = `-- name: ListReconcilableItems :many
+SELECT i.id, i.product_id, i.text, i.qty, i.note, i.checked_at, i.created_at, i.updated_at, i.check_source, i.checked_receipt_id, i.checked_line_id, i.group_id, i.source, i.rev FROM shopping_list_items i
+LEFT JOIN shopping_list_groups g ON g.id = i.group_id
+WHERE i.checked_at IS NULL AND (g.id IS NULL OR (g.kind = 'checklist' AND g.archived_at IS NULL))
+ORDER BY i.created_at, i.id
 `
 
+// Open items a receipt may check: main list and live checklists (not templates, not archived groups).
+func (q *Queries) ListReconcilableItems(ctx context.Context) ([]ShoppingListItem, error) {
+	rows, err := q.db.QueryContext(ctx, listReconcilableItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ShoppingListItem{}
+	for rows.Next() {
+		var i ShoppingListItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.Text,
+			&i.Qty,
+			&i.Note,
+			&i.CheckedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CheckSource,
+			&i.CheckedReceiptID,
+			&i.CheckedLineID,
+			&i.GroupID,
+			&i.Source,
+			&i.Rev,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listShoppingItems = `-- name: ListShoppingItems :many
+SELECT i.id, i.product_id, i.text, i.qty, i.note, i.checked_at, i.created_at, i.updated_at, i.check_source, i.checked_receipt_id, i.checked_line_id, i.group_id, i.source, i.rev FROM shopping_list_items i
+LEFT JOIN shopping_list_groups g ON g.id = i.group_id
+WHERE (g.id IS NULL OR g.kind <> 'template')
+  AND (i.checked_at IS NULL OR (?1 = 1))
+ORDER BY i.checked_at IS NOT NULL, i.created_at, i.id
+`
+
+// Template items are blueprints, not things to buy, so they never show up in the list.
 func (q *Queries) ListShoppingItems(ctx context.Context, includeChecked interface{}) ([]ShoppingListItem, error) {
 	rows, err := q.db.QueryContext(ctx, listShoppingItems, includeChecked)
 	if err != nil {
@@ -486,6 +592,9 @@ func (q *Queries) ListShoppingItems(ctx context.Context, includeChecked interfac
 			&i.CheckSource,
 			&i.CheckedReceiptID,
 			&i.CheckedLineID,
+			&i.GroupID,
+			&i.Source,
+			&i.Rev,
 		); err != nil {
 			return nil, err
 		}
@@ -514,12 +623,60 @@ func (q *Queries) MarkReceiptCheckUndone(ctx context.Context, arg MarkReceiptChe
 	return err
 }
 
-const pruneShoppingDeletions = `-- name: PruneShoppingDeletions :exec
-DELETE FROM shopping_list_deletions WHERE deleted_at < ?
+const maxPrunableTombstoneRev = `-- name: MaxPrunableTombstoneRev :one
+SELECT CAST(COALESCE(MAX(rev), 0) AS INTEGER) FROM shopping_list_tombstones WHERE deleted_at < ?
 `
 
-func (q *Queries) PruneShoppingDeletions(ctx context.Context, deletedAt string) error {
-	_, err := q.db.ExecContext(ctx, pruneShoppingDeletions, deletedAt)
+func (q *Queries) MaxPrunableTombstoneRev(ctx context.Context, deletedAt string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, maxPrunableTombstoneRev, deletedAt)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const openGroupsOfProduct = `-- name: OpenGroupsOfProduct :many
+SELECT i.group_id FROM shopping_list_items i
+LEFT JOIN shopping_list_groups g ON g.id = i.group_id
+WHERE i.product_id = ? AND i.checked_at IS NULL AND i.id <> ?
+  AND (g.id IS NULL OR (g.kind = 'checklist' AND g.archived_at IS NULL))
+ORDER BY i.group_id
+`
+
+type OpenGroupsOfProductParams struct {
+	ProductID sql.NullInt64 `json:"product_id"`
+	ID        int64         `json:"id"`
+}
+
+// Where else a product is open: group id, NULL for the main list. Templates and archived groups do not count.
+func (q *Queries) OpenGroupsOfProduct(ctx context.Context, arg OpenGroupsOfProductParams) ([]sql.NullInt64, error) {
+	rows, err := q.db.QueryContext(ctx, openGroupsOfProduct, arg.ProductID, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []sql.NullInt64{}
+	for rows.Next() {
+		var group_id sql.NullInt64
+		if err := rows.Scan(&group_id); err != nil {
+			return nil, err
+		}
+		items = append(items, group_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pruneShoppingTombstones = `-- name: PruneShoppingTombstones :exec
+DELETE FROM shopping_list_tombstones WHERE deleted_at < ?
+`
+
+func (q *Queries) PruneShoppingTombstones(ctx context.Context, deletedAt string) error {
+	_, err := q.db.ExecContext(ctx, pruneShoppingTombstones, deletedAt)
 	return err
 }
 
@@ -542,32 +699,48 @@ func (q *Queries) PurgeReceiptSuggestions(ctx context.Context, receiptID int64) 
 }
 
 const putClientID = `-- name: PutClientID :exec
-INSERT INTO shopping_list_client_ids (client_id, item_id, created_at) VALUES (?, ?, ?)
+INSERT INTO shopping_list_client_ids (client_id, item_id, kind, created_at) VALUES (?, ?, ?, ?)
 `
 
 type PutClientIDParams struct {
 	ClientID  string `json:"client_id"`
 	ItemID    int64  `json:"item_id"`
+	Kind      string `json:"kind"`
 	CreatedAt string `json:"created_at"`
 }
 
 func (q *Queries) PutClientID(ctx context.Context, arg PutClientIDParams) error {
-	_, err := q.db.ExecContext(ctx, putClientID, arg.ClientID, arg.ItemID, arg.CreatedAt)
+	_, err := q.db.ExecContext(ctx, putClientID,
+		arg.ClientID,
+		arg.ItemID,
+		arg.Kind,
+		arg.CreatedAt,
+	)
 	return err
 }
 
-const recordShoppingDeletion = `-- name: RecordShoppingDeletion :exec
-INSERT INTO shopping_list_deletions (item_id, deleted_at) VALUES (?, ?)
-ON CONFLICT (item_id) DO UPDATE SET deleted_at = excluded.deleted_at
+const raisePrunedRev = `-- name: RaisePrunedRev :exec
+UPDATE shopping_list_rev SET pruned_rev = MAX(pruned_rev, ?) WHERE id = 1
 `
 
-type RecordShoppingDeletionParams struct {
-	ItemID    int64  `json:"item_id"`
+func (q *Queries) RaisePrunedRev(ctx context.Context, max interface{}) error {
+	_, err := q.db.ExecContext(ctx, raisePrunedRev, max)
+	return err
+}
+
+const recordShoppingTombstone = `-- name: RecordShoppingTombstone :exec
+INSERT INTO shopping_list_tombstones (kind, id, deleted_at) VALUES (?, ?, ?)
+ON CONFLICT (kind, id) DO UPDATE SET deleted_at = excluded.deleted_at
+`
+
+type RecordShoppingTombstoneParams struct {
+	Kind      string `json:"kind"`
+	ID        int64  `json:"id"`
 	DeletedAt string `json:"deleted_at"`
 }
 
-func (q *Queries) RecordShoppingDeletion(ctx context.Context, arg RecordShoppingDeletionParams) error {
-	_, err := q.db.ExecContext(ctx, recordShoppingDeletion, arg.ItemID, arg.DeletedAt)
+func (q *Queries) RecordShoppingTombstone(ctx context.Context, arg RecordShoppingTombstoneParams) error {
+	_, err := q.db.ExecContext(ctx, recordShoppingTombstone, arg.Kind, arg.ID, arg.DeletedAt)
 	return err
 }
 
@@ -586,11 +759,70 @@ func (q *Queries) ResolveListSuggestion(ctx context.Context, arg ResolveListSugg
 	return err
 }
 
+const restoreShoppingItem = `-- name: RestoreShoppingItem :one
+INSERT INTO shopping_list_items (id, product_id, text, qty, note, checked_at, group_id, source, created_at, updated_at,
+                                 check_source, checked_receipt_id, checked_line_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id, group_id, source, rev
+`
+
+type RestoreShoppingItemParams struct {
+	ID               int64           `json:"id"`
+	ProductID        sql.NullInt64   `json:"product_id"`
+	Text             string          `json:"text"`
+	Qty              sql.NullFloat64 `json:"qty"`
+	Note             sql.NullString  `json:"note"`
+	CheckedAt        sql.NullString  `json:"checked_at"`
+	GroupID          sql.NullInt64   `json:"group_id"`
+	Source           string          `json:"source"`
+	CreatedAt        string          `json:"created_at"`
+	UpdatedAt        sql.NullString  `json:"updated_at"`
+	CheckSource      string          `json:"check_source"`
+	CheckedReceiptID sql.NullInt64   `json:"checked_receipt_id"`
+	CheckedLineID    sql.NullInt64   `json:"checked_line_id"`
+}
+
+func (q *Queries) RestoreShoppingItem(ctx context.Context, arg RestoreShoppingItemParams) (ShoppingListItem, error) {
+	row := q.db.QueryRowContext(ctx, restoreShoppingItem,
+		arg.ID,
+		arg.ProductID,
+		arg.Text,
+		arg.Qty,
+		arg.Note,
+		arg.CheckedAt,
+		arg.GroupID,
+		arg.Source,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.CheckSource,
+		arg.CheckedReceiptID,
+		arg.CheckedLineID,
+	)
+	var i ShoppingListItem
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.Text,
+		&i.Qty,
+		&i.Note,
+		&i.CheckedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CheckSource,
+		&i.CheckedReceiptID,
+		&i.CheckedLineID,
+		&i.GroupID,
+		&i.Source,
+		&i.Rev,
+	)
+	return i, err
+}
+
 const setShoppingItemChecked = `-- name: SetShoppingItemChecked :one
 UPDATE shopping_list_items
 SET checked_at = ?, updated_at = ?, check_source = 'manual', checked_receipt_id = NULL, checked_line_id = NULL
 WHERE id = ?
-RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id
+RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id, group_id, source, rev
 `
 
 type SetShoppingItemCheckedParams struct {
@@ -614,13 +846,16 @@ func (q *Queries) SetShoppingItemChecked(ctx context.Context, arg SetShoppingIte
 		&i.CheckSource,
 		&i.CheckedReceiptID,
 		&i.CheckedLineID,
+		&i.GroupID,
+		&i.Source,
+		&i.Rev,
 	)
 	return i, err
 }
 
 const setShoppingItemQtyNote = `-- name: SetShoppingItemQtyNote :one
 UPDATE shopping_list_items SET qty = ?, note = ?, updated_at = ? WHERE id = ?
-RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id
+RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id, group_id, source, rev
 `
 
 type SetShoppingItemQtyNoteParams struct {
@@ -650,39 +885,18 @@ func (q *Queries) SetShoppingItemQtyNote(ctx context.Context, arg SetShoppingIte
 		&i.CheckSource,
 		&i.CheckedReceiptID,
 		&i.CheckedLineID,
+		&i.GroupID,
+		&i.Source,
+		&i.Rev,
 	)
 	return i, err
 }
 
-const shoppingDeletionsSince = `-- name: ShoppingDeletionsSince :many
-SELECT item_id FROM shopping_list_deletions WHERE deleted_at >= ? ORDER BY item_id
-`
-
-func (q *Queries) ShoppingDeletionsSince(ctx context.Context, deletedAt string) ([]int64, error) {
-	rows, err := q.db.QueryContext(ctx, shoppingDeletionsSince, deletedAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []int64{}
-	for rows.Next() {
-		var item_id int64
-		if err := rows.Scan(&item_id); err != nil {
-			return nil, err
-		}
-		items = append(items, item_id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const shoppingItemsChangedSince = `-- name: ShoppingItemsChangedSince :many
-SELECT id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id FROM shopping_list_items WHERE updated_at >= ? ORDER BY updated_at, id
+SELECT i.id, i.product_id, i.text, i.qty, i.note, i.checked_at, i.created_at, i.updated_at, i.check_source, i.checked_receipt_id, i.checked_line_id, i.group_id, i.source, i.rev FROM shopping_list_items i
+LEFT JOIN shopping_list_groups g ON g.id = i.group_id
+WHERE i.updated_at >= ? AND (g.id IS NULL OR g.kind <> 'template')
+ORDER BY i.updated_at, i.id
 `
 
 func (q *Queries) ShoppingItemsChangedSince(ctx context.Context, updatedAt sql.NullString) ([]ShoppingListItem, error) {
@@ -706,7 +920,119 @@ func (q *Queries) ShoppingItemsChangedSince(ctx context.Context, updatedAt sql.N
 			&i.CheckSource,
 			&i.CheckedReceiptID,
 			&i.CheckedLineID,
+			&i.GroupID,
+			&i.Source,
+			&i.Rev,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shoppingItemsChangedSinceRev = `-- name: ShoppingItemsChangedSinceRev :many
+SELECT i.id, i.product_id, i.text, i.qty, i.note, i.checked_at, i.created_at, i.updated_at, i.check_source, i.checked_receipt_id, i.checked_line_id, i.group_id, i.source, i.rev FROM shopping_list_items i
+LEFT JOIN shopping_list_groups g ON g.id = i.group_id
+WHERE i.rev > ? AND (g.id IS NULL OR g.kind <> 'template')
+ORDER BY i.rev
+`
+
+func (q *Queries) ShoppingItemsChangedSinceRev(ctx context.Context, rev int64) ([]ShoppingListItem, error) {
+	rows, err := q.db.QueryContext(ctx, shoppingItemsChangedSinceRev, rev)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ShoppingListItem{}
+	for rows.Next() {
+		var i ShoppingListItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.Text,
+			&i.Qty,
+			&i.Note,
+			&i.CheckedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CheckSource,
+			&i.CheckedReceiptID,
+			&i.CheckedLineID,
+			&i.GroupID,
+			&i.Source,
+			&i.Rev,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shoppingTombstonesSince = `-- name: ShoppingTombstonesSince :many
+SELECT kind, id FROM shopping_list_tombstones WHERE deleted_at >= ? ORDER BY id
+`
+
+type ShoppingTombstonesSinceRow struct {
+	Kind string `json:"kind"`
+	ID   int64  `json:"id"`
+}
+
+func (q *Queries) ShoppingTombstonesSince(ctx context.Context, deletedAt string) ([]ShoppingTombstonesSinceRow, error) {
+	rows, err := q.db.QueryContext(ctx, shoppingTombstonesSince, deletedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ShoppingTombstonesSinceRow{}
+	for rows.Next() {
+		var i ShoppingTombstonesSinceRow
+		if err := rows.Scan(&i.Kind, &i.ID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shoppingTombstonesSinceRev = `-- name: ShoppingTombstonesSinceRev :many
+SELECT kind, id FROM shopping_list_tombstones WHERE rev > ? ORDER BY rev
+`
+
+type ShoppingTombstonesSinceRevRow struct {
+	Kind string `json:"kind"`
+	ID   int64  `json:"id"`
+}
+
+func (q *Queries) ShoppingTombstonesSinceRev(ctx context.Context, rev int64) ([]ShoppingTombstonesSinceRevRow, error) {
+	rows, err := q.db.QueryContext(ctx, shoppingTombstonesSinceRev, rev)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ShoppingTombstonesSinceRevRow{}
+	for rows.Next() {
+		var i ShoppingTombstonesSinceRevRow
+		if err := rows.Scan(&i.Kind, &i.ID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -722,7 +1048,7 @@ func (q *Queries) ShoppingItemsChangedSince(ctx context.Context, updatedAt sql.N
 
 const updateShoppingItem = `-- name: UpdateShoppingItem :one
 UPDATE shopping_list_items SET product_id = ?, text = ?, qty = ?, note = ?, updated_at = ? WHERE id = ?
-RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id
+RETURNING id, product_id, text, qty, note, checked_at, created_at, updated_at, check_source, checked_receipt_id, checked_line_id, group_id, source, rev
 `
 
 type UpdateShoppingItemParams struct {
@@ -756,6 +1082,9 @@ func (q *Queries) UpdateShoppingItem(ctx context.Context, arg UpdateShoppingItem
 		&i.CheckSource,
 		&i.CheckedReceiptID,
 		&i.CheckedLineID,
+		&i.GroupID,
+		&i.Source,
+		&i.Rev,
 	)
 	return i, err
 }

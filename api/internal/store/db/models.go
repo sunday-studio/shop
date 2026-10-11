@@ -208,11 +208,29 @@ type ShoppingListClientID struct {
 	ClientID  string `json:"client_id"`
 	ItemID    int64  `json:"item_id"`
 	CreatedAt string `json:"created_at"`
+	Kind      string `json:"kind"`
 }
 
-type ShoppingListDeletion struct {
-	ItemID    int64  `json:"item_id"`
-	DeletedAt string `json:"deleted_at"`
+type ShoppingListGroup struct {
+	ID          int64          `json:"id"`
+	Name        string         `json:"name"`
+	Kind        string         `json:"kind"`
+	Note        sql.NullString `json:"note"`
+	Source      string         `json:"source"`
+	ExternalRef sql.NullString `json:"external_ref"`
+	Sort        int64          `json:"sort"`
+	ArchivedAt  sql.NullString `json:"archived_at"`
+	CreatedAt   string         `json:"created_at"`
+	UpdatedAt   string         `json:"updated_at"`
+	Rev         int64          `json:"rev"`
+}
+
+type ShoppingListGroupTrash struct {
+	GroupID    int64          `json:"group_id"`
+	Mode       string         `json:"mode"`
+	Snapshot   string         `json:"snapshot"`
+	DeletedAt  string         `json:"deleted_at"`
+	RestoredAt sql.NullString `json:"restored_at"`
 }
 
 type ShoppingListItem struct {
@@ -227,6 +245,9 @@ type ShoppingListItem struct {
 	CheckSource      string          `json:"check_source"`
 	CheckedReceiptID sql.NullInt64   `json:"checked_receipt_id"`
 	CheckedLineID    sql.NullInt64   `json:"checked_line_id"`
+	GroupID          sql.NullInt64   `json:"group_id"`
+	Source           string          `json:"source"`
+	Rev              int64           `json:"rev"`
 }
 
 type ShoppingListReceiptCheck struct {
@@ -243,6 +264,12 @@ type ShoppingListReceiptCheck struct {
 	UndoneAt  sql.NullString  `json:"undone_at"`
 }
 
+type ShoppingListRev struct {
+	ID        int64 `json:"id"`
+	Rev       int64 `json:"rev"`
+	PrunedRev int64 `json:"pruned_rev"`
+}
+
 type ShoppingListSuggestion struct {
 	ID         int64          `json:"id"`
 	ItemID     int64          `json:"item_id"`
@@ -253,4 +280,11 @@ type ShoppingListSuggestion struct {
 	State      string         `json:"state"`
 	CreatedAt  string         `json:"created_at"`
 	ResolvedAt sql.NullString `json:"resolved_at"`
+}
+
+type ShoppingListTombstone struct {
+	Kind      string `json:"kind"`
+	ID        int64  `json:"id"`
+	DeletedAt string `json:"deleted_at"`
+	Rev       int64  `json:"rev"`
 }

@@ -209,11 +209,25 @@ func toListItem(it shopping.Item) map[string]any {
 	if it.Cheapest != nil {
 		out["cheapest"] = it.Cheapest
 	}
+	if it.GroupID.Valid {
+		out["group_id"] = it.GroupID.Int64
+	}
+	out["source"] = it.Source
+	out["rev"] = it.Rev
+	if len(it.OtherGroupIDs) > 0 {
+		out["other_group_ids"] = it.OtherGroupIDs
+	}
+	if it.OnMainList {
+		out["on_main_list"] = true
+	}
 	return out
 }
 
 func listInput(in apitypes.ListItemInput) shopping.Input {
-	out := shopping.Input{ProductID: in.ProductId, Qty: in.Qty, Note: in.Note}
+	out := shopping.Input{ProductID: in.ProductId, Qty: in.Qty, Note: in.Note, GroupID: in.GroupId}
+	if in.Source != nil {
+		out.Source = string(*in.Source)
+	}
 	if in.Text != nil {
 		out.Text = *in.Text
 	}
@@ -224,6 +238,7 @@ func listInput(in apitypes.ListItemInput) shopping.Input {
 }
 
 func (s *Server) getShoppingList(w http.ResponseWriter, r *http.Request) {
+	s.setListRev(w, r)
 	items, err := s.List.List(r.Context(), r.URL.Query().Get("include_checked") == "true")
 	if err != nil {
 		s.writeErr(w, r, err)
@@ -316,19 +331,26 @@ func (s *Server) clearCheckedItems(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listChanges(w http.ResponseWriter, r *http.Request) {
-	since, err := time.Parse(time.RFC3339, r.URL.Query().Get("since"))
-	if err != nil {
-		s.writeErr(w, r, badf("since must be RFC3339, e.g. 2026-10-10T12:00:00Z"))
-		return
+	var c shopping.Changes
+	var err error
+	if v := r.URL.Query().Get("since_rev"); v != "" {
+		rev, perr := strconv.ParseInt(v, 10, 64)
+		if perr != nil || rev < 0 {
+			s.writeErr(w, r, badf("since_rev must be a number, 0 or more"))
+			return
+		}
+		c, err = s.List.ChangesSinceRev(r.Context(), rev)
+	} else {
+		since, perr := time.Parse(time.RFC3339, r.URL.Query().Get("since"))
+		if perr != nil {
+			s.writeErr(w, r, badf("since_rev (a number) or since (RFC3339, e.g. 2026-10-10T12:00:00Z) is required"))
+			return
+		}
+		c, err = s.List.Changes(r.Context(), since)
 	}
-	c, err := s.List.Changes(r.Context(), since)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
-	}
-	items := make([]map[string]any, len(c.Items))
-	for i, it := range c.Items {
-		items[i] = toListItem(it)
 	}
 	sugs, err := s.List.Suggestions(r.Context())
 	if err != nil {
@@ -336,8 +358,9 @@ func (s *Server) listChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items": items, "deleted_ids": c.DeletedIDs, "server_time": c.ServerTime, "full_resync": c.FullResync,
-		"suggestions": toSuggestions(sugs),
+		"items": toItems(c.Items), "deleted_ids": c.DeletedIDs, "groups": toGroups(c.Groups),
+		"deleted_group_ids": c.DeletedGroupIDs, "rev": c.Rev, "server_time": c.ServerTime,
+		"full_resync": c.FullResync, "suggestions": toSuggestions(sugs),
 	})
 }
 

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.14.0
+  version: 0.15.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -956,11 +956,17 @@ paths:
   /v1/list:
     get:
       operationId: getShoppingList
+      description: >
+        The main list and the items of every checklist (each has `group_id` when it is in a group). Template items
+        are not included. The `X-List-Rev` header is the current rev, usable as `since_rev` for
+        GET /v1/list/changes. To get groups too, use GET /v1/list/changes?since_rev=0.
       parameters:
         - { name: include_checked, in: query, schema: { type: boolean, default: false } }
       responses:
         "200":
           description: Items (open first)
+          headers:
+            X-List-Rev: { schema: { type: integer, format: int64 } }
           content:
             application/json:
               schema:
@@ -975,7 +981,8 @@ paths:
           schema: { type: string, maxLength: 100 }
       description: >
         Free text is linked to a product automatically when it matches one closely (score >= 0.9).
-        Adding a product that is already open on the list increases its qty instead (200).
+        Adding a product that is already open in the same group (or on the main list when there is no group_id)
+        increases its qty instead (200). With group_id the item goes into that group (404 if it does not exist).
       requestBody:
         required: true
         content:
@@ -1003,13 +1010,32 @@ paths:
     get:
       operationId: listChanges
       description: >
-        Offline sync: items created, edited, checked or unchecked at or after `since` (checked items
-        included), plus ids deleted since. Pass the returned server_time as the next `since`.
-        The boundary is inclusive, so an item can come back twice; applying it again is harmless.
-        Deletions are remembered for 30 days; for an older `since` the response sets full_resync
-        and the app should refetch GET /v1/list?include_checked=true.
+        Offline sync. Two cursors, pick one per call.
+
+
+        **since_rev (preferred).** Every list write (item, group or deletion) gets the next number of one global
+        counter, the `rev`. Send the `rev` of your last response as `since_rev` and get exactly what was written
+        after it: items (checked ones included), groups (any kind, archived too) and the ids deleted. Nothing is
+        repeated and nothing can be missed. `since_rev=0` returns the complete list. When `full_resync` is true the
+        response is the complete list (not a delta) and the phone replaces its local copy; this happens for
+        `since_rev=0` and when the phone has been away longer than deletions are remembered (30 days). A
+        `since_rev` ahead of the server answers 400: start again from 0.
+
+
+        **since (original, still works).** Items and groups created, edited, checked or unchecked at or after
+        `since`, plus ids deleted since. Pass the returned server_time as the next `since`. The boundary is
+        inclusive, so something can come back twice; applying it again is harmless. For a `since` older than 30
+        days `full_resync` is true and the app should refetch GET /v1/list?include_checked=true.
+        The response also carries `rev`, so a phone can switch to since_rev after one call.
+
+
+        Template items are never in `items` (read them with GET /v1/list/groups/{id}). Items of archived groups are.
+        `other_group_ids` and `on_main_list` on items are computed when the response is built, so they can be
+        out of date for items that did not change; a phone that needs them live derives them from product_id
+        and group_id.
       parameters:
-        - { name: since, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: since_rev, in: query, required: false, schema: { type: integer, format: int64, minimum: 0 } }
+        - { name: since, in: query, required: false, schema: { type: string, format: date-time }, description: "Original cursor. One of since_rev or since is required; since_rev wins if both are sent." }
       responses:
         "200":
           description: Changes
@@ -1017,10 +1043,13 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [items, deleted_ids, server_time, full_resync]
+                required: [items, deleted_ids, server_time, full_resync, rev, groups, deleted_group_ids]
                 properties:
                   items: { type: array, items: { $ref: "#/components/schemas/ListItem" } }
                   deleted_ids: { type: array, items: { type: integer, format: int64 } }
+                  groups: { type: array, items: { $ref: "#/components/schemas/ListGroup" }, description: "created or edited groups (without items; item_count and checked_count are as of this response)" }
+                  deleted_group_ids: { type: array, items: { type: integer, format: int64 }, description: "groups deleted. Their items were moved to the main list (these arrive in `items`) or deleted (in `deleted_ids`)." }
+                  rev: { type: integer, format: int64, description: "send as since_rev next time" }
                   server_time: { type: string, format: date-time }
                   full_resync: { type: boolean }
                   suggestions:
@@ -1029,6 +1058,201 @@ paths:
                       All open "Looks bought?" suggestions right now (not just new ones), so a phone can replace
                       its local copy each sync.
                     items: { $ref: "#/components/schemas/ListSuggestion" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ----------------------------------------------------------------- list groups (checklists and templates)
+  /v1/list/groups:
+    get:
+      operationId: listListGroups
+      description: >
+        Groups in display order (sort, then id), archived ones last and only with include_archived. Use kind=template
+        for the template list (item_count tells how many items each has).
+      parameters:
+        - { name: kind, in: query, schema: { type: string, enum: [checklist, template] } }
+        - { name: include_archived, in: query, schema: { type: boolean, default: false } }
+        - { name: include_items, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: Groups
+          headers:
+            X-List-Rev: { schema: { type: integer, format: int64 } }
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ListGroup" } }
+        default: { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createListGroup
+      description: >
+        Creates a group and all its items in one transaction (all or nothing). `items` is the ordered list of
+        lines; the response lists `item_ids` in the same order (two lines for the same product share one id).
+        Idempotent by `client_id` (or the Idempotency-Key header): a repeat, however often the phone retries,
+        returns the group the first call made with 200 and the same item_ids, and never creates a second one;
+        410 if that group has since been deleted. Assistants can use `external_ref` instead: a repeat with the same
+        source and ref returns the existing group (200, items of the repeat ignored, item_ids empty).
+        `kind` is checklist (default) or template.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          description: Same as client_id in the body (either works).
+          schema: { type: string, maxLength: 100 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListGroupInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGroup" }
+        "200":
+          description: A repeat of an earlier request (same client_id or external_ref), returned as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGroup" }
+        "410":
+          description: Repeat of a client_id whose group has since been deleted
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/groups/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    get:
+      operationId: getListGroup
+      description: One group with its items (templates included).
+      responses:
+        "200":
+          description: The group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGroup" }
+        default: { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateListGroup
+      description: Rename, set the note, reorder (sort) or archive/unarchive a group. Only the fields sent change. Returns the group with its items.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListGroupPatch" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGroup" }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteListGroup
+      description: >
+        Deletes the group. `items=keep` (default) moves its items to the main list; `items=delete` deletes them
+        too. A template always deletes its items. Undo with POST /v1/list/groups/{id}/restore for 10 minutes.
+        The group and any deleted items leave a tombstone for sync.
+      parameters:
+        - { name: items, in: query, schema: { type: string, enum: [keep, delete], default: keep } }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGroupDeleted" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/groups/{id}/items:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: addListGroupItems
+      description: >
+        Adds items to the group in one transaction. A line whose product is already open in this group raises
+        that item's qty instead. Returns the items in request order (merged lines repeat the same item).
+        Not idempotent by itself: for offline retries add one item at a time with POST /v1/list (group_id + client_id).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListGroupItemsInput" }
+      responses:
+        "200":
+          description: The items
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ListItem" } }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/groups/{id}/restore:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: restoreListGroup
+      description: >
+        Undo of DELETE within 10 minutes: the group returns with its old id, its deleted items are recreated with
+        their old ids and kept items move back from the main list. Idempotent (a second call returns the group).
+        404 if the group was never deleted, 410 after the 10 minutes.
+      responses:
+        "200":
+          description: The group with its items
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGroup" }
+        "410":
+          description: Too late to undo
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/groups/{id}/instantiate:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: instantiateListTemplate
+      description: >
+        Starts a checklist from a template (400 if the group is not a template): a new checklist group with the
+        same items, all unchecked. The name defaults to the template's. Idempotent by client_id like
+        POST /v1/list/groups, with the same item_ids.
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListGroupCopyInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGroup" }
+        "200":
+          description: A repeat of an earlier request (same client_id)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGroup" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/groups/{id}/save-as-template:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: saveListGroupAsTemplate
+      description: Saves a checklist as a template (items unchecked, same order). 400 if the group is already a template. Idempotent by client_id.
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListGroupCopyInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGroup" }
+        "200":
+          description: A repeat of an earlier request (same client_id)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGroup" }
         default: { $ref: "#/components/responses/Problem" }
 
   /v1/list/suggestions:
@@ -1109,6 +1333,32 @@ paths:
       operationId: deleteListItem
       responses:
         "204": { description: Deleted }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/{id}/move:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: moveListItem
+      description: >
+        Moves an item into a group, or back to the main list with group_id null. If the target already has the same
+        product open, the quantities are added, the moved item is deleted (tombstone) and the target item is
+        returned. Moving into or out of a template is 400. Idempotent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [group_id]
+              properties:
+                group_id: { type: integer, format: int64, nullable: true, description: "target group, null = main list" }
+      responses:
+        "200":
+          description: The item as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListItem" }
         default: { $ref: "#/components/responses/Problem" }
 
   /v1/list/{id}/check:
@@ -2043,6 +2293,8 @@ components:
         product_id: { type: integer, format: int64 }
         qty: { type: number, format: double }
         note: { type: string }
+        group_id: { type: integer, format: int64, description: "POST only: put the item in this group (checklist or template). Omit for the main list. Use POST /v1/list/{id}/move to move an item later." }
+        source: { type: string, enum: [user, assistant], default: user }
 
     ListItem:
       type: object
@@ -2064,6 +2316,82 @@ components:
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
         cheapest: { $ref: "#/components/schemas/ShopPrice" }
+        group_id: { type: integer, format: int64, description: "the group this item is in; absent on the main list" }
+        source: { type: string, enum: [user, assistant], description: "who added it" }
+        rev: { type: integer, format: int64, description: "list write counter value of the last write to this item" }
+        other_group_ids: { type: array, items: { type: integer, format: int64 }, description: "live checklists where the same product is also open (as of this response)" }
+        on_main_list: { type: boolean, description: "the same product is also open on the main list (as of this response)" }
+
+    ListGroup:
+      type: object
+      required: [id, name, kind, source, sort, created_at, updated_at, rev, item_count, checked_count]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        kind: { type: string, enum: [checklist, template] }
+        note: { type: string }
+        source: { type: string, enum: [user, assistant], description: "who made the group; assistant groups show an Assistant badge" }
+        external_ref: { type: string, description: "idempotency key an assistant chose" }
+        sort: { type: integer, format: int64, description: "display order, ascending" }
+        archived_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time, description: "also moves when items are added to, moved into/out of or removed from the group" }
+        rev: { type: integer, format: int64 }
+        item_count: { type: integer, format: int64, description: "as of this response; phones normally count their own copy" }
+        checked_count: { type: integer, format: int64 }
+        items: { type: array, items: { $ref: "#/components/schemas/ListItem" }, description: "present when the group is loaded whole (single group, create, restore, include_items)" }
+        item_ids: { type: array, items: { type: integer, format: int64 }, description: "create, instantiate and save-as-template only: ids in the order of the request's items (instantiate: the template's item order)" }
+
+    ListGroupInput:
+      type: object
+      required: [name]
+      properties:
+        client_id: { type: string, maxLength: 100, description: "client-generated id (UUID); makes the create idempotent" }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        note: { type: string }
+        kind: { type: string, enum: [checklist, template], default: checklist }
+        source: { type: string, enum: [user, assistant], default: user }
+        external_ref: { type: string, maxLength: 100, description: "idempotency key for assistants, unique per source" }
+        sort: { type: integer, format: int64, description: "default: after the last group" }
+        items:
+          type: array
+          maxItems: 200
+          description: "ordered lines; each needs text or product_id. client_id and group_id on a line are ignored."
+          items: { $ref: "#/components/schemas/ListItemInput" }
+
+    ListGroupPatch:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        note: { type: string, description: "empty string clears" }
+        sort: { type: integer, format: int64 }
+        archived: { type: boolean, description: "true archives (archived_at is set), false restores" }
+
+    ListGroupItemsInput:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: "#/components/schemas/ListItemInput" }
+        source: { type: string, enum: [user, assistant], default: user }
+
+    ListGroupCopyInput:
+      type: object
+      properties:
+        client_id: { type: string, maxLength: 100 }
+        name: { type: string, minLength: 1, maxLength: 100, description: "default: the source group's name" }
+
+    ListGroupDeleted:
+      type: object
+      required: [group_id, kept, deleted_item_ids, restore_until]
+      properties:
+        group_id: { type: integer, format: int64 }
+        kept: { type: array, items: { $ref: "#/components/schemas/ListItem" }, description: "items moved to the main list (items=keep)" }
+        deleted_item_ids: { type: array, items: { type: integer, format: int64 } }
+        restore_until: { type: string, format: date-time, description: "POST /v1/list/groups/{id}/restore works until then" }
 
     ListSuggestion:
       type: object

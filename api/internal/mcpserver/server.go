@@ -52,7 +52,8 @@ const instructions = `Shop tracks grocery receipts (Dutch/English), products, pr
 Money is given both as integer cents and formatted euros. Dates are local (Europe/Amsterdam), YYYY-MM-DD.
 Product and shop arguments accept an id or a name (Dutch or English); names are fuzzy-matched and the result says which one was used.
 Products have a Dutch name (as sold) and an English name_en.
-Unit prices are per base unit (kg, l or piece). Prices come from receipts with status ok.`
+Unit prices are per base unit (kg, l or piece). Prices come from receipts with status ok.
+The shopping list can hold named checklists (groups) such as a recipe or a barbecue; fill one with shopping_group_create and pass an external_ref so a repeat does not duplicate it.`
 
 // New builds the MCP server with all tools and resources registered.
 func New(d Deps) *mcp.Server {
@@ -94,6 +95,17 @@ func New(d Deps) *mcp.Server {
 	mcp.AddTool(srv, &mcp.Tool{Name: "shopping_list_remove",
 		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
 		Description: "Remove an item from the shopping list."}, s.listRemove)
+
+	mcp.AddTool(srv, &mcp.Tool{Name: "shopping_group_create",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+		Description: "Create a checklist inside the shopping list (for example 'BBQ' with its ingredients), filled in one step. Give external_ref (a stable key such as 'bbq-2026-10-12') so calling it again returns the same group instead of a second one."}, s.groupCreate)
+	mcp.AddTool(srv, &mcp.Tool{Name: "shopping_group_list", Annotations: ro,
+		Description: "The checklists (and templates) in the shopping list with how many items are checked. include_items also returns the items."}, s.groupList)
+	mcp.AddTool(srv, &mcp.Tool{Name: "shopping_group_add_items",
+		Description: "Add items to an existing checklist. A product already open in that checklist gets its qty raised."}, s.groupAddItems)
+	mcp.AddTool(srv, &mcp.Tool{Name: "shopping_group_remove",
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
+		Description: "Delete a checklist. items=keep (default) moves its items to the main list; items=delete deletes them too. The user can undo this in the app for 10 minutes."}, s.groupRemove)
 
 	mcp.AddTool(srv, &mcp.Tool{Name: "translation_todo", Annotations: ro,
 		Description: "Dutch words the English translator doesn't know yet, ranked by how many products use them, with example product names."}, s.translationTodo)
@@ -666,10 +678,11 @@ type ListItem struct {
 	Product  *ProductRef `json:"product,omitempty"`
 	Checked  bool        `json:"checked"`
 	Cheapest string      `json:"cheapest_at,omitempty"`
+	GroupID  int64       `json:"group_id,omitempty"`
 }
 
 func toItem(it shopping.Item) ListItem {
-	out := ListItem{ID: it.ID, Text: it.Text, Qty: it.Qty.Float64, Note: it.Note.String, Checked: it.CheckedAt.Valid}
+	out := ListItem{ID: it.ID, Text: it.Text, Qty: it.Qty.Float64, Note: it.Note.String, Checked: it.CheckedAt.Valid, GroupID: it.GroupID.Int64}
 	if it.ProductID.Valid {
 		out.Product = &ProductRef{ID: it.ProductID.Int64, Name: it.ProductName}
 	}
@@ -704,6 +717,7 @@ type ListAddIn struct {
 	Qty     float64 `json:"qty,omitempty" jsonschema:"how many (optional)"`
 	Note    string  `json:"note,omitempty" jsonschema:"optional note"`
 	Product string  `json:"product,omitempty" jsonschema:"link to this product (id or name) instead of matching the text"`
+	GroupID int64   `json:"group_id,omitempty" jsonschema:"put the item in this group (from shopping_group_list); omit for the main list"`
 }
 
 type ListAddOut struct {
@@ -712,7 +726,10 @@ type ListAddOut struct {
 }
 
 func (s *server) listAdd(ctx context.Context, _ *mcp.CallToolRequest, in ListAddIn) (*mcp.CallToolResult, ListAddOut, error) {
-	si := shopping.Input{Text: in.Text}
+	si := shopping.Input{Text: in.Text, Source: shopping.SourceAssistant}
+	if in.GroupID > 0 {
+		si.GroupID = &in.GroupID
+	}
 	if in.Qty > 0 {
 		si.Qty = &in.Qty
 	}
@@ -764,6 +781,165 @@ func (s *server) listRemove(ctx context.Context, _ *mcp.CallToolRequest, in List
 		return nil, OKOut{}, fmt.Errorf("item %d: %w", in.ID, err)
 	}
 	return nil, OKOut{OK: true}, nil
+}
+
+// -------------------------------------------------------------- list groups
+
+type GroupItemIn struct {
+	Text    string  `json:"text" jsonschema:"what to buy, e.g. 'kippendijen'"`
+	Qty     float64 `json:"qty,omitempty" jsonschema:"how many (optional)"`
+	Note    string  `json:"note,omitempty" jsonschema:"optional note"`
+	Product string  `json:"product,omitempty" jsonschema:"link to this product (id or name) instead of matching the text"`
+}
+
+type GroupSummary struct {
+	ID           int64      `json:"id"`
+	Name         string     `json:"name"`
+	Kind         string     `json:"kind"`
+	Note         string     `json:"note,omitempty"`
+	Source       string     `json:"source"`
+	ExternalRef  string     `json:"external_ref,omitempty"`
+	Archived     bool       `json:"archived"`
+	ItemCount    int64      `json:"item_count"`
+	CheckedCount int64      `json:"checked_count"`
+	Items        []ListItem `json:"items,omitempty"`
+}
+
+func toGroupSummary(g shopping.Group) GroupSummary {
+	out := GroupSummary{
+		ID: g.ID, Name: g.Name, Kind: g.Kind, Note: g.Note.String, Source: g.Source, ExternalRef: g.ExternalRef.String,
+		Archived: g.ArchivedAt.Valid, ItemCount: g.ItemCount, CheckedCount: g.CheckedCount,
+	}
+	for _, it := range g.Items {
+		out.Items = append(out.Items, toItem(it))
+	}
+	return out
+}
+
+func (s *server) groupInputs(ctx context.Context, in []GroupItemIn) ([]shopping.Input, error) {
+	out := make([]shopping.Input, len(in))
+	for i, l := range in {
+		si := shopping.Input{Text: l.Text, Source: shopping.SourceAssistant}
+		if l.Qty > 0 {
+			q := l.Qty
+			si.Qty = &q
+		}
+		if l.Note != "" {
+			n := l.Note
+			si.Note = &n
+		}
+		if l.Product != "" {
+			p, err := s.resolveProduct(ctx, l.Product)
+			if err != nil {
+				return nil, fmt.Errorf("item %d: %w", i+1, err)
+			}
+			si.ProductID = &p.ID
+		}
+		out[i] = si
+	}
+	return out, nil
+}
+
+type GroupCreateIn struct {
+	Name        string        `json:"name" jsonschema:"name of the checklist, e.g. 'Jerk chicken'"`
+	Note        string        `json:"note,omitempty"`
+	ExternalRef string        `json:"external_ref,omitempty" jsonschema:"a stable key you choose; calling again with the same key returns the existing group and adds nothing"`
+	Items       []GroupItemIn `json:"items,omitempty" jsonschema:"the items, in order (at most 200)"`
+}
+
+type GroupCreateOut struct {
+	Group   GroupSummary `json:"group"`
+	Created bool         `json:"created" jsonschema:"false if a group with this external_ref already existed (nothing was added)"`
+}
+
+func (s *server) groupCreate(ctx context.Context, _ *mcp.CallToolRequest, in GroupCreateIn) (*mcp.CallToolResult, GroupCreateOut, error) {
+	lines, err := s.groupInputs(ctx, in.Items)
+	if err != nil {
+		return nil, GroupCreateOut{}, err
+	}
+	gi := shopping.GroupInput{Name: in.Name, Source: shopping.SourceAssistant, ExternalRef: in.ExternalRef, Items: lines}
+	if in.Note != "" {
+		gi.Note = &in.Note
+	}
+	res, err := s.List.CreateGroup(ctx, gi)
+	if err != nil {
+		return nil, GroupCreateOut{}, err
+	}
+	return nil, GroupCreateOut{Group: toGroupSummary(res.Group), Created: res.Created}, nil
+}
+
+type GroupListIn struct {
+	IncludeItems    bool `json:"include_items,omitempty" jsonschema:"also return each group's items"`
+	IncludeArchived bool `json:"include_archived,omitempty"`
+	Templates       bool `json:"templates,omitempty" jsonschema:"list templates instead of checklists"`
+}
+
+type GroupListOut struct {
+	Groups []GroupSummary `json:"groups"`
+}
+
+func (s *server) groupList(ctx context.Context, _ *mcp.CallToolRequest, in GroupListIn) (*mcp.CallToolResult, GroupListOut, error) {
+	kind := shopping.KindChecklist
+	if in.Templates {
+		kind = shopping.KindTemplate
+	}
+	gs, err := s.List.ListGroups(ctx, kind, in.IncludeArchived, in.IncludeItems)
+	if err != nil {
+		return nil, GroupListOut{}, err
+	}
+	out := GroupListOut{Groups: make([]GroupSummary, len(gs))}
+	for i, g := range gs {
+		out.Groups[i] = toGroupSummary(g)
+	}
+	return nil, out, nil
+}
+
+type GroupAddItemsIn struct {
+	GroupID int64         `json:"group_id" jsonschema:"checklist id from shopping_group_list"`
+	Items   []GroupItemIn `json:"items" jsonschema:"the items to add (at most 200)"`
+}
+
+type GroupAddItemsOut struct {
+	Items []ListItem `json:"items"`
+}
+
+func (s *server) groupAddItems(ctx context.Context, _ *mcp.CallToolRequest, in GroupAddItemsIn) (*mcp.CallToolResult, GroupAddItemsOut, error) {
+	lines, err := s.groupInputs(ctx, in.Items)
+	if err != nil {
+		return nil, GroupAddItemsOut{}, err
+	}
+	items, err := s.List.AddItems(ctx, in.GroupID, lines, shopping.SourceAssistant)
+	if err != nil {
+		return nil, GroupAddItemsOut{}, fmt.Errorf("group %d: %w", in.GroupID, err)
+	}
+	out := GroupAddItemsOut{Items: make([]ListItem, len(items))}
+	for i, it := range items {
+		out.Items[i] = toItem(it)
+	}
+	return nil, out, nil
+}
+
+type GroupRemoveIn struct {
+	GroupID int64  `json:"group_id" jsonschema:"checklist id from shopping_group_list"`
+	Items   string `json:"items,omitempty" jsonschema:"keep (default): move its items to the main list; delete: delete them too"`
+}
+
+type GroupRemoveOut struct {
+	OK             bool  `json:"ok"`
+	ItemsKept      int   `json:"items_kept"`
+	ItemsDeleted   int   `json:"items_deleted"`
+	RestoreMinutes int64 `json:"restore_minutes"`
+}
+
+func (s *server) groupRemove(ctx context.Context, _ *mcp.CallToolRequest, in GroupRemoveIn) (*mcp.CallToolResult, GroupRemoveOut, error) {
+	if in.Items != "" && in.Items != "keep" && in.Items != "delete" {
+		return nil, GroupRemoveOut{}, fmt.Errorf("items must be keep or delete")
+	}
+	res, err := s.List.DeleteGroup(ctx, in.GroupID, in.Items != "delete")
+	if err != nil {
+		return nil, GroupRemoveOut{}, fmt.Errorf("group %d: %w", in.GroupID, err)
+	}
+	return nil, GroupRemoveOut{OK: true, ItemsKept: len(res.Kept), ItemsDeleted: len(res.DeletedItemIDs), RestoreMinutes: int64(shopping.RestoreWindow.Minutes())}, nil
 }
 
 // --------------------------------------------------------- resources

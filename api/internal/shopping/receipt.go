@@ -116,7 +116,7 @@ func (s *Service) ReconcileReceipt(ctx context.Context, receiptID int64) (Receip
 	if !s.eligible(rec) {
 		return out, nil
 	}
-	open, err := s.q.ListShoppingItems(ctx, 0)
+	open, err := s.q.ListReconcilableItems(ctx)
 	if err != nil || len(open) == 0 {
 		return out, err
 	}
@@ -263,7 +263,9 @@ func (s *Service) plan(open []db.ShoppingListItem, lines []rline, cats map[int64
 			byProduct[l.ProductID.Int64] = append(byProduct[l.ProductID.Int64], l)
 		}
 	}
-	remaining := map[int64]float64{} // quantity of each product the receipt still has to give
+	// Quantity of each product the receipt holds. One purchase checks the product everywhere it is open
+	// (main list and every checklist), so each item is measured against the whole purchase.
+	remaining := map[int64]float64{}
 	for pid, ls := range byProduct {
 		for _, l := range ls {
 			remaining[pid] += lineQty(l)
@@ -289,7 +291,6 @@ func (s *Service) plan(open []db.ShoppingListItem, lines []rline, cats map[int64
 		if ls[0].Unit != "pc" {
 			got = need // weighed or by volume: any purchase covers the item
 		}
-		remaining[it.ProductID.Int64] -= got
 		for _, l := range ls {
 			usedLine[l.ID] = true
 		}
@@ -361,7 +362,39 @@ func (s *Service) plan(open []db.ShoppingListItem, lines []rline, cats map[int64
 		}
 		out = append(out, d)
 	}
+
+	// 3. The same free text open in another group is the same purchase: it gets the same decision.
+	twinKey := func(it db.ShoppingListItem) string {
+		return strconv.FormatInt(it.ProductID.Int64, 10) + "|" + match.Normalise(it.Text)
+	}
+	decided := map[int64]bool{}
+	byKey := map[string]decision{}
+	for _, d := range out {
+		decided[d.item.ID] = true
+		if !d.item.ProductID.Valid {
+			byKey[twinKey(d.item)] = d
+		}
+	}
+	for _, it := range open {
+		if decided[it.ID] || it.ProductID.Valid {
+			continue
+		}
+		if d, ok := byKey[twinKey(it)]; ok {
+			d.item = it
+			if d.check {
+				d.bound = min(d.bound, itemNeed(it))
+			}
+			out = append(out, d)
+		}
+	}
 	return out
+}
+
+func itemNeed(it db.ShoppingListItem) float64 {
+	if it.Qty.Valid {
+		return it.Qty.Float64
+	}
+	return 1
 }
 
 func lineQty(l rline) float64 {

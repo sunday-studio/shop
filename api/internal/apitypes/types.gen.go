@@ -201,6 +201,96 @@ func (e LineUnit) Valid() bool {
 	}
 }
 
+// Defines values for ListGroupKind.
+const (
+	ListGroupKindChecklist ListGroupKind = "checklist"
+	ListGroupKindTemplate  ListGroupKind = "template"
+)
+
+// Valid indicates whether the value is a known member of the ListGroupKind enum.
+func (e ListGroupKind) Valid() bool {
+	switch e {
+	case ListGroupKindChecklist:
+		return true
+	case ListGroupKindTemplate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListGroupSource.
+const (
+	ListGroupSourceAssistant ListGroupSource = "assistant"
+	ListGroupSourceUser      ListGroupSource = "user"
+)
+
+// Valid indicates whether the value is a known member of the ListGroupSource enum.
+func (e ListGroupSource) Valid() bool {
+	switch e {
+	case ListGroupSourceAssistant:
+		return true
+	case ListGroupSourceUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListGroupInputKind.
+const (
+	ListGroupInputKindChecklist ListGroupInputKind = "checklist"
+	ListGroupInputKindTemplate  ListGroupInputKind = "template"
+)
+
+// Valid indicates whether the value is a known member of the ListGroupInputKind enum.
+func (e ListGroupInputKind) Valid() bool {
+	switch e {
+	case ListGroupInputKindChecklist:
+		return true
+	case ListGroupInputKindTemplate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListGroupInputSource.
+const (
+	ListGroupInputSourceAssistant ListGroupInputSource = "assistant"
+	ListGroupInputSourceUser      ListGroupInputSource = "user"
+)
+
+// Valid indicates whether the value is a known member of the ListGroupInputSource enum.
+func (e ListGroupInputSource) Valid() bool {
+	switch e {
+	case ListGroupInputSourceAssistant:
+		return true
+	case ListGroupInputSourceUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListGroupItemsInputSource.
+const (
+	ListGroupItemsInputSourceAssistant ListGroupItemsInputSource = "assistant"
+	ListGroupItemsInputSourceUser      ListGroupItemsInputSource = "user"
+)
+
+// Valid indicates whether the value is a known member of the ListGroupItemsInputSource enum.
+func (e ListGroupItemsInputSource) Valid() bool {
+	switch e {
+	case ListGroupItemsInputSourceAssistant:
+		return true
+	case ListGroupItemsInputSourceUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListItemCheckSource.
 const (
 	ListItemCheckSourceManual  ListItemCheckSource = "manual"
@@ -213,6 +303,42 @@ func (e ListItemCheckSource) Valid() bool {
 	case ListItemCheckSourceManual:
 		return true
 	case ListItemCheckSourceReceipt:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListItemSource.
+const (
+	ListItemSourceAssistant ListItemSource = "assistant"
+	ListItemSourceUser      ListItemSource = "user"
+)
+
+// Valid indicates whether the value is a known member of the ListItemSource enum.
+func (e ListItemSource) Valid() bool {
+	switch e {
+	case ListItemSourceAssistant:
+		return true
+	case ListItemSourceUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListItemInputSource.
+const (
+	ListItemInputSourceAssistant ListItemInputSource = "assistant"
+	ListItemInputSourceUser      ListItemInputSource = "user"
+)
+
+// Valid indicates whether the value is a known member of the ListItemInputSource enum.
+func (e ListItemInputSource) Valid() bool {
+	switch e {
+	case ListItemInputSourceAssistant:
+		return true
+	case ListItemInputSourceUser:
 		return true
 	default:
 		return false
@@ -849,6 +975,42 @@ func (e GetAuthStatus200JSONResponseBodyServer) Valid() bool {
 	}
 }
 
+// Defines values for ListListGroupsParamsKind.
+const (
+	ListListGroupsParamsKindChecklist ListListGroupsParamsKind = "checklist"
+	ListListGroupsParamsKindTemplate  ListListGroupsParamsKind = "template"
+)
+
+// Valid indicates whether the value is a known member of the ListListGroupsParamsKind enum.
+func (e ListListGroupsParamsKind) Valid() bool {
+	switch e {
+	case ListListGroupsParamsKindChecklist:
+		return true
+	case ListListGroupsParamsKindTemplate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteListGroupParamsItems.
+const (
+	Delete DeleteListGroupParamsItems = "delete"
+	Keep   DeleteListGroupParamsItems = "keep"
+)
+
+// Valid indicates whether the value is a known member of the DeleteListGroupParamsItems enum.
+func (e DeleteListGroupParamsItems) Valid() bool {
+	switch e {
+	case Delete:
+		return true
+	case Keep:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListProductsParamsSort.
 const (
 	Name      ListProductsParamsSort = "name"
@@ -1120,6 +1282,110 @@ type LinkResult struct {
 	Line       ReceiptLine `json:"line"`
 }
 
+// ListGroup defines model for ListGroup.
+type ListGroup struct {
+	ArchivedAt   *time.Time `json:"archived_at,omitempty"`
+	CheckedCount int64      `json:"checked_count"`
+	CreatedAt    time.Time  `json:"created_at"`
+
+	// ExternalRef idempotency key an assistant chose
+	ExternalRef *string `json:"external_ref,omitempty"`
+	Id          int64   `json:"id"`
+
+	// ItemCount as of this response; phones normally count their own copy
+	ItemCount int64 `json:"item_count"`
+
+	// ItemIds create, instantiate and save-as-template only: ids in the order of the request's items (instantiate: the template's item order)
+	ItemIds *[]int64 `json:"item_ids,omitempty"`
+
+	// Items present when the group is loaded whole (single group, create, restore, include_items)
+	Items *[]ListItem   `json:"items,omitempty"`
+	Kind  ListGroupKind `json:"kind"`
+	Name  string        `json:"name"`
+	Note  *string       `json:"note,omitempty"`
+	Rev   int64         `json:"rev"`
+
+	// Sort display order, ascending
+	Sort int64 `json:"sort"`
+
+	// Source who made the group; assistant groups show an Assistant badge
+	Source ListGroupSource `json:"source"`
+
+	// UpdatedAt also moves when items are added to, moved into/out of or removed from the group
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ListGroupKind defines model for ListGroup.Kind.
+type ListGroupKind string
+
+// ListGroupSource who made the group; assistant groups show an Assistant badge
+type ListGroupSource string
+
+// ListGroupCopyInput defines model for ListGroupCopyInput.
+type ListGroupCopyInput struct {
+	ClientId *string `json:"client_id,omitempty"`
+
+	// Name default: the source group's name
+	Name *string `json:"name,omitempty"`
+}
+
+// ListGroupDeleted defines model for ListGroupDeleted.
+type ListGroupDeleted struct {
+	DeletedItemIds []int64 `json:"deleted_item_ids"`
+	GroupId        int64   `json:"group_id"`
+
+	// Kept items moved to the main list (items=keep)
+	Kept []ListItem `json:"kept"`
+
+	// RestoreUntil POST /v1/list/groups/{id}/restore works until then
+	RestoreUntil time.Time `json:"restore_until"`
+}
+
+// ListGroupInput defines model for ListGroupInput.
+type ListGroupInput struct {
+	// ClientId client-generated id (UUID); makes the create idempotent
+	ClientId *string `json:"client_id,omitempty"`
+
+	// ExternalRef idempotency key for assistants, unique per source
+	ExternalRef *string `json:"external_ref,omitempty"`
+
+	// Items ordered lines; each needs text or product_id. client_id and group_id on a line are ignored.
+	Items *[]ListItemInput    `json:"items,omitempty"`
+	Kind  *ListGroupInputKind `json:"kind,omitempty"`
+	Name  string              `json:"name"`
+	Note  *string             `json:"note,omitempty"`
+
+	// Sort default: after the last group
+	Sort   *int64                `json:"sort,omitempty"`
+	Source *ListGroupInputSource `json:"source,omitempty"`
+}
+
+// ListGroupInputKind defines model for ListGroupInput.Kind.
+type ListGroupInputKind string
+
+// ListGroupInputSource defines model for ListGroupInput.Source.
+type ListGroupInputSource string
+
+// ListGroupItemsInput defines model for ListGroupItemsInput.
+type ListGroupItemsInput struct {
+	Items  []ListItemInput            `json:"items"`
+	Source *ListGroupItemsInputSource `json:"source,omitempty"`
+}
+
+// ListGroupItemsInputSource defines model for ListGroupItemsInput.Source.
+type ListGroupItemsInputSource string
+
+// ListGroupPatch defines model for ListGroupPatch.
+type ListGroupPatch struct {
+	// Archived true archives (archived_at is set), false restores
+	Archived *bool   `json:"archived,omitempty"`
+	Name     *string `json:"name,omitempty"`
+
+	// Note empty string clears
+	Note *string `json:"note,omitempty"`
+	Sort *int64  `json:"sort,omitempty"`
+}
+
 // ListItem defines model for ListItem.
 type ListItem struct {
 	Cheapest *ShopPrice `json:"cheapest,omitempty"`
@@ -1132,29 +1398,54 @@ type ListItem struct {
 	CheckedLineId *int64 `json:"checked_line_id,omitempty"`
 
 	// CheckedReceiptId the receipt that checked it (check_source=receipt)
-	CheckedReceiptId *int64     `json:"checked_receipt_id,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	Id               int64      `json:"id"`
-	Note             *string    `json:"note,omitempty"`
-	ProductId        *int64     `json:"product_id,omitempty"`
-	ProductName      *string    `json:"product_name,omitempty"`
-	Qty              *float64   `json:"qty,omitempty"`
-	Text             string     `json:"text"`
-	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
+	CheckedReceiptId *int64    `json:"checked_receipt_id,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+
+	// GroupId the group this item is in; absent on the main list
+	GroupId *int64  `json:"group_id,omitempty"`
+	Id      int64   `json:"id"`
+	Note    *string `json:"note,omitempty"`
+
+	// OnMainList the same product is also open on the main list (as of this response)
+	OnMainList *bool `json:"on_main_list,omitempty"`
+
+	// OtherGroupIds live checklists where the same product is also open (as of this response)
+	OtherGroupIds *[]int64 `json:"other_group_ids,omitempty"`
+	ProductId     *int64   `json:"product_id,omitempty"`
+	ProductName   *string  `json:"product_name,omitempty"`
+	Qty           *float64 `json:"qty,omitempty"`
+
+	// Rev list write counter value of the last write to this item
+	Rev *int64 `json:"rev,omitempty"`
+
+	// Source who added it
+	Source    *ListItemSource `json:"source,omitempty"`
+	Text      string          `json:"text"`
+	UpdatedAt *time.Time      `json:"updated_at,omitempty"`
 }
 
 // ListItemCheckSource present when checked. "receipt" = checked automatically (or by accepting a suggestion) because of a confirmed receipt.
 type ListItemCheckSource string
 
+// ListItemSource who added it
+type ListItemSource string
+
 // ListItemInput defines model for ListItemInput.
 type ListItemInput struct {
 	// ClientId client-generated id (UUID); makes POST /v1/list idempotent
-	ClientId  *string  `json:"client_id,omitempty"`
-	Note      *string  `json:"note,omitempty"`
-	ProductId *int64   `json:"product_id,omitempty"`
-	Qty       *float64 `json:"qty,omitempty"`
-	Text      *string  `json:"text,omitempty"`
+	ClientId *string `json:"client_id,omitempty"`
+
+	// GroupId POST only: put the item in this group (checklist or template). Omit for the main list. Use POST /v1/list/{id}/move to move an item later.
+	GroupId   *int64               `json:"group_id,omitempty"`
+	Note      *string              `json:"note,omitempty"`
+	ProductId *int64               `json:"product_id,omitempty"`
+	Qty       *float64             `json:"qty,omitempty"`
+	Source    *ListItemInputSource `json:"source,omitempty"`
+	Text      *string              `json:"text,omitempty"`
 }
+
+// ListItemInputSource defines model for ListItemInput.Source.
+type ListItemInputSource string
 
 // ListSuggestion defines model for ListSuggestion.
 type ListSuggestion struct {
@@ -1780,7 +2071,40 @@ type AddListItemParams struct {
 
 // ListChangesParams defines parameters for ListChanges.
 type ListChangesParams struct {
-	Since time.Time `form:"since" json:"since"`
+	SinceRev *int64 `form:"since_rev,omitempty" json:"since_rev,omitempty"`
+
+	// Since Original cursor. One of since_rev or since is required; since_rev wins if both are sent.
+	Since *time.Time `form:"since,omitempty" json:"since,omitempty"`
+}
+
+// ListListGroupsParams defines parameters for ListListGroups.
+type ListListGroupsParams struct {
+	Kind            *ListListGroupsParamsKind `form:"kind,omitempty" json:"kind,omitempty"`
+	IncludeArchived *bool                     `form:"include_archived,omitempty" json:"include_archived,omitempty"`
+	IncludeItems    *bool                     `form:"include_items,omitempty" json:"include_items,omitempty"`
+}
+
+// ListListGroupsParamsKind defines parameters for ListListGroups.
+type ListListGroupsParamsKind string
+
+// CreateListGroupParams defines parameters for CreateListGroup.
+type CreateListGroupParams struct {
+	// IdempotencyKey Same as client_id in the body (either works).
+	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
+}
+
+// DeleteListGroupParams defines parameters for DeleteListGroup.
+type DeleteListGroupParams struct {
+	Items *DeleteListGroupParamsItems `form:"items,omitempty" json:"items,omitempty"`
+}
+
+// DeleteListGroupParamsItems defines parameters for DeleteListGroup.
+type DeleteListGroupParamsItems string
+
+// MoveListItemJSONBody defines parameters for MoveListItem.
+type MoveListItemJSONBody struct {
+	// GroupId target group, null = main list
+	GroupId *int64 `json:"group_id"`
 }
 
 // ListProductsParams defines parameters for ListProducts.
@@ -1968,8 +2292,26 @@ type SplitLineProductJSONRequestBody SplitLineProductJSONBody
 // AddListItemJSONRequestBody defines body for AddListItem for application/json ContentType.
 type AddListItemJSONRequestBody = ListItemInput
 
+// CreateListGroupJSONRequestBody defines body for CreateListGroup for application/json ContentType.
+type CreateListGroupJSONRequestBody = ListGroupInput
+
+// UpdateListGroupJSONRequestBody defines body for UpdateListGroup for application/json ContentType.
+type UpdateListGroupJSONRequestBody = ListGroupPatch
+
+// InstantiateListTemplateJSONRequestBody defines body for InstantiateListTemplate for application/json ContentType.
+type InstantiateListTemplateJSONRequestBody = ListGroupCopyInput
+
+// AddListGroupItemsJSONRequestBody defines body for AddListGroupItems for application/json ContentType.
+type AddListGroupItemsJSONRequestBody = ListGroupItemsInput
+
+// SaveListGroupAsTemplateJSONRequestBody defines body for SaveListGroupAsTemplate for application/json ContentType.
+type SaveListGroupAsTemplateJSONRequestBody = ListGroupCopyInput
+
 // UpdateListItemJSONRequestBody defines body for UpdateListItem for application/json ContentType.
 type UpdateListItemJSONRequestBody = ListItemInput
+
+// MoveListItemJSONRequestBody defines body for MoveListItem for application/json ContentType.
+type MoveListItemJSONRequestBody MoveListItemJSONBody
 
 // CreateProductJSONRequestBody defines body for CreateProduct for application/json ContentType.
 type CreateProductJSONRequestBody = ProductInput
