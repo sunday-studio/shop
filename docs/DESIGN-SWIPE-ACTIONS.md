@@ -12,7 +12,7 @@ What I could and could not confirm about Outlook: static Mobbin screens don't sh
 - **Flick:** a flick faster than 650 pt/s in the swipe direction commits even below the threshold, once the row has moved at least 12 % of the width.
 - **Physics:** the row follows 1:1 up to 1.6 × the threshold, then at 35 % (heavier). Swiping on a side with no action rubber-bands to 24 pt. Release below threshold springs back (response 0.34, damping 0.82).
 - **After commit:** actions that remove the row (`removesRow: true`) slide the row fully off in 0.2 s, then run; the list collapses the row. Actions that open a tray or only change state spring back and run at once. Delete always opens the confirm tray (or shows an Undo toast), so it springs back.
-- **Gesture rules:** horizontal only (width at least 1.6 × height), starts at least 20 pt from the left edge so the system back swipe still works, simultaneous with list scrolling. Reduce Motion: no pop, 0.12 s fades instead of springs.
+- **Gesture rules:** a UIKit pan on the row's hosting view that only begins for a horizontal move (width at least 1.6 × height) inside the row, at least 20 pt from the left edge so the system back swipe still works. It does not run alongside other recognizers, so it cancels the Button inside the row: a swipe never also taps (checked: swipe leaves the tap count at 0, a tap counts 1). No flag for the rows to check. Reduce Motion: no pop, 0.12 s fades instead of springs.
 
 ## Per list
 | List | Right (leading) | Left (trailing) |
