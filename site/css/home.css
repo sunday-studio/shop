@@ -83,10 +83,11 @@ body{position:relative}
 .fi .dd p{font-size:17px;line-height:1.55;color:var(--ink2);margin:10px 0 0;max-width:400px}
 .fi .pr{position:absolute;left:0;top:-1px;height:2px;width:calc(100%*var(--on));background:var(--blue)}
 .stage{position:relative;flex:none;border-radius:36px;background:var(--panel);overflow:hidden;height:460px;margin-top:28px}
-.ph{position:absolute;left:0;right:0;top:50px;display:flex;justify-content:center;opacity:var(--on);transition:opacity .45s linear}
+.ph{position:absolute;left:0;right:0;top:50px;display:flex;justify-content:center;opacity:var(--on);transform:translateY(calc((1 - var(--on))*28px));transition-property:opacity,transform;transition-duration:calc(.3s + .15s*var(--on)),calc(.45s*var(--on));transition-delay:calc(.3s*var(--on)),.3s;transition-timing-function:ease-out}
 .ph .dev{width:250px}
 /* The cycle is one animated integer (--a = active feature). Phones, titles and descriptions take their opacity
    from it with a transition, so automatic and clicked switches are both true cross-fades. */
+@media (prefers-reduced-motion:reduce){.ph,.fi h3,.fi .dd{transition:none}}
 @keyframes cyc0{0%{--a:1}25%{--a:2}50%{--a:3}75%{--a:4}100%{--a:1}}
 @keyframes pOn{0%{width:0}25%{width:100%}25.01%,100%{width:0}}
 @media (prefers-reduced-motion:no-preference){
