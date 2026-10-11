@@ -16,6 +16,7 @@ struct HomeView: View {
     }
 
     var body: some View {
+        let _ = LaunchTrace.mark("HomeView body")
         List {
             VStack(alignment: .leading, spacing: 0) {
                 HomeHeader(showsStatus: app.syncStatus != nil, onSettings: { app.push(.settings) }, onSearch: { app.push(.search) }) {
@@ -63,7 +64,7 @@ struct HomeView: View {
         }
         .shopListStyle()
         .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
-        .onAppear { app.reviewSequence = [] }
+        .onAppear { app.reviewSequence = []; LaunchTrace.mark("Home appeared") }
         .task {
             try? await Task.sleep(for: .milliseconds(900))
             staggerOn = false

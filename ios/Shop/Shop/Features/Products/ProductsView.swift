@@ -149,7 +149,7 @@ struct ProductsView: View {
             Group {
                 if model.isSearching {
                     newProductRow(name: model.query)
-                } else if app.catalog.isSyncing {
+                } else if app.catalog.isSyncing || app.catalog.isLoadingCache {
                     SkeletonRows(count: 8) { SkeletonProductRow() }
                 } else if let id = model.categoryId {
                     let name = app.catalog.category(id)?.name ?? "this category"
