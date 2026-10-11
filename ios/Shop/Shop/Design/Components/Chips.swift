@@ -30,7 +30,7 @@ struct Chip: View {
                 if let dot {
                     CategoryDot(color: isSelected ? Palette.btnInk : dot)
                 }
-                Text(title).textStyle(textStyle)
+                textStyle.text(title)
             }
             .foregroundStyle(isSelected ? Palette.btnInk : Palette.ink)
             .padding(.leading, dot == nil ? hPad : hPad - 2)
@@ -85,8 +85,7 @@ struct ToneChip: View {
             Haptics.play(.selection)
             action()
         } label: {
-            Text(title)
-                .textStyle(.captionMedium)
+            TypeStyle.captionMedium.text(title)
                 .foregroundStyle(isSelected ? Palette.bg : tone.text)
                 .padding(.horizontal, 8)
                 .frame(height: Size.chipSmall)
@@ -131,7 +130,7 @@ struct SuggestionChip: View {
         Button(action: action) {
             HStack(spacing: 5) {
                 IconView(icon, size: 13, weight: .bold)
-                Text(title).textStyle(TypeStyle.label.sized(13.5))
+                TypeStyle.label.sized(13.5).text(title)
             }
             .foregroundStyle(Palette.ink)
             .padding(.leading, 8)
@@ -163,8 +162,7 @@ struct SegmentedControl<Option: Hashable>: View {
                     Haptics.play(.selection)
                     withAnimation(Motion.spring) { selection = option }
                 } label: {
-                    Text(title(option))
-                        .textStyle(TypeStyle.label.sized(14))
+                    TypeStyle.label.sized(14).text(title(option))
                         .foregroundStyle(on ? Palette.ink : Palette.ink2)
                         .frame(maxWidth: .infinity)
                         .frame(height: Size.segment)

@@ -30,25 +30,6 @@ struct ReceiptShape: Shape {
     }
 }
 
-/// A row of triangles pointing down: the torn edge of a receipt.
-struct ToothEdge: Shape {
-    var teeth = 10
-
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        let w = rect.width / CGFloat(teeth)
-        p.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        for i in 0..<teeth {
-            let x0 = rect.maxX - CGFloat(i) * w
-            p.addLine(to: CGPoint(x: x0 - w / 2, y: rect.maxY))
-            p.addLine(to: CGPoint(x: x0 - w, y: rect.minY))
-        }
-        p.closeSubpath()
-        return p
-    }
-}
-
 /// The app icon in miniature: blue squircle, tilted receipt with a green dot, line items and the yellow total.
 struct ShopIconBadge: View {
     var size: CGFloat = 32
@@ -79,31 +60,22 @@ struct ShopIconBadge: View {
     }
 }
 
-enum ShopLogoStyle: CaseIterable {
-    /// A: icon badge plus bold wordmark.
-    case badge
-    /// B: ink wordmark with a torn-receipt edge under it and a green dot.
-    case tear
-    /// C: the icon's yellow total bar as a tilted pill with the wordmark and barcode ticks.
-    case total
-}
-
+/// The Home header logo: the app icon in miniature next to a bold "Shop". `wiggle` is bumped by
+/// the screen (first launch, pull to refresh) to play one short tilt; no loop; none with Reduce Motion.
 struct ShopLogo: View {
-    var style: ShopLogoStyle = .badge
-    var height: CGFloat = 32
-    /// Change this value to play one short tilt (first launch, pull to refresh).
+    var height: CGFloat = 30
     var wiggle: Int = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduce
     @State private var tilt: Double = 0
 
     var body: some View {
-        Group {
-            switch style {
-            case .badge: badge
-            case .tear: tear
-            case .total: total
-            }
+        HStack(spacing: 8) {
+            ShopIconBadge(size: height, tilt: -9 + tilt)
+            Text("Shop")
+                .font(.custom(ShopFont.bold, size: height * 0.72))
+                .tracking(-height * 0.72 * 0.04)
+                .foregroundStyle(Palette.ink)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Shop")
@@ -116,61 +88,8 @@ struct ShopLogo: View {
         tilt = -7
         withAnimation(.spring(response: 0.5, dampingFraction: 0.45)) { tilt = 0 }
     }
-
-    private var badge: some View {
-        HStack(spacing: 8) {
-            ShopIconBadge(size: height, tilt: -9 + tilt)
-            Text("Shop")
-                .font(.custom(ShopFont.bold, size: height * 0.72))
-                .tracking(-height * 0.72 * 0.04)
-                .foregroundStyle(Palette.ink)
-        }
-    }
-
-    private var tear: some View {
-        VStack(spacing: height * 0.06) {
-            HStack(alignment: .lastTextBaseline, spacing: 2) {
-                Text("shop")
-                    .font(.custom(ShopFont.bold, size: height * 0.84))
-                    .tracking(-height * 0.84 * 0.04)
-                    .foregroundStyle(Palette.ink)
-                Circle().fill(Accent.green).frame(width: height * 0.18, height: height * 0.18)
-            }
-            ToothEdge(teeth: 12)
-                .fill(Accent.yellow)
-                .frame(width: height * 2.1, height: height * 0.16)
-        }
-        .rotationEffect(.degrees(-3 + tilt))
-    }
-
-    private var total: some View {
-        HStack(spacing: height * 0.22) {
-            Text("shop")
-                .font(.custom(ShopFont.bold, size: height * 0.62))
-                .tracking(-height * 0.62 * 0.04)
-            HStack(spacing: 1.5) {
-                ForEach([2.0, 1.0, 3.0, 1.0, 2.0, 1.0], id: \.self) { w in
-                    Rectangle().frame(width: w * height * 0.04, height: height * 0.4)
-                }
-            }
-            .opacity(0.8)
-        }
-        .foregroundStyle(Accent.onLight)
-        .padding(.horizontal, height * 0.34)
-        .frame(height: height)
-        .background(Accent.yellow, in: RoundedRectangle.continuous(height * 0.34))
-        .overlay(alignment: .leading) {
-            Circle().fill(Accent.green).frame(width: height * 0.2, height: height * 0.2).offset(x: -height * 0.06, y: -height * 0.3)
-        }
-        .rotationEffect(.degrees(-4 + tilt))
-    }
 }
 
-#Preview("Logo options") {
-    VStack(alignment: .leading, spacing: 24) {
-        ForEach(ShopLogoStyle.allCases, id: \.self) { ShopLogo(style: $0) }
-    }
-    .padding(Space.gutter)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(Palette.bg)
+#Preview("Logo") {
+    ShopLogo().padding(Space.gutter).background(Palette.bg)
 }

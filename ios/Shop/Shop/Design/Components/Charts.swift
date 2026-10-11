@@ -61,8 +61,7 @@ struct SpendBars: View {
 
             HStack(spacing: Space.ml) {
                 ForEach(bars) { bar in
-                    Text(bar.label)
-                        .textStyle(TypeStyle.captionMedium.sized(11.5))
+                    TypeStyle.captionMedium.sized(11.5).text(bar.label)
                         .foregroundStyle(bar.isCurrent ? Palette.ink : Palette.ink3)
                         .frame(maxWidth: .infinity)
                 }
@@ -103,8 +102,7 @@ struct SpendBars: View {
             Line()
                 .stroke(Palette.line, style: StrokeStyle(lineWidth: 1, dash: dashed ? [3, 3] : []))
                 .frame(height: 1)
-            Text(label)
-                .textStyle(.micro)
+            TypeStyle.micro.text(label)
                 .foregroundStyle(Palette.ink3)
                 .frame(width: 38, alignment: .trailing)
         }
@@ -148,8 +146,7 @@ struct MiniBars: View {
                     RoundedRectangle.continuous(6)
                         .fill(color.opacity(index == values.count - 1 ? 1 : 0.4))
                         .frame(height: max(3, height * CGFloat(value.cents) / CGFloat(top)))
-                    Text(value.label)
-                        .textStyle(.micro)
+                    TypeStyle.micro.text(value.label)
                         .opacity(0.8)
                 }
                 .frame(maxWidth: .infinity)
@@ -220,8 +217,7 @@ struct PriceChart: View {
             AxisMarks(values: .stride(by: .month)) { value in
                 AxisValueLabel {
                     if let date = value.as(Date.self) {
-                        Text(Dates.monthShort(date))
-                            .textStyle(.micro)
+                        TypeStyle.micro.text(Dates.monthShort(date))
                             .foregroundStyle(Palette.ink3)
                     }
                 }

@@ -16,22 +16,21 @@ struct StatCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(caption)
-                .textStyle(TypeStyle.captionMedium.sized(12.5))
+            TypeStyle.captionMedium.sized(12.5).text(caption)
                 .foregroundStyle(secondary)
                 .lineLimit(1)
             HStack(alignment: .firstTextBaseline, spacing: 1) {
-                Text(value).textStyle(TypeStyle.emptyTitle.sized(26).withFace(.regular))
+                TypeStyle.emptyTitle.sized(26).withFace(.regular).text(value)
                     .tracking(-0.04 * 26)
                 if let unit {
-                    Text(unit).textStyle(TypeStyle.input.sized(15)).foregroundStyle(secondary)
+                    TypeStyle.input.sized(15).text(unit).foregroundStyle(secondary)
                 }
             }
             .foregroundStyle(primary)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             if let footnote {
-                Text(footnote).textStyle(.caption).foregroundStyle(secondary).lineLimit(1)
+                TypeStyle.caption.text(footnote).foregroundStyle(secondary).lineLimit(1)
             }
         }
         .padding(.vertical, Space.lx)

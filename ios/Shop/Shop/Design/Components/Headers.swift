@@ -19,7 +19,7 @@ struct SyncPill: View {
                 } else {
                     StatusDot(color: dot, size: 8)
                 }
-                Text(title).textStyle(.label).lineLimit(1)
+                TypeStyle.label.text(title).lineLimit(1)
             }
             .foregroundStyle(Palette.ink)
             .padding(.leading, 10)
@@ -74,10 +74,10 @@ struct LargeTitleHeader<Trailing: View>: View {
     var body: some View {
         HStack(alignment: .center) {
             HStack(alignment: .firstTextBaseline, spacing: Space.m) {
-                Text(title).textStyle(.screenTitle).foregroundStyle(Palette.ink)
+                TypeStyle.screenTitle.text(title).foregroundStyle(Palette.ink)
                     .accessibilityAddTraits(.isHeader)
                 if let detail {
-                    Text(detail).textStyle(.body).foregroundStyle(Palette.ink2)
+                    TypeStyle.body.text(detail).foregroundStyle(Palette.ink2)
                         .contentTransition(.numericText())
                 }
             }
@@ -110,8 +110,7 @@ struct NavHeader<Trailing: View>: View {
 
     var body: some View {
         ZStack {
-            Text(title)
-                .textStyle(.navTitle)
+            TypeStyle.navTitle.text(title)
                 .foregroundStyle(Palette.ink)
                 .lineLimit(1)
                 .padding(.horizontal, 56)
@@ -149,7 +148,7 @@ struct StepHeader: View {
 
     var body: some View {
         ZStack {
-            Text(step).textStyle(.label).foregroundStyle(Palette.ink2)
+            TypeStyle.label.text(step).foregroundStyle(Palette.ink2)
             HStack {
                 if let onBack { IconButton.back(action: onBack) }
                 Spacer()
@@ -176,8 +175,7 @@ struct HeadlineBlock: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             if let message {
-                Text(message)
-                    .textStyle(.bodyLarge)
+                TypeStyle.bodyLarge.text(message)
                     .foregroundStyle(Palette.ink2)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)

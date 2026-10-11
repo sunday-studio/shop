@@ -102,8 +102,47 @@ extension TypeStyle {
     static let mono = TypeStyle(size: 13.5, face: .monoMedium, trackingEm: 0, relativeTo: .body)
 }
 
+extension TypeStyle {
+    /// GT America's digits are proportional and the font has no tabular feature, so
+    /// `.monospacedDigit()` does nothing. The design canvas gets tabular figures by taking the digits
+    /// 0 to 9 from GT America Mono; this does the same: digit runs use the mono face at the same size.
+    var digitFont: Font {
+        let name: String
+        switch face {
+        case .regular: name = ShopFont.monoRegular
+        case .medium, .bold, .monoMedium: name = ShopFont.monoMedium
+        case .monoRegular: name = ShopFont.monoRegular
+        }
+        return .custom(name, size: size, relativeTo: relativeTo)
+    }
+
+    /// Text in this style with tabular digits. Use it for anything that can contain a number:
+    /// amounts, prices, counts, dates, times, quantities.
+    func text(_ string: String) -> Text {
+        var out = AttributedString()
+        var run = ""
+        var runIsDigit = false
+        func flush() {
+            guard !run.isEmpty else { return }
+            var part = AttributedString(run)
+            part.font = runIsDigit ? digitFont : font
+            part.tracking = tracking
+            out.append(part)
+            run = ""
+        }
+        for ch in string {
+            let isDigit = ch.isASCII && ch.isNumber
+            if isDigit != runIsDigit { flush(); runIsDigit = isDigit }
+            run.append(ch)
+        }
+        flush()
+        return Text(out)
+    }
+}
+
 extension View {
-    /// Applies a type style: font, tracking and tabular digits.
+    /// Applies a type style: font and tracking. For text that can contain digits use
+    /// `style.text(string)` instead (tabular figures); this modifier cannot change the digits.
     func textStyle(_ style: TypeStyle) -> some View {
         font(style.font)
             .tracking(style.tracking)

@@ -90,7 +90,7 @@ struct ImportReceiptRow: View {
         HStack(alignment: .center, spacing: Space.l) {
             PageStrip(pages: pages)
             VStack(alignment: .leading, spacing: 6) {
-                Text(title).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
+                TypeStyle.rowTitle.text(title).foregroundStyle(Palette.ink).lineLimit(1)
                 // Shop chip first and never truncated; if the date chip doesn't fit beside it,
                 // it wraps onto its own line instead of squeezing "Shop will find out".
                 ViewThatFits(in: .horizontal) {
@@ -107,7 +107,7 @@ struct ImportReceiptRow: View {
                     Button(action: onToggleStraighten) {
                         HStack(spacing: 4) {
                             IconView(.scan, size: 10, weight: .bold)
-                            Text(straighten == .straightened ? "Straightened" : "Original").textStyle(.captionMedium)
+                            TypeStyle.captionMedium.text(straighten == .straightened ? "Straightened" : "Original")
                         }
                         .foregroundStyle(straighten == .straightened ? Palette.ink : Palette.ink2)
                         .padding(.horizontal, 7)
@@ -118,11 +118,11 @@ struct ImportReceiptRow: View {
                     .accessibilityLabel(straighten == .straightened ? "Straightened, double tap to use the original" : "Original, double tap to straighten")
                 }
                 if let photoDateHint {
-                    Text(photoDateHint).textStyle(.caption).foregroundStyle(Palette.ink3).lineLimit(1)
+                    TypeStyle.caption.text(photoDateHint).foregroundStyle(Palette.ink3).lineLimit(1)
                 }
                 if straighten == .notFound {
                     HStack(spacing: 4) {
-                        Text("Edges not found").textStyle(.caption).foregroundStyle(Palette.ink3)
+                        TypeStyle.caption.text("Edges not found").foregroundStyle(Palette.ink3)
                         Button("Adjust", action: onAdjust)
                             .textStyle(.captionMedium)
                             .foregroundStyle(Palette.blueText)
@@ -143,7 +143,7 @@ struct ImportReceiptRow: View {
         Button(action: onDetails) {
             HStack(spacing: 4) {
                 IconView(.calendar, size: 11, weight: .semibold)
-                Text(dateText).textStyle(.caption).lineLimit(1)
+                TypeStyle.caption.text(dateText).lineLimit(1)
             }
             .foregroundStyle(Palette.ink2)
             .padding(.horizontal, 8)
@@ -158,7 +158,7 @@ struct ImportReceiptRow: View {
         return Button(action: onShop) {
             HStack(spacing: 5) {
                 if let shopName { ShopMark(name: shopName, size: 16) } else { UnknownShopMark(size: 16) }
-                Text(shopName ?? (shopWillFindOut ? "Shop will find out" : "Pick a shop")).textStyle(.captionMedium).lineLimit(1)
+                TypeStyle.captionMedium.text(shopName ?? (shopWillFindOut ? "Shop will find out" : "Pick a shop")).lineLimit(1)
             }
             .foregroundStyle(needsPick ? Palette.amberText : (shopName == nil ? Palette.ink2 : Palette.ink))
             .padding(.leading, 5)
@@ -185,7 +185,7 @@ struct JoinPill: View {
         } label: {
             HStack(spacing: 5) {
                 IconView(isJoined ? .link : .unlink, size: 12, weight: .semibold)
-                Text(isJoined ? "Same receipt" : "Join pages").textStyle(.captionMedium)
+                TypeStyle.captionMedium.text(isJoined ? "Same receipt" : "Join pages")
             }
             .foregroundStyle(isJoined ? Palette.blueText : Palette.ink2)
             .padding(.horizontal, 10)
@@ -225,14 +225,13 @@ struct UploadProgressCard: View {
             HStack(spacing: Space.ml) {
                 lead
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(title)
-                        .textStyle(.rowTitle)
+                    TypeStyle.rowTitle.text(title)
                         .foregroundStyle(tone.text)
                         .contentTransition(reduce ? .opacity : .numericText())
                     if let fraction {
                         ProgressMeter(fraction: fraction, color: tone.solid, height: 4)
                     } else {
-                        Text(caption).textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1)
+                        TypeStyle.rowSub.text(caption).foregroundStyle(Palette.ink2).lineLimit(1)
                     }
                 }
                 Spacer(minLength: Space.s)
@@ -332,8 +331,8 @@ struct ShopSuggestionCard: View {
             HStack(spacing: Space.ml) {
                 ShopMark(name: name, size: Size.shopMarkHeader)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("This looks like \(name)").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                    Text(subtitle).textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(2)
+                    TypeStyle.rowTitle.text("This looks like \(name)").foregroundStyle(Palette.ink)
+                    TypeStyle.rowSub.text(subtitle).foregroundStyle(Palette.ink2).lineLimit(2)
                 }
                 Spacer(minLength: 0)
             }

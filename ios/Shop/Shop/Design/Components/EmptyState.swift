@@ -96,13 +96,11 @@ struct EmptyState<Illustration: View>: View {
     var body: some View {
         VStack(spacing: Space.l) {
             illustration()
-            Text(title)
-                .textStyle(.emptyTitle)
+            TypeStyle.emptyTitle.text(title)
                 .foregroundStyle(Palette.ink)
                 .multilineTextAlignment(.center)
             if let message {
-                Text(message)
-                    .textStyle(TypeStyle.body.sized(14.5))
+                TypeStyle.body.sized(14.5).text(message)
                     .foregroundStyle(Palette.ink2)
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
@@ -149,7 +147,7 @@ struct LoadingState: View {
     var body: some View {
         VStack(spacing: Space.m) {
             ProgressView().tint(Palette.ink2)
-            if let title { Text(title).textStyle(.rowSub).foregroundStyle(Palette.ink2) }
+            if let title { TypeStyle.rowSub.text(title).foregroundStyle(Palette.ink2) }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)

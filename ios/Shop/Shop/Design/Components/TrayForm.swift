@@ -34,8 +34,7 @@ struct InlineField: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(label)
-                .textStyle(.caption)
+            TypeStyle.caption.text(label)
                 .foregroundStyle(error ? Palette.redText : Palette.ink2)
                 .frame(width: 70, alignment: .leading)
             TextField(placeholder, text: $text)
@@ -75,8 +74,7 @@ struct CategoryPreviewChip: View {
     var body: some View {
         HStack(spacing: 8) {
             RoundedRectangle.continuous(5).fill(color).frame(width: 14, height: 14)
-            Text(name.isEmpty ? "Category name" : name)
-                .textStyle(TypeStyle.label.sized(15))
+            TypeStyle.label.sized(15).text(name.isEmpty ? "Category name" : name)
                 .foregroundStyle(name.isEmpty ? Palette.ink3 : Palette.ink)
                 .lineLimit(1)
         }
@@ -101,7 +99,7 @@ struct CategoryColourGrid: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Colour").textStyle(TypeStyle.label.sized(13)).foregroundStyle(Palette.ink2)
+            TypeStyle.label.sized(13).text("Colour").foregroundStyle(Palette.ink2)
                 .padding(.horizontal, Space.xs)
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(CategoryTone.tokens, id: \.self) { token in
@@ -163,7 +161,7 @@ struct CategoryFormLayout: View {
                                 error: errorText != nil, divider: false, autofocus: true, onSubmit: onSubmit)
                 }
                 if let errorText {
-                    Text(errorText).textStyle(.caption).foregroundStyle(Palette.redText)
+                    TypeStyle.caption.text(errorText).foregroundStyle(Palette.redText)
                         .padding(.horizontal, Space.xs)
                         .transition(.opacity)
                 }
@@ -196,7 +194,7 @@ struct ChoiceRow: View {
         } label: {
             HStack(spacing: Space.l) {
                 if let dot { RoundedRectangle.continuous(5).fill(dot).frame(width: 14, height: 14) }
-                Text(title).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                TypeStyle.rowTitle.text(title).foregroundStyle(Palette.ink)
                 Spacer(minLength: 0)
                 Image(icon: .check)
                     .font(.system(size: 14, weight: .heavy))

@@ -50,9 +50,9 @@ struct AttentionCard: View {
         Button(action: action) {
             HStack(spacing: Space.ml) {
                 CountBadge(count: count, size: 22, color: tone.solid)
-                Text(title).textStyle(TypeStyle.rowTitle)
+                TypeStyle.rowTitle.text(title)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if let hint { Text(hint).textStyle(TypeStyle.body.sized(13)) }
+                if let hint { TypeStyle.body.sized(13).text(hint) }
                 IconView(.forward, size: 14, weight: .bold)
             }
             .foregroundStyle(tone.text)
@@ -89,7 +89,7 @@ struct Banner: View {
                     // so callers that already add one don't get two.
                     Button(action: action.run) {
                         HStack(spacing: 4) {
-                            Text(action.title.replacingOccurrences(of: " ›", with: "")).textStyle(TypeStyle.label.sized(14))
+                            TypeStyle.label.sized(14).text(action.title.replacingOccurrences(of: " ›", with: ""))
                             IconView(.forward, size: 11, weight: .bold)
                         }
                         .frame(minHeight: 44, alignment: .leading)
@@ -129,7 +129,7 @@ struct NoticeRow: View {
     var body: some View {
         let content = HStack(spacing: Space.ml) {
             GlyphBadge(color: tone.solid)
-            Text(title).textStyle(TypeStyle.rowTitle.sized(14.5))
+            TypeStyle.rowTitle.sized(14.5).text(title)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if action != nil { IconView(.forward, size: 14, weight: .bold) }
         }
@@ -200,8 +200,7 @@ struct ToastView: View {
     var body: some View {
         HStack(spacing: Space.m) {
             if message.tone != .neutral { StatusDot(color: message.tone.solid, size: 8) }
-            Text(message.text)
-                .textStyle(TypeStyle.label.sized(14))
+            TypeStyle.label.sized(14).text(message.text)
                 .foregroundStyle(message.tone == .neutral ? Palette.btnInk : Palette.ink)
                 .lineLimit(2)
             if let action = message.action {

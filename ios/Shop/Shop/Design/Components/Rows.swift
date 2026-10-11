@@ -30,7 +30,7 @@ struct SectionLabel<Trailing: View>: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(title).textStyle(.label).foregroundStyle(Palette.ink2)
+            TypeStyle.label.text(title).foregroundStyle(Palette.ink2)
                 .accessibilityAddTraits(.isHeader)
             Spacer()
             trailing()
@@ -64,13 +64,13 @@ struct ReceiptRow: View {
         HStack(spacing: Space.l) {
             if isUnknownShop { UnknownShopMark() } else { ShopMark(name: shopName) }
             VStack(alignment: .leading, spacing: 1) {
-                Text(shopName).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                TypeStyle.rowTitle.text(shopName).foregroundStyle(Palette.ink)
                     .lineLimit(1)
                 HStack(spacing: 5) {
                     if showsSpinner {
                         ProgressView().controlSize(.mini).tint(subtitleColor)
                     }
-                    Text(subtitle).textStyle(.rowSub).foregroundStyle(subtitleColor)
+                    TypeStyle.rowSub.text(subtitle).foregroundStyle(subtitleColor)
                         .lineLimit(1)
                 }
             }
@@ -78,7 +78,7 @@ struct ReceiptRow: View {
             if let trailingIcon {
                 IconView(trailingIcon, size: 18).foregroundStyle(Palette.ink3)
             } else {
-                Text(amount).textStyle(.rowTitle).foregroundStyle(amountColor)
+                TypeStyle.rowTitle.text(amount).foregroundStyle(amountColor)
             }
         }
         .frame(minHeight: Size.rowReceipt)
@@ -112,12 +112,12 @@ struct LineRow: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 if let subtitle {
-                    Text(subtitle).textStyle(.caption).foregroundStyle(subtitleColor)
+                    TypeStyle.caption.text(subtitle).foregroundStyle(subtitleColor)
                         .lineLimit(1)
                 }
             }
             Spacer(minLength: Space.m)
-            Text(amount).textStyle(TypeStyle.rowTitle.sized(14.5)).foregroundStyle(amountColor)
+            TypeStyle.rowTitle.sized(14.5).text(amount).foregroundStyle(amountColor)
         }
         .padding(.vertical, 6)
         .padding(.leading, indented ? 18 : 0)
@@ -146,15 +146,15 @@ struct ProductRow: View {
         HStack(spacing: Space.l) {
             ProductTile(name: name, category: category, categoryToken: categoryToken, imageURL: imageURL)
             VStack(alignment: .leading, spacing: 1) {
-                Text(name).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
+                TypeStyle.rowTitle.text(name).foregroundStyle(Palette.ink).lineLimit(1)
                 if let meta {
-                    Text(meta).textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1)
+                    TypeStyle.rowSub.text(meta).foregroundStyle(Palette.ink2).lineLimit(1)
                 }
             }
             Spacer(minLength: Space.m)
             if let price {
                 HStack(spacing: Space.m) {
-                    Text(price).textStyle(TypeStyle.rowTitle.sized(14.5)).foregroundStyle(Palette.ink)
+                    TypeStyle.rowTitle.sized(14.5).text(price).foregroundStyle(Palette.ink)
                     if let priceShop { ShopMark(name: priceShop, size: 20) }
                 }
             }
@@ -220,15 +220,14 @@ struct ListItemRow: View {
             .accessibilityLabel(shownChecked ? "Uncheck \(title)" : "Check off \(title)")
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .textStyle(.rowTitle)
+                TypeStyle.rowTitle.text(title)
                     .strikethrough(struck || (isChecked && reduce), color: Palette.ink3)
                     .foregroundStyle(struck || shownChecked ? Palette.ink3 : Palette.ink)
                     .lineLimit(1)
                 if let hint {
                     HStack(spacing: 5) {
                         if let hintShop { ShopMark(name: hintShop, size: 14) }
-                        Text(hint).textStyle(.caption).foregroundStyle(Palette.ink2).lineLimit(1)
+                        TypeStyle.caption.text(hint).foregroundStyle(Palette.ink2).lineLimit(1)
                     }
                 }
             }
@@ -237,7 +236,7 @@ struct ListItemRow: View {
             .onTapGesture { onTap?() }
 
             if let quantity {
-                Text(quantity).textStyle(TypeStyle.body.sized(13.5)).foregroundStyle(Palette.ink2)
+                TypeStyle.body.sized(13.5).text(quantity).foregroundStyle(Palette.ink2)
             }
         }
         .frame(minHeight: Size.rowList)
@@ -284,10 +283,10 @@ struct SettingsRow: View {
     var body: some View {
         HStack(spacing: Space.lx) {
             IconTile(icon: icon, color: color)
-            Text(title).textStyle(TypeStyle.rowTitle.sized(15.5)).foregroundStyle(Palette.ink)
+            TypeStyle.rowTitle.sized(15.5).text(title).foregroundStyle(Palette.ink)
             Spacer(minLength: Space.m)
             if let value {
-                Text(value).textStyle(.body).foregroundStyle(Palette.ink2).lineLimit(1)
+                TypeStyle.body.text(value).foregroundStyle(Palette.ink2).lineLimit(1)
             }
             if showsChevron {
                 IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
@@ -341,11 +340,11 @@ struct NavRow: View {
         HStack(spacing: Space.l) {
             if let leading { leading }
             VStack(alignment: .leading, spacing: 1) {
-                Text(title).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                if let subtitle { Text(subtitle).textStyle(.rowSub).foregroundStyle(Palette.ink2) }
+                TypeStyle.rowTitle.text(title).foregroundStyle(Palette.ink)
+                if let subtitle { TypeStyle.rowSub.text(subtitle).foregroundStyle(Palette.ink2) }
             }
             Spacer(minLength: Space.m)
-            if let value { Text(value).textStyle(.body).foregroundStyle(Palette.ink2) }
+            if let value { TypeStyle.body.text(value).foregroundStyle(Palette.ink2) }
             IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
         }
         .frame(minHeight: Size.rowProduct)

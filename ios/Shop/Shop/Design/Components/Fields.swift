@@ -141,7 +141,7 @@ struct FieldButton: View {
         Button(action: action) {
             HStack(spacing: Space.ml) {
                 IconView(icon, size: 17, weight: .semibold)
-                Text(title).textStyle(TypeStyle.input.sized(15))
+                TypeStyle.input.sized(15).text(title)
                 Spacer(minLength: 0)
             }
             .foregroundStyle(Palette.ink2)
@@ -165,13 +165,13 @@ struct RawRowTile: View {
     var body: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(caption).textStyle(.caption).foregroundStyle(Palette.ink2)
-                Text(raw).textStyle(TypeStyle.mono.sized(15)).foregroundStyle(Palette.ink)
+                TypeStyle.caption.text(caption).foregroundStyle(Palette.ink2)
+                TypeStyle.mono.sized(15).text(raw).foregroundStyle(Palette.ink)
                     .lineLimit(2)
             }
             Spacer(minLength: Space.m)
             if let amount {
-                Text(amount).textStyle(TypeStyle.mono.sized(15)).foregroundStyle(Palette.ink)
+                TypeStyle.mono.sized(15).text(amount).foregroundStyle(Palette.ink)
             }
         }
         .padding(.vertical, Space.l)
