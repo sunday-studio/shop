@@ -63,12 +63,10 @@ struct WelcomeScreen: View {
             WelcomeIllustration()
                 .frame(height: 400)
             VStack(alignment: .leading, spacing: Space.l) {
-                Text("Every receipt, itemised.")
-                    .textStyle(.display)
+                TypeStyle.display.text("Every receipt, itemised.")
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Scan paper receipts. Shop reads them on your own server and tracks what you spend and what things cost, shop by shop.")
-                    .textStyle(TypeStyle.input)
+                TypeStyle.input.text("Scan paper receipts. Shop reads them on your own server and tracks what you spend and what things cost, shop by shop.")
                     .foregroundStyle(Palette.ink2)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -78,8 +76,7 @@ struct WelcomeScreen: View {
             VStack(spacing: Space.lx) {
                 Button("Connect your server", action: onConnect)
                     .buttonStyle(.shop(size: .large))
-                Text("Nothing leaves your home network")
-                    .textStyle(.body.sized(13))
+                TypeStyle.body.sized(13).text("Nothing leaves your home network")
                     .foregroundStyle(Palette.ink2)
             }
             .padding(.horizontal, Space.gutter)
@@ -119,8 +116,7 @@ private struct WelcomeIllustration: View {
             .shadow(color: Accent.blue.opacity(0.3), radius: 20, y: 20)
             .rotationEffect(.degrees(-2))
             .offset(x: 0, y: 82)
-            Text("Melk €0,85/l at Lidl")
-                .textStyle(TypeStyle.label.sized(13.5))
+            TypeStyle.label.sized(13.5).text("Melk €0,85/l at Lidl")
                 .foregroundStyle(Accent.onLight)
                 .padding(.horizontal, 14)
                 .frame(height: 40)
@@ -137,9 +133,9 @@ private struct WelcomeIllustration: View {
 
     private func card(title: String, amount: String, color: Color, width: CGFloat, height: CGFloat) -> some View {
         VStack(alignment: .leading) {
-            Text(title).textStyle(.label)
+            TypeStyle.label.text(title)
             Spacer()
-            Text(amount).textStyle(TypeStyle.emptyTitle)
+            TypeStyle.emptyTitle.text(amount)
         }
         .foregroundStyle(Accent.white)
         .padding(16)
@@ -179,8 +175,7 @@ struct ServerScreen: View {
                                     Haptics.play(.selection)
                                     model.urlText = "http://" + s
                                 } label: {
-                                    Text(s)
-                                        .textStyle(TypeStyle.mono.sized(12.5).withFace(.monoRegular))
+                                    TypeStyle.mono.sized(12.5).withFace(.monoRegular).text(s)
                                         .foregroundStyle(Palette.ink2)
                                         .padding(.horizontal, Space.l)
                                         .frame(height: Size.chip)
@@ -224,7 +219,7 @@ struct ServerScreen: View {
         case .testing:
             HStack(spacing: Space.l) {
                 ProgressView().tint(Palette.ink2)
-                Text("Looking for the server…").textStyle(.body).foregroundStyle(Palette.ink2)
+                TypeStyle.body.text("Looking for the server…").foregroundStyle(Palette.ink2)
             }
             .padding(.top, Space.m)
         case .found(let version, let ms, let checks):
@@ -232,8 +227,8 @@ struct ServerScreen: View {
                 HStack(spacing: Space.l) {
                     IconTile(icon: .check, color: Accent.green, size: 36)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Shop server found").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                        Text("Version \(version) · answered in \(ms) ms").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                        TypeStyle.rowTitle.text("Shop server found").foregroundStyle(Palette.ink)
+                        TypeStyle.rowSub.text("Version \(version) · answered in \(ms) ms").foregroundStyle(Palette.ink2)
                     }
                     Spacer()
                 }
@@ -311,8 +306,7 @@ struct PasswordScreen: View {
     private var statusLine: some View {
         switch model.signIn {
         case .wrong:
-            Text("Wrong password. Check it and try again.")
-                .textStyle(.label)
+            TypeStyle.label.text("Wrong password. Check it and try again.")
                 .foregroundStyle(Palette.redText)
                 .transition(.opacity)
         case .locked(let message), .failed(let message):
@@ -332,7 +326,7 @@ struct PasswordScreen: View {
                     .foregroundStyle(Accent.onLight)
                     .frame(width: 20, height: 20)
                     .background(Accent.yellow, in: RoundedRectangle.continuous(6))
-                Text("Lost it? On the Mac mini, run").textStyle(.label.withFace(.regular))
+                TypeStyle.label.withFace(.regular).text("Lost it? On the Mac mini, run")
                     .foregroundStyle(Color(hex: 0x9A9A95))
             }
             HStack(spacing: Space.ml) {
@@ -352,8 +346,7 @@ struct PasswordScreen: View {
                 .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
                 .accessibilityLabel("Copy command")
             }
-            Text("or: docker compose exec api shop password generate")
-                .textStyle(TypeStyle.mono.sized(12).withFace(.monoRegular))
+            TypeStyle.mono.sized(12).withFace(.monoRegular).text("or: docker compose exec api shop password generate")
                 .foregroundStyle(Color(hex: 0x77776F))
         }
         .padding(Space.xl)
@@ -422,9 +415,9 @@ struct ReadyScreen: View {
             RoundedRectangle.continuous(10).fill(color).frame(width: 32, height: 32)
             VStack(spacing: 5) {
                 HStack {
-                    Text(name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                    TypeStyle.rowTitle.text(name).foregroundStyle(Palette.ink)
                     Spacer()
-                    Text(countText).textStyle(TypeStyle.input.sized(15)).foregroundStyle(Palette.ink2)
+                    TypeStyle.input.sized(15).text(countText).foregroundStyle(Palette.ink2)
                 }
                 ShareBar(fraction: done ? 1 : (progress == nil ? 0.08 : 0.6), color: color)
             }
@@ -441,8 +434,8 @@ struct ReadyScreen: View {
                 .frame(width: 36, height: 36)
                 .background(Palette.bg, in: RoundedRectangle.continuous(Radius.ml))
             VStack(alignment: .leading, spacing: 1) {
-                Text("Camera").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                Text("For receipts and barcodes").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                TypeStyle.rowTitle.text("Camera").foregroundStyle(Palette.ink)
+                TypeStyle.rowSub.text("For receipts and barcodes").foregroundStyle(Palette.ink2)
             }
             Spacer()
             switch model.cameraStatus {

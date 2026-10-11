@@ -77,30 +77,26 @@ struct HomeView: View {
             app.tab = .analytics
         } label: {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Spent in \(Dates.month(.now))")
-                    .textStyle(TypeStyle.rowTitle)
+                TypeStyle.rowTitle.text("Spent in \(Dates.month(.now))")
                     .foregroundStyle(Palette.ink2)
                 if home.spendLoaded && home.spendUnavailable {
                     // No figure yet and the request failed (offline): say so instead of €0,00.
                     HeroAmount(cents: 0).hidden()
                         .overlay(alignment: .leading) {
-                            Text("Totals appear once you're online.")
-                                .textStyle(TypeStyle.body.sized(15))
+                            TypeStyle.body.sized(15).text("Totals appear once you're online.")
                                 .foregroundStyle(Palette.ink2)
                         }
-                    Text(" ").textStyle(TypeStyle.body.sized(13.5)).padding(.top, Space.xs)
+                    TypeStyle.body.sized(13.5).text(" ").padding(.top, Space.xs)
                 } else if home.spendLoaded {
                     HeroAmount(cents: home.monthSpend?.totalCents ?? 0, color: hasSpend ? Palette.ink : Palette.ink3)
                     Group {
                         if home.spendIsStale, let updated = home.spendUpdatedAt {
-                            Text("Last updated \(Dates.relativeStamp(updated))")
-                                .textStyle(TypeStyle.body.sized(13.5))
+                            TypeStyle.body.sized(13.5).text("Last updated \(Dates.relativeStamp(updated))")
                                 .foregroundStyle(Palette.ink3)
                         } else if let delta = home.monthDeltaCents, hasSpend {
                             DeltaChip(deltaCents: delta, caption: "\(delta <= 0 ? "less" : "more") than this time in \(Dates.month(Dates.adding(.month, -1, to: .now)))")
                         } else {
-                            Text("Totals show up once a receipt is read.")
-                                .textStyle(TypeStyle.body.sized(13.5))
+                            TypeStyle.body.sized(13.5).text("Totals show up once a receipt is read.")
                                 .foregroundStyle(Palette.ink2)
                         }
                     }
@@ -109,8 +105,7 @@ struct HomeView: View {
                     // Keeps the layout while the first stats load, so the real total appears
                     // without a €0,00 flash or a number roll.
                     HeroAmount(cents: 0).hidden()
-                    Text("Totals show up once a receipt is read.")
-                        .textStyle(TypeStyle.body.sized(13.5))
+                    TypeStyle.body.sized(13.5).text("Totals show up once a receipt is read.")
                         .hidden()
                         .padding(.top, Space.xs)
                 }
@@ -263,7 +258,7 @@ struct HomeView: View {
         if home.hasLoaded && (!home.receipts.isEmpty || home.filter.isActive) {
             HStack(spacing: Space.s) {
                 if home.filter.isActive {
-                    Text(filterTitle).textStyle(.label).foregroundStyle(Palette.ink2)
+                    TypeStyle.label.text(filterTitle).foregroundStyle(Palette.ink2)
                     Spacer()
                     Button("Clear") { home.setFilter(.init()) }
                         .textStyle(.label)
@@ -277,7 +272,7 @@ struct HomeView: View {
                 } label: {
                     HStack(spacing: 5) {
                         IconView(.filter, size: 14, weight: .semibold)
-                        Text("Filter").textStyle(TypeStyle.label)
+                        TypeStyle.label.text("Filter")
                     }
                     .foregroundStyle(home.filter.isActive ? Palette.btnInk : Palette.ink2)
                     .padding(.horizontal, Space.ml)
@@ -439,7 +434,7 @@ struct HomeFilterTray: View {
         VStack(alignment: .leading, spacing: 18) {
             TrayHeader(title: "Filter receipts")
             VStack(alignment: .leading, spacing: Space.m) {
-                Text("Status").textStyle(.label).foregroundStyle(Palette.ink2)
+                TypeStyle.label.text("Status").foregroundStyle(Palette.ink2)
                 FlowLayout(spacing: 6, lineSpacing: 6) {
                     ForEach(statuses, id: \.self) { s in
                         Chip(title: s?.title ?? "All", isSelected: status == s, size: .large, idleBackground: Palette.trayField) { status = s }
@@ -447,7 +442,7 @@ struct HomeFilterTray: View {
                 }
             }
             VStack(alignment: .leading, spacing: Space.m) {
-                Text("Shop").textStyle(.label).foregroundStyle(Palette.ink2)
+                TypeStyle.label.text("Shop").foregroundStyle(Palette.ink2)
                 FlowLayout(spacing: 6, lineSpacing: 6) {
                     Chip(title: "Any shop", isSelected: shopId == nil, size: .large, idleBackground: Palette.trayField) { shopId = nil }
                     ForEach(app.catalog.shops) { shop in

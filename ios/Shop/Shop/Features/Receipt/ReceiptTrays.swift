@@ -122,8 +122,7 @@ struct EditLineTray: View {
             let diff = after - receiptTotal
             HStack(spacing: Space.m) {
                 GlyphBadge(glyph: abs(diff) <= 1 ? .check : .alert, color: abs(diff) <= 1 ? Accent.green : Accent.amber, size: 18)
-                Text(abs(diff) <= 1 ? "The receipt adds up after this" : "Still \(Money.format(Int64(diff.magnitude))) \(diff < 0 ? "short" : "over") after this")
-                    .textStyle(TypeStyle.label.sized(13.5))
+                TypeStyle.label.sized(13.5).text(abs(diff) <= 1 ? "The receipt adds up after this" : "Still \(Money.format(Int64(diff.magnitude))) \(diff < 0 ? "short" : "over") after this")
                     .foregroundStyle(abs(diff) <= 1 ? Palette.greenText : Palette.amberText)
                     .contentTransition(.numericText())
             }
@@ -201,9 +200,8 @@ struct LinkProductTray: View {
             TrayHeader(title: line.productId == nil ? "Link product" : "Change product")
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(line.rawText).textStyle(TypeStyle.mono.sized(18)).foregroundStyle(Palette.ink)
-                Text("\(model.shop?.name ?? "Shop") · \(Quantity.decimal(line.qty)) × \(Money.format(line.unitPriceCents ?? line.lineTotalCents))")
-                    .textStyle(TypeStyle.body.sized(13))
+                TypeStyle.mono.sized(18).text(line.rawText).foregroundStyle(Palette.ink)
+                TypeStyle.body.sized(13).text("\(model.shop?.name ?? "Shop") · \(Quantity.decimal(line.qty)) × \(Money.format(line.unitPriceCents ?? line.lineTotalCents))")
                     .foregroundStyle(Palette.ink2)
             }
 
@@ -223,8 +221,8 @@ struct LinkProductTray: View {
 
             HStack(spacing: Space.l) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Remember at \(model.shop?.name ?? "this shop")").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                    Text("Links this text on every next receipt").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                    TypeStyle.rowTitle.text("Remember at \(model.shop?.name ?? "this shop")").foregroundStyle(Palette.ink)
+                    TypeStyle.rowSub.text("Links this text on every next receipt").foregroundStyle(Palette.ink2)
                 }
                 Spacer()
                 Toggle("", isOn: $remember)
@@ -291,13 +289,12 @@ struct LinkProductTray: View {
             HStack(spacing: Space.l) {
                 ProductTile(name: c.name, category: c.category, size: 40)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(c.name).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
-                    if !c.meta.isEmpty { Text(c.meta).textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1) }
+                    TypeStyle.rowTitle.text(c.name).foregroundStyle(Palette.ink).lineLimit(1)
+                    if !c.meta.isEmpty { TypeStyle.rowSub.text(c.meta).foregroundStyle(Palette.ink2).lineLimit(1) }
                 }
                 Spacer(minLength: Space.m)
                 if let score = c.score {
-                    Text("\(Int((score * 100).rounded()))%")
-                        .textStyle(TypeStyle.label.sized(12.5))
+                    TypeStyle.label.sized(12.5).text("\(Int((score * 100).rounded()))%")
                         .foregroundStyle(isTop ? Palette.greenText : Palette.ink2)
                 }
                 ZStack {
@@ -332,8 +329,8 @@ struct LinkProductTray: View {
                     .frame(width: 40, height: 40)
                     .overlay(IconView(.plus, size: 16, weight: .semibold).foregroundStyle(Palette.ink2))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("New product").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                    Text("Start from “\(ReceiptModel.tidy(line.rawText))”").textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1)
+                    TypeStyle.rowTitle.text("New product").foregroundStyle(Palette.ink)
+                    TypeStyle.rowSub.text("Start from “\(ReceiptModel.tidy(line.rawText))”").foregroundStyle(Palette.ink2).lineLimit(1)
                 }
                 Spacer()
             }
@@ -483,7 +480,7 @@ struct ConfirmTray: View {
         VStack(alignment: .leading, spacing: Space.xl) {
             TrayHeader(title: title)
             if let message {
-                Text(message).textStyle(TypeStyle.body.sized(14.5)).foregroundStyle(Palette.ink2)
+                TypeStyle.body.sized(14.5).text(message).foregroundStyle(Palette.ink2)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, Space.xs)
             }
@@ -534,7 +531,7 @@ struct EditDetailsTray: View {
             TrayHeader(title: "Edit details")
 
             VStack(alignment: .leading, spacing: Space.m) {
-                Text("Shop").textStyle(.label).foregroundStyle(Palette.ink2)
+                TypeStyle.label.text("Shop").foregroundStyle(Palette.ink2)
                 FlowLayout(spacing: 6, lineSpacing: 6) {
                     ForEach(app.catalog.shops) { shop in
                         Chip(title: shop.displayName, isSelected: shopId == shop.id, size: .large, idleBackground: Palette.trayField) { shopId = shop.id }
@@ -544,7 +541,7 @@ struct EditDetailsTray: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Date and time").textStyle(.caption).foregroundStyle(Palette.ink2)
+                    TypeStyle.caption.text("Date and time").foregroundStyle(Palette.ink2)
                     if hasDate {
                         DatePicker("", selection: $date, in: ...Date.now)
                             .labelsHidden()

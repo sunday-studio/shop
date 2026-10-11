@@ -20,7 +20,7 @@ struct ShoppingListView: View {
 
             if !suggestions.isEmpty {
                 VStack(alignment: .leading, spacing: Space.m) {
-                    Text("Usually bought by now").textStyle(.label).foregroundStyle(Palette.ink2)
+                    TypeStyle.label.text("Usually bought by now").foregroundStyle(Palette.ink2)
                     FlowLayout(spacing: 6, lineSpacing: 6) {
                         ForEach(suggestions) { s in
                             SuggestionChip(title: s.productName, color: CategoryColor.swatch(for: app.catalog.categoryName(forProduct: s.productId)).color) {
@@ -103,7 +103,7 @@ struct ShoppingListView: View {
 
         if !list.checked.isEmpty {
             HStack {
-                Text("\(list.checked.count) checked off").textStyle(.body).foregroundStyle(Palette.ink2)
+                TypeStyle.body.text("\(list.checked.count) checked off").foregroundStyle(Palette.ink2)
                 Spacer()
                 Button("Clear") {
                     Haptics.play(.light)
@@ -125,8 +125,7 @@ struct ShoppingListView: View {
         if list.pendingCount > 0 {
             HStack(spacing: Space.s) {
                 StatusDot(color: app.network.isOnline ? Accent.blue : Palette.ink3)
-                Text(app.network.isOnline ? "Syncing \(list.pendingCount) change\(list.pendingCount == 1 ? "" : "s")…" : "\(list.pendingCount) change\(list.pendingCount == 1 ? "" : "s") sync when you're online")
-                    .textStyle(.rowSub)
+                TypeStyle.rowSub.text(app.network.isOnline ? "Syncing \(list.pendingCount) change\(list.pendingCount == 1 ? "" : "s")…" : "\(list.pendingCount) change\(list.pendingCount == 1 ? "" : "s") sync when you're online")
                     .foregroundStyle(Palette.ink2)
             }
             .padding(.top, Space.l)
@@ -251,9 +250,8 @@ struct AddItemTray: View {
                             HStack(spacing: Space.l) {
                                 ProductTile(name: p.name, category: app.catalog.category(p.categoryId)?.name, categoryToken: app.catalog.category(p.categoryId)?.color, size: 34)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(p.name).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
-                                    Text([p.sizeText, app.catalog.category(p.categoryId)?.name].compactMap { $0 }.joined(separator: " · "))
-                                        .textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1)
+                                    TypeStyle.rowTitle.text(p.name).foregroundStyle(Palette.ink).lineLimit(1)
+                                    TypeStyle.rowSub.text([p.sizeText, app.catalog.category(p.categoryId)?.name].compactMap { $0 }.joined(separator: " · ")).foregroundStyle(Palette.ink2).lineLimit(1)
                                 }
                                 Spacer()
                                 IconView(.plus, size: 14, weight: .bold)
@@ -273,7 +271,7 @@ struct AddItemTray: View {
                                 .strokeBorder(Palette.ink3, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                                 .frame(width: 34, height: 34)
                                 .overlay(IconView(.plus, size: 14, weight: .semibold))
-                            Text("Add “\(text.trimmingCharacters(in: .whitespaces))” as text").textStyle(.rowTitle).lineLimit(1)
+                            TypeStyle.rowTitle.text("Add “\(text.trimmingCharacters(in: .whitespaces))” as text").lineLimit(1)
                             Spacer()
                         }
                         .foregroundStyle(Palette.blueText)
@@ -288,8 +286,8 @@ struct AddItemTray: View {
             HStack(spacing: Space.m) {
                 HStack {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("Quantity").textStyle(.caption).foregroundStyle(Palette.ink2)
-                        Text(Quantity.decimal(qty)).textStyle(TypeStyle.input.sized(17)).foregroundStyle(Palette.ink)
+                        TypeStyle.caption.text("Quantity").foregroundStyle(Palette.ink2)
+                        TypeStyle.input.sized(17).text(Quantity.decimal(qty)).foregroundStyle(Palette.ink)
                             .contentTransition(.numericText(value: qty))
                     }
                     Spacer()
@@ -341,8 +339,7 @@ struct AddItemTray: View {
             Haptics.play(.selection)
             action()
         } label: {
-            Text(symbol)
-                .textStyle(TypeStyle.input)
+            TypeStyle.input.text(symbol)
                 .foregroundStyle(Palette.ink)
                 .frame(width: 30, height: 30)
                 .background(Palette.tray, in: Circle())
@@ -405,9 +402,8 @@ struct SuggestionsTray: View {
                         HStack(spacing: Space.l) {
                             ProductTile(name: item.productName, category: app.catalog.categoryName(forProduct: item.productId), categoryToken: app.catalog.category(app.catalog.product(item.productId)?.categoryId)?.color, size: 34)
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(item.productName).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
-                                Text("Every \(Int(item.medianIntervalDays.rounded())) days · last \(Int(item.daysSince.rounded())) days ago")
-                                    .textStyle(.rowSub)
+                                TypeStyle.rowTitle.text(item.productName).foregroundStyle(Palette.ink).lineLimit(1)
+                                TypeStyle.rowSub.text("Every \(Int(item.medianIntervalDays.rounded())) days · last \(Int(item.daysSince.rounded())) days ago")
                                     .foregroundStyle(item.due ? Palette.amberText : Palette.ink2)
                             }
                             Spacer()
@@ -429,8 +425,7 @@ struct SuggestionsTray: View {
                         .hairline()
                     }
                     if items.isEmpty {
-                        Text("Suggestions appear once you've bought something a few times.")
-                            .textStyle(.body).foregroundStyle(Palette.ink2).padding(.vertical, Space.xxl)
+                        TypeStyle.body.text("Suggestions appear once you've bought something a few times.").foregroundStyle(Palette.ink2).padding(.vertical, Space.xxl)
                     }
                 }
             }

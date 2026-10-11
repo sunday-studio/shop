@@ -12,7 +12,7 @@ struct ShopsView: View {
                 Button { openForm(nil) } label: {
                     HStack(spacing: 5) {
                         IconView(.plus, size: 13, weight: .bold)
-                        Text("Add shop").textStyle(.label)
+                        TypeStyle.label.text("Add shop")
                     }
                     .foregroundStyle(Palette.btnInk)
                     .padding(.horizontal, Space.l)
@@ -24,8 +24,8 @@ struct ShopsView: View {
             .shopListRow()
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Shops").textStyle(.screenTitle).foregroundStyle(Palette.ink)
-                Text("You pick one of these for every receipt.").textStyle(.body).foregroundStyle(Palette.ink2)
+                TypeStyle.screenTitle.text("Shops").foregroundStyle(Palette.ink)
+                TypeStyle.body.text("You pick one of these for every receipt.").foregroundStyle(Palette.ink2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Space.gutter)
@@ -64,13 +64,12 @@ struct ShopsView: View {
                     HStack(spacing: Space.l) {
                         ShopMark(name: shop.name, size: Size.shopMarkHeader)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(shop.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                            Text([shop.branch, shop.city].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
-                                .textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                            TypeStyle.rowTitle.text(shop.name).foregroundStyle(Palette.ink)
+                            TypeStyle.rowSub.text([shop.branch, shop.city].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")).foregroundStyle(Palette.ink2)
                         }
                         Spacer()
                         if let n = counts[shop.id] {
-                            Text("\(n)").textStyle(.body).foregroundStyle(Palette.ink2)
+                            TypeStyle.body.text("\(n)").foregroundStyle(Palette.ink2)
                         }
                         IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
                     }
@@ -144,8 +143,7 @@ struct ShopFormTray: View {
 
             HStack(spacing: Space.l) {
                 ShopMark(name: name.isEmpty ? "?" : name, size: 32)
-                Text(name.isEmpty ? "The logo appears once the server knows the website." : "Logo from the shop's website, or its initials.")
-                    .textStyle(.rowSub)
+                TypeStyle.rowSub.text(name.isEmpty ? "The logo appears once the server knows the website." : "Logo from the shop's website, or its initials.")
                     .foregroundStyle(Palette.ink2)
             }
             .padding(.horizontal, Space.xs)
@@ -159,8 +157,7 @@ struct ShopFormTray: View {
                 InlineField(label: "Website", text: $website, placeholder: "ah.nl", divider: false, mono: true)
             }
 
-            Text("Chain groups branches of one shop. The website gives it a logo; the server guesses it for big chains.")
-                .textStyle(.rowSub)
+            TypeStyle.rowSub.text("Chain groups branches of one shop. The website gives it a logo; the server guesses it for big chains.")
                 .foregroundStyle(Palette.ink2)
                 .padding(.horizontal, Space.xs)
 
@@ -258,7 +255,7 @@ struct CategoriesView: View {
                 Button { openForm(nil) } label: {
                     HStack(spacing: 5) {
                         IconView(.plus, size: 13, weight: .bold)
-                        Text("Add category").textStyle(.label)
+                        TypeStyle.label.text("Add category")
                     }
                     .foregroundStyle(Palette.btnInk)
                     .padding(.horizontal, Space.l)
@@ -270,8 +267,8 @@ struct CategoriesView: View {
             .shopListRow()
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Categories").textStyle(.screenTitle).foregroundStyle(Palette.ink)
-                Text("Listed A to Z. Charts rank them by spend.").textStyle(.body).foregroundStyle(Palette.ink2)
+                TypeStyle.screenTitle.text("Categories").foregroundStyle(Palette.ink)
+                TypeStyle.body.text("Listed A to Z. Charts rank them by spend.").foregroundStyle(Palette.ink2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Space.gutter)
@@ -319,9 +316,9 @@ struct CategoriesView: View {
                     Button { openForm(category) } label: {
                         HStack(spacing: Space.l) {
                             RoundedRectangle.continuous(5).fill(category.dotColor).frame(width: 14, height: 14)
-                            Text(category.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                            TypeStyle.rowTitle.text(category.name).foregroundStyle(Palette.ink)
                             Spacer()
-                            Text("\(category.productCount ?? 0)").textStyle(.body).foregroundStyle(Palette.ink2)
+                            TypeStyle.body.text("\(category.productCount ?? 0)").foregroundStyle(Palette.ink2)
                         }
                         .frame(height: 48)
                         .hairline()

@@ -130,9 +130,9 @@ struct UnpackView: View {
                 summary(model)
             } else {
                 HStack {
-                    Text("This session").textStyle(TypeStyle.trayTitle.sized(17)).foregroundStyle(darkInk)
+                    TypeStyle.trayTitle.sized(17).text("This session").foregroundStyle(darkInk)
                     Spacer()
-                    Text("\(model?.entries.count ?? 0) scanned").textStyle(.label.withFace(.regular)).foregroundStyle(darkInk2)
+                    TypeStyle.label.withFace(.regular).text("\(model?.entries.count ?? 0) scanned").foregroundStyle(darkInk2)
                 }
                 .padding(.horizontal, Space.xs)
                 .padding(.bottom, 2)
@@ -170,8 +170,7 @@ struct UnpackView: View {
                     .frame(maxHeight: 210)
                     .scrollBounceBehavior(.basedOnSize)
                 } else {
-                    Text(BarcodeScanner.isAvailable ? "Point the camera at a barcode." : "Type a barcode to look it up.")
-                        .textStyle(.body)
+                    TypeStyle.body.text(BarcodeScanner.isAvailable ? "Point the camera at a barcode." : "Type a barcode to look it up.")
                         .foregroundStyle(darkInk2)
                         .padding(.horizontal, Space.xs)
                         .padding(.vertical, Space.l)
@@ -207,7 +206,7 @@ struct UnpackView: View {
 
     private func summary(_ model: UnpackModel) -> some View {
         VStack(alignment: .leading, spacing: Space.lx) {
-            Text("Session done").textStyle(TypeStyle.trayTitle.sized(17)).foregroundStyle(darkInk)
+            TypeStyle.trayTitle.sized(17).text("Session done").foregroundStyle(darkInk)
                 .padding(.horizontal, Space.xs)
             HStack(spacing: Space.m) {
                 summaryCell(model.knownCount, "known", Color(hex: 0x3DDC84))
@@ -238,8 +237,8 @@ struct UnpackView: View {
 
     private func summaryCell(_ value: Int, _ label: String, _ color: Color) -> some View {
         VStack(spacing: 2) {
-            Text("\(value)").textStyle(TypeStyle.trayTitle.sized(22)).foregroundStyle(color)
-            Text(label).textStyle(.rowSub).foregroundStyle(darkInk2)
+            TypeStyle.trayTitle.sized(22).text("\(value)").foregroundStyle(color)
+            TypeStyle.rowSub.text(label).foregroundStyle(darkInk2)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Space.l)
@@ -337,8 +336,8 @@ struct LinkLineTray: View {
                 HStack(spacing: Space.ml) {
                     IconTile(icon: .check, color: Accent.green, size: 34)
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("\(product.name) saved").textStyle(TypeStyle.trayTitle.sized(17)).foregroundStyle(Palette.ink)
-                        Text("Is it on one of these receipts?").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                        TypeStyle.trayTitle.sized(17).text("\(product.name) saved").foregroundStyle(Palette.ink)
+                        TypeStyle.rowSub.text("Is it on one of these receipts?").foregroundStyle(Palette.ink2)
                     }
                 }
                 Spacer()
@@ -381,8 +380,8 @@ struct LinkLineTray: View {
             HStack(spacing: Space.l) {
                 ShopMark(name: item.shopName, size: Size.shopMarkHeader)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(item.line.rawText).textStyle(TypeStyle.mono.sized(14)).foregroundStyle(Palette.ink).lineLimit(1)
-                    Text(meta).textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1)
+                    TypeStyle.mono.sized(14).text(item.line.rawText).foregroundStyle(Palette.ink).lineLimit(1)
+                    TypeStyle.rowSub.text(meta).foregroundStyle(Palette.ink2).lineLimit(1)
                 }
                 Spacer()
                 ZStack {

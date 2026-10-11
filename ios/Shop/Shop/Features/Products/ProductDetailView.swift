@@ -178,15 +178,14 @@ struct ProductDetailView: View {
         HStack(spacing: Space.xl) {
             ProductHero(name: product.name, category: app.catalog.category(product.categoryId)?.name, categoryToken: app.catalog.category(product.categoryId)?.color, imageURL: app.api.productImageURL(product))
             VStack(alignment: .leading, spacing: Space.xs) {
-                Text(product.name)
-                    .textStyle(TypeStyle.emptyTitle.sized(26))
+                TypeStyle.emptyTitle.sized(26).text(product.name)
                     .tracking(-0.04 * 26)
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 if let en = product.nameEn, en.lowercased() != product.name.lowercased() {
-                    Text(en).textStyle(.rowSub).foregroundStyle(Palette.ink3)
+                    TypeStyle.rowSub.text(en).foregroundStyle(Palette.ink3)
                 }
-                Text(model.metaLine).textStyle(TypeStyle.body.sized(13.5)).foregroundStyle(Palette.ink2)
+                TypeStyle.body.sized(13.5).text(model.metaLine).foregroundStyle(Palette.ink2)
             }
         }
         .padding(.horizontal, Space.gutter)
@@ -219,9 +218,9 @@ struct ProductDetailView: View {
             VStack(alignment: .leading, spacing: Space.ml) {
                 Button { app.push(.priceHistory(model.productId)) } label: {
                     HStack(alignment: .firstTextBaseline) {
-                        Text("Price per \(unit.longName)").textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                        TypeStyle.rowTitle.text("Price per \(unit.longName)").foregroundStyle(Palette.ink)
                         Spacer()
-                        Text("After discounts").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                        TypeStyle.rowSub.text("After discounts").foregroundStyle(Palette.ink2)
                         IconView(.forward, size: 12, weight: .bold).foregroundStyle(Palette.ink3)
                     }
                 }
@@ -236,8 +235,7 @@ struct ProductDetailView: View {
                                 .textStyle(.rowTitle)
                                 .lineLimit(1)
                             Spacer()
-                            Text(Money.perUnit(price.latestUnitCents, unit: price.baseUnit))
-                                .textStyle(.rowTitle)
+                            TypeStyle.rowTitle.text(Money.perUnit(price.latestUnitCents, unit: price.baseUnit))
                                 .foregroundStyle(price.cheapest ? Palette.greenText : Palette.ink)
                         }
                         .frame(height: 46)
@@ -269,7 +267,7 @@ struct ProductDetailView: View {
                             .foregroundStyle(Palette.ink)
                             .lineLimit(1)
                         Spacer()
-                        Text(Money.format(point.paidCents)).textStyle(TypeStyle.label.sized(14)).foregroundStyle(Palette.ink)
+                        TypeStyle.label.sized(14).text(Money.format(point.paidCents)).foregroundStyle(Palette.ink)
                     }
                     .textStyle(.body)
                     .frame(height: 40)
@@ -286,7 +284,7 @@ struct ProductDetailView: View {
         VStack(alignment: .leading, spacing: Space.ml) {
             SectionLabel(title: "Nutrition") {
                 if let n = product.nutrition, !n.isEmpty {
-                    Text("per \(n.per == "100ml" ? "100 ml" : "100 g")").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                    TypeStyle.rowSub.text("per \(n.per == "100ml" ? "100 ml" : "100 g")").foregroundStyle(Palette.ink2)
                 }
             }
             if let n = product.nutrition, !n.isEmpty {
@@ -312,10 +310,9 @@ struct ProductDetailView: View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 5) {
                 RoundedRectangle.continuous(2).fill(color).frame(width: 7, height: 7)
-                Text(label).textStyle(.caption).foregroundStyle(Palette.ink2).lineLimit(1)
+                TypeStyle.caption.text(label).foregroundStyle(Palette.ink2).lineLimit(1)
             }
-            Text(value.map { Quantity.decimal($0, maxFraction: 1) + unit } ?? "–")
-                .textStyle(TypeStyle.input.sized(16))
+            TypeStyle.input.sized(16).text(value.map { Quantity.decimal($0, maxFraction: 1) + unit } ?? "–")
                 .foregroundStyle(Palette.ink)
         }
         .padding(Space.ml)
@@ -328,8 +325,8 @@ struct ProductDetailView: View {
         Button { app.push(.receiptNames(model.productId)) } label: {
             HStack(spacing: Space.ml) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Receipt names").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                    Text(aliasSummary(model)).textStyle(TypeStyle.mono.sized(12.5).withFace(.monoRegular)).foregroundStyle(Palette.ink2).lineLimit(1)
+                    TypeStyle.rowTitle.text("Receipt names").foregroundStyle(Palette.ink)
+                    TypeStyle.mono.sized(12.5).withFace(.monoRegular).text(aliasSummary(model)).foregroundStyle(Palette.ink2).lineLimit(1)
                 }
                 Spacer()
                 IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
@@ -426,12 +423,11 @@ struct PriceHistoryView: View {
                             HStack(spacing: Space.l) {
                                 ShopMark(name: p.shopName)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(Dates.dayLabel(p.at)).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                                    Text("\(p.shopName) · \(Quantity.decimal(p.qty)) \(p.unit.rawValue) · paid \(Money.format(p.paidCents))")
-                                        .textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                                    TypeStyle.rowTitle.text(Dates.dayLabel(p.at)).foregroundStyle(Palette.ink)
+                                    TypeStyle.rowSub.text("\(p.shopName) · \(Quantity.decimal(p.qty)) \(p.unit.rawValue) · paid \(Money.format(p.paidCents))").foregroundStyle(Palette.ink2)
                                 }
                                 Spacer()
-                                Text(Money.perUnit(p.unitCents, unit: p.baseUnit)).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                                TypeStyle.rowTitle.text(Money.perUnit(p.unitCents, unit: p.baseUnit)).foregroundStyle(Palette.ink)
                             }
                             .frame(height: Size.rowReceipt)
                             .hairline()
@@ -490,9 +486,8 @@ struct ReceiptNamesView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Receipt names").textStyle(.screenTitle).foregroundStyle(Palette.ink)
-                    Text("How each shop prints \(app.catalog.product(productId)?.name ?? "this product"). New receipts with these texts link automatically.")
-                        .textStyle(.body).foregroundStyle(Palette.ink2)
+                    TypeStyle.screenTitle.text("Receipt names").foregroundStyle(Palette.ink)
+                    TypeStyle.body.text("How each shop prints \(app.catalog.product(productId)?.name ?? "this product"). New receipts with these texts link automatically.").foregroundStyle(Palette.ink2)
                 }
                 .padding(.top, Space.lx)
                 .listRowInsets(EdgeInsets(top: 0, leading: Space.gutter, bottom: Space.m, trailing: Space.gutter))
@@ -505,9 +500,9 @@ struct ReceiptNamesView: View {
                 Section {
                     ForEach(group.items) { alias in
                         HStack(spacing: Space.l) {
-                            Text(alias.text.uppercased()).textStyle(TypeStyle.mono.sized(14)).foregroundStyle(Palette.ink)
+                            TypeStyle.mono.sized(14).text(alias.text.uppercased()).foregroundStyle(Palette.ink)
                             Spacer()
-                            Text("since \(Dates.dayLabel(alias.createdAt))").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                            TypeStyle.rowSub.text("since \(Dates.dayLabel(alias.createdAt))").foregroundStyle(Palette.ink2)
                         }
                         .frame(height: 46)
                         .listRowInsets(EdgeInsets(top: 0, leading: Space.gutter, bottom: 0, trailing: Space.gutter))
@@ -520,7 +515,7 @@ struct ReceiptNamesView: View {
                 } header: {
                     HStack(spacing: Space.m) {
                         ShopMark(name: group.name, size: 18)
-                        Text(group.name).textStyle(.label).foregroundStyle(Palette.ink2)
+                        TypeStyle.label.text(group.name).foregroundStyle(Palette.ink2)
                     }
                     .textCase(nil)
                     .padding(.top, Space.xs)
@@ -528,10 +523,9 @@ struct ReceiptNamesView: View {
             }
 
             Section {
-                Text(aliases.isEmpty && loaded
+                TypeStyle.rowSub.text(aliases.isEmpty && loaded
                      ? "No receipt names yet. Link a receipt line to this product and its text is remembered here."
                      : "Swipe to delete a name linked by mistake. Receipts you already confirmed keep their link.")
-                    .textStyle(.rowSub)
                     .foregroundStyle(Palette.ink2)
                     .listRowBackground(Palette.bg)
                     .listRowSeparator(.hidden)

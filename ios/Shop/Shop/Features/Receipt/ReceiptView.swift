@@ -64,7 +64,7 @@ private struct ReceiptScreen: View {
                             .padding(.top, 18)
                             .transition(.opacity)
                             if !app.network.isOnline {
-                                Text("Needs a connection").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                                TypeStyle.rowSub.text("Needs a connection").foregroundStyle(Palette.ink2)
                                     .padding(.horizontal, Space.edge + Space.xs).padding(.top, Space.s)
                             }
                         }
@@ -152,10 +152,10 @@ private struct ReceiptScreen: View {
                     HStack(spacing: Space.m) {
                         if receipt.shopId == nil {
                             UnknownShopMark(size: 22)
-                            Text("Unknown shop").textStyle(TypeStyle.rowTitle.sized(14)).lineLimit(1)
+                            TypeStyle.rowTitle.sized(14).text("Unknown shop").lineLimit(1)
                         } else {
                             ShopMark(name: model.shop?.name ?? "Shop", size: 22)
-                            Text(model.shop?.displayName ?? "Shop").textStyle(TypeStyle.rowTitle.sized(14)).lineLimit(1)
+                            TypeStyle.rowTitle.sized(14).text(model.shop?.displayName ?? "Shop").lineLimit(1)
                         }
                         IconView(.down, size: 10, weight: .bold)
                             .foregroundStyle(receipt.shopId == nil ? Palette.amberText : Palette.ink3)
@@ -170,12 +170,10 @@ private struct ReceiptScreen: View {
                 if let total = receipt.totalCents {
                     HeroAmount(cents: total, size: 48)
                 } else {
-                    Text("No total")
-                        .textStyle(TypeStyle.emptyTitle.sized(30))
+                    TypeStyle.emptyTitle.sized(30).text("No total")
                         .foregroundStyle(Palette.ink3)
                 }
-                Text(model.metaLine)
-                    .textStyle(.label.withFace(.regular))
+                TypeStyle.label.withFace(.regular).text(model.metaLine)
                     .foregroundStyle(Palette.ink2)
             }
             Spacer(minLength: 0)
@@ -240,8 +238,7 @@ private struct ReceiptScreen: View {
         .shopListRow()
 
         if model.visibleLines.isEmpty {
-            Text(model.lineFilter == .toFix ? "Nothing left to fix." : "No lines were read.")
-                .textStyle(.body)
+            TypeStyle.body.text(model.lineFilter == .toFix ? "Nothing left to fix." : "No lines were read.")
                 .foregroundStyle(Palette.ink2)
                 .padding(.vertical, Space.xxl)
                 .padding(.horizontal, Space.gutter)
@@ -286,9 +283,8 @@ private struct ReceiptScreen: View {
     private var processing: some View {
         VStack(spacing: Space.l) {
             ProgressView().controlSize(.large).tint(Palette.ink2)
-            Text("Reading receipt…").textStyle(.emptyTitle).foregroundStyle(Palette.ink)
-            Text("OCR and parsing on your server, usually 4–15 seconds. You can leave this screen.")
-                .textStyle(TypeStyle.body.sized(14.5))
+            TypeStyle.emptyTitle.text("Reading receipt…").foregroundStyle(Palette.ink)
+            TypeStyle.body.sized(14.5).text("OCR and parsing on your server, usually 4–15 seconds. You can leave this screen.")
                 .foregroundStyle(Palette.ink2)
                 .multilineTextAlignment(.center)
         }
@@ -395,8 +391,7 @@ struct SuggestionEditTray: View {
             TrayHeader(title: "Add shop", subtitle: suggestion.kind == .existing ? "Moves to \(suggestion.displayName(in: app.catalog))" : nil)
             HStack(spacing: Space.l) {
                 ShopMark(name: name.isEmpty ? "?" : name, size: 32)
-                Text("The logo comes from the website once the shop is added.")
-                    .textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                TypeStyle.rowSub.text("The logo comes from the website once the shop is added.").foregroundStyle(Palette.ink2)
             }
             .padding(.horizontal, Space.xs)
             Grid(horizontalSpacing: Space.m, verticalSpacing: Space.m) {
@@ -504,9 +499,9 @@ struct ReceiptShopTray: View {
                             HStack(spacing: Space.l) {
                                 ShopMark(name: shop.name, size: Size.shopMarkHeader)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(shop.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                                    TypeStyle.rowTitle.text(shop.name).foregroundStyle(Palette.ink)
                                     if let branch = shop.branch, !branch.isEmpty {
-                                        Text(branch).textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                                        TypeStyle.rowSub.text(branch).foregroundStyle(Palette.ink2)
                                     }
                                 }
                                 Spacer()
@@ -529,7 +524,7 @@ struct ReceiptShopTray: View {
                                 .strokeBorder(Palette.ink3, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                                 .frame(width: 34, height: 34)
                                 .overlay(IconView(.plus, size: 15, weight: .semibold))
-                            Text("Other shop").textStyle(.rowTitle)
+                            TypeStyle.rowTitle.text("Other shop")
                             Spacer()
                         }
                         .foregroundStyle(Palette.blueText)
