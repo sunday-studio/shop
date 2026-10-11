@@ -23,6 +23,26 @@ final class MockServer: HTTPTransport {
     private let encoder = Coders.encoder()
     private let decoder = Coders.decoder()
 
+    /// `-mock-public`: invented shop names and receipt text instead of real chains, for screenshots
+    /// that are shown publicly. Applied to every response body, so no screen can leak a real name.
+    static let isPublic = ProcessInfo.processInfo.arguments.contains("-mock-public")
+
+    private static let publicNames: [(String, String)] = [
+        ("Albert Heijn", "Corner Market"), ("ALBERT HEIJN", "CORNER MARKET"), ("Ekoplaza", "Northside"),
+        ("Jumbo", "Greenfield"), ("JUMBO", "GREENFIELD"), ("jumbo", "greenfield"),
+        ("Lidl", "Harbour Fresh"), ("LIDL", "HARBOUR FRESH"), ("Dirk", "Basil & Co"),
+        ("Aldi", "Riverside"), ("ALDI", "RIVERSIDE"), ("aldi.nl", "riverside.example"), ("aldi", "riverside"),
+        ("AH GRIEKS", "CM GRIEKS"), ("AH HALFV", "CM HALFV"), ("AH KIPFILET", "CM KIPFILET"), ("AH VOLKOREN", "CM VOLKOREN"),
+        ("AH SPINAZIE", "CM SPINAZIE"), ("AH EIEREN", "CM EIEREN"), ("AH VOLLE", "CM VOLLE"),
+        ("ah halfv", "cm halfv"), ("\"AH\"", "\"CM\""), ("ARLA BIO", "DAIRY BIO"),
+    ]
+
+    static func anonymised(_ text: String) -> String {
+        var out = text
+        for (real, invented) in publicNames { out = out.replacingOccurrences(of: real, with: invented) }
+        return out
+    }
+
     init() {
         // Simulator aid for profiling: a catalog and inbox the size of a few years of use.
         if ProcessInfo.processInfo.arguments.contains("-mock-large") {
@@ -52,7 +72,8 @@ final class MockServer: HTTPTransport {
             (URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []).map { ($0.name, $0.value ?? "") },
             uniquingKeysWith: { a, _ in a }
         )
-        let (status, body) = route(method, parts, query, request.httpBody ?? Data(), contentType: request.value(forHTTPHeaderField: "Content-Type"))
+        var (status, body) = route(method, parts, query, request.httpBody ?? Data(), contentType: request.value(forHTTPHeaderField: "Content-Type"))
+        if Self.isPublic, !body.isEmpty, let text = String(data: body, encoding: .utf8) { body = Data(Self.anonymised(text).utf8) }
         let response = HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
         return (body, response)
     }
