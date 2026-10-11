@@ -92,7 +92,6 @@ final class ProductDetailModel {
     func delete() async -> Bool {
         do {
             try await app.api.deleteProduct(productId)
-            app.catalog.removeProduct(productId)
             return true
         } catch let e as APIError {
             app.toasts.error(e.message)
@@ -360,11 +359,10 @@ struct ProductDetailView: View {
         app.trays.present("delete-product") {
             ConfirmTray(title: "Delete this product?", message: "Receipt lines keep their history, but new receipts won't link to it. Its barcode is released.",
                         confirmTitle: "Delete product", destructive: true) {
-                if await model.delete() {
-                    dismiss()
-                    return true
-                }
-                return false
+                await model.delete()
+            } afterDismiss: {
+                app.catalog.removeProduct(model.productId)
+                dismiss()
             }
         }
     }

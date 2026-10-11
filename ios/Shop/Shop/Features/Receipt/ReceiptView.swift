@@ -322,8 +322,9 @@ private struct ReceiptScreen: View {
     private func askDeleteLine(_ line: ReceiptLine, model: ReceiptModel) {
         app.trays.present("delete-line") {
             ConfirmTray(title: "Delete this line?", message: "\(model.present(line).title) · \(model.present(line).amount)", confirmTitle: "Delete line", destructive: true) {
-                await model.deleteLine(line.id)
-                return true
+                true
+            } afterDismiss: {
+                Task { await model.deleteLine(line.id) }
             }
         }
     }

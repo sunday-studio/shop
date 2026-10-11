@@ -229,13 +229,14 @@ struct ProductsView: View {
                         confirmTitle: "Delete product", destructive: true) {
                 do {
                     try await app.api.deleteProduct(product.id)
-                    app.catalog.removeProduct(product.id)
-                    Haptics.play(.error)
                     return true
                 } catch let error as APIError {
                     app.toasts.error(error.message)
                     return false
                 } catch { return false }
+            } afterDismiss: {
+                app.catalog.removeProduct(product.id)
+                Haptics.play(.warning)
             }
         }
     }

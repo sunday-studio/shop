@@ -83,18 +83,18 @@ final class ProductDraft {
     @discardableResult
     func apply(scan code: String, lookup: BarcodeLookup?) -> ScanFeedback {
         guard Self.isValidBarcode(code) else {
-            scanFeedback = .invalid
+            withAnimation(Motion.sheetSwap) { scanFeedback = .invalid }
             return .invalid
         }
         let feedback = Self.feedback(for: code, lookup: lookup, into: self)
-        scanFeedback = feedback
+        withAnimation(Motion.sheetSwap) { scanFeedback = feedback }
         return feedback
     }
 
     func clearBarcode() {
         barcode = ""
         scannedCode = nil
-        scanFeedback = nil
+        withAnimation(Motion.sheetSwap) { scanFeedback = nil }
     }
 
     private static func feedback(for code: String, lookup: BarcodeLookup?, into d: ProductDraft) -> ScanFeedback {
@@ -414,7 +414,7 @@ struct ProductFormTray: View {
                 if error.isConnectivity {
                     // Keep the code; nutrition can be filled by scanning again later.
                     draft.apply(scan: code, lookup: nil)
-                    draft.scanFeedback = .unreachable
+                    withAnimation(Motion.sheetSwap) { draft.scanFeedback = .unreachable }
                     Haptics.play(.selection)
                 } else {
                     Haptics.play(.error)

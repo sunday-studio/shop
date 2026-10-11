@@ -337,14 +337,15 @@ struct HomeView: View {
             ConfirmTray(title: "Delete \(name)?", message: "The photo and its lines are removed. This can't be undone.", confirmTitle: "Delete", destructive: true) {
                 do {
                     try await app.api.deleteReceipt(receipt.id)
-                    app.home.remove(receipt.id)
-                    Haptics.play(.error)
-                    await app.home.refresh()
                     return true
                 } catch let error as APIError {
                     app.toasts.error(error.message)
                     return false
                 } catch { return false }
+            } afterDismiss: {
+                app.home.remove(receipt.id)
+                Haptics.play(.warning)
+                Task { await app.home.refresh() }
             }
         }
     }
