@@ -186,128 +186,82 @@ struct IconButton: View {
 
 // MARK: - Avatar
 
-/// Top-left user mark that opens Settings. `plain` is the old yellow square; the others are the
-/// playful options (docs/DESIGN-AVATAR.md). The colour comes from the name, so it is stable.
+/// Top-left user button that opens Settings. Same 36 pt circle as the other header buttons.
+/// `plain` is the old yellow square, kept until a style is chosen (docs/DESIGN-AVATAR.md).
 enum AvatarStyle: CaseIterable {
     case plain
-    /// Tilted sticker: bold initial, peeled corner.
-    case sticker
-    /// The icon's receipt with a face, no initial.
-    case buddy
-    /// A mini receipt carrying the initial.
-    case receipt
+    /// Neutral circle, the initial in ink (same look as the search button).
+    case initials
+    /// Circle tinted with the user's colour, the initial in that colour.
+    case tinted
+    /// A person glyph (duotone) in the neutral circle; no initial.
+    case glyph
 }
 
 struct Avatar: View {
     var initial: String = "S"
     var style: AvatarStyle = .plain
     var size: CGFloat = Size.avatar
+    /// A small dot on the corner: something in Settings needs attention (uploads waiting, offline).
+    var badge: Color? = nil
     let action: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduce
-    @State private var tilt: Double = 0
-
-    private static let tones: [(Color, Color)] = [
-        (Accent.yellow, Accent.onLight), (Accent.pink, .white), (Accent.purple, .white),
-        (Accent.teal, .white), (Accent.orange, Accent.onLight), (Accent.cyan, Accent.onLight),
-        (Accent.blue, .white), (Accent.green, .white),
+    private static let tones: [(solid: Color, tint: Color, text: Color)] = [
+        (Accent.blue, Palette.blueTint, Palette.blueText),
+        (Accent.green, Palette.greenTint, Palette.greenText),
+        (Accent.pink, Color.dynamic(light: 0xFFE3F1, dark: 0x3A1427), Color.dynamic(light: 0xC2257A, dark: 0xFF7DC0)),
+        (Accent.purple, Color.dynamic(light: 0xEBE5FF, dark: 0x1F1838), Color.dynamic(light: 0x5B3FD6, dark: 0xA793FF)),
+        (Accent.orange, Palette.amberTint, Palette.amberText),
+        (Accent.teal, Color.dynamic(light: 0xD8F5F2, dark: 0x0A2A27), Color.dynamic(light: 0x00806F, dark: 0x3FD9CA)),
     ]
 
-    private var tone: (Color, Color) {
-        style == .plain ? (Accent.avatar, Accent.onLight) : Self.tones[Int(initial.uppercased().unicodeScalars.first?.value ?? 0) % Self.tones.count]
+    private var tone: (solid: Color, tint: Color, text: Color) {
+        Self.tones[Int(initial.uppercased().unicodeScalars.first?.value ?? 0) % Self.tones.count]
     }
 
     var body: some View {
         Button {
             Haptics.play(.light)
-            wiggle()
             action()
         } label: {
             content
                 .frame(width: size, height: size)
-                .background(tone.0, in: RoundedRectangle.continuous(Radius.ml))
-                .clipShape(RoundedRectangle.continuous(Radius.ml))
+                .background(background, in: style == .plain ? AnyShape(RoundedRectangle.continuous(Radius.ml)) : AnyShape(Circle()))
+                .overlay(alignment: .topTrailing) {
+                    if let badge {
+                        Circle().fill(badge)
+                            .frame(width: 10, height: 10)
+                            .overlay(Circle().strokeBorder(Palette.bg, lineWidth: 2))
+                            .offset(x: 2, y: -2)
+                    }
+                }
         }
         .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
-        .accessibilityLabel("Settings")
-    }
-
-    private func wiggle() {
-        guard !reduce, style != .plain else { return }
-        tilt = -10
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.4)) { tilt = 0 }
+        .accessibilityLabel(badge == nil ? "Settings" : "Settings, needs attention")
     }
 
     private var letter: String { initial.prefix(1).uppercased() }
 
+    private var background: Color {
+        switch style {
+        case .plain: Accent.avatar
+        case .initials, .glyph: Palette.sunk
+        case .tinted: tone.tint
+        }
+    }
+
     @ViewBuilder private var content: some View {
         switch style {
         case .plain:
-            TypeStyle.rowTitle.text(letter).foregroundStyle(tone.1)
-        case .sticker:
-            ZStack(alignment: .topTrailing) {
-                Text(letter)
-                    .font(.custom(ShopFont.bold, size: size * 0.52))
-                    .foregroundStyle(tone.1)
-                    .frame(width: size, height: size)
-                    .rotationEffect(.degrees(-6 + tilt))
-                // The peeled corner.
-                Path { p in
-                    p.move(to: CGPoint(x: size * 0.64, y: 0))
-                    p.addLine(to: CGPoint(x: size, y: 0))
-                    p.addLine(to: CGPoint(x: size, y: size * 0.36))
-                    p.closeSubpath()
-                }
-                .fill(Color.white.opacity(0.35))
-                Path { p in
-                    p.move(to: CGPoint(x: size * 0.64, y: 0))
-                    p.addLine(to: CGPoint(x: size * 0.64, y: size * 0.36))
-                    p.addLine(to: CGPoint(x: size, y: size * 0.36))
-                    p.closeSubpath()
-                }
-                .fill(Color.black.opacity(0.12))
-            }
-        case .buddy:
-            ZStack {
-                ReceiptShape()
-                    .fill(Color(hex: 0xF7F9FF))
-                    .frame(width: size * 0.5, height: size * 0.66)
-                    .overlay {
-                        VStack(spacing: size * 0.06) {
-                            HStack(spacing: size * 0.1) {
-                                Circle().fill(Accent.onLight).frame(width: size * 0.07, height: size * 0.07)
-                                Circle().fill(Accent.onLight).frame(width: size * 0.07, height: size * 0.07)
-                            }
-                            Path { p in
-                                p.move(to: CGPoint(x: 0, y: 0))
-                                p.addQuadCurve(to: CGPoint(x: size * 0.16, y: 0), control: CGPoint(x: size * 0.08, y: size * 0.1))
-                            }
-                            .stroke(Accent.onLight, style: StrokeStyle(lineWidth: size * 0.04, lineCap: .round))
-                            .frame(width: size * 0.16, height: size * 0.06)
-                            RoundedRectangle.continuous(size * 0.02).fill(Accent.yellow)
-                                .frame(width: size * 0.34, height: size * 0.08)
-                        }
-                        .offset(y: -size * 0.03)
-                    }
-                    .rotationEffect(.degrees(-9 + tilt))
-                    .offset(y: -size * 0.02)
-            }
-        case .receipt:
-            ReceiptShape()
-                .fill(Color(hex: 0xF7F9FF))
-                .frame(width: size * 0.56, height: size * 0.7)
-                .overlay {
-                    Text(letter)
-                        .font(.custom(ShopFont.bold, size: size * 0.4))
-                        .foregroundStyle(Accent.onLight)
-                        .offset(y: -size * 0.04)
-                }
-                .overlay(alignment: .bottom) {
-                    RoundedRectangle.continuous(size * 0.02).fill(Accent.yellow)
-                        .frame(width: size * 0.4, height: size * 0.07)
-                        .offset(y: -size * 0.1)
-                }
-                .rotationEffect(.degrees(-9 + tilt))
+            Text(letter).textStyle(TypeStyle.rowTitle).foregroundStyle(Accent.onLight)
+        case .initials:
+            TypeStyle.rowTitle.text(letter).foregroundStyle(Palette.ink)
+        case .tinted:
+            TypeStyle.rowTitle.text(letter).foregroundStyle(tone.text)
+        case .glyph:
+            Image("nav-user").renderingMode(.template).resizable().scaledToFit()
+                .frame(width: size * 0.58, height: size * 0.58)
+                .foregroundStyle(Palette.ink)
         }
     }
 }
