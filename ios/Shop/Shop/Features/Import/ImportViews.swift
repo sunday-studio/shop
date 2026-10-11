@@ -18,8 +18,7 @@ struct ImportSourceTray: View {
                     app.beginImport(.files)
                 }
             }
-            Text("Receipts are read on your own server. Nothing leaves your home network.")
-                .textStyle(.rowSub)
+            TypeStyle.rowSub.text("Receipts are read on your own server. Nothing leaves your home network.")
                 .foregroundStyle(Palette.ink2)
                 .padding(.horizontal, Space.xs)
         }
@@ -88,12 +87,10 @@ struct ImportScreen: View {
     private var header: some View {
         HStack(spacing: Space.l) {
             IconButton(icon: .close, label: "Close") { requestClose() }
-            Text("Import receipts")
-                .textStyle(.navTitle)
+            TypeStyle.navTitle.text("Import receipts")
                 .foregroundStyle(Palette.ink)
             Spacer()
-            Text(model.pageCount == 1 ? "1 photo" : "\(model.pageCount) photos")
-                .textStyle(.label)
+            TypeStyle.label.text(model.pageCount == 1 ? "1 photo" : "\(model.pageCount) photos")
                 .foregroundStyle(Palette.ink2)
                 .contentTransition(.numericText())
         }
@@ -111,7 +108,7 @@ struct ImportScreen: View {
                                      selection: Binding(get: { model.grouping }, set: { model.setGrouping($0) }))
                         .opacity(1)
                     if !model.canJoinAll {
-                        Text("Up to 5 pages").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                        TypeStyle.rowSub.text("Up to 5 pages").foregroundStyle(Palette.ink2)
                     }
                 }
             }
@@ -122,16 +119,16 @@ struct ImportScreen: View {
                 trays.present("import-shop") { ImportShopTray(model: model, target: nil, fallbackShopId: fallbackShopId) }
             } label: {
                 HStack(spacing: Space.ml) {
-                    Text("Shop").textStyle(TypeStyle.input.sized(15)).foregroundStyle(Palette.ink)
+                    TypeStyle.input.sized(15).text("Shop").foregroundStyle(Palette.ink)
                     Spacer()
                     if let shop = app.catalog.shop(displayedBatchShop) {
                         ShopMark(name: shop.name, size: 20)
-                        Text(shop.displayName).textStyle(.body).foregroundStyle(Palette.ink2).lineLimit(1)
+                        TypeStyle.body.text(shop.displayName).foregroundStyle(Palette.ink2).lineLimit(1)
                     } else if ImportFlags.letShopFindOut {
                         UnknownShopMark(size: 20)
-                        Text("Let Shop find out").textStyle(.body).foregroundStyle(Palette.ink2)
+                        TypeStyle.body.text("Let Shop find out").foregroundStyle(Palette.ink2)
                     } else {
-                        Text("Pick a shop").textStyle(.body).foregroundStyle(Palette.amberText)
+                        TypeStyle.body.text("Pick a shop").foregroundStyle(Palette.amberText)
                     }
                     IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
                 }
@@ -178,7 +175,7 @@ struct ImportScreen: View {
                         .accessibilityAction(named: "Remove") { model.remove(receipt.id) }
                         if let page = receipt.pages.first(where: { $0.straighten == .notFound }) {
                             HStack(spacing: 6) {
-                                Text("Edges not found").textStyle(.caption).foregroundStyle(Palette.ink3)
+                                TypeStyle.caption.text("Edges not found").foregroundStyle(Palette.ink3)
                                 Button("Adjust") { adjusting = AdjustTarget(receiptId: receipt.id, pageId: page.id) }
                                     .textStyle(.captionMedium)
                                     .foregroundStyle(Palette.blueText)
@@ -206,8 +203,8 @@ struct ImportScreen: View {
                 HStack(spacing: Space.l) {
                     RoundedRectangle.continuous(6).fill(Palette.redTint).frame(width: 40, height: 56)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(file.name).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
-                        Text("Can't read this file").textStyle(.rowSub).foregroundStyle(Palette.redText)
+                        TypeStyle.rowTitle.text(file.name).foregroundStyle(Palette.ink).lineLimit(1)
+                        TypeStyle.rowSub.text("Can't read this file").foregroundStyle(Palette.redText)
                     }
                     Spacer()
                     Button("Remove") { model.removeUnreadable(file.id) }
@@ -220,7 +217,7 @@ struct ImportScreen: View {
             if model.isLoading {
                 HStack(spacing: Space.m) {
                     ProgressView().controlSize(.small).tint(Palette.ink2)
-                    Text("Reading photos…").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                    TypeStyle.rowSub.text("Reading photos…").foregroundStyle(Palette.ink2)
                 }
                 .padding(.vertical, Space.xl)
             }
@@ -276,20 +273,18 @@ struct ImportScreen: View {
             Button {
                 flashShop()
             } label: {
-                Text(missing == 1 ? "Choose a shop for 1 receipt" : "Choose a shop for \(missing) receipts")
-                    .textStyle(.rowSub).foregroundStyle(Palette.amberText)
+                TypeStyle.rowSub.text(missing == 1 ? "Choose a shop for 1 receipt" : "Choose a shop for \(missing) receipts").foregroundStyle(Palette.amberText)
             }
             .buttonStyle(.press(haptic: nil))
         } else if !model.unreadable.isEmpty {
-            Text(model.unreadable.count == 1 ? "1 file can't be read · remove it or import the rest" : "\(model.unreadable.count) files can't be read · remove them or import the rest")
-                .textStyle(.rowSub).foregroundStyle(Palette.amberText)
+            TypeStyle.rowSub.text(model.unreadable.count == 1 ? "1 file can't be read · remove it or import the rest" : "\(model.unreadable.count) files can't be read · remove them or import the rest").foregroundStyle(Palette.amberText)
         } else if !app.network.isOnline {
             HStack(spacing: 6) {
                 StatusDot(color: Palette.ink3, size: 7)
-                Text("Offline · uploads when you're back online").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                TypeStyle.rowSub.text("Offline · uploads when you're back online").foregroundStyle(Palette.ink2)
             }
         } else {
-            Text("Uploads in the background").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+            TypeStyle.rowSub.text("Uploads in the background").foregroundStyle(Palette.ink2)
         }
     }
 
@@ -386,7 +381,7 @@ struct ImportShopTray: View {
                                 .strokeBorder(Palette.ink3, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                                 .frame(width: 34, height: 34)
                                 .overlay(IconView(.plus, size: 15, weight: .semibold))
-                            Text("Other shop").textStyle(.rowTitle)
+                            TypeStyle.rowTitle.text("Other shop")
                             Spacer()
                         }
                         .foregroundStyle(Palette.blueText)
@@ -424,8 +419,8 @@ struct ImportShopTray: View {
             HStack(spacing: Space.l) {
                 mark
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(title).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                    if !sub.isEmpty { Text(sub).textStyle(.rowSub).foregroundStyle(Palette.ink2) }
+                    TypeStyle.rowTitle.text(title).foregroundStyle(Palette.ink)
+                    if !sub.isEmpty { TypeStyle.rowSub.text(sub).foregroundStyle(Palette.ink2) }
                 }
                 Spacer()
                 ZStack {
@@ -515,9 +510,9 @@ struct ImportDetailsTray: View {
                         if let page = receipt.pages.first(where: { !$0.isPDFPage }) { onAdjust(page.id) }
                     } label: {
                         HStack {
-                            Text("Straighten & crop").textStyle(TypeStyle.input.sized(15)).foregroundStyle(Palette.ink)
+                            TypeStyle.input.sized(15).text("Straighten & crop").foregroundStyle(Palette.ink)
                             Spacer()
-                            Text(straightenValue(receipt)).textStyle(.body).foregroundStyle(Palette.ink2)
+                            TypeStyle.body.text(straightenValue(receipt)).foregroundStyle(Palette.ink2)
                             IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
                         }
                         .padding(.horizontal, Space.lx)
@@ -584,13 +579,13 @@ struct ImportDetailsTray: View {
             trays.present("import-shop") { ImportShopTray(model: model, target: receiptId, fallbackShopId: fallbackShopId) }
         } label: {
             HStack(spacing: Space.ml) {
-                Text("Shop").textStyle(TypeStyle.input.sized(15)).foregroundStyle(Palette.ink)
+                TypeStyle.input.sized(15).text("Shop").foregroundStyle(Palette.ink)
                 Spacer()
                 if let shop = app.catalog.shop(model.effectiveShopId(receipt, fallback: fallbackShopId)) {
                     ShopMark(name: shop.name, size: 20)
-                    Text(shop.displayName).textStyle(.body).foregroundStyle(Palette.ink2).lineLimit(1)
+                    TypeStyle.body.text(shop.displayName).foregroundStyle(Palette.ink2).lineLimit(1)
                 } else {
-                    Text("Pick a shop").textStyle(.body).foregroundStyle(Palette.amberText)
+                    TypeStyle.body.text("Pick a shop").foregroundStyle(Palette.amberText)
                 }
                 IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
             }
@@ -604,9 +599,9 @@ struct ImportDetailsTray: View {
     @ViewBuilder private var caption: some View {
         switch mode {
         case .fromReceipt:
-            Text("Shop reads the date printed on it. If there isn't one, you'll be asked later.").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+            TypeStyle.rowSub.text("Shop reads the date printed on it. If there isn't one, you'll be asked later.").foregroundStyle(Palette.ink2)
         case .photo:
-            Text("The day you took this photo. It can differ from the day you shopped.").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+            TypeStyle.rowSub.text("The day you took this photo. It can differ from the day you shopped.").foregroundStyle(Palette.ink2)
         case .pick:
             EmptyView()
         }

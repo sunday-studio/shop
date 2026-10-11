@@ -12,8 +12,7 @@ struct ProductReviewView: View {
         VStack(spacing: 0) {
             NavHeader(title: "New products") {
                 if model.total > 0 {
-                    Text("\(model.total)")
-                        .textStyle(.label)
+                    TypeStyle.label.text("\(model.total)")
                         .foregroundStyle(Palette.ink3)
                         .contentTransition(.numericText(value: Double(model.total)))
                         .frame(minWidth: Size.iconButton, alignment: .trailing)
@@ -78,8 +77,8 @@ struct ProductReviewView: View {
     private func sectionHeader(_ reason: ReviewReasonKind, count: Int) -> some View {
         HStack(spacing: 6) {
             IconView(reason.icon, size: 12, weight: .semibold)
-            Text(reason.headline).textStyle(.captionMedium)
-            Text("· \(count)").textStyle(.caption).contentTransition(.numericText(value: Double(count)))
+            TypeStyle.captionMedium.text(reason.headline)
+            TypeStyle.caption.text("· \(count)").contentTransition(.numericText(value: Double(count)))
             Spacer()
         }
         .foregroundStyle(reason.tone.text)
@@ -122,8 +121,7 @@ struct ProductReviewView: View {
                         .padding(.horizontal, Space.lx)
                 }
                 if item.sourceLineCount > 1 {
-                    Text("+\(item.sourceLineCount - 1) more receipts")
-                        .textStyle(.caption).foregroundStyle(Palette.ink3).padding(.horizontal, Space.lx)
+                    TypeStyle.caption.text("+\(item.sourceLineCount - 1) more receipts").foregroundStyle(Palette.ink3).padding(.horizontal, Space.lx)
                 }
             }
         }
@@ -279,7 +277,7 @@ private struct ReviewCategoryTray: View {
                         } label: {
                             HStack(spacing: Space.l) {
                                 CategoryDot(color: CategoryColor.swatch(for: category).color, size: 12)
-                                Text(category.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                                TypeStyle.rowTitle.text(category.name).foregroundStyle(Palette.ink)
                                 Spacer()
                                 if (model.pickedCategory[item.id] ?? item.product.categoryId) == category.id {
                                     Image(icon: .check).font(.system(size: 13, weight: .bold)).foregroundStyle(Accent.blue)

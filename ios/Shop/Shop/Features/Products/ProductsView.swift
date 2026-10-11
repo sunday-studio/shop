@@ -268,8 +268,8 @@ struct ProductsView: View {
                     .frame(width: Size.tile, height: Size.tile)
                     .overlay(IconView(.plus, size: 15, weight: .semibold).foregroundStyle(Palette.ink2))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("New product").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                    Text("“\(name.trimmingCharacters(in: .whitespaces))”").textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                    TypeStyle.rowTitle.text("New product").foregroundStyle(Palette.ink)
+                    TypeStyle.rowSub.text("“\(name.trimmingCharacters(in: .whitespaces))”").foregroundStyle(Palette.ink2)
                 }
                 Spacer()
             }

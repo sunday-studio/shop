@@ -48,7 +48,7 @@ struct SettingsView: View {
                     }
                     HStack(spacing: Space.lx) {
                         IconTile(icon: .haptics, color: Accent.teal)
-                        Text("Haptics").textStyle(TypeStyle.rowTitle.sized(15.5)).foregroundStyle(Palette.ink)
+                        TypeStyle.rowTitle.sized(15.5).text("Haptics").foregroundStyle(Palette.ink)
                         Spacer()
                         Toggle("", isOn: $hapticsOn)
                             .labelsHidden()
@@ -63,7 +63,7 @@ struct SettingsView: View {
                     .hairline()
                     HStack(spacing: Space.lx) {
                         IconTile(icon: .scan, color: Accent.blue)
-                        Text("Straighten imported photos").textStyle(TypeStyle.rowTitle.sized(15.5)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.85)
+                        TypeStyle.rowTitle.sized(15.5).text("Straighten imported photos").foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.85)
                         Spacer()
                         Toggle("", isOn: $straightenOn)
                             .labelsHidden()
@@ -108,10 +108,9 @@ struct SettingsView: View {
                     .background(.white.opacity(0.2), in: Capsule())
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(app.isMock ? "Demo server" : "Your server").textStyle(TypeStyle.emptyTitle)
-                    Text(app.serverURL?.absoluteString.replacingOccurrences(of: "http://", with: "") ?? "")
-                        .textStyle(TypeStyle.mono.sized(13).withFace(.monoRegular)).opacity(0.8).lineLimit(1)
-                    Text(syncLine).textStyle(.rowSub).opacity(0.8)
+                    TypeStyle.emptyTitle.text(app.isMock ? "Demo server" : "Your server")
+                    TypeStyle.mono.sized(13).withFace(.monoRegular).text(app.serverURL?.absoluteString.replacingOccurrences(of: "http://", with: "") ?? "").opacity(0.8).lineLimit(1)
+                    TypeStyle.rowSub.text(syncLine).opacity(0.8)
                 }
             }
             .foregroundStyle(Accent.white)
@@ -160,7 +159,7 @@ struct ServerView: View {
                     .padding(.top, 18)
 
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Server health").textStyle(.label).foregroundStyle(Palette.ink2).padding(.bottom, Space.xs)
+                    TypeStyle.label.text("Server health").foregroundStyle(Palette.ink2).padding(.bottom, Space.xs)
                     if let health = app.health {
                         ForEach(health.checks.keys.sorted(), id: \.self) { key in
                             let check = health.checks[key]!
@@ -189,7 +188,7 @@ struct ServerView: View {
                 .padding(.top, Space.xxl)
 
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Connection").textStyle(.label).foregroundStyle(Palette.ink2).padding(.bottom, Space.xs)
+                    TypeStyle.label.text("Connection").foregroundStyle(Palette.ink2).padding(.bottom, Space.xs)
                     connectionRow(title: "Server URL", value: app.serverURL?.absoluteString ?? "—", mono: true, action: "Change") {
                         confirmDisconnect(title: "Change server?", message: "This iPhone signs out of this server and forgets its local copy. Scans still waiting to upload are lost.")
                     }
@@ -225,8 +224,8 @@ struct ServerView: View {
         return HStack(spacing: Space.l) {
             IconTile(icon: ok ? .check : .wifiSlash, color: ok ? Accent.green : Accent.red, size: 40)
             VStack(alignment: .leading, spacing: 1) {
-                Text(ok ? "Connected" : (app.network.isOnline ? "Server unreachable" : "Offline")).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                Text(detail).textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                TypeStyle.rowTitle.text(ok ? "Connected" : (app.network.isOnline ? "Server unreachable" : "Offline")).foregroundStyle(Palette.ink)
+                TypeStyle.rowSub.text(detail).foregroundStyle(Palette.ink2)
             }
             Spacer()
             Button {
@@ -251,9 +250,8 @@ struct ServerView: View {
     private func connectionRow(title: String, value: String, mono: Bool, action: String?, run: (() -> Void)?) -> some View {
         HStack(spacing: Space.l) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(title).textStyle(.caption).foregroundStyle(Palette.ink2)
-                Text(value)
-                    .textStyle(mono ? TypeStyle.mono.sized(14) : .rowTitle)
+                TypeStyle.caption.text(title).foregroundStyle(Palette.ink2)
+                (mono ? TypeStyle.mono.sized(14) : TypeStyle.rowTitle).text(value)
                     .foregroundStyle(Palette.ink)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -346,7 +344,7 @@ struct UploadQueueView: View {
             if !app.network.isOnline {
                 HStack(spacing: Space.ml) {
                     StatusDot(color: Palette.ink3, size: 8)
-                    Text("Offline. Scans upload when you reconnect.").textStyle(.body).foregroundStyle(Palette.ink)
+                    TypeStyle.body.text("Offline. Scans upload when you reconnect.").foregroundStyle(Palette.ink)
                 }
                 .padding(Space.lx)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -426,9 +424,8 @@ struct UploadQueueView: View {
         HStack(spacing: Space.l) {
             thumbnail(item)
             VStack(alignment: .leading, spacing: 1) {
-                Text(item.shopId == nil ? "Shop to be found out" : item.shopName).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                Text(itemSubtitle(item))
-                    .textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1)
+                TypeStyle.rowTitle.text(item.shopId == nil ? "Shop to be found out" : item.shopName).foregroundStyle(Palette.ink)
+                TypeStyle.rowSub.text(itemSubtitle(item)).foregroundStyle(Palette.ink2).lineLimit(1)
             }
             Spacer()
             if item.state == .uploading || item.state == .preparing {
@@ -458,9 +455,8 @@ struct UploadQueueView: View {
             thumbnail(item)
             VStack(alignment: .leading, spacing: Space.m) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(item.shopId == nil ? "Shop to be found out" : item.shopName).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                    Text(duplicate ? "Same receipt was already uploaded" : (item.lastError ?? "Upload failed"))
-                        .textStyle(.rowSub)
+                    TypeStyle.rowTitle.text(item.shopId == nil ? "Shop to be found out" : item.shopName).foregroundStyle(Palette.ink)
+                    TypeStyle.rowSub.text(duplicate ? "Same receipt was already uploaded" : (item.lastError ?? "Upload failed"))
                         .foregroundStyle(duplicate ? Palette.amberText : Palette.redText)
                         .fixedSize(horizontal: false, vertical: true)
                 }

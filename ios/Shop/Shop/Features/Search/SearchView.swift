@@ -86,9 +86,9 @@ struct SearchView: View {
                 Button { app.push(.receiptNames(a.productId)) } label: {
                     HStack(spacing: Space.l) {
                         ShopMark(name: a.shopName ?? "Any")
-                        Text(a.text.uppercased()).textStyle(TypeStyle.mono.sized(14)).foregroundStyle(Palette.ink).lineLimit(1)
+                        TypeStyle.mono.sized(14).text(a.text.uppercased()).foregroundStyle(Palette.ink).lineLimit(1)
                         Spacer(minLength: Space.m)
-                        Text(a.productName).textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1)
+                        TypeStyle.rowSub.text(a.productName).foregroundStyle(Palette.ink2).lineLimit(1)
                     }
                     .frame(height: 48)
                     .hairline()

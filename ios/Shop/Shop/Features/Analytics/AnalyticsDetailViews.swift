@@ -39,7 +39,7 @@ struct ShopSpendView: View {
         return VStack(alignment: .leading, spacing: Space.lx) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(shop?.location ?? shop?.displayName ?? "").textStyle(.label).opacity(0.8)
+                    TypeStyle.label.text(shop?.location ?? shop?.displayName ?? "").opacity(0.8)
                     HeroAmount(cents: total, size: 46, color: Accent.white, minorColor: Accent.white.opacity(0.7))
                         .padding(.top, 6)
                 }
@@ -67,8 +67,8 @@ struct ShopSpendView: View {
 
     private func stat(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(label).textStyle(TypeStyle.caption.sized(11.5)).opacity(0.75)
-            Text(value).textStyle(TypeStyle.input.sized(17))
+            TypeStyle.caption.sized(11.5).text(label).opacity(0.75)
+            TypeStyle.input.sized(17).text(value)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -85,12 +85,11 @@ struct ShopSpendView: View {
                     Button { app.push(.receipt(r.id)) } label: {
                         HStack(spacing: Space.l) {
                             HStack(alignment: .firstTextBaseline, spacing: Space.m) {
-                                Text(Dates.shortDay(r.displayDate).components(separatedBy: " ").prefix(2).joined(separator: " "))
-                                    .textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                                Text(sub(r)).textStyle(.rowSub).foregroundStyle(r.status == .needsReview ? Palette.amberText : Palette.ink2)
+                                TypeStyle.rowTitle.text(Dates.shortDay(r.displayDate).components(separatedBy: " ").prefix(2).joined(separator: " ")).foregroundStyle(Palette.ink)
+                                TypeStyle.rowSub.text(sub(r)).foregroundStyle(r.status == .needsReview ? Palette.amberText : Palette.ink2)
                             }
                             Spacer()
-                            Text(r.totalCents.map(Money.format) ?? "—").textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                            TypeStyle.rowTitle.text(r.totalCents.map(Money.format) ?? "—").foregroundStyle(Palette.ink)
                         }
                         .frame(height: 46)
                         .hairline()
@@ -100,7 +99,7 @@ struct ShopSpendView: View {
                 }
             }
             if loaded && receipts.isEmpty {
-                Text("No receipts from this shop in the range.").textStyle(.body).foregroundStyle(Palette.ink2).padding(.vertical, Space.xxl)
+                TypeStyle.body.text("No receipts from this shop in the range.").foregroundStyle(Palette.ink2).padding(.vertical, Space.xxl)
             }
         }
     }
@@ -123,8 +122,7 @@ struct ShopSpendView: View {
 
 /// Small static range label in pushed analytics headers ("May – Oct").
 private func rangeLabel(_ range: DateRange) -> some View {
-    Text(range.short)
-        .textStyle(TypeStyle.label.sized(12.5))
+    TypeStyle.label.sized(12.5).text(range.short)
         .foregroundStyle(Palette.ink)
         .padding(.horizontal, Space.ml)
         .frame(height: 30)
@@ -170,7 +168,7 @@ struct CategorySpendView: View {
 
                 VStack(alignment: .leading, spacing: Space.xs) {
                     HeroAmount(cents: total, size: 50)
-                    Text(caption).textStyle(TypeStyle.body.sized(13.5)).foregroundStyle(Palette.ink2)
+                    TypeStyle.body.sized(13.5).text(caption).foregroundStyle(Palette.ink2)
                 }
                 .padding(.horizontal, Space.gutter)
                 .padding(.top, 18)
@@ -206,8 +204,7 @@ struct CategorySpendView: View {
                     let part = shopSplit[i]
                     let fraction = Double(part.cents) / Double(sum)
                     let mark = ShopBrand.mark(for: part.shop.name)
-                    Text(fraction > 0.18 ? "\(part.shop.name.count > 6 ? mark.monogram : part.shop.name) \(Int((fraction * 100).rounded()))%" : "")
-                        .textStyle(.captionMedium)
+                    TypeStyle.captionMedium.text(fraction > 0.18 ? "\(part.shop.name.count > 6 ? mark.monogram : part.shop.name) \(Int((fraction * 100).rounded()))%" : "")
                         .foregroundStyle(Accent.white)
                         .lineLimit(1)
                         .padding(.leading, 8)
@@ -239,12 +236,12 @@ struct CategorySpendView: View {
                 Button { app.push(.product(row.productId)) } label: {
                     HStack(spacing: Space.m) {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(row.name).textStyle(TypeStyle.rowTitle.sized(14.5)).foregroundStyle(Palette.ink).lineLimit(1)
-                            if let best = row.best { Text(best).textStyle(.caption).foregroundStyle(Palette.greenText).lineLimit(1) }
+                            TypeStyle.rowTitle.sized(14.5).text(row.name).foregroundStyle(Palette.ink).lineLimit(1)
+                            if let best = row.best { TypeStyle.caption.text(best).foregroundStyle(Palette.greenText).lineLimit(1) }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(row.qty).textStyle(.body).foregroundStyle(Palette.ink2).lineLimit(1).frame(width: 56, alignment: .trailing)
-                        Text(Money.format(row.spent)).textStyle(TypeStyle.rowTitle.sized(14.5)).foregroundStyle(Palette.ink).frame(width: 72, alignment: .trailing)
+                        TypeStyle.body.text(row.qty).foregroundStyle(Palette.ink2).lineLimit(1).frame(width: 56, alignment: .trailing)
+                        TypeStyle.rowTitle.sized(14.5).text(Money.format(row.spent)).foregroundStyle(Palette.ink).frame(width: 72, alignment: .trailing)
                     }
                     .frame(height: 48)
                     .hairline()
@@ -253,7 +250,7 @@ struct CategorySpendView: View {
                 .buttonStyle(.press(haptic: nil))
             }
             if loaded && rows.isEmpty {
-                Text("No linked products in this category for the range.").textStyle(.body).foregroundStyle(Palette.ink2).padding(.vertical, Space.xxl)
+                TypeStyle.body.text("No linked products in this category for the range.").foregroundStyle(Palette.ink2).padding(.vertical, Space.xxl)
             } else if !loaded {
                 SkeletonRows(count: 5) { SkeletonProductRow() }
             }
@@ -310,9 +307,8 @@ struct PriceChangesView: View {
             VStack(alignment: .leading, spacing: 0) {
                 NavHeader()
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Price changes").textStyle(.screenTitle).foregroundStyle(Palette.ink)
-                    Text("Your last three buys against the three before, per kg, litre or piece.")
-                        .textStyle(.body).foregroundStyle(Palette.ink2)
+                    TypeStyle.screenTitle.text("Price changes").foregroundStyle(Palette.ink)
+                    TypeStyle.body.text("Your last three buys against the three before, per kg, litre or piece.").foregroundStyle(Palette.ink2)
                 }
                 .padding(.horizontal, Space.gutter)
                 .padding(.top, Space.lx)
@@ -367,14 +363,13 @@ struct PriceChangesView: View {
                     HStack(spacing: Space.l) {
                         ShopMark(name: c.shopName, size: Size.shopMarkHeader)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(c.productName).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(1)
+                            TypeStyle.rowTitle.text(c.productName).foregroundStyle(Palette.ink).lineLimit(1)
                             (Text("\(Money.perUnit(c.oldUnitCents, unit: c.baseUnit)) → ").foregroundStyle(Palette.ink2)
                                 + Text(Money.perUnit(c.newUnitCents, unit: c.baseUnit)).foregroundStyle(Palette.ink))
                                 .textStyle(.rowSub)
                         }
                         Spacer()
-                        Text("\(c.pct > 0 ? "+" : Money.minus)\(Int(abs(c.pct).rounded()))%")
-                            .textStyle(.label)
+                        TypeStyle.label.text("\(c.pct > 0 ? "+" : Money.minus)\(Int(abs(c.pct).rounded()))%")
                             .foregroundStyle(c.pct > 0 ? Palette.redText : Palette.greenText)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)

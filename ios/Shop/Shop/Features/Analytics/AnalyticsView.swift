@@ -197,9 +197,9 @@ struct AnalyticsView: View {
                             .padding(.top, Space.l)
                     }
                     VStack(alignment: .leading, spacing: Space.xs) {
-                        Text(model.range.longLabel).textStyle(TypeStyle.rowTitle.sized(14)).foregroundStyle(Palette.ink2)
+                        TypeStyle.rowTitle.sized(14).text(model.range.longLabel).foregroundStyle(Palette.ink2)
                         HeroAmount(cents: model.byTime?.totalCents ?? 0, size: 54)
-                        Text(model.caption).textStyle(TypeStyle.body.sized(13.5)).foregroundStyle(Palette.ink2)
+                        TypeStyle.body.sized(13.5).text(model.caption).foregroundStyle(Palette.ink2)
                     }
                     .padding(.horizontal, Space.gutter)
                     .padding(.top, 18)
@@ -225,8 +225,8 @@ struct AnalyticsView: View {
                             .frame(width: 32, height: 32)
                             .background(Palette.redTint, in: RoundedRectangle.continuous(10))
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Price changes").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                            Text(model.priceChangeSummary).textStyle(.rowSub).foregroundStyle(Palette.ink2).lineLimit(1)
+                            TypeStyle.rowTitle.text("Price changes").foregroundStyle(Palette.ink)
+                            TypeStyle.rowSub.text(model.priceChangeSummary).foregroundStyle(Palette.ink2).lineLimit(1)
                         }
                         Spacer()
                         IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
@@ -251,7 +251,7 @@ struct AnalyticsView: View {
         let colors = model.categoryColors
         VStack(spacing: 0) {
             if buckets.isEmpty && spend != nil {
-                Text("Nothing in this range.").textStyle(.body).foregroundStyle(Palette.ink2).padding(.vertical, Space.xxl)
+                TypeStyle.body.text("Nothing in this range.").foregroundStyle(Palette.ink2).padding(.vertical, Space.xxl)
             }
             ForEach(buckets) { b in
                 let fraction = Double(b.cents) / Double(total)
@@ -275,14 +275,13 @@ struct AnalyticsView: View {
                         }
                         VStack(spacing: 5) {
                             HStack {
-                                Text(b.key == "none" ? (model.breakdown == .shop ? "Unassigned" : "Uncategorised") : b.label).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                                TypeStyle.rowTitle.text(b.key == "none" ? (model.breakdown == .shop ? "Unassigned" : "Uncategorised") : b.label).foregroundStyle(Palette.ink)
                                 Spacer()
-                                Text(Money.format(b.cents)).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                                TypeStyle.rowTitle.text(Money.format(b.cents)).foregroundStyle(Palette.ink)
                             }
                             HStack(spacing: Space.m) {
                                 ShareBar(fraction: fraction, color: color)
-                                Text("\(Int((fraction * 100).rounded()))%")
-                                    .textStyle(TypeStyle.caption.sized(11.5))
+                                TypeStyle.caption.sized(11.5).text("\(Int((fraction * 100).rounded()))%")
                                     .foregroundStyle(Palette.ink2)
                                     .frame(width: 32, alignment: .trailing)
                             }
@@ -340,8 +339,7 @@ struct RangeTray: View {
                         to = r.to
                         bars = r.grouping
                     } label: {
-                        Text(DateRange.gridTitle(p))
-                            .textStyle(TypeStyle.label.sized(14))
+                        TypeStyle.label.sized(14).text(DateRange.gridTitle(p))
                             .foregroundStyle(preset == p ? Accent.white : Palette.ink)
                             .frame(maxWidth: .infinity)
                             .frame(height: 46)
@@ -357,7 +355,7 @@ struct RangeTray: View {
             }
 
             HStack {
-                Text("Bars per").textStyle(TypeStyle.input.sized(15)).foregroundStyle(Palette.ink)
+                TypeStyle.input.sized(15).text("Bars per").foregroundStyle(Palette.ink)
                 Spacer()
                 SegmentedControl(options: [SpendGrouping.day, .week, .month], title: { $0.rawValue.capitalized }, selection: $bars, track: Palette.trayField)
                     .frame(width: 210)
@@ -391,9 +389,8 @@ struct RangeTray: View {
             }
         } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).textStyle(.caption).foregroundStyle(Palette.ink2)
-                Text(selection.wrappedValue.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted, timeZone: Dates.timeZone)))
-                    .textStyle(TypeStyle.input.sized(16))
+                TypeStyle.caption.text(label).foregroundStyle(Palette.ink2)
+                TypeStyle.input.sized(16).text(selection.wrappedValue.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted, timeZone: Dates.timeZone)))
                     .foregroundStyle(Palette.ink)
             }
             .padding(.vertical, Space.ml)

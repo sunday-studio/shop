@@ -203,19 +203,16 @@ struct ProductFormTray: View {
                 photoTile
                 VStack(alignment: .leading, spacing: 6) {
                     if draft.prefill != nil {
-                        Text("Filled in from Open Food Facts")
-                            .textStyle(.captionMedium)
+                        TypeStyle.captionMedium.text("Filled in from Open Food Facts")
                             .foregroundStyle(Palette.blueText)
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4)
                             .background(Palette.blueTint, in: RoundedRectangle.continuous(Radius.s))
                     }
                     if draft.barcode.isEmpty {
-                        Text(draft.existing == nil ? "Add a photo so it's easy to spot in lists." : "Change the photo or details.")
-                            .textStyle(TypeStyle.body.sized(13)).foregroundStyle(Palette.ink2)
+                        TypeStyle.body.sized(13).text(draft.existing == nil ? "Add a photo so it's easy to spot in lists." : "Change the photo or details.").foregroundStyle(Palette.ink2)
                     } else {
-                        Text("Check the details.")
-                            .textStyle(TypeStyle.body.sized(13))
+                        TypeStyle.body.sized(13).text("Check the details.")
                             .foregroundStyle(Palette.ink2)
                     }
                 }
@@ -237,7 +234,7 @@ struct ProductFormTray: View {
             barcodeRow
 
             VStack(alignment: .leading, spacing: Space.m) {
-                Text("Category").textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+                TypeStyle.rowSub.text("Category").foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
                 FlowLayout(spacing: 6, lineSpacing: 6) {
                     ForEach(app.catalog.categories) { c in
                         Chip(title: c.name, isSelected: draft.categoryId == c.id, dot: c.dotColor, idleBackground: Palette.trayField) {
@@ -268,8 +265,8 @@ struct ProductFormTray: View {
             } label: {
                 HStack(spacing: Space.l) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Nutrition").textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                        Text(draft.nutritionSummary).textStyle(.rowSub).foregroundStyle(Palette.ink2)
+                        TypeStyle.rowTitle.text("Nutrition").foregroundStyle(Palette.ink)
+                        TypeStyle.rowSub.text(draft.nutritionSummary).foregroundStyle(Palette.ink2)
                     }
                     Spacer()
                     IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
@@ -308,17 +305,15 @@ struct ProductFormTray: View {
                 Button { scanning = true } label: {
                     HStack(spacing: Space.m) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Barcode").textStyle(.caption).foregroundStyle(Palette.ink2)
-                            Text(draft.barcode.isEmpty ? "Not set" : draft.barcode)
-                                .textStyle(TypeStyle.mono.sized(16))
+                            TypeStyle.caption.text("Barcode").foregroundStyle(Palette.ink2)
+                            TypeStyle.mono.sized(16).text(draft.barcode.isEmpty ? "Not set" : draft.barcode)
                                 .foregroundStyle(draft.barcode.isEmpty ? Palette.ink3 : Palette.ink)
                         }
                         Spacer()
                         if lookingUp {
                             ProgressView().controlSize(.small).tint(Palette.ink2)
                         } else {
-                            Text(draft.barcode.isEmpty ? "Scan" : "Rescan")
-                                .textStyle(.label).foregroundStyle(Palette.blueText)
+                            TypeStyle.label.text(draft.barcode.isEmpty ? "Scan" : "Rescan").foregroundStyle(Palette.blueText)
                                 .frame(minHeight: 44)
                         }
                     }
@@ -360,29 +355,24 @@ struct ProductFormTray: View {
     @ViewBuilder private var scanFeedbackLine: some View {
         switch draft.scanFeedback {
         case .filled(let parts):
-            Text("Filled in from Open Food Facts: \(parts.joined(separator: ", ")).")
-                .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+            TypeStyle.rowSub.text("Filled in from Open Food Facts: \(parts.joined(separator: ", ")).").foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
         case .nothingNew:
-            Text("Open Food Facts has nothing new for this product.")
-                .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+            TypeStyle.rowSub.text("Open Food Facts has nothing new for this product.").foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
         case .notFound:
-            Text("Not on Open Food Facts. Fill in the details yourself.")
-                .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+            TypeStyle.rowSub.text("Not on Open Food Facts. Fill in the details yourself.").foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
         case .invalid:
-            Text("Not a valid barcode. Barcodes have 8, 12, 13 or 14 digits.")
-                .textStyle(.rowSub).foregroundStyle(Palette.amberText).padding(.horizontal, Space.xs)
+            TypeStyle.rowSub.text("Not a valid barcode. Barcodes have 8, 12, 13 or 14 digits.").foregroundStyle(Palette.amberText).padding(.horizontal, Space.xs)
         case .unreachable:
-            Text("Couldn't reach Open Food Facts. The code is saved.")
-                .textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
+            TypeStyle.rowSub.text("Couldn't reach Open Food Facts. The code is saved.").foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
         case .belongsTo(let other):
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Space.m) {
-                    Text("This barcode belongs to \(other.name)").textStyle(.rowSub).foregroundStyle(Palette.amberText).lineLimit(1)
+                    TypeStyle.rowSub.text("This barcode belongs to \(other.name)").foregroundStyle(Palette.amberText).lineLimit(1)
                     Spacer(minLength: 0)
                     openItButton(other)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("This barcode belongs to \(other.name)").textStyle(.rowSub).foregroundStyle(Palette.amberText)
+                    TypeStyle.rowSub.text("This barcode belongs to \(other.name)").foregroundStyle(Palette.amberText)
                     openItButton(other)
                 }
             }
@@ -528,18 +518,18 @@ struct NutritionTray: View {
 
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Energy").textStyle(.label).opacity(0.85)
+                    TypeStyle.label.text("Energy").opacity(0.85)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         TextField("0", text: $kcal)
                             .keyboardType(.decimalPad)
                             .textStyle(TypeStyle.hero.sized(44))
                             .fixedSize()
                             .frame(minWidth: 60, alignment: .leading)
-                        Text("kcal").textStyle(TypeStyle.input).opacity(0.85)
+                        TypeStyle.input.text("kcal").opacity(0.85)
                     }
                 }
                 Spacer()
-                Text(kilojoules).textStyle(.label.withFace(.regular)).opacity(0.85).padding(.bottom, 4)
+                TypeStyle.label.withFace(.regular).text(kilojoules).opacity(0.85).padding(.bottom, 4)
             }
             .foregroundStyle(Accent.white)
             .tint(.white)
@@ -554,14 +544,14 @@ struct NutritionTray: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
                             RoundedRectangle.continuous(2).fill(field.color).frame(width: 7, height: 7)
-                            Text(field.label).textStyle(.caption).foregroundStyle(Palette.ink2)
+                            TypeStyle.caption.text(field.label).foregroundStyle(Palette.ink2)
                         }
                         HStack(alignment: .firstTextBaseline, spacing: 3) {
                             TextField("–", text: binding(field.key))
                                 .keyboardType(.decimalPad)
                                 .textStyle(TypeStyle.input.sized(18))
                                 .foregroundStyle(Palette.ink)
-                            Text("g").textStyle(.label.withFace(.regular)).foregroundStyle(Palette.ink2)
+                            TypeStyle.label.withFace(.regular).text("g").foregroundStyle(Palette.ink2)
                         }
                     }
                     .padding(.vertical, Space.ml)
@@ -571,8 +561,7 @@ struct NutritionTray: View {
                 }
             }
 
-            Text(draft.nutrition?.source == "openfoodfacts" ? "From Open Food Facts. Changing a value marks it as entered by you." : "Values per 100 g or 100 ml, from the label.")
-                .textStyle(.rowSub)
+            TypeStyle.rowSub.text(draft.nutrition?.source == "openfoodfacts" ? "From Open Food Facts. Changing a value marks it as entered by you." : "Values per 100 g or 100 ml, from the label.")
                 .foregroundStyle(Palette.ink2)
                 .padding(.horizontal, Space.xs)
 
@@ -685,8 +674,7 @@ struct BarcodeScanCover: View {
                 .padding(.top, Space.l)
                 Spacer()
                 VStack(spacing: Space.l) {
-                    Text(BarcodeScanner.isAvailable ? "Point the camera at the barcode." : "Type the barcode.")
-                        .textStyle(.body).foregroundStyle(Color(hex: 0xF4F4F1))
+                    TypeStyle.body.text(BarcodeScanner.isAvailable ? "Point the camera at the barcode." : "Type the barcode.").foregroundStyle(Color(hex: 0xF4F4F1))
                     if !BarcodeScanner.isAvailable {
                         HStack(spacing: Space.m) {
                             TextField("", text: $manual, prompt: Text("Barcode").foregroundStyle(Color(hex: 0x8F8F8A)))

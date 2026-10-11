@@ -21,8 +21,7 @@ struct AddTray: View {
                 app.openImportSources()
             }
             if let last = lastScan {
-                Text(last)
-                    .textStyle(.rowSub)
+                TypeStyle.rowSub.text(last)
                     .foregroundStyle(Palette.ink2)
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 2)
@@ -127,11 +126,9 @@ struct ReceiptCaptureView: View {
                 .frame(width: 150, height: 200)
                 .rotationEffect(.degrees(-3))
                 .opacity(0.9)
-            Text(DocumentScanner.isAvailable ? "Opening the scanner…" : "No camera here")
-                .textStyle(.emptyTitle)
+            TypeStyle.emptyTitle.text(DocumentScanner.isAvailable ? "Opening the scanner…" : "No camera here")
                 .foregroundStyle(Color(hex: 0xF4F4F1))
-            Text(DocumentScanner.isAvailable ? "Hold the receipt flat on a dark surface." : "Pick a photo of a receipt instead.")
-                .textStyle(.body)
+            TypeStyle.body.text(DocumentScanner.isAvailable ? "Hold the receipt flat on a dark surface." : "Pick a photo of a receipt instead.")
                 .foregroundStyle(Color(hex: 0x8F8F8A))
             Spacer()
             VStack(spacing: Space.m) {
@@ -157,7 +154,7 @@ struct ReceiptCaptureView: View {
     private var shopTray: some View {
         VStack(alignment: .leading, spacing: Space.lx) {
             HStack {
-                Text("Which shop?").textStyle(.trayTitle).foregroundStyle(Palette.ink)
+                TypeStyle.trayTitle.text("Which shop?").foregroundStyle(Palette.ink)
                 Spacer()
                 IconButton(icon: .close, label: "Discard scan", size: Size.iconButtonSmall, glyph: 13, foreground: Palette.ink2, background: Palette.trayField) {
                     app.capture = nil
@@ -214,7 +211,7 @@ struct ReceiptCaptureView: View {
                                 .strokeBorder(Palette.ink3, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                                 .frame(width: 34, height: 34)
                                 .overlay(IconView(.plus, size: 15, weight: .semibold))
-                            Text("Other shop").textStyle(.rowTitle)
+                            TypeStyle.rowTitle.text("Other shop")
                             Spacer()
                         }
                         .foregroundStyle(Palette.blueText)
@@ -234,10 +231,9 @@ struct ReceiptCaptureView: View {
                 }
             } label: {
                 HStack(spacing: Space.ml) {
-                    Text("Date").textStyle(TypeStyle.input.sized(15)).foregroundStyle(Palette.ink)
+                    TypeStyle.input.sized(15).text("Date").foregroundStyle(Palette.ink)
                     Spacer()
-                    Text(date.map { "\(Dates.shortDay($0)) \(Dates.time($0))" } ?? "Read from receipt")
-                        .textStyle(.body)
+                    TypeStyle.body.text(date.map { "\(Dates.shortDay($0)) \(Dates.time($0))" } ?? "Read from receipt")
                         .foregroundStyle(Palette.ink2)
                     IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
                 }
@@ -283,8 +279,8 @@ struct ReceiptCaptureView: View {
             HStack(spacing: Space.l) {
                 ShopMark(name: shop.name, size: Size.shopMarkHeader)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(shop.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                    if !sub.isEmpty { Text(sub).textStyle(.rowSub).foregroundStyle(Palette.ink2) }
+                    TypeStyle.rowTitle.text(shop.name).foregroundStyle(Palette.ink)
+                    if !sub.isEmpty { TypeStyle.rowSub.text(sub).foregroundStyle(Palette.ink2) }
                 }
                 Spacer()
                 ZStack {

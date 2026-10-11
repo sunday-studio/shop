@@ -25,7 +25,7 @@ struct AdjustScreen: View {
             HStack {
                 IconButton(icon: .back, label: "Back") { dismiss() }
                 Spacer()
-                Text("Straighten & crop").textStyle(.navTitle).foregroundStyle(Palette.ink)
+                TypeStyle.navTitle.text("Straighten & crop").foregroundStyle(Palette.ink)
                 Spacer()
                 Button {
                     rotate()
@@ -55,8 +55,7 @@ struct AdjustScreen: View {
             .padding(.horizontal, Space.edge)
             .padding(.top, Space.l)
 
-            Text("Drag the corners to the receipt's edges.")
-                .textStyle(.rowSub)
+            TypeStyle.rowSub.text("Drag the corners to the receipt's edges.")
                 .foregroundStyle(Palette.ink2)
                 .padding(.top, Space.m)
 
