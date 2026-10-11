@@ -32,3 +32,6 @@ deploy/.env
 # spike: real receipt photos and OCR output of them stay local
 spike/data/
 spike/out/
+
+# agents' working notes (local only)
+notes/
