@@ -231,7 +231,7 @@ def build(g):
         pw = 250 if m else 290
         phs = ''.join(f'<div class="ph" style="{"top:50px" if m else ""}">{dev(s, pw)}</div>' for t, d, s in F)
         left = f'<div style="{"" if m else "width:440px;flex:none"}"><h2 class="h2 lt" style="font-size:{34 if m else 56}px;line-height:1.05;margin-bottom:{24 if m else 36}px">Everything a receipt knows.</h2><div class="fx">{items}</div></div>'
-        right = f'<div class="stage" style="{"height:460px;margin-top:28px" if m else "height:620px"}">{phs}</div>'
+        right = f'<div class="stage" style="{"height:460px;margin-top:28px;flex:none" if m else "height:620px"}">{phs}</div>'
         return f'<section class="shw" style="padding:{"64px 20px 0" if m else "120px 80px 0"}"><div style="display:flex;flex-direction:{"column" if m else "row"};gap:{0 if m else 64}px;align-items:{"stretch" if m else "flex-start"}">{left}{right}</div></section>'
 
     def closing(m):
