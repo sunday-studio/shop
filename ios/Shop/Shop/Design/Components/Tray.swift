@@ -92,11 +92,18 @@ private struct TraySurface: View {
     let coordinator: TrayCoordinator
 
     var body: some View {
-        ZStack(alignment: .top) {
-            tray.content
-                .id(tray.id)
-                .environment(\.isInTray, true)
-                .transition(.traySwap)
+        ClampedHeight {
+            ScrollView {
+                ZStack(alignment: .top) {
+                    tray.content
+                        .id(tray.id)
+                        .environment(\.isInTray, true)
+                        .transition(.traySwap)
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollClipDisabled()
+            .scrollDismissesKeyboard(.interactively)
         }
         .padding(.top, 22)
         .padding(.horizontal, Space.xl)
@@ -108,6 +115,23 @@ private struct TraySurface: View {
         .padding(.horizontal, Space.trayInset)
         .padding(.bottom, Space.trayInset)
         .padding(.top, 54)
+    }
+}
+
+/// Takes the height its content wants, but never more than it is offered. A tray is a short
+/// `ScrollView` that only scrolls when it has to: with the keyboard up (the offered height shrinks
+/// by the keyboard) a tall tray scrolls instead of running off the top of the screen. Measuring
+/// the content's ideal height in the layout (not in state) means there is no first-frame jump.
+private struct ClampedHeight: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let view = subviews.first else { return .zero }
+        let ideal = view.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
+        let height = proposal.height.map { min(ideal.height, $0) } ?? ideal.height
+        return CGSize(width: proposal.width ?? ideal.width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
     }
 }
 
