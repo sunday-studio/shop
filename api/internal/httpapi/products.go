@@ -495,3 +495,17 @@ func unmatchedLineOut(u products.UnmatchedLine) apitypes.UnmatchedLine {
 		Score: round3(u.Score),
 	}
 }
+
+func (s *Server) restoreProduct(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	p, err := s.Products.Restore(r.Context(), id)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, s.productFull(r.Context(), p.Product))
+}

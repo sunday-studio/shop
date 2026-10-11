@@ -30,7 +30,7 @@ UPDATE products SET image_path = ?, updated_at = ? WHERE id = ?;
 
 -- name: SoftDeleteProduct :execrows
 -- Frees the barcode so the product can be re-created from a scan.
-UPDATE products SET deleted_at = ?, barcode = NULL, updated_at = ? WHERE id = ? AND deleted_at IS NULL;
+UPDATE products SET deleted_at = ?, deleted_barcode = barcode, barcode = NULL, updated_at = ? WHERE id = ? AND deleted_at IS NULL;
 
 -- name: GetNutrition :one
 SELECT * FROM nutrition WHERE product_id = ?;
@@ -129,3 +129,10 @@ WHERE p.deleted_at IS NULL
   AND (sqlc.narg(category_id) IS NULL OR p.category_id = sqlc.narg(category_id))
 ORDER BY b.n IS NULL, b.n DESC, p.name
 LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);
+
+-- name: RestoreDeletedProduct :execrows
+-- Undo of a manual delete (within 30 days); the barcode comes back only if nobody else took it.
+UPDATE products SET deleted_at = NULL,
+  barcode = CASE WHEN deleted_barcode IS NOT NULL AND NOT EXISTS (SELECT 1 FROM products o WHERE o.barcode = products.deleted_barcode AND o.deleted_at IS NULL) THEN deleted_barcode ELSE NULL END,
+  deleted_barcode = NULL, updated_at = sqlc.arg(updated_at)
+WHERE products.id = sqlc.arg(id) AND products.deleted_at IS NOT NULL AND products.merged_into_id IS NULL AND products.deleted_at >= sqlc.arg(since);

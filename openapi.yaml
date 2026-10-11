@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.12.1
+  version: 0.13.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -161,8 +161,12 @@ paths:
         default: { $ref: "#/components/responses/Problem" }
     delete:
       operationId: deleteCategory
+      description: "Deleting a category that has products needs move_to: a category id, or 0 for no category."
+      parameters:
+        - { name: move_to, in: query, schema: { type: integer, format: int64, minimum: 0 }, description: "where the products go; 0 = no category" }
       responses:
-        "204": { description: Soft-deleted }
+        "204": { description: Deleted (products moved first, in one transaction) }
+        "409": { description: "The category has products and move_to was not given: nothing is deleted. Problem with code category_has_products and product_count." , content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
         default: { $ref: "#/components/responses/Problem" }
 
   # ------------------------------------------------------------- receipts
@@ -602,7 +606,7 @@ paths:
       description: |
         `{id}` disappears into `into_product_id`: lines and aliases move over, empty fields of the survivor are
         filled, `{id}` is soft-deleted. Reversible for 30 days with the returned merge_id. 409 (title "These two
-        have different barcodes.") when both have different barcodes, 422 when id == into.
+        have different barcodes.") when both have different barcodes, 422 when id == into. The survivor is returned as `product`, with `merged_away`, `lines_moved` and `aliases_moved` for a toast. What the source gives the survivor: its barcode, brand, photo, size, OFF code and category when the survivor has none, and its nutrition when the survivor has none; the survivor keeps its own name and any English name the user typed.
       requestBody:
         required: true
         content:
@@ -618,6 +622,20 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/MergeResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/products/{id}/restore:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: restoreProduct
+      description: Undo of a manual product delete, within 30 days (for an Undo toast). The barcode comes back if nobody else took it. 409 if the product is not deleted, was merged (undo the merge instead) or is older than 30 days.
+      responses:
+        "200":
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
         default: { $ref: "#/components/responses/Problem" }
 
   /v1/products/{id}/refresh:
@@ -1363,6 +1381,8 @@ components:
         title: { type: string }
         status: { type: integer }
         detail: { type: string }
+        code: { type: string, description: "stable machine-readable reason, e.g. category_name_taken, category_has_products" }
+        product_count: { type: integer, description: "category_has_products: how many products would be orphaned" }
 
     Health:
       type: object
@@ -1424,16 +1444,23 @@ components:
       type: object
       required: [name]
       properties:
-        name: { type: string, minLength: 1 }
-        sort: { type: integer }
+        name: { type: string, minLength: 1, description: "trimmed; unique ignoring case (409 code category_name_taken)" }
+        sort: { type: integer, deprecated: true, description: "accepted and ignored" }
+        color: { $ref: "#/components/schemas/CategoryColor" }
 
     Category:
       type: object
-      required: [id, name, sort]
+      required: [id, name, sort, product_count]
       properties:
         id: { type: integer, format: int64 }
         name: { type: string }
-        sort: { type: integer }
+        sort: { type: integer, deprecated: true, description: "always 0; categories are alphabetical. Kept so older app builds still decode." }
+        color: { $ref: "#/components/schemas/CategoryColor" }
+        product_count: { type: integer, description: "non-deleted products in the category" }
+
+    CategoryColor:
+      type: string
+      enum: [blue, green, red, orange, yellow, cyan, purple, teal, pink, grey]
 
     ReceiptStatus:
       type: string

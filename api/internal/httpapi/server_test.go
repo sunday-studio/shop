@@ -314,7 +314,7 @@ func TestCategories(t *testing.T) {
 	}
 	c := decodeAs[apitypes.Category](t, e.do("POST", "/v1/categories", map[string]any{"name": "Baby", "sort": 95}))
 	rec := e.do("PATCH", fmt.Sprintf("/v1/categories/%d", c.Id), map[string]any{"name": "Baby & kind"})
-	if up := decodeAs[apitypes.Category](t, rec); up.Name != "Baby & kind" || up.Sort != 95 {
+	if up := decodeAs[apitypes.Category](t, rec); up.Name != "Baby & kind" || up.Sort != 0 { // sort is accepted and ignored
 		t.Errorf("update: %+v", up)
 	}
 	if rec := e.do("DELETE", fmt.Sprintf("/v1/categories/%d", c.Id), nil); rec.Code != 204 {

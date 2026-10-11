@@ -15,6 +15,7 @@ import (
 	"shop/internal/apitypes"
 	"shop/internal/autoprod"
 	"shop/internal/backup"
+	"shop/internal/categories"
 	"shop/internal/english"
 	"shop/internal/logos"
 	"shop/internal/ocr"
@@ -50,16 +51,17 @@ type Deps struct {
 
 type Server struct {
 	Deps
-	q       *db.Queries
-	pairing *pairLimiter
-	suggest *shopsuggest.Service
+	q          *db.Queries
+	pairing    *pairLimiter
+	suggest    *shopsuggest.Service
+	categories *categories.Service
 }
 
 func New(d Deps) *Server {
 	if d.Location == nil {
 		d.Location = time.UTC
 	}
-	return &Server{Deps: d, q: db.New(d.DB), pairing: newPairLimiter(), suggest: shopsuggest.NewService(d.DB)}
+	return &Server{Deps: d, q: db.New(d.DB), pairing: newPairLimiter(), suggest: shopsuggest.NewService(d.DB), categories: categories.New(d.DB)}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -101,6 +103,7 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("GET /v1/products/review-queue", s.getReviewQueue)
 	api.HandleFunc("GET /v1/products/autopopulate/backfill", s.getBackfill)
 	api.HandleFunc("POST /v1/products/autopopulate/backfill", s.startBackfill)
+	api.HandleFunc("POST /v1/products/{id}/restore", s.restoreProduct)
 	api.HandleFunc("POST /v1/products/{id}/review", s.reviewProduct)
 	api.HandleFunc("POST /v1/products/{id}/merge", s.mergeProduct)
 	api.HandleFunc("POST /v1/products/{id}/refresh", s.refreshProduct)

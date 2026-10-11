@@ -22,6 +22,7 @@ type Category struct {
 	Name      string         `json:"name"`
 	Sort      int64          `json:"sort"`
 	DeletedAt sql.NullString `json:"deleted_at"`
+	Color     sql.NullString `json:"color"`
 }
 
 type CategoryKeyword struct {
@@ -94,6 +95,7 @@ type Product struct {
 	SuggestedMergeID sql.NullInt64   `json:"suggested_merge_id"`
 	MergedIntoID     sql.NullInt64   `json:"merged_into_id"`
 	CategorySource   sql.NullString  `json:"category_source"`
+	DeletedBarcode   sql.NullString  `json:"deleted_barcode"`
 }
 
 type ProductAlias struct {

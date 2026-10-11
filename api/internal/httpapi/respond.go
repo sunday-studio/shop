@@ -10,6 +10,7 @@ import (
 
 	"shop/internal/apitypes"
 	"shop/internal/autoprod"
+	"shop/internal/categories"
 	"shop/internal/english"
 	"shop/internal/products"
 	"shop/internal/receipts"
@@ -33,13 +34,37 @@ func writeProblem(w http.ResponseWriter, code int, title, detail string) {
 	_ = json.NewEncoder(w).Encode(p)
 }
 
+// writeProblemExt adds a stable machine-readable code (and a count) to a problem.
+func writeProblemExt(w http.ResponseWriter, status int, title, detail, code string, productCount *int64) {
+	p := apitypes.Problem{Status: status, Title: title, Code: &code}
+	if detail != "" {
+		p.Detail = &detail
+	}
+	if productCount != nil {
+		n := int(*productCount)
+		p.ProductCount = &n
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(p)
+}
+
 // writeErr maps domain errors to HTTP problems.
 func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	var dup receipts.DuplicateError
 	var bad badRequest
+	var hasProducts categories.HasProductsError
 	switch {
 	case errors.As(err, &bad):
 		writeProblem(w, http.StatusBadRequest, "bad request", bad.Error())
+	case errors.As(err, &hasProducts):
+		writeProblemExt(w, http.StatusConflict, "category has products", err.Error(), "category_has_products", &hasProducts.Count)
+	case errors.Is(err, categories.ErrNameTaken):
+		writeProblemExt(w, http.StatusConflict, "category name taken", err.Error(), "category_name_taken", nil)
+	case errors.Is(err, categories.ErrNotFound):
+		writeProblem(w, http.StatusNotFound, "not found", "")
+	case errors.Is(err, categories.ErrInvalid):
+		writeProblem(w, http.StatusBadRequest, "invalid input", err.Error())
 	case errors.Is(err, autoprod.ErrDifferentBarcodes):
 		writeProblem(w, http.StatusConflict, "These two have different barcodes.", "")
 	case errors.Is(err, autoprod.ErrNotFound):
