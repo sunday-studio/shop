@@ -1,0 +1,14 @@
+{
+  "note": "Blob URLs of the assets uploaded to the design canvas artifact (canvas only; the site uses the files in ../screens/web and ../fonts).",
+  "shots": {
+    "home-light": "/_blob/21f2b610e09b04cfd28d9aa5c1adb98e", "home-dark": "/_blob/8d11dc9ed1d594f86239393e21428fa0",
+    "receipt-light": "/_blob/67aa9fd6712fac2ce0b7affdab0f5c40", "receipt-dark": "/_blob/d25b38a3f6272dd0ef9b46643859fe39",
+    "analytics-light": "/_blob/36b80837bfe2f12ab019fbc957ddd5ed", "analytics-dark": "/_blob/576016395b46a20bd2383c83fcbccd7a",
+    "products-light": "/_blob/e59add7a6e61e06537e166faf4b72513", "products-dark": "/_blob/5f3beb4f9b3701b63543e99b2d90a0c5",
+    "product-light": "/_blob/700be5bc8556bba66c9bf5ef52007738", "product-dark": "/_blob/581800ecad1dec737a0799d8c0a10a10"
+  },
+  "fonts": {
+    "Inter-Regular": "/_blob/0a9971b0042276197821b0d0fe34b82a", "Inter-Medium": "/_blob/8db0a1d02783f01ea48af637f7659fc1",
+    "Inter-SemiBold": "/_blob/e85263858999d5bdc37c884ff8e6b108", "GeistMono-Regular": "/_blob/5112396037906af3d6ebe91d6d1df50c"
+  }
+}

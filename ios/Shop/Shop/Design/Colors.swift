@@ -197,6 +197,13 @@ enum ShopBrand {
         if key.contains("jumbo") { return Mark(monogram: "J", color: Color(hex: 0xFFB000)) }
         if key.contains("dirk") { return Mark(monogram: "D", color: Color(hex: 0xE2001A)) }
         if key.contains("ekoplaza") { return Mark(monogram: "E", color: Color(hex: 0x2E7D32)) }
+        // Invented shops (the `-mock-public` data used for the website screenshots).
+        if key.contains("corner market") { return Mark(monogram: "CM", color: Color(hex: 0x0A84FF)) }
+        if key.contains("greenfield") { return Mark(monogram: "GF", color: Color(hex: 0x18B663)) }
+        if key.contains("harbour fresh") { return Mark(monogram: "HF", color: Color(hex: 0x0A5FA8)) }
+        if key.contains("basil") { return Mark(monogram: "BC", color: Color(hex: 0x2E7D32)) }
+        if key.contains("northside") { return Mark(monogram: "NS", color: Color(hex: 0x7C5CFF)) }
+        if key.contains("riverside") { return Mark(monogram: "RS", color: Color(hex: 0xE2831A)) }
         let letter = name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?"
         return Mark(monogram: letter, color: Accent.hashed(key))
     }
