@@ -24,6 +24,7 @@ struct SwipeButton: View {
             Label(title, systemImage: systemImage).labelStyle(.iconOnly)
         }
         .tint(tint)
+        .onAppear { SwipeTick.reveal() }
     }
 }
 
@@ -41,5 +42,21 @@ extension View {
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
             .environment(\.defaultMinListRowHeight, 1)
+    }
+}
+
+/// The system plays no haptic while a row is swiped. The action buttons are only created when
+/// a swipe opens them, so their appearance is the "revealed" moment: one light tick for the
+/// whole group (not one per button). A drag gesture on the row would break its tap, so this
+/// doesn't read the touch at all.
+@MainActor
+enum SwipeTick {
+    private static var last = Date.distantPast
+
+    static func reveal() {
+        let now = Date()
+        guard now.timeIntervalSince(last) > 0.4 else { return }
+        last = now
+        Haptics.play(.selection)
     }
 }
