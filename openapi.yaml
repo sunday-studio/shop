@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.13.1
+  version: 0.14.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -930,6 +930,28 @@ paths:
                 items: { $ref: "#/components/schemas/FrequentItem" }
         default: { $ref: "#/components/responses/Problem" }
 
+  /v1/receipts/{id}/list-checks/undo:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: undoReceiptListChecks
+      description: >
+        Undo what confirming this receipt did to the shopping list: items it checked are unchecked and items it
+        reduced get their quantity and note back. Items the user changed since are left alone. The receipt will
+        not touch those items again. Undoing twice restores nothing the second time (200 with an empty list).
+        The restored items also arrive through /v1/list/changes.
+      responses:
+        "200":
+          description: Items put back
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [restored]
+                properties:
+                  restored: { type: array, items: { $ref: "#/components/schemas/ListItem" } }
+        default: { $ref: "#/components/responses/Problem" }
+
   # ----------------------------------------------------------------- list
   /v1/list:
     get:
@@ -1001,6 +1023,55 @@ paths:
                   deleted_ids: { type: array, items: { type: integer, format: int64 } }
                   server_time: { type: string, format: date-time }
                   full_resync: { type: boolean }
+                  suggestions:
+                    type: array
+                    description: >
+                      All open "Looks bought?" suggestions right now (not just new ones), so a phone can replace
+                      its local copy each sync.
+                    items: { $ref: "#/components/schemas/ListSuggestion" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/suggestions:
+    get:
+      operationId: listSuggestions
+      description: >
+        Open "Looks bought?" suggestions: an open list item and the receipt line that probably is it
+        (score 0.75 to 0.90, or a similar product of the same category). Never checked automatically.
+      responses:
+        "200":
+          description: Open suggestions, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ListSuggestion" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/suggestions/{id}/accept:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: acceptListSuggestion
+      description: >
+        Checks the item off as bought on that receipt (check_source=receipt) and returns it. Idempotent: accepting
+        twice returns the item again. 409 if the suggestion was dismissed. If the item is already checked it is
+        returned unchanged.
+      responses:
+        "200":
+          description: The item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListItem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/list/suggestions/{id}/dismiss:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: dismissListSuggestion
+      description: Hides the suggestion for good. Idempotent. 409 if it was already accepted.
+      responses:
+        "204": { description: Dismissed }
         default: { $ref: "#/components/responses/Problem" }
 
   /v1/list/checked:
@@ -1549,6 +1620,10 @@ components:
           nullable: true
           description: only on the confirm response, when AUTO_PRODUCTS is on
           allOf: [{ $ref: "#/components/schemas/AutoProductsSummary" }]
+        list:
+          nullable: true
+          description: only on the confirm response. What confirming did to the shopping list; absent if the list step failed.
+          allOf: [{ $ref: "#/components/schemas/ReceiptListChecks" }]
         shop_suggestion:
           nullable: true
           description: single-receipt GET only; null/absent when there is nothing to suggest
@@ -1980,9 +2055,40 @@ components:
         qty: { type: number, format: double }
         note: { type: string }
         checked_at: { type: string, format: date-time }
+        check_source:
+          type: string
+          enum: [manual, receipt]
+          description: present when checked. "receipt" = checked automatically (or by accepting a suggestion) because of a confirmed receipt.
+        checked_receipt_id: { type: integer, format: int64, description: "the receipt that checked it (check_source=receipt)" }
+        checked_line_id: { type: integer, format: int64, description: "the receipt line that matched" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
         cheapest: { $ref: "#/components/schemas/ShopPrice" }
+
+    ListSuggestion:
+      type: object
+      required: [id, item_id, item_text, receipt_id, line_text, score, reason, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        item_id: { type: integer, format: int64 }
+        item_text: { type: string }
+        receipt_id: { type: integer, format: int64 }
+        line_id: { type: integer, format: int64 }
+        line_text: { type: string, description: "the receipt line as printed" }
+        score: { type: number, format: double }
+        reason:
+          type: string
+          enum: [match, substitute]
+          description: "match = text looks like the line; substitute = a different product of the same category"
+        created_at: { type: string, format: date-time }
+
+    ReceiptListChecks:
+      type: object
+      required: [checked, reduced, suggestions]
+      properties:
+        checked: { type: array, items: { $ref: "#/components/schemas/ListItem" }, description: "items checked off by this receipt" }
+        reduced: { type: array, items: { $ref: "#/components/schemas/ListItem" }, description: 'items kept open with a smaller qty and the note "1 of 3 bought"' }
+        suggestions: { type: array, items: { $ref: "#/components/schemas/ListSuggestion" }, description: "new suggestions from this receipt" }
 
     Device:
       type: object

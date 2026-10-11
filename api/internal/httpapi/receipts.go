@@ -309,6 +309,7 @@ func (s *Server) deleteReceipt(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
+	s.revertList(r, id) // put the list back before the receipt (and its checks) go
 	if err := s.Receipts.Delete(r.Context(), id); err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -352,12 +353,15 @@ func (s *Server) confirmReceipt(w http.ResponseWriter, r *http.Request) {
 			summary.Error = &msg
 		}
 	}
+	// Shopping list (phase A): a failure here never fails the confirm either.
+	listOut := s.reconcileList(r, id)
 	out, err := s.receiptOut(r, id)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
 	out.AutoProducts = summary
+	out.List = listOut
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -374,7 +378,47 @@ func (s *Server) requeue(withOCR bool) http.HandlerFunc {
 			s.writeErr(w, r, err)
 			return
 		}
+		if force {
+			s.revertList(r, id) // a forced re-parse unconfirms the receipt
+		}
 		writeJSON(w, http.StatusAccepted, toReceipt(rec, nil))
+	}
+}
+
+// reconcileList checks off list items for a just-confirmed receipt. Errors and panics are logged only.
+func (s *Server) reconcileList(r *http.Request, id int64) (out *apitypes.ReceiptListChecks) {
+	if s.List == nil {
+		return nil
+	}
+	defer func() {
+		if p := recover(); p != nil {
+			s.Log.Warn("list checks on confirm panicked", "receipt", id, "panic", p)
+			out = nil
+		}
+	}()
+	res, err := s.List.ReconcileReceipt(r.Context(), id)
+	if err != nil {
+		s.Log.Warn("list checks on confirm", "receipt", id, "err", err)
+		return nil
+	}
+	// The list handlers build maps; the typed model is the same JSON.
+	raw, _ := json.Marshal(map[string]any{
+		"checked": toItems(res.Checked), "reduced": toItems(res.Reduced), "suggestions": toSuggestions(res.Suggestions),
+	})
+	var lc apitypes.ReceiptListChecks
+	if err := json.Unmarshal(raw, &lc); err != nil {
+		s.Log.Warn("list checks on confirm", "receipt", id, "err", err)
+		return nil
+	}
+	return &lc
+}
+
+func (s *Server) revertList(r *http.Request, id int64) {
+	if s.List == nil {
+		return
+	}
+	if _, err := s.List.RevertReceipt(r.Context(), id); err != nil {
+		s.Log.Warn("revert list checks", "receipt", id, "err", err)
 	}
 }
 

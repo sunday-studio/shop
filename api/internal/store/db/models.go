@@ -216,12 +216,41 @@ type ShoppingListDeletion struct {
 }
 
 type ShoppingListItem struct {
+	ID               int64           `json:"id"`
+	ProductID        sql.NullInt64   `json:"product_id"`
+	Text             string          `json:"text"`
+	Qty              sql.NullFloat64 `json:"qty"`
+	Note             sql.NullString  `json:"note"`
+	CheckedAt        sql.NullString  `json:"checked_at"`
+	CreatedAt        string          `json:"created_at"`
+	UpdatedAt        sql.NullString  `json:"updated_at"`
+	CheckSource      string          `json:"check_source"`
+	CheckedReceiptID sql.NullInt64   `json:"checked_receipt_id"`
+	CheckedLineID    sql.NullInt64   `json:"checked_line_id"`
+}
+
+type ShoppingListReceiptCheck struct {
 	ID        int64           `json:"id"`
-	ProductID sql.NullInt64   `json:"product_id"`
-	Text      string          `json:"text"`
-	Qty       sql.NullFloat64 `json:"qty"`
-	Note      sql.NullString  `json:"note"`
-	CheckedAt sql.NullString  `json:"checked_at"`
+	ReceiptID int64           `json:"receipt_id"`
+	ItemID    int64           `json:"item_id"`
+	Kind      string          `json:"kind"`
+	LineID    sql.NullInt64   `json:"line_id"`
+	BoughtQty sql.NullFloat64 `json:"bought_qty"`
+	PrevQty   sql.NullFloat64 `json:"prev_qty"`
+	PrevNote  sql.NullString  `json:"prev_note"`
+	SetNote   sql.NullString  `json:"set_note"`
 	CreatedAt string          `json:"created_at"`
-	UpdatedAt sql.NullString  `json:"updated_at"`
+	UndoneAt  sql.NullString  `json:"undone_at"`
+}
+
+type ShoppingListSuggestion struct {
+	ID         int64          `json:"id"`
+	ItemID     int64          `json:"item_id"`
+	ReceiptID  int64          `json:"receipt_id"`
+	LineID     sql.NullInt64  `json:"line_id"`
+	Score      float64        `json:"score"`
+	Reason     string         `json:"reason"`
+	State      string         `json:"state"`
+	CreatedAt  string         `json:"created_at"`
+	ResolvedAt sql.NullString `json:"resolved_at"`
 }

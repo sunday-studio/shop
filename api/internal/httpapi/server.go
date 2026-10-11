@@ -84,6 +84,7 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("DELETE /v1/categories/{id}", s.deleteCategory)
 
 	api.HandleFunc("GET /v1/receipts", s.listReceipts)
+	api.HandleFunc("POST /v1/receipts/{id}/list-checks/undo", s.undoListChecks)
 	api.HandleFunc("POST /v1/receipts", s.uploadReceipt)
 	api.HandleFunc("GET /v1/receipts/counts", s.receiptCounts)
 	api.HandleFunc("GET /v1/receipts/{id}", s.getReceipt)
@@ -135,6 +136,9 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("POST /v1/list", s.addListItem)
 	api.HandleFunc("DELETE /v1/list/checked", s.clearCheckedItems)
 	api.HandleFunc("GET /v1/list/changes", s.listChanges)
+	api.HandleFunc("GET /v1/list/suggestions", s.listSuggestions)
+	api.HandleFunc("POST /v1/list/suggestions/{id}/accept", s.acceptSuggestion)
+	api.HandleFunc("POST /v1/list/suggestions/{id}/dismiss", s.dismissSuggestion)
 	api.HandleFunc("PATCH /v1/list/{id}", s.updateListItem)
 	api.HandleFunc("DELETE /v1/list/{id}", s.deleteListItem)
 	api.HandleFunc("POST /v1/list/{id}/check", s.setListItemChecked(true))

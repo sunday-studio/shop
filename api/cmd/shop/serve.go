@@ -97,7 +97,7 @@ func openApp(ctx context.Context, log *slog.Logger) (*app, error) {
 		log.Info("english names updated", "products", n)
 	}
 	a.stats = stats.New(conn, cfg.Location)
-	a.list = shopping.New(conn, a.matcher, a.stats)
+	a.list = shopping.New(conn, a.matcher, a.stats).WithLocation(cfg.Location)
 	return a, nil
 }
 
