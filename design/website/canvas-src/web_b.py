@@ -43,6 +43,23 @@ CSS = '''
 .w .nc{position:absolute;left:34px;right:34px;background:var(--bg);border-radius:20px;box-shadow:0 24px 50px -22px var(--shadow);padding:16px 18px;display:flex;align-items:center;gap:14px;font-size:15px;font-weight:500}
 .w .nc i{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none;color:#fff;font-style:normal}
 .w .nc small{display:block;font-size:13px;font-weight:400;color:var(--ink2)}
+
+.w .qa{border-radius:34px;overflow:hidden;position:relative;display:flex;flex-direction:column;padding:30px 30px 0}
+.w .qa .q{font-size:14px;font-weight:500;color:var(--ink2);display:flex;align-items:center;gap:8px}
+.w .qa .q i{width:8px;height:8px;border-radius:50%;display:block}
+.w .qa .big{font-size:64px;line-height:1;font-weight:400;letter-spacing:-.045em;margin-top:18px}
+.w .qa .sub{font-size:16.5px;line-height:1.45;color:var(--ink2);margin-top:10px;max-width:320px}
+.w .qa .viz{margin-top:auto;padding-bottom:28px}
+.w .brow{display:grid;grid-template-columns:104px 1fr 56px;gap:12px;align-items:center;font-size:14px;padding:7px 0}
+.w .brow .t{height:12px;border-radius:6px;background:color-mix(in srgb,var(--ink) 8%,transparent);overflow:hidden}
+.w .brow .t b{display:block;height:100%;border-radius:6px}
+.w .brow .p{text-align:right;font-weight:500}
+.w .brow .n{color:var(--ink2)}
+.w .lgd{display:flex;align-items:center;gap:10px;font-size:14px;padding:5px 0;color:var(--ink2)}
+.w .lgd i{width:10px;height:10px;border-radius:3px;display:block;flex:none}
+.w .lgd b{margin-left:auto;font-weight:500;color:var(--ink)}
+.w .stk{display:flex;height:16px;border-radius:8px;overflow:hidden;gap:2px;margin-bottom:12px}
+.w .stk i{display:block;height:100%}
 .w .fx{display:flex;flex-direction:column}
 .w .fi{padding:22px 0 20px;position:relative}
 .w .fi h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0;opacity:.5}
@@ -179,14 +196,23 @@ def build(g):
         return f'<section><div class="heroP" style="height:{h}px">{art("h") if kind == "dusk" else VARIANTS[kind]("h")}{header(m)}{txt}{paper}{phone}<div class="fade" style="height:{220 if m else 300}px"></div>{chips}</div></section>'
 
     def steps(m):
-        cb = lambda pos: f'<i class="cb" style="{pos}"></i>'
-        v1 = f'<div class="vis">{cb("left:78px;top:20px;border-right:0;border-bottom:0;border-radius:8px 0 0 0")}{cb("right:78px;top:20px;border-left:0;border-bottom:0;border-radius:0 8px 0 0")}<div class="vf"><div class="b" style="width:46%;background:var(--ink)"></div><div class="b"></div><div class="b" style="width:70%"></div><div class="b"></div><div class="b" style="width:55%"></div><div style="height:30px;border-radius:10px;background:var(--yellow);margin-top:6px"></div></div></div>'
-        v2 = f'<div class="vis"><div class="sv"><div class="ph1"></div><div class="ln"></div><div class="mini"></div></div><div class="lk">{ICONS["lock"]}Stays on your network</div></div>'
-        v3 = f'<div class="vis"><div class="nc" style="top:26px"><i style="background:var(--green)">{ICONS["check"].replace("22","20")}</i><div>Receipt ready<small>Corner Market · 15 lines</small></div></div><div class="nc" style="top:108px;transform:translateX(10px)"><i style="background:var(--amber)">{ICONS["warn"]}</i><div>One row needs a look<small>Tap to fix it in the app</small></div></div></div>'
-        data = [('1', 'Snap it', 'Photograph the receipt at the till, or import a photo later.', v1), ('2', 'It stays home', 'Your own server reads the receipt. Nothing leaves your network.', v2), ('3', 'Check it in the app', 'The receipt appears in your list. Anything doubtful is flagged for a quick look.', v3)]
-        bgs = ['linear-gradient(165deg,var(--blueTint),var(--sunk) 70%)', 'linear-gradient(165deg,var(--tintP),var(--sunk) 70%)', 'linear-gradient(165deg,var(--tintL),var(--sunk) 70%)']
-        cards = ''.join(f'<article class="sx a-scroll" style="height:{500 if m else 520}px;background:{bgs[int(n)-1]}"><div class="tx"><div class="num">{n}</div><h3>{t}</h3><p>{d}</p></div>{v}</article>' for n, t, d, v in data)
-        return f'<section style="padding:{"64px 20px 0" if m else "120px 80px 0"}"><h2 class="h2 lt" style="font-size:{34 if m else 56}px;line-height:1.06;margin-bottom:{28 if m else 48}px;max-width:760px">From the till to your phone.</h2><div style="display:grid;grid-template-columns:repeat({1 if m else 3},minmax(0,1fr));gap:{14 if m else 18}px">{cards}</div></section>'
+        shops = [('Corner Market', '€1,29', 70, 'var(--green)'), ('Greenfield', '€1,79', 97, 'var(--ink3)'), ('Harvest Hall', '€1,85', 100, 'var(--ink3)')]
+        v1 = '<div class="viz">' + ''.join(f'<div class="brow"><span class="n">{n}</span><span class="t"><b style="width:{w}%;background:{c}"></b></span><span class="p">{p}</span></div>' for n, p, w, c in shops) + '<div style="font-size:12.5px;color:var(--ink2);margin-top:4px">Price per litre, last receipt at each shop</div></div>'
+        # stepped price history, Jun to Oct
+        pts = [(0, .85), (1, .85), (2, .92), (3, .92), (4, .95)]
+        X = lambda i: 12 + i * 69; Y = lambda p: 118 - (p - .80) / .17 * 96
+        d = f'M{X(0)} {Y(.85):.1f} H{X(1)} V{Y(.85):.1f} H{X(2)} V{Y(.92):.1f} H{X(3)} V{Y(.92):.1f} H{X(4)} V{Y(.95):.1f}'
+        area = d + f' V130 H{X(0)}Z'
+        labels = ''.join(f'<text x="{X(i)}" y="146" font-size="11" text-anchor="middle" fill="var(--ink2)">{m_}</text>' for i, m_ in enumerate(['Jun', 'Jul', 'Aug', 'Sep', 'Oct']))
+        dots = ''.join(f'<circle cx="{X(i)}" cy="{Y(p):.1f}" r="4.5" fill="var(--bg)" stroke="var(--amber)" stroke-width="2.5"/>' for i, p in [(0, .85), (2, .92), (4, .95)])
+        v2 = f'<div class="viz"><svg viewBox="0 0 300 152" width="100%" role="img" aria-label="Price of Halfvolle melk rising from 0,85 to 0,95 euro between June and October"><path d="{area}" fill="var(--amber)" opacity=".14"/><path d="{d}" fill="none" stroke="var(--amber)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>{dots}<text x="{X(4)-8}" y="{Y(.95)-12:.1f}" font-size="12" font-weight="500" text-anchor="end" fill="var(--ink)">€0,95</text><text x="{X(0)+8}" y="{Y(.85)+22:.1f}" font-size="12" text-anchor="start" fill="var(--ink2)">€0,85</text>{labels}</svg></div>'
+        cats = [('Produce', '€99', 24, 'var(--green)'), ('Meat & fish', '€82', 20, 'var(--amber)'), ('Dairy', '€74', 18, 'var(--blue)'), ('Pantry', '€70', 17, 'var(--yellow)'), ('Other', '€87', 21, 'var(--ink3)')]
+        v3 = '<div class="viz"><div class="stk">' + ''.join(f'<i style="width:{w}%;background:{c}"></i>' for n, a_, w, c in cats) + '</div>' + ''.join(f'<div class="lgd"><i style="background:{c}"></i>{n}<b>{a_}</b></div>' for n, a_, w, c in cats[:4]) + '</div>'
+        data = [('Where is it cheapest?', 'var(--green)', '€0,50 less', 'Oat milk costs €0,50 less per litre at Corner Market than at Greenfield.', v1, 'var(--greenTint)', 'var(--greenText)'),
+                ('What got more expensive?', 'var(--amber)', '+12%', 'Halfvolle melk has gone up 12% since June, in two steps.', v2, 'var(--tintP)', 'var(--amberText)'),
+                ('Where does the money go?', 'var(--blue)', '€412', 'Spent on groceries in October, across four shops. A fifth of it on meat and fish.', v3, 'var(--blueTint)', 'var(--ink)')]
+        cards = ''.join(f'<article class="qa a-scroll" style="height:{440 if m else 470}px;background:linear-gradient(165deg,{bg},var(--sunk) 75%)"><div class="q"><i style="background:{dot}"></i>{q}</div><div class="big" style="color:{col}">{big}</div><div class="sub">{sub}</div>{v}</article>' for q, dot, big, sub, v, bg, col in data)
+        return f'<section style="padding:{"64px 20px 0" if m else "120px 80px 0"}"><h2 class="h2 lt" style="font-size:{34 if m else 56}px;line-height:1.06;margin-bottom:{10 if m else 14}px;max-width:760px">What your receipts can tell you.</h2><p style="font-size:{16 if m else 18}px;color:var(--ink2);margin-bottom:{28 if m else 44}px">Figures from demo data.</p><div style="display:grid;grid-template-columns:repeat({1 if m else 3},minmax(0,1fr));gap:{14 if m else 18}px">{cards}</div></section>'
 
     def showcase(m):
         F = [('Checks every receipt', 'The lines have to add up to the printed total. If they do not, you see exactly which row to fix.', 'receipt'),
