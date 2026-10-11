@@ -543,6 +543,9 @@ nonisolated struct ShopSuggestion: Codable, Sendable, Hashable {
     enum Kind: String, Codable, Sendable { case existing, new }
 
     var kind: Kind
+    /// Server grouping key (openapi 0.13.1): "shop:<id>" for existing, "new:<chain>|<street number>"
+    /// for new. Equal keys are one card. nil only in older cached copies.
+    var key: String? = nil
     /// Set when `kind` is `existing`.
     var shopId: Int64?
     var name: String
@@ -559,6 +562,20 @@ nonisolated struct ShopSuggestion: Codable, Sendable, Hashable {
     /// This receipt plus the ones waiting.
     var receiptCount: Int { waitingReceiptIds.count + 1 }
 
+    /// For `existing` the shop's own name and branch (not the receipt's OCR text).
+    @MainActor func displayName(in catalog: Catalog) -> String {
+        if kind == .existing, let shop = catalog.shop(shopId) { return shop.displayName }
+        return name
+    }
+
+    @MainActor func displayDetail(in catalog: Catalog) -> String? {
+        if kind == .existing, let shop = catalog.shop(shopId) {
+            let parts = [shop.branch, shop.city].compactMap { $0 }.filter { !$0.isEmpty }
+            return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        }
+        return detail
+    }
+
     /// "Utrecht · aldi.nl" style detail line.
     var detail: String? {
         let parts = [branch, domain].compactMap { $0 }.filter { !$0.isEmpty }
@@ -567,6 +584,7 @@ nonisolated struct ShopSuggestion: Codable, Sendable, Hashable {
 
     /// Same suggestion for several receipts → one Home card.
     var groupKey: String {
+        if let key, !key.isEmpty { return key }
         let normalized = name.trimmingCharacters(in: .whitespaces).lowercased()
         return shopId.map { "\(kind.rawValue)|id\($0)" } ?? "\(kind.rawValue)|\(normalized)"
     }
