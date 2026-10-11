@@ -188,12 +188,21 @@ def showcase_css():
         # animated cycle restarted from the clicked item
         anim = []
         for name, frames in kf.items():
-            out.append(f'@keyframes {name}{k}{{{frames}}}')
+            if name != 'phOn':
+                out.append(f'@keyframes {name}{k}{{{frames}}}')
+        # phones: the clicked phone fades in on top (0.45 s) while the others stay under it, then they go
+        out.append(f'@keyframes phIn{k}{{0%{{opacity:0;transform:translateY(24px)}}2.25%,23%{{opacity:1;transform:none}}25%{{opacity:0;transform:translateY(-14px)}}98%{{opacity:0;transform:translateY(28px)}}100%{{opacity:1;transform:none}}}}')
+        out.append(f'@keyframes phHold{k}_1{{0%,23%{{opacity:1;transform:none}}25%{{opacity:0;transform:translateY(-14px)}}74.99%{{opacity:0}}75%,77.25%{{opacity:1;transform:none}}77.26%{{opacity:0}}98%{{opacity:0;transform:translateY(28px)}}100%{{opacity:1;transform:none}}}}')
+        out.append(f'@keyframes phHold{k}_2{{0%,23%{{opacity:1;transform:none}}25%{{opacity:0;transform:translateY(-14px)}}49.99%{{opacity:0}}50%,52.25%{{opacity:1;transform:none}}52.26%{{opacity:0}}98%{{opacity:0;transform:translateY(28px)}}100%{{opacity:1;transform:none}}}}')
+        out.append(f'@keyframes phHold{k}_3{{0%,27.25%{{opacity:1;transform:none}}27.26%{{opacity:0;transform:translateY(-14px)}}98%{{opacity:0;transform:translateY(28px)}}100%{{opacity:1;transform:none}}}}')
+        out.append(f'{sel} .ph:nth-of-type({k}){{z-index:2}}')
         for i in range(1, 5):
             slot = (i - k) % 4
             delay = '0s' if slot == 0 else f'-{20 - 5 * slot}s'
-            anim.append(f'{sel} .fi:nth-child({i}) h3,{sel} .fi:nth-child({i}) .dd,{sel} .fi:nth-child({i}) .pr,{sel} .ph:nth-of-type({i}){{animation-delay:{delay}}}')
-        anim.append(f'{sel} .fi h3{{animation-name:tOn{k}}}{sel} .fi .dd{{animation-name:dOn{k}}}{sel} .fi .pr{{animation-name:pOn{k}}}{sel} .ph{{animation-name:phOn{k}}}')
+            pname = f'phIn{k}' if slot == 0 else f'phHold{k}_{slot}'
+            anim.append(f'{sel} .fi:nth-child({i}) h3,{sel} .fi:nth-child({i}) .dd,{sel} .fi:nth-child({i}) .pr{{animation-delay:{delay}}}')
+            anim.append(f'{sel} .ph:nth-of-type({i}){{animation-delay:{delay};animation-name:{pname}}}')
+        anim.append(f'{sel} .fi h3{{animation-name:tOn{k}}}{sel} .fi .dd{{animation-name:dOn{k}}}{sel} .fi .pr{{animation-name:pOn{k}}}')
         out.append('@media (prefers-reduced-motion:no-preference){' + ''.join(anim) + '}')
     return '\n'.join(out) + '\n'
 
