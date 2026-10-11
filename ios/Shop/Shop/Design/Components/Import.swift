@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-// Components for the receipt import flow (see DESIGN-SYSTEM.md): picking photos and files,
+// Components for the receipt import flow: picking photos and files,
 // grouping them into receipts, upload progress, and the "unknown shop" suggestion.
 
 // MARK: - Unknown shop mark
@@ -53,7 +53,7 @@ struct PageStrip: View {
 
 // MARK: - Straighten state
 
-/// What the import did to a picked photo (straighten step).
+/// What the import did to a picked photo.
 enum StraightenState: Equatable {
     /// Edges found and corrected; the chip toggles to the original.
     case straightened
