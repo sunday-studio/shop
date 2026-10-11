@@ -7,7 +7,7 @@
 .hero-in{position:relative;height:100%;max-width:1280px;margin:0 auto}
 body{position:relative}
 .nav-over{position:absolute;top:0;left:0;right:0;z-index:5;max-width:1280px;margin:0 auto}
-.nav-over .brand{color:#2B2D3F}
+.nav-over .brand{color:var(--ink)}
 .nav .links{gap:10px}
 .fade{position:absolute;left:0;right:0;bottom:-2px;z-index:3;pointer-events:none;background:linear-gradient(180deg,transparent,var(--bg) 92%)}
 .fade-top{position:absolute;left:0;right:0;top:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg),transparent)}
@@ -48,7 +48,7 @@ body{position:relative}
 .sec-lead{font-size:16px;line-height:1.5;color:var(--ink2);margin:10px 0 28px;max-width:640px}
 
 /* ---- Insight cards ---- */
-.cards{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.cards{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;max-width:640px}
 .qa{height:440px;border-radius:34px;overflow:hidden;position:relative;display:flex;flex-direction:column;padding:30px 30px 0}
 .qa h3{font-size:30px;line-height:1.14;font-weight:500;letter-spacing:-.025em;max-width:320px}
 .qa .sub{font-size:17px;line-height:1.45;color:var(--ink2);margin-top:8px;max-width:320px}
@@ -78,7 +78,7 @@ body{position:relative}
 .fi .pr{position:absolute;left:0;top:-1px;height:2px;width:0;background:var(--blue)}
 .fi:first-child h3,.fi:first-child .dd{opacity:1}
 .fi:first-child .pr{width:100%}
-.stage{position:relative;flex:1;border-radius:36px;background:var(--panel);overflow:hidden;height:460px;margin-top:28px}
+.stage{position:relative;flex:none;border-radius:36px;background:var(--panel);overflow:hidden;height:460px;margin-top:28px}
 .ph{position:absolute;left:0;right:0;top:50px;display:flex;justify-content:center;opacity:0}
 .ph:first-of-type{opacity:1}
 .ph .dev{width:250px}
@@ -128,7 +128,7 @@ body{position:relative}
   .sec{padding:120px 80px 0}
   .sec h2{font-size:56px}
   .sec-lead{font-size:19px;margin:14px 0 44px}
-  .cards{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  .cards{gap:18px}
 
   .shw h2{margin-bottom:36px}
 
@@ -140,13 +140,16 @@ body{position:relative}
   .closing p{font-size:20px}
   .pills{margin-top:28px}
 }
+@media (min-width:960px){
+  .cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;max-width:none}
+}
 @media (min-width:600px) and (max-width:799px){
   .br-d{display:inline}
 }
 @media (min-width:1100px){
   .shw-row{flex-direction:row;gap:64px;align-items:flex-start}
   .shw-text{width:440px;flex:none}
-  .stage{height:620px;margin-top:0}
+  .stage{flex:1;height:620px;margin-top:0}
   .ph{top:70px}
   .ph .dev{width:290px}
   .chips{display:block}
