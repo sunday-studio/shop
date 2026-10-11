@@ -8,6 +8,7 @@ final class MockServer: HTTPTransport {
     private var shops = MockData.shops
     private var categories = MockData.categories
     private var products = MockData.products
+    private var deletedProducts: [Int64: Product] = [:]
     private var receipts = MockData.receipts
     private var aliases: [Alias] = [
         Alias(id: 1, text: "ah halfv melk 1,5l", shopId: 1, shopName: "Albert Heijn", productId: 1, createdAt: MockData.ago(days: 90)),
@@ -291,8 +292,13 @@ final class MockServer: HTTPTransport {
             products[i].updatedAt = .now
             return ok(products[i])
         case ("DELETE", "v1/products/:id"):
+            if let gone = products.first(where: { $0.id == id(2) }) { deletedProducts[gone.id] = gone }
             products.removeAll { $0.id == id(2) }
             return (204, Data())
+        case ("POST", "v1/products/:id/restore"):
+            guard let pid = id(2), let back = deletedProducts.removeValue(forKey: pid) else { return problem(409, "product is not deleted", nil) }
+            products.append(back)
+            return ok(back)
         case ("GET", "v1/products/:id/image"):
             guard let pid = id(2), let pr = (products.first { $0.id == pid }) ?? queue().first(where: { $0.id == pid })?.product, pr.hasImage else { return notFound() }
             return (200, Self.productPhoto)

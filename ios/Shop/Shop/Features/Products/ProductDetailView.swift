@@ -358,8 +358,10 @@ struct ProductDetailView: View {
                         confirmTitle: "Delete product", destructive: true) {
                 await model.delete()
             } afterDismiss: {
+                let removed = model.product
                 app.catalog.removeProduct(model.productId)
                 dismiss()
+                if let removed { app.undoProductDelete(removed) }
             }
         }
     }

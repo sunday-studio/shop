@@ -243,6 +243,7 @@ struct ProductsView: View {
             } afterDismiss: {
                 app.catalog.removeProduct(product.id)
                 Haptics.play(.warning)
+                app.undoProductDelete(product)
             }
         }
     }

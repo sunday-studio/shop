@@ -150,6 +150,9 @@ func deleteCategory(_ id: Int64, moveTo: Int64? = nil) async throws {
     func createProduct(_ input: ProductInput) async throws -> Product { try await send("POST", "/v1/products", body: input) }
     func updateProduct(_ id: Int64, _ input: ProductInput) async throws -> Product { try await send("PATCH", "/v1/products/\(id)", body: input) }
     func deleteProduct(_ id: Int64) async throws { try await perform("DELETE", "/v1/products/\(id)") }
+
+    /// Undo of a delete, within 30 days. 409 when it isn't deleted, was merged, or is too old.
+    func restoreProduct(_ id: Int64) async throws -> Product { try await send("POST", "/v1/products/\(id)/restore") }
     func productImageURL(_ product: Product) -> URL? {
         product.hasImage ? url("/v1/products/\(product.id)/image", query: ["v": String(Int(product.updatedAt.timeIntervalSince1970))]) : nil
     }
