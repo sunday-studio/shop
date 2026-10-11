@@ -105,21 +105,58 @@ enum CategoryColor {
         let tile: Color
     }
 
-    static func swatch(for name: String?) -> Swatch {
-        guard let name, !name.isEmpty else { return other }
+    /// The swatch for a stored category token (`CategoryTone.tokens`: blue green red orange yellow
+    /// cyan purple teal pink grey). Unknown or nil tokens return nil so callers can fall back.
+    static func swatch(token: String?) -> Swatch? {
+        switch token {
+        case "blue": Swatch(color: Accent.blue, tile: .dynamic(light: 0xCFE6FF, dark: 0x0E2236))
+        case "green": Swatch(color: Accent.green, tile: .dynamic(light: 0xC9F2DA, dark: 0x0F2A1B))
+        case "red": Swatch(color: Accent.red, tile: .dynamic(light: 0xFFD3DB, dark: 0x3A1418))
+        case "orange": Swatch(color: Accent.orange, tile: .dynamic(light: 0xFFE0BF, dark: 0x36230D))
+        case "yellow": Swatch(color: Accent.yellow, tile: .dynamic(light: 0xFFF0B3, dark: 0x332A0A))
+        case "cyan": Swatch(color: Accent.cyan, tile: .dynamic(light: 0xC8F2F9, dark: 0x0A2A30))
+        case "purple": Swatch(color: Accent.purple, tile: .dynamic(light: 0xE3DCFF, dark: 0x1F1838))
+        case "teal": Swatch(color: Accent.teal, tile: .dynamic(light: 0xC6F0EC, dark: 0x0A2A27))
+        case "pink": Swatch(color: Accent.pink, tile: .dynamic(light: 0xFFD6EA, dark: 0x3A1427))
+        case "grey": other
+        default: nil
+        }
+    }
+
+    /// The token the old name mapping would have picked, for cached categories that have no stored
+    /// token yet. Nil when the name matches nothing (those fall back to a hashed accent).
+    static func token(forName name: String) -> String? {
         let key = name.lowercased()
         func has(_ words: String...) -> Bool { words.contains { key.contains($0) } }
-        if has("zuivel", "dairy") { return Swatch(color: Accent.blue, tile: .dynamic(light: 0xCFE6FF, dark: 0x0E2236)) }
-        if has("groente", "fruit", "produce", "veg") { return Swatch(color: Accent.green, tile: .dynamic(light: 0xC9F2DA, dark: 0x0F2A1B)) }
-        if has("vlees", "vis", "meat", "fish") { return Swatch(color: Accent.red, tile: .dynamic(light: 0xFFD3DB, dark: 0x3A1418)) }
-        if has("brood", "bread", "bakery") { return Swatch(color: Accent.orange, tile: .dynamic(light: 0xFFE0BF, dark: 0x36230D)) }
-        if has("voorraad", "pantry", "stock") { return Swatch(color: Accent.yellow, tile: .dynamic(light: 0xFFF0B3, dark: 0x332A0A)) }
-        if has("diepvries", "frozen") { return Swatch(color: Accent.cyan, tile: .dynamic(light: 0xC8F2F9, dark: 0x0A2A30)) }
-        if has("dranken", "drink", "beverage") { return Swatch(color: Accent.purple, tile: .dynamic(light: 0xE3DCFF, dark: 0x1F1838)) }
-        if has("huishoud", "household") { return Swatch(color: Accent.teal, tile: .dynamic(light: 0xC6F0EC, dark: 0x0A2A27)) }
-        if has("verzorging", "care", "hygiene") { return Swatch(color: Accent.pink, tile: .dynamic(light: 0xFFD6EA, dark: 0x3A1427)) }
-        if has("overig", "other", "else") { return other }
-        let c = Accent.hashed(key)
+        if has("zuivel", "dairy") { return "blue" }
+        if has("groente", "fruit", "produce", "veg") { return "green" }
+        if has("vlees", "vis", "meat", "fish") { return "red" }
+        if has("brood", "bread", "bakery") { return "orange" }
+        if has("voorraad", "pantry", "stock") { return "yellow" }
+        if has("diepvries", "frozen") { return "cyan" }
+        if has("dranken", "drink", "beverage") { return "purple" }
+        if has("huishoud", "household") { return "teal" }
+        if has("verzorging", "care", "hygiene") { return "pink" }
+        if has("overig", "other", "else") { return "grey" }
+        return nil
+    }
+
+    /// Stored token first (it survives renames); the name mapping only for old cache data.
+    static func swatch(token: String?, name: String?) -> Swatch {
+        if let found = swatch(token: token) { return found }
+        return swatch(for: name)
+    }
+
+    static func swatch(for category: Category?) -> Swatch {
+        swatch(token: category?.color, name: category?.name)
+    }
+
+    /// Name-only mapping: fallback for cache data without a token, and for labels that are not
+    /// categories in the catalog (analytics bucket labels).
+    static func swatch(for name: String?) -> Swatch {
+        guard let name, !name.isEmpty else { return other }
+        if let token = token(forName: name), let found = swatch(token: token) { return found }
+        let c = Accent.hashed(name.lowercased())
         return Swatch(color: c, tile: c.opacity(0.18))
     }
 

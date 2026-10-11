@@ -88,6 +88,8 @@ struct ReviewCard: View {
     let name: String
     var detail: String? = nil
     var categoryName: String? = nil
+    /// The category's stored colour token; wins over the name.
+    var categoryToken: String? = nil
     var imageURL: URL? = nil
     let reason: ReviewReasonKind
     var suggestionName: String? = nil
@@ -104,7 +106,7 @@ struct ReviewCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.l) {
             HStack(alignment: .top, spacing: Space.l) {
-                ProductTile(name: name, category: categoryName, imageURL: imageURL, size: 44)
+                ProductTile(name: name, category: categoryName, categoryToken: categoryToken, imageURL: imageURL, size: 44)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name).textStyle(.rowTitle).foregroundStyle(Palette.ink).lineLimit(2)
                     HStack(spacing: 6) {
@@ -181,7 +183,7 @@ struct ReviewCard: View {
         if let categoryName {
             Button(action: onCategory) {
                 HStack(spacing: 4) {
-                    CategoryDot(color: CategoryColor.swatch(for: categoryName).color)
+                    CategoryDot(color: CategoryColor.swatch(token: categoryToken, name: categoryName).color)
                     Text(categoryName).textStyle(.caption)
                 }
                 .foregroundStyle(Palette.ink2)
