@@ -58,7 +58,7 @@ struct HomeView: View {
 
             inbox
         }
-        .shopListStyle(leading: 1, trailing: 2)
+        .shopListStyle()
         .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
         .onAppear { app.reviewSequence = [] }
         .transaction(value: home.spendLoaded) { $0.animation = nil }
@@ -295,20 +295,14 @@ struct HomeView: View {
     private func receiptRow(_ receipt: Receipt) -> some View {
         let canConfirm = receipt.confirmedAt == nil && (receipt.status == .ok || receipt.status == .needsReview)
         let busy = receipt.status == .processing || receipt.status == .pending
-        return receiptRowContent(receipt)
-            .padding(.horizontal, Space.gutter)
-            .shopListRow()
-            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                if canConfirm {
-                    SwipeButton(title: "Confirm", systemImage: "checkmark", tint: Accent.green, haptic: .medium) { confirm(receipt) }
-                }
-            }
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                if !busy {
-                    SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDelete(receipt) }
-                    SwipeButton(title: "Edit", systemImage: "pencil", tint: Accent.blue) { app.push(.receipt(receipt.id)) }
-                }
-            }
+        return SwipeActionRow(
+            leading: canConfirm ? SwipeAction(icon: "checkmark", title: "Confirm", tint: Accent.green, removesRow: true, haptic: .medium) { confirm(receipt) } : nil,
+            trailing: busy ? nil : SwipeAction(icon: "trash", title: "Delete", tint: Accent.red) { askDelete(receipt) }
+        ) {
+            receiptRowContent(receipt)
+                .padding(.horizontal, Space.gutter)
+        }
+        .shopListRow()
     }
 
     private func confirm(_ receipt: Receipt) {

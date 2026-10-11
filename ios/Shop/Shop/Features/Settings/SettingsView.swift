@@ -387,7 +387,7 @@ struct UploadQueueView: View {
                 .shopListRow()
             }
         }
-        .shopListStyle(trailing: 1)
+        .shopListStyle()
         .contentMargins(.bottom, 120, for: .scrollContent)
         .safeAreaInset(edge: .bottom) {
             if !waiting.isEmpty || !failed.isEmpty {
@@ -406,12 +406,11 @@ struct UploadQueueView: View {
     }
 
     private func itemRow(_ item: UploadItem) -> some View {
-        itemRowContent(item)
-            .padding(.horizontal, Space.gutter)
-            .shopListRow()
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                SwipeButton(title: "Remove", systemImage: "xmark", tint: Accent.red, haptic: .soft) { removeWithUndo(item) }
-            }
+        SwipeActionRow(trailing: SwipeAction(icon: "xmark", title: "Remove", tint: Accent.red, removesRow: true, haptic: .soft) { removeWithUndo(item) }) {
+            itemRowContent(item)
+                .padding(.horizontal, Space.gutter)
+        }
+        .shopListRow()
     }
 
     /// Takes the item off the queue but keeps its files for the 8 s the Undo toast is up.

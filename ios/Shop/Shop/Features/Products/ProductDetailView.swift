@@ -499,18 +499,17 @@ struct ReceiptNamesView: View {
                 let group = groups[gi]
                 Section {
                     ForEach(group.items) { alias in
-                        HStack(spacing: Space.l) {
-                            TypeStyle.mono.sized(14).text(alias.text.uppercased()).foregroundStyle(Palette.ink)
-                            Spacer()
-                            TypeStyle.rowSub.text("since \(Dates.dayLabel(alias.createdAt))").foregroundStyle(Palette.ink2)
+                        SwipeActionRow(trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red, removesRow: true, haptic: .warning) { delete(alias) }) {
+                            HStack(spacing: Space.l) {
+                                TypeStyle.mono.sized(14).text(alias.text.uppercased()).foregroundStyle(Palette.ink)
+                                Spacer()
+                                TypeStyle.rowSub.text("since \(Dates.dayLabel(alias.createdAt))").foregroundStyle(Palette.ink2)
+                            }
+                            .frame(height: 46)
+                            .hairline()
+                            .padding(.horizontal, Space.gutter)
                         }
-                        .frame(height: 46)
-                        .listRowInsets(EdgeInsets(top: 0, leading: Space.gutter, bottom: 0, trailing: Space.gutter))
-                        .listRowBackground(Palette.bg)
-                        .listRowSeparatorTint(Palette.line)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { delete(alias) }
-                        }
+                        .shopListRow()
                     }
                 } header: {
                     HStack(spacing: Space.m) {
@@ -532,7 +531,6 @@ struct ReceiptNamesView: View {
                     .listRowInsets(EdgeInsets(top: Space.lx, leading: Space.gutter, bottom: 0, trailing: Space.gutter))
             }
         }
-        .swipeHaptics(trailing: 1)
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Palette.bg)

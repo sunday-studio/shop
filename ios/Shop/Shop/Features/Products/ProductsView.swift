@@ -112,7 +112,7 @@ struct ProductsView: View {
 
             productRows(model)
         }
-        .shopListStyle(leading: 1, trailing: 2)
+        .shopListStyle()
         .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
         .scrollDismissesKeyboard(.immediately)
         .refreshable { await model.refresh() }
@@ -183,6 +183,10 @@ struct ProductsView: View {
             .shopListRow()
         } else {
             ForEach(products) { product in
+                SwipeActionRow(
+                    leading: SwipeAction(icon: "cart.badge.plus", title: "Add to list", tint: Accent.green, haptic: .light) { addToList(product) },
+                    trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red) { askDelete(product) }
+                ) {
                 Button { app.push(.product(product.id)) } label: {
                     ProductRow(
                         name: product.name,
@@ -196,14 +200,8 @@ struct ProductsView: View {
                 }
                 .buttonStyle(.press(haptic: nil))
                 .padding(.horizontal, Space.gutter)
+                }
                 .shopListRow()
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    SwipeButton(title: "Add to list", systemImage: "cart.badge.plus", tint: Accent.green, haptic: .light) { addToList(product) }
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDelete(product) }
-                    SwipeButton(title: "Edit", systemImage: "pencil", tint: Accent.blue) { edit(product) }
-                }
             }
             if model.isSearching {
                 newProductRow(name: model.query)

@@ -50,7 +50,7 @@ struct ShoppingListView: View {
 
             items
         }
-        .shopListStyle(leading: 1, trailing: 1)
+        .shopListStyle()
         .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
         .animation(Motion.collapse, value: list.items.map(\.id))
         .refreshable {
@@ -135,6 +135,10 @@ struct ShoppingListView: View {
     }
 
     private func row(_ item: ListItem) -> some View {
+        SwipeActionRow(
+            leading: SwipeAction(icon: "checkmark", title: item.isChecked ? "Uncheck" : "Check off", tint: Accent.green, haptic: .soft) { toggleBySwipe(item) },
+            trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red, removesRow: true, haptic: .soft) { remove(item) }
+        ) {
         ListItemRow(
             title: item.title,
             hint: hint(item),
@@ -145,13 +149,8 @@ struct ShoppingListView: View {
             onTap: { openEdit(item) }
         )
         .padding(.horizontal, Space.gutter)
+        }
         .shopListRow()
-        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            SwipeButton(title: item.isChecked ? "Uncheck" : "Check off", systemImage: "checkmark", tint: Accent.green, haptic: .soft) { toggleBySwipe(item) }
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red, haptic: .soft) { remove(item) }
-        }
         .contextMenu {
             Button("Edit", systemImage: "pencil") { openEdit(item) }
             if let id = item.productId { Button("Open product", systemImage: "shippingbox") { app.push(.product(id)) } }

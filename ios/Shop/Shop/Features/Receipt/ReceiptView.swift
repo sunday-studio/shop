@@ -120,7 +120,7 @@ private struct ReceiptScreen: View {
 
                 if showsLines(model) { lineRows(model) }
             }
-            .shopListStyle(trailing: 2)
+            .shopListStyle()
             .contentMargins(.bottom, 130, for: .scrollContent)
             .refreshable { await model.load() }
 
@@ -247,6 +247,7 @@ private struct ReceiptScreen: View {
 
         ForEach(Array(model.visibleLines.enumerated()), id: \.element.id) { index, line in
             let p = model.present(line)
+            SwipeActionRow(trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red) { askDeleteLine(line, model: model) }) {
             Button { tap(line, model: model) } label: {
                 LineRow(title: p.title, isRaw: p.isRaw, subtitle: p.subtitle, subtitleColor: p.subtitleColor, amount: p.amount,
                         titleColor: p.titleColor, amountColor: p.amountColor, dot: p.dot, indented: p.indented)
@@ -254,11 +255,8 @@ private struct ReceiptScreen: View {
             .buttonStyle(.press(haptic: nil))
             .staggeredAppear(index: openedOnSummary ? Motion.staggerMax : index)
             .padding(.horizontal, Space.gutter)
-            .shopListRow()
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDeleteLine(line, model: model) }
-                SwipeButton(title: "Edit", systemImage: "pencil", tint: Accent.blue) { openEdit(line, model: model) }
             }
+            .shopListRow()
             .contextMenu {
                 Button("Edit line", systemImage: "pencil") { openEdit(line, model: model) }
                 if line.kind == .item {

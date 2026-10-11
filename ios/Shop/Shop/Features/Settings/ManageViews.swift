@@ -60,6 +60,7 @@ struct ShopsView: View {
             }
 
             ForEach(app.catalog.shops) { shop in
+                SwipeActionRow(trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red) { askDeleteShop(shop) }) {
                 Button { openForm(shop) } label: {
                     HStack(spacing: Space.l) {
                         ShopMark(name: shop.name, size: Size.shopMarkHeader)
@@ -79,14 +80,11 @@ struct ShopsView: View {
                 }
                 .buttonStyle(.press(haptic: nil))
                 .padding(.horizontal, Space.gutter)
-                .shopListRow()
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDeleteShop(shop) }
-                    SwipeButton(title: "Edit", systemImage: "pencil", tint: Accent.blue) { openForm(shop) }
                 }
+                .shopListRow()
             }
         }
-        .shopListStyle(trailing: 2)
+        .shopListStyle()
         .contentMargins(.bottom, 40, for: .scrollContent)
         .background(Palette.bg)
         .toolbar(.hidden, for: .navigationBar)
@@ -313,6 +311,7 @@ struct CategoriesView: View {
                 .shopListRow()
 
                 ForEach(categories) { category in
+                    SwipeActionRow(trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red) { askDelete(category) }) {
                     Button { openForm(category) } label: {
                         HStack(spacing: Space.l) {
                             RoundedRectangle.continuous(5).fill(category.dotColor).frame(width: 14, height: 14)
@@ -326,15 +325,12 @@ struct CategoriesView: View {
                     }
                     .buttonStyle(.press(haptic: nil))
                     .padding(.horizontal, Space.gutter)
-                    .shopListRow()
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDelete(category) }
-                        SwipeButton(title: "Rename", systemImage: "pencil", tint: Accent.blue) { openForm(category) }
                     }
+                    .shopListRow()
                 }
             }
         }
-        .shopListStyle(trailing: 2)
+        .shopListStyle()
         .contentMargins(.bottom, 40, for: .scrollContent)
         .refreshable { await load() }
         .background(Palette.bg)
