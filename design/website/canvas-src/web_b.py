@@ -8,16 +8,18 @@ CSS = '''
 .w .hb .lead{font-size:21px;line-height:1.5;color:var(--ink2);text-align:center;max-width:620px;margin:22px auto 0}
 .w .heroP .lead,.w .heroP p{color:var(--ink)!important;opacity:.82}
 .w .h2.lt{font-weight:400;letter-spacing:-.045em}
-.w .btn.alt{background:rgba(255,255,255,.55);color:#1D1D1B;backdrop-filter:blur(8px)}
+.w .btn.alt{background:rgba(255,255,255,.55);color:#2B2D3F;backdrop-filter:blur(8px)}
 .w .mcta{font-family:'GT America Mono',ui-monospace,monospace;text-transform:uppercase;letter-spacing:.07em;font-size:12.5px;height:44px;padding:0 20px;border-radius:22px;gap:10px}
 .w .burger{width:44px;height:44px;border-radius:50%;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.55);flex:none}
-.w .burger i{display:block;width:18px;height:2px;border-radius:1px;background:#1D1D1B}
-.w .badge{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px 0 16px;border-radius:17px;background:rgba(20,20,19,.82);color:#F4F4F1;font-size:13.5px;font-weight:500;backdrop-filter:blur(10px)}
+.w .burger i{display:block;width:18px;height:2px;border-radius:1px;background:#2B2D3F}
+.w .badge{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px 0 16px;border-radius:17px;background:rgba(43,45,63,.82);color:#F4F4F1;font-size:13.5px;font-weight:500;backdrop-filter:blur(10px)}
 .w .art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .w .heroP{position:relative;overflow:hidden;background:var(--sk1)}
 .w .heroP .nav{position:relative;z-index:3}
-.w .heroP .brand{color:#1D1D1B}
-.w .fl{position:absolute;background:var(--bg);border-radius:20px;box-shadow:0 18px 40px -16px var(--shadow);padding:14px 18px;display:flex;align-items:center;gap:12px;font-size:15px;font-weight:500;white-space:nowrap;z-index:2}
+.w .heroP .brand{color:#2B2D3F}
+.w .fade{position:absolute;left:0;right:0;bottom:0;z-index:3;pointer-events:none;background:linear-gradient(180deg,transparent,var(--bg) 92%)}
+.w .fadeT{position:absolute;left:0;right:0;top:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg),transparent)}
+.w .fl{position:absolute;background:var(--bg);border-radius:20px;box-shadow:0 18px 40px -16px var(--shadow);padding:14px 18px;display:flex;align-items:center;gap:12px;font-size:15px;font-weight:500;white-space:nowrap;z-index:4}
 .w .fl i{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;font-style:normal;color:#fff;font-size:15px}
 .w .fl small{display:block;font-size:12.5px;font-weight:400;color:var(--ink2)}
 .w .tilt{transform:perspective(1800px) rotateY(-9deg) rotateX(3deg) rotate(1.5deg);transform-origin:50% 100%}
@@ -63,7 +65,7 @@ CSS = '''
 .w .fi:nth-child(4)>*,.w .ph:nth-of-type(4){animation-delay:-5s}
 .w .shw:hover *{animation-play-state:paused}
 }
-.w .gp{display:inline-flex;align-items:center;height:38px;padding:0 16px;border-radius:19px;background:rgba(255,255,255,.5);backdrop-filter:blur(8px);font-size:14.5px;font-weight:500;color:#1D1D1B}
+.w .gp{display:inline-flex;align-items:center;height:38px;padding:0 16px;border-radius:19px;background:rgba(255,255,255,.5);backdrop-filter:blur(8px);font-size:14.5px;font-weight:500;color:#2B2D3F}
 '''
 
 ICONS = {
@@ -129,7 +131,7 @@ def build(g):
         badge = '<span class="badge a-rise">MIT licence · open source <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>'
         txt = f'<div class="hb" style="position:relative;z-index:2;padding:{"20px 0 0" if m else "40px 0 0"}"><div style="text-align:center">{badge}</div><h1 class="a-rise" style="margin-top:24px;{h1}">Photograph the receipt.{"" if m else "<br>"} Keep the data.</h1><p class="lead a-rise" style="{"font-size:17px;padding:0 20px" if m else ""}">Reads your supermarket receipts on your own server, checks every line adds up to the printed total, and shows what your groceries really cost.</p>{btns}</div>'
         phone = f'<div class="tilt" style="position:absolute;left:50%;margin-left:-{ph//2}px;top:{640 if m else 690}px;z-index:2">{dev("receipt",ph)}</div>'
-        return f'<section><div class="heroP" style="height:{h}px">{art("h")}{header(m)}{txt}{paper}{phone}{chips}</div></section>'
+        return f'<section><div class="heroP" style="height:{h}px">{art("h")}{header(m)}{txt}{paper}{phone}<div class="fade" style="height:{220 if m else 300}px"></div>{chips}</div></section>'
 
     def steps(m):
         cb = lambda pos: f'<i class="cb" style="{pos}"></i>'
@@ -155,7 +157,7 @@ def build(g):
     def closing(m):
         h = 600
         pills = ''.join(f'<span class="gp">{t}</span>' for t in ['Your server, your data', 'No account, no analytics', 'MIT licensed'])
-        return f'<section style="padding:{"64px 0 0" if m else "120px 0 0"}"><div class="heroP" style="height:{h}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:{"56px 24px 0" if m else "80px 0 0"}">{art("c", "xMidYMid")}<h2 class="h2 lt" style="position:relative;z-index:2;font-size:{40 if m else 72}px;line-height:1.02">Run it at home.</h2><p style="position:relative;z-index:2;font-size:{17 if m else 20}px;line-height:1.5;color:var(--ink2);margin-top:16px;max-width:520px">Yours, on your own server. Install it with Docker on a machine you already have.</p><div style="position:relative;z-index:2;display:flex;gap:10px;margin-top:28px;flex-wrap:wrap;justify-content:center"><a class="btn mcta" href="#" style="height:52px">{GH.replace("20","16")}View on GitHub</a></div><div style="position:relative;z-index:2;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:{20 if m else 28}px">{pills}</div></div></section>'
+        return f'<section style="padding:{"64px 0 0" if m else "120px 0 0"}"><div class="heroP" style="height:{h}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:{"56px 24px 0" if m else "80px 0 0"}">{art("c", "xMidYMid")}<div class="fadeT" style="height:{160 if m else 220}px"></div><div class="fade" style="height:{140 if m else 180}px"></div><h2 class="h2 lt" style="position:relative;z-index:2;font-size:{40 if m else 72}px;line-height:1.02">Run it at home.</h2><p style="position:relative;z-index:2;font-size:{17 if m else 20}px;line-height:1.5;color:var(--ink2);margin-top:16px;max-width:520px">Yours, on your own server. Install it with Docker on a machine you already have.</p><div style="position:relative;z-index:2;display:flex;gap:10px;margin-top:28px;flex-wrap:wrap;justify-content:center"><a class="btn mcta" href="#" style="height:52px">{GH.replace("20","16")}View on GitHub</a></div><div style="position:relative;z-index:2;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:{20 if m else 28}px">{pills}</div></div></section>'
 
     def body(m):
         return hero(m) + steps(m) + showcase(m) + closing(m) + footer(m, False)
