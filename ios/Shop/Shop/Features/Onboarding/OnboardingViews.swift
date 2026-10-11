@@ -325,30 +325,30 @@ struct PasswordScreen: View {
                     .frame(width: 20, height: 20)
                     .background(Accent.yellow, in: RoundedRectangle.continuous(Radius.badge))
                 TypeStyle.label.withFace(.regular).text("Lost it? On the Mac mini, run")
-                    .foregroundStyle(Color(hex: 0x9A9A95))
+                    .foregroundStyle(Palette.darkCardInk2)
             }
             HStack(spacing: Space.ml) {
                 (Text("$ ").foregroundStyle(Palette.scanGreen) + Text("shop password generate"))
                     .textStyle(TypeStyle.mono.sized(14).withFace(.monoRegular))
-                    .foregroundStyle(Color(hex: 0xEDEDE9))
+                    .foregroundStyle(Palette.darkCardInk)
                 Spacer()
                 Button {
                     UIPasteboard.general.string = "docker compose -f deploy/docker-compose.yml exec api shop password generate"
                     Haptics.play(.success)
                 } label: {
                     IconView(.link, size: 15)
-                        .foregroundStyle(Color(hex: 0xEDEDE9))
+                        .foregroundStyle(Palette.darkCardInk)
                         .frame(width: 34, height: 34)
-                        .background(Color(hex: 0x2A2B2D), in: Circle())
+                        .background(Palette.darkCardField, in: Circle())
                 }
                 .buttonStyle(.press(scale: Motion.pillScale, haptic: nil))
                 .accessibilityLabel("Copy command")
             }
             TypeStyle.mono.sized(12).withFace(.monoRegular).text("or: docker compose exec api shop password generate")
-                .foregroundStyle(Color(hex: 0x77776F))
+                .foregroundStyle(Palette.darkCardInk3)
         }
         .padding(Space.xl)
-        .background(Color(hex: 0x17181A), in: RoundedRectangle.continuous(Radius.hero))
+        .background(Palette.darkCard, in: RoundedRectangle.continuous(Radius.hero))
     }
 }
 
