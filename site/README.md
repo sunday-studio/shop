@@ -13,7 +13,7 @@ Open `guide/` pages from a server or from disk; all links are relative.
 
 - `css/base.css`: tokens (light and dark, follows the system), fonts, header, buttons, footer, phone frame, motion.
 - `css/home.css`: landing page. `css/guide.css`: guide pages. Mobile first; desktop layout from 800 px.
-- `fonts/`: GT America 400/500/700 and GT America Mono 400 (woff2, `font-display: swap`).
+- `fonts/`: GT America 400/500/700 (woff2, `font-display: swap`). Code and monospace text use IBM Plex Mono, loaded from Google Fonts together with Geist (see the `<link>` tags in the page heads and in `build.py`).
 - `img/`: `logo-badge.svg` (also the favicon) and the app screens as WebP, light and dark, 603 px and 1206 px wide
   (`<picture>` picks the theme with `prefers-color-scheme`, `srcset` picks the size).
 - No JS: the burger and the guide menu are `<details>`; the feature cycle, hero rise and scroll reveal are CSS animations

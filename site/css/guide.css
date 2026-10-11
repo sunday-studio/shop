@@ -37,26 +37,26 @@ body:has(.gmenu[open]) main,body:has(.gmenu[open]) .foot{display:none}
 .doc .lead{font-size:17px;line-height:1.5;color:var(--ink2);margin-top:14px}
 .doc h2{font-size:26px;line-height:1.2;font-weight:500;letter-spacing:-.025em;margin:48px 0 14px}
 .doc p.b{font-size:16.5px;line-height:1.65;color:var(--ink2);margin:0 0 14px}
-.doc code{font-family:"GT America Mono",ui-monospace,monospace;font-size:.88em;background:var(--sunk);border-radius:6px;padding:2px 6px;color:var(--ink)}
+.doc code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.88em;background:var(--sunk);border-radius:6px;padding:2px 6px;color:var(--ink)}
 .mobile-only{display:block}
 .desktop-only{display:none}
 .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:22px}
 .steps>li{display:grid;grid-template-columns:34px 1fr;font-size:16.5px;line-height:1.6;color:var(--ink)}
-.steps>li>i{font-style:normal;font-family:"GT America Mono",ui-monospace,monospace;font-size:14px;color:var(--ink3);padding-top:3px}
+.steps>li>i{font-style:normal;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14px;color:var(--ink3);padding-top:3px}
 .steps .sub{color:var(--ink2);margin-top:6px}
 .steps .sub b{color:var(--ink);font-weight:500}
 .letters{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:16.5px}
 .letters li{display:grid;grid-template-columns:28px 1fr}
-.letters i{font-style:normal;color:var(--ink3);font-family:"GT America Mono",ui-monospace,monospace;font-size:14px;padding-top:2px}
+.letters i{font-style:normal;color:var(--ink3);font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14px;padding-top:2px}
 .doc table.tb td,.slist li,.call{overflow-wrap:anywhere}
-.code{background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:16px 76px 16px 18px;margin:12px 0 0;font-family:"GT America Mono",ui-monospace,monospace;font-size:14px;line-height:1.7;color:var(--ink);overflow:hidden;white-space:pre-wrap}
+.code{background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:16px 76px 16px 18px;margin:12px 0 0;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14px;line-height:1.7;color:var(--ink);overflow:hidden;white-space:pre-wrap}
 .code code{font:inherit;background:none;padding:0;border-radius:0;color:inherit}
 .call{border-radius:16px;padding:16px 18px;margin:18px 0;font-size:15.5px;line-height:1.6;color:var(--ink)}
 .call b.t{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;margin-bottom:4px}
 .call.note{background:var(--blueTint)}.call.note b.t{color:var(--blueText)}
 .call.warn{background:var(--amberTint)}.call.warn b.t{color:var(--amberText)}
 .call.tip{background:var(--greenTint)}.call.tip b.t{color:var(--greenText)}
-.term{background:#141413;color:#E9E9E4;border-radius:20px;padding:18px 20px 22px;font-family:"GT America Mono",ui-monospace,monospace;font-size:13.5px;line-height:1.75;margin-top:16px;box-shadow:0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent)}
+.term{background:#141413;color:#E9E9E4;border-radius:20px;padding:18px 20px 22px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13.5px;line-height:1.75;margin-top:16px;box-shadow:0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent)}
 .term pre{margin:0;font:inherit;white-space:pre-wrap}
 .term .dots{display:flex;gap:7px;margin-bottom:12px}
 .term .dots i{width:11px;height:11px;border-radius:50%;background:#3a3a37;display:block}
