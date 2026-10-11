@@ -286,8 +286,8 @@ def og_tags(name, alt, prefix='img/og/'):
     if not SITE_URL:
         return ''
     url = f'{SITE_URL}/{prefix}{name}.jpg'
-    return (f'<meta property="og:image" content="{url}">\n<meta property="og:image:width" content="2400">\n'
-            f'<meta property="og:image:height" content="1260">\n<meta property="og:image:alt" content="{html.escape(alt)}">\n'
+    return (f'<meta property="og:image" content="{url}">\n<meta property="og:image:width" content="1200">\n'
+            f'<meta property="og:image:height" content="630">\n<meta property="og:image:alt" content="{html.escape(alt)}">\n'
             f'<meta name="twitter:image" content="{url}">\n<meta name="twitter:image:alt" content="{html.escape(alt)}">')
 
 
