@@ -135,7 +135,7 @@ struct HomeView: View {
             ForEach(groups) { group in
                 AttentionCard(
                     count: group.count,
-                    title: group.suggestion.kind == .new ? "New shop: \(group.suggestion.name)" : "Looks like \(group.suggestion.name)",
+                    title: group.suggestion.kind == .new ? "New shop: \(group.suggestion.name)" : "Looks like \(group.suggestion.displayName(in: app.catalog))",
                     hint: group.suggestion.kind == .new ? "Add" : "Move",
                     tone: .blue
                 ) { app.push(.receipt(group.firstReceiptId)) }
@@ -355,7 +355,7 @@ struct HomeView: View {
         let unknownShop = receipt.shopId == nil
         if unknownShop && (receipt.status == .ok || receipt.status == .needsReview) {
             if let suggestion = home.suggestions[receipt.id] {
-                p.subtitle = "Looks like \(suggestion.name) · tap to add"
+                p.subtitle = "Looks like \(suggestion.displayName(in: app.catalog)) · tap to add"
                 p.subtitleColor = Palette.blueText
             } else {
                 p.subtitle = "Pick a shop"

@@ -53,7 +53,7 @@ private struct ReceiptScreen: View {
                         if let suggestion = model.suggestion {
                             ShopSuggestionCard(
                                 kind: suggestion.kind == .existing ? .existing : .new,
-                                name: suggestion.name, detail: suggestion.detail, waiting: suggestion.receiptCount,
+                                name: suggestion.displayName(in: app.catalog), detail: suggestion.displayDetail(in: app.catalog), waiting: suggestion.receiptCount,
                                 isWorking: model.isAcceptingSuggestion,
                                 onAccept: { Task { await model.acceptSuggestion() } },
                                 onEdit: { editSuggestion(suggestion, model: model) },
@@ -383,6 +383,7 @@ struct SuggestionEditTray: View {
     let suggestion: ShopSuggestion
     let onAdd: (String, String?, String?) -> Void
 
+    @Environment(AppModel.self) private var app
     @Environment(TrayCoordinator.self) private var trays
     @State private var name = ""
     @State private var branch = ""
@@ -391,7 +392,7 @@ struct SuggestionEditTray: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lx) {
-            TrayHeader(title: "Add shop", subtitle: suggestion.kind == .existing ? "Moves to \(suggestion.name)" : nil)
+            TrayHeader(title: "Add shop", subtitle: suggestion.kind == .existing ? "Moves to \(suggestion.displayName(in: app.catalog))" : nil)
             HStack(spacing: Space.l) {
                 ShopMark(name: name.isEmpty ? "?" : name, size: 32)
                 Text("The logo comes from the website once the shop is added.")

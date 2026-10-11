@@ -798,7 +798,7 @@ final class MockServer: HTTPTransport {
     private func mockSuggestion(for id: Int64) -> ShopSuggestion? {
         let unassigned = receipts.first { $0.id == id }.map { $0.shopId == nil && $0.status != .processing } ?? false
         guard id == 102 || unassigned, !acceptedSuggestions.contains(id) else { return nil }
-        return ShopSuggestion(kind: .new, shopId: nil, name: "Aldi", chain: "Aldi", branch: "Hoofdstraat 12, Teststad", domain: "aldi.nl",
+        return ShopSuggestion(kind: .new, key: "new:aldi|lange kerkstraat 34", shopId: nil, name: "Aldi", chain: "Aldi", branch: "Hoofdstraat 12, Teststad", domain: "aldi.nl",
                               confidence: 0.92, evidence: ["ALDI", "Hoofdstraat 12", "Teststad"], waitingReceiptIds: acceptedSuggestions.contains(104) ? [] : [104])
     }
 
