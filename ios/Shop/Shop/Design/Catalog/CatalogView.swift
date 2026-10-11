@@ -15,6 +15,7 @@ struct CatalogView: View {
     @State private var trays = TrayCoordinator()
     @State private var toasts = ToastCenter()
     @State private var stressRunning = false
+    @State private var swipeTaps = 0
     @State private var stressCycle = 0
     @Environment(\.colorScheme) private var systemScheme
 
@@ -36,13 +37,17 @@ struct CatalogView: View {
 
                 section("Swipe actions (pull to act)") {
                     VStack(spacing: 0) {
+                        Text("Taps on rows: \(swipeTaps)").textStyle(.caption).foregroundStyle(Palette.ink2)
                         ForEach(0..<3, id: \.self) { i in
                             SwipeActionRow(
                                 leading: SwipeAction(icon: "checkmark", title: "Confirm", tint: Accent.green, haptic: .medium, perform: {}),
                                 trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red, perform: {})
                             ) {
-                                ReceiptRow(shopName: ["Albert Heijn", "Jumbo", "Dirk"][i], subtitle: "12:08 · 9 items", amount: "€12,40")
-                                    .padding(.horizontal, Space.gutter)
+                                Button { swipeTaps += 1 } label: {
+                                    ReceiptRow(shopName: ["Albert Heijn", "Jumbo", "Dirk"][i], subtitle: "12:08 · 9 items", amount: "€12,40")
+                                        .padding(.horizontal, Space.gutter)
+                                }
+                                .buttonStyle(.press(haptic: nil))
                             }
                         }
                     }

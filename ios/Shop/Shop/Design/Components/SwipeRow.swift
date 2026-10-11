@@ -27,7 +27,6 @@ struct SwipeActionRow<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduce
     @State private var offset: CGFloat = 0
     @State private var armed = false
-    @State private var locked: Bool?   // nil undecided, true horizontal, false vertical
     @State private var width = WidthBox()
 
     private let armFraction: CGFloat = 0.28
@@ -47,9 +46,13 @@ struct SwipeActionRow<Content: View>: View {
                 .background(Palette.bg)
                 .offset(x: offset)
         }
+        .contentShape(Rectangle())
         .clipped()
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width.value = $0 }
-        .simultaneousGesture(drag)
+        .background(SwipePan(edgeGuard: edgeGuard,
+                             onChange: { change($0) },
+                             onEnd: { end(dx: $0, vx: $1) },
+                             onCancel: { snapBack() }))
         .accessibilityElement(children: .contain)
         .accessibilityActions {
             if let leading { Button(leading.title) { leading.perform() } }
@@ -78,34 +81,25 @@ struct SwipeActionRow<Content: View>: View {
         }
     }
 
-    // MARK: Gesture
+    // MARK: Gesture (a UIKit pan, see SwipePan: it only begins for a horizontal move and cancels
+    // the Button inside the row, so a swipe never also taps)
 
-    private var drag: some Gesture {
-        DragGesture(minimumDistance: 12)
-            .onChanged { value in
-                if locked == nil {
-                    let h = abs(value.translation.width), v = abs(value.translation.height)
-                    guard h > 12 || v > 12 else { return }
-                    locked = h > v * 1.6 && value.startLocation.x > edgeGuard
-                }
-                guard locked == true else { return }
-                var x = value.translation.width
-                if (x > 0 && leading == nil) || (x < 0 && trailing == nil) { x = rubber(x, limit: 24) }
-                else { x = stretch(x) }
-                offset = x
-                let nowArmed = abs(x) >= armDistance && active != nil
-                if nowArmed != armed {
-                    armed = nowArmed
-                    if nowArmed { Haptics.play(.selection) }
-                }
-            }
-            .onEnded { value in
-                defer { locked = nil }
-                guard locked == true, let action = active else { snapBack(); return }
-                let v = value.velocity.width
-                let flick = (offset > 0 ? v : -v) > flickVelocity && abs(offset) > width.value * 0.12
-                if armed || flick { commit(action) } else { snapBack() }
-            }
+    private func change(_ dx: CGFloat) {
+        var x = dx
+        if (x > 0 && leading == nil) || (x < 0 && trailing == nil) { x = rubber(x, limit: 24) }
+        else { x = stretch(x) }
+        offset = x
+        let nowArmed = abs(x) >= armDistance && active != nil
+        if nowArmed != armed {
+            armed = nowArmed
+            if nowArmed { Haptics.play(.selection) }
+        }
+    }
+
+    private func end(dx: CGFloat, vx: CGFloat) {
+        guard let action = active else { snapBack(); return }
+        let flick = (offset > 0 ? vx : -vx) > flickVelocity && abs(offset) > width.value * 0.12
+        if armed || flick { commit(action) } else { snapBack() }
     }
 
     private func commit(_ action: SwipeAction) {
@@ -141,5 +135,93 @@ struct SwipeActionRow<Content: View>: View {
         let sign: CGFloat = x < 0 ? -1 : 1
         let a = abs(x)
         return sign * limit * (1 - 1 / (a / limit + 1))
+    }
+}
+
+
+/// A pan recognizer attached to the row's hosting view. It only begins when the move is clearly
+/// horizontal and starts inside the row (and not at the screen's left edge), so list scrolling and
+/// the system back swipe are untouched. It does not run alongside the other recognizers, so when
+/// it begins the Button inside the row is cancelled and the touch-up never counts as a tap.
+private struct SwipePan: UIViewRepresentable {
+    var edgeGuard: CGFloat
+    var onChange: (CGFloat) -> Void
+    var onEnd: (CGFloat, CGFloat) -> Void
+    var onCancel: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> Anchor {
+        let v = Anchor()
+        v.isUserInteractionEnabled = false
+        v.coordinator = context.coordinator
+        return v
+    }
+
+    func updateUIView(_ view: Anchor, context: Context) {
+        let c = context.coordinator
+        c.edgeGuard = edgeGuard
+        c.onChange = onChange
+        c.onEnd = onEnd
+        c.onCancel = onCancel
+    }
+
+    final class Anchor: UIView {
+        weak var coordinator: Coordinator?
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            guard window != nil else { coordinator?.detach(); return }
+            var host: UIView? = superview
+            var v: UIView? = superview
+            while let s = v {
+                if String(describing: type(of: s)).contains("HostingView") { host = s; break }
+                v = s.superview
+            }
+            if let host { coordinator?.attach(to: host, anchor: self) }
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var edgeGuard: CGFloat = 20
+        var onChange: (CGFloat) -> Void = { _ in }
+        var onEnd: (CGFloat, CGFloat) -> Void = { _, _ in }
+        var onCancel: () -> Void = {}
+        private weak var anchor: UIView?
+        private var pan: UIPanGestureRecognizer?
+
+        func attach(to host: UIView, anchor: UIView) {
+            detach()
+            self.anchor = anchor
+            let p = UIPanGestureRecognizer(target: self, action: #selector(handle(_:)))
+            p.delegate = self
+            host.addGestureRecognizer(p)
+            pan = p
+        }
+
+        func detach() {
+            if let pan { pan.view?.removeGestureRecognizer(pan) }
+            pan = nil
+        }
+
+        @objc private func handle(_ g: UIPanGestureRecognizer) {
+            let dx = g.translation(in: g.view).x
+            switch g.state {
+            case .began, .changed: onChange(dx)
+            case .ended: onEnd(dx, g.velocity(in: g.view).x)
+            case .cancelled, .failed: onCancel()
+            default: break
+            }
+        }
+
+        func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+            guard let pan = g as? UIPanGestureRecognizer, let anchor else { return false }
+            let v = pan.velocity(in: pan.view)
+            guard abs(v.x) > abs(v.y) * 1.6 else { return false }
+            let p = pan.location(in: anchor)
+            return anchor.bounds.contains(p) && p.x - abs(pan.translation(in: pan.view).x) > edgeGuard - 1
+        }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { false }
     }
 }
