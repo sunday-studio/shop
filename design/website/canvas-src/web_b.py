@@ -176,21 +176,28 @@ VARIANTS = {'silk': art_silk, 'still': art_still, 'receipts': art_receipts}
 
 def showcase_css():
     """Click-to-select. The cycle is one animated integer (--a = active feature); phones, titles and descriptions derive
-    their opacity from it with a CSS transition, so every change (auto or clicked) is a true cross-fade."""
+    their opacity from it with a CSS transition, so every change (auto or clicked) is the same fade-then-rise.
+    Clicking an item restarts the 20 s count from that item. Clicking the item that is already showing only resets
+    the count (the value does not change, so nothing animates). A press on an item (:active) restarts the count even
+    when its radio is already checked."""
     out = ['.w .sfr{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}', '.w .fi{cursor:pointer;border-radius:12px}']
     for k in range(1, 5):
         sel = f'#sf{k}:checked ~ .shrow'
+        press = f'.shrow:has(.fi:nth-child({k}):active)'
         out.append(f'{sel}{{--a:{k}}}')
         out.append(f'#sf{k}:focus-visible ~ .shrow .fi:nth-child({k}){{outline:2px solid var(--blue);outline-offset:6px}}')
         seq = ''.join(f'{p}%{{--a:{(k - 1 + j) % 4 + 1}}}' for j, p in enumerate((0, 25, 50, 75))) + f'100%{{--a:{k}}}'
-        out.append(f'@keyframes cyc{k}{{{seq}}}')
-        out.append(f'@keyframes pOn{k}{{0%{{width:0}}25%{{width:100%}}25.01%,100%{{width:0}}}}')
-        anim = [f'{sel}{{animation-name:cyc{k}}}']
-        for i in range(1, 5):
-            slot = (i - k) % 4
-            delay = '0s' if slot == 0 else f'-{20 - 5 * slot}s'
-            anim.append(f'{sel} .fi:nth-child({i}) .pr{{animation-name:pOn{k};animation-delay:{delay}}}')
-        out.append('@media (prefers-reduced-motion:no-preference){' + ''.join(anim) + '}')
+        for suffix in ('', 'p'):
+            out.append(f'@keyframes cyc{k}{suffix}{{{seq}}}')
+            out.append(f'@keyframes pOn{k}{suffix}{{0%{{width:0}}25%{{width:100%}}25.01%,100%{{width:0}}}}')
+        def rules(prefix, suffix):
+            r = [f'{prefix}{{animation-name:cyc{k}{suffix}}}']
+            for i in range(1, 5):
+                slot = (i - k) % 4
+                delay = '0s' if slot == 0 else f'-{20 - 5 * slot}s'
+                r.append(f'{prefix} .fi:nth-child({i}) .pr{{animation-name:pOn{k}{suffix};animation-delay:{delay}}}')
+            return ''.join(r)
+        out.append('@media (prefers-reduced-motion:no-preference){' + rules(sel, '') + rules(press, 'p') + rules(f'#sf{k}:checked ~ {press}', 'p') + '}')
     return '\n'.join(out) + '\n'
 
 
