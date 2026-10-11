@@ -16,15 +16,15 @@ CSS = '''
 .w .doc h2{font-size:26px;line-height:1.2;font-weight:500;letter-spacing:-.025em;margin:48px 0 14px}
 .w .doc p.b{font-size:16.5px;line-height:1.65;color:var(--ink2);margin:0 0 14px}
 .w .doc p.b b{color:var(--ink);font-weight:500}
-.w .doc code{font-family:'GT America Mono',ui-monospace,monospace;font-size:.88em;background:var(--sunk);border-radius:6px;padding:2px 6px;color:var(--ink)}
+.w .doc code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.88em;background:var(--sunk);border-radius:6px;padding:2px 6px;color:var(--ink)}
 .w .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:22px}
 .w .steps>li{display:grid;grid-template-columns:34px 1fr;gap:0;font-size:16.5px;line-height:1.6;color:var(--ink)}
-.w .steps>li>i{font-style:normal;font-family:'GT America Mono',ui-monospace,monospace;font-size:14px;color:var(--ink3);padding-top:3px}
+.w .steps>li>i{font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;color:var(--ink3);padding-top:3px}
 .w .steps .sub{color:var(--ink2);margin-top:6px}
 .w .letters{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:16.5px}
 .w .letters li{display:grid;grid-template-columns:28px 1fr}
-.w .letters i{font-style:normal;color:var(--ink3);font-family:'GT America Mono',ui-monospace,monospace;font-size:14px;padding-top:2px}
-.w .code{position:relative;background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:16px 76px 16px 18px;margin-top:12px;font-family:'GT America Mono',ui-monospace,monospace;font-size:14px;line-height:1.7;color:var(--ink);overflow:hidden}
+.w .letters i{font-style:normal;color:var(--ink3);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;padding-top:2px}
+.w .code{position:relative;background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:16px 76px 16px 18px;margin-top:12px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;line-height:1.7;color:var(--ink);overflow:hidden}
 .w .code .cp{position:absolute;right:10px;top:10px;height:28px;padding:0 10px;border-radius:14px;background:var(--bg);border:1px solid var(--line);font-family:'GT America',system-ui,sans-serif;font-size:12.5px;font-weight:500;color:var(--ink2);display:flex;align-items:center}
 .w .code .c{color:var(--ink3)}
 .w .call{border-radius:16px;padding:16px 18px;margin:18px 0;font-size:15.5px;line-height:1.6;color:var(--ink)}
@@ -52,7 +52,7 @@ CSS = '''
 .w .gc ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:2px}
 .w .gc li a{display:flex;align-items:center;justify-content:space-between;height:38px;border-top:1px solid color-mix(in srgb,var(--ink) 9%,transparent);font-size:15.5px}
 .w .gc li a span{color:var(--ink2)}
-.w .term{background:#141413;color:#E9E9E4;border-radius:20px;padding:18px 20px 22px;font-family:'GT America Mono',ui-monospace,monospace;font-size:13.5px;line-height:1.75;margin-top:16px;box-shadow:0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent)}
+.w .term{background:#141413;color:#E9E9E4;border-radius:20px;padding:18px 20px 22px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13.5px;line-height:1.75;margin-top:16px;box-shadow:0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent)}
 .w .term .dots{display:flex;gap:7px;margin-bottom:12px}.w .term .dots i{width:11px;height:11px;border-radius:50%;background:#3a3a37;display:block}
 .w .term .g{color:#6FE0A0}.w .term .m{color:#8C8C86}
 .w .ill{border-radius:28px;background:var(--panel);overflow:hidden;position:relative;margin-top:20px}
@@ -164,7 +164,7 @@ def build(g):
         items = ['Layout: sticky sidebar (256), one reading column (620), sticky "On this page" (180). 80 px page margins, same plain header as the home page with "Guide" in blue. Below 1100 px the "On this page" column goes; below 800 px the sidebar becomes a Menu button that opens a full-screen list.',
                  'Sidebar: small caps group labels (ink2 for contrast), 36 px rows, current page on a sunk pill. Groups and 11 pages come from the research agent\'s list.',
                  'Page: blue "group" label, 52 px Medium title, 19 px lead, 26 px section titles. Body 16.5 / 1.65. Steps are numbered 01, 02 in mono grey (like Distill); requirements are lettered A, B, C.',
-                 'Code: sunk block, 14 px GT America Mono, "Copy" pill top right, no syntax colours. Terminal captures are dark panels with a green tick.',
+                 'Code: sunk block, 14 px IBM Plex Mono, "Copy" pill top right, no syntax colours. Terminal captures are dark panels with a green tick.',
                  'Callouts: Note (blue tint), Warning (amber tint), Tip (green tint); small caps label, 15.5 px text.',
                  'TODO: dashed amber outline with a small TODO tag. Draft only, shown so nothing unverified looks finished. Strip them (or hide with one CSS rule) for the published site; about 20 exist in the draft.',
                  'Previous / next cards at the bottom. Home of the Guide shows the four groups as tinted cards with their pages listed, like Distill.',

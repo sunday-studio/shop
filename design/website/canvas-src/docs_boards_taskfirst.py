@@ -11,14 +11,14 @@ CSS = '''
 .w .side a{display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;border-radius:10px;font-size:15px;color:var(--ink2);transition:background .15s,color .15s}
 .w .side a:hover{background:var(--sunk);color:var(--ink)}
 .w .side a.on{background:var(--ink);color:var(--bg);font-weight:500}
-.w .side a i{font-style:normal;width:20px;height:20px;border-radius:50%;border:1px solid var(--line);font-size:11px;display:inline-flex;align-items:center;justify-content:center;flex:none;font-family:'GT America Mono',ui-monospace,monospace}
+.w .side a i{font-style:normal;width:20px;height:20px;border-radius:50%;border:1px solid var(--line);font-size:11px;display:inline-flex;align-items:center;justify-content:center;flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace}
 .w .side a.on i{border-color:transparent;background:var(--blue);color:#fff}
 .w .doc{flex:1;min-width:0;max-width:660px}
 .w .doc h1{font-size:56px;line-height:1.04;font-weight:500;letter-spacing:-.04em}
 .w .doc .lead{font-size:20px;line-height:1.5;color:var(--ink2);margin-top:14px}
 .w .doc h2{font-size:28px;line-height:1.15;font-weight:500;letter-spacing:-.025em;margin:56px 0 16px}
 .w .doc p.b{font-size:16.5px;line-height:1.65;color:var(--ink2);margin:0 0 14px}
-.w .doc code,.w .code code{font-family:'GT America Mono',ui-monospace,monospace;font-size:.88em}
+.w .doc code,.w .code code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.88em}
 .w .doc p code,.w .doc li code,.w .chip code,.w .tbl code,.w .sc code{background:var(--bg);border-radius:6px;padding:2px 6px;color:var(--ink)}
 .w .path{display:flex;align-items:center;gap:14px;margin-bottom:22px;font-size:13.5px;color:var(--ink2);font-weight:500}
 .w .path .seg{display:flex;gap:4px}.w .path .seg i{width:28px;height:5px;border-radius:3px;background:var(--line);display:block}.w .path .seg i.d{background:var(--blue)}
@@ -30,11 +30,11 @@ CSS = '''
 .w .sc .n{width:34px;height:34px;border-radius:50%;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;flex:none}
 .w .sc h3{font-size:21px;font-weight:500;letter-spacing:-.015em;margin:0}
 .w .sc p{font-size:16px;line-height:1.6;color:var(--ink2);margin:0 0 4px}
-.w .cmd{display:flex;align-items:center;gap:12px;background:#141413;color:#EDEDE8;border-radius:14px;padding:0 8px 0 18px;min-height:52px;margin-top:12px;font-family:'GT America Mono',ui-monospace,monospace;font-size:14px}
+.w .cmd{display:flex;align-items:center;gap:12px;background:#141413;color:#EDEDE8;border-radius:14px;padding:0 8px 0 18px;min-height:52px;margin-top:12px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px}
 .w .cmd .p{color:#6FE0A0}.w .cmd .t{flex:1;min-width:0;padding:14px 0;line-height:1.55;overflow-wrap:anywhere}
 .w .cmd .cp{height:34px;padding:0 12px;border-radius:17px;background:#2A2A27;color:#CFCFC9;font-family:'GT America',system-ui,sans-serif;font-size:13px;font-weight:500;display:flex;align-items:center;flex:none}
 .w .shot{border-radius:22px;background:var(--panel);margin-top:16px;padding:22px 22px 0;overflow:hidden}
-.w .term{background:#141413;color:#E9E9E4;border-radius:16px 16px 0 0;padding:16px 20px 24px;font-family:'GT America Mono',ui-monospace,monospace;font-size:13.5px;line-height:1.75}
+.w .term{background:#141413;color:#E9E9E4;border-radius:16px 16px 0 0;padding:16px 20px 24px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13.5px;line-height:1.75}
 .w .term .dots{display:flex;gap:7px;margin-bottom:10px}.w .term .dots i{width:11px;height:11px;border-radius:50%;background:#3a3a37;display:block}
 .w .term .g{color:#6FE0A0}.w .term .m{color:#8C8C86}
 .w .call{display:grid;grid-template-columns:28px 1fr;gap:12px;border-radius:20px;padding:18px 20px;margin:18px 0;font-size:15.5px;line-height:1.6;color:var(--ink)}
@@ -64,7 +64,7 @@ CSS = '''
 .w .stuck{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px;padding:0 6px;font-size:15px;color:var(--ink2)}
 .w .stuck a{color:var(--blueText);font-weight:500}
 .w .stg{border-radius:30px;padding:28px 28px 0;display:flex;flex-direction:column;gap:8px;overflow:hidden;min-height:300px;position:relative}
-.w .stg .n{font-family:'GT America Mono',ui-monospace,monospace;font-size:13px;color:var(--ink2)}
+.w .stg .n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;color:var(--ink2)}
 .w .stg h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0;line-height:1.15}
 .w .stg p{font-size:15.5px;line-height:1.5;color:var(--ink2);margin:0;max-width:240px}
 .w .task{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:12px 20px;border-radius:20px;border:1px solid var(--line);font-size:16px;font-weight:500;transition:background .15s}
