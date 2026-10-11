@@ -206,7 +206,7 @@ def build(g):
         return f'<section style="padding:{"64px 0 0" if m else "120px 0 0"}"><div class="heroP" style="height:{h}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:{"56px 24px 0" if m else "80px 0 0"}">{art("c", "xMidYMid")}<div class="fadeT" style="height:{160 if m else 220}px"></div><div class="fade" style="height:{140 if m else 180}px"></div><h2 class="h2 lt" style="position:relative;z-index:2;font-size:{40 if m else 72}px;line-height:1.02">Run it at home.</h2><p style="position:relative;z-index:2;font-size:{17 if m else 20}px;line-height:1.5;color:var(--ink2);margin-top:16px;max-width:520px">Yours, on your own server. Install it with Docker on a machine you already have.</p><div style="position:relative;z-index:2;display:flex;gap:10px;margin-top:28px;flex-wrap:wrap;justify-content:center"><a class="btn" href="#" style="min-width:220px">View on GitHub</a></div><div style="position:relative;z-index:2;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:{20 if m else 28}px">{pills}</div></div></section>'
 
     def body(m):
-        return hero(m) + showcase(m) + closing(m) + footer(m, False)
+        return hero(m) + steps(m) + showcase(m) + closing(m) + footer(m, False)
 
     boards = [('HB-Page-Desktop', False, 1280, 3800, 'Website · final page, desktop, light'), ('HB-Page-Mobile', True, 390, 4900, 'Website · final page, mobile, light')]
     for name, m, w, h, title in boards:
