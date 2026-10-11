@@ -214,17 +214,14 @@ struct HomeView: View {
             .padding(.top, pendingRows.isEmpty ? 18 : 0)
             .shopListRow()
 
-        if home.receipts.isEmpty {
-            Group {
-                if home.hasLoaded || home.error != nil || !app.uploads.pending.isEmpty {
-                    emptyState
-                } else {
-                    LoadingState()
-                }
-            }
-            .padding(.horizontal, Space.gutter)
-            .shopListRow()
-        } else {
+        if let error = home.error, !home.receipts.isEmpty {
+            StaleBanner(what: "receipts", offline: error.isConnectivity) { Task { await home.refresh() } }
+                .padding(.horizontal, Space.edge)
+                .padding(.top, Space.l)
+                .shopListRow()
+        }
+
+        if homePhase == .content {
             ForEach(Array(home.dayGroups.enumerated()), id: \.element.id) { index, group in
                 DaySectionHeader(title: group.title, trailing: group.totalCents > 0 ? Money.format(group.totalCents) : nil)
                     .padding(.horizontal, Space.gutter)
@@ -235,11 +232,30 @@ struct HomeView: View {
                 }
             }
             if home.nextCursor != nil {
-                LoadingState()
+                LoadMoreFooter(state: .loading, retry: {})
                     .onAppear { Task { await home.loadMore() } }
                     .shopListRow()
             }
+        } else {
+            StatefulContent(phase: homePhase, retry: { Task { await home.refresh() } }) {
+                SkeletonRows { SkeletonReceiptRow() }
+            } empty: {
+                emptyState
+            } content: {
+                EmptyView()
+            }
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.l)
+            .shopListRow()
         }
+    }
+
+    /// Cached receipts count as content; the skeleton only shows when there's nothing to show yet.
+    private var homePhase: ScreenPhase {
+        if !home.receipts.isEmpty { return .content }
+        if let error = home.error { return app.uploads.pending.isEmpty ? .failed(error.message) : .empty }
+        if home.hasLoaded || !app.uploads.pending.isEmpty { return .empty }
+        return .loading
     }
 
     @ViewBuilder
@@ -391,8 +407,6 @@ struct HomeView: View {
                 GlyphIllustration(icon: .filter, color: Accent.purple)
             }
             .padding(.top, 40)
-        } else if let error = home.error, !error.isConnectivity {
-            ErrorState(message: error.message) { Task { await home.refresh() } }
         } else {
             EmptyState(
                 title: "Scan receipts on the day",

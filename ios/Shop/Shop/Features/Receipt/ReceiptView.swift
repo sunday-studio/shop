@@ -88,13 +88,6 @@ private struct ReceiptScreen: View {
                             )
                             .padding(.horizontal, Space.edge)
                             .padding(.top, 18)
-                        } else if receipt.lines == nil && receipt.status == .needsReview {
-                            // The banner needs the lines; hold its space so the rows don't jump.
-                            Banner(tone: .amber, lead: "Placeholder amount short.", message: "Check the lines against the photo.")
-                                .redacted(reason: .placeholder)
-                                .accessibilityHidden(true)
-                                .padding(.horizontal, Space.edge)
-                                .padding(.top, 18)
                         }
 
                         if receipt.status == .processing || receipt.status == .pending {
@@ -108,12 +101,19 @@ private struct ReceiptScreen: View {
                         } else if receipt.status == .failed && model.lines.isEmpty {
                             failedActions(model)
                         }
-                    } else if let error = model.error {
-                        ErrorState(message: error.message) { Task { await model.load() } }
-                            .padding(.top, 60)
                     } else {
-                        LoadingState(title: "Loading receipt")
-                            .padding(.top, 60)
+                        StatefulContent(phase: model.error.map { .failed($0.message) } ?? .loading, retry: { Task { await model.load() } }) {
+                            VStack(alignment: .leading, spacing: Space.xl) {
+                                SkeletonCard(height: 120)
+                                SkeletonRows { SkeletonLineRow() }
+                            }
+                        } empty: {
+                            EmptyView()
+                        } content: {
+                            EmptyView()
+                        }
+                        .padding(.horizontal, Space.gutter)
+                        .padding(.top, Space.xxl)
                     }
                 }
                 .shopListRow()
@@ -211,17 +211,7 @@ private struct ReceiptScreen: View {
     }
 
     private var linesSkeleton: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(title: "Lines") {
-                Chip(title: "All 00", isSelected: true, size: .small) {}
-            }
-            ForEach(0..<6, id: \.self) { _ in
-                LineRow(title: "Placeholder product name", amount: "€0,00")
-                    .hairline()
-            }
-        }
-        .redacted(reason: .placeholder)
-        .accessibilityHidden(true)
+        SkeletonRows { SkeletonLineRow() }
     }
 
     private func showsLines(_ model: ReceiptModel) -> Bool {

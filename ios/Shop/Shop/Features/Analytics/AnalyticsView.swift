@@ -173,31 +173,50 @@ struct AnalyticsView: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    Text(model.range.longLabel).textStyle(TypeStyle.rowTitle.sized(14)).foregroundStyle(Palette.ink2)
-                    HeroAmount(cents: model.byTime?.totalCents ?? 0, size: 54)
-                    Text(model.caption).textStyle(TypeStyle.body.sized(13.5)).foregroundStyle(Palette.ink2)
-                }
-                .padding(.horizontal, Space.gutter)
-                .padding(.top, 18)
+                if model.byTime == nil {
+                    StatefulContent(phase: model.error.map { .failed($0.message) } ?? .loading, retry: { Task { await model.load() } }) {
+                        VStack(alignment: .leading, spacing: Space.xl) {
+                            VStack(alignment: .leading, spacing: Space.s) {
+                                SkeletonBar(width: 120, height: 13)
+                                SkeletonBar(width: 190, height: 44)
+                            }
+                            SkeletonChart()
+                            SkeletonRows(count: 5) { SkeletonSimpleRow() }
+                        }
+                        .padding(.top, 18)
+                    } empty: {
+                        EmptyView()
+                    } content: {
+                        EmptyView()
+                    }
+                    .padding(.horizontal, Space.gutter)
+                } else {
+                    if let error = model.error {
+                        StaleBanner(what: "spending", offline: error.isConnectivity) { Task { await model.load() } }
+                            .padding(.horizontal, Space.edge)
+                            .padding(.top, Space.l)
+                    }
+                    VStack(alignment: .leading, spacing: Space.xs) {
+                        Text(model.range.longLabel).textStyle(TypeStyle.rowTitle.sized(14)).foregroundStyle(Palette.ink2)
+                        HeroAmount(cents: model.byTime?.totalCents ?? 0, size: 54)
+                        Text(model.caption).textStyle(TypeStyle.body.sized(13.5)).foregroundStyle(Palette.ink2)
+                    }
+                    .padding(.horizontal, Space.gutter)
+                    .padding(.top, 18)
 
-                if model.byTime != nil {
                     SpendBars(bars: model.bars)
                         .padding(.horizontal, Space.gutter)
                         .padding(.top, 22)
-                } else if let error = model.error {
-                    ErrorState(message: error.message) { Task { await model.load() } }
-                } else {
-                    LoadingState().frame(height: 160)
+
+                    SegmentedControl(options: AnalyticsModel.Breakdown.allCases, title: { $0.rawValue }, selection: $model.breakdown)
+                        .padding(.horizontal, Space.edge)
+                        .padding(.top, Space.lx)
+
+                    breakdown(model)
+                        .padding(.horizontal, Space.gutter)
+                        .padding(.top, 6)
+
                 }
-
-                SegmentedControl(options: AnalyticsModel.Breakdown.allCases, title: { $0.rawValue }, selection: $model.breakdown)
-                    .padding(.horizontal, Space.edge)
-                    .padding(.top, Space.lx)
-
-                breakdown(model)
-                    .padding(.horizontal, Space.gutter)
-                    .padding(.top, 6)
 
                 Button { app.push(.priceChanges) } label: {
                     HStack(spacing: Space.l) {

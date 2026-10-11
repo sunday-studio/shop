@@ -169,7 +169,16 @@ struct ServerView: View {
                                         valueColor: check.ok ? Palette.ink : (key == "backup" ? Palette.amberText : Palette.redText))
                         }
                     } else {
-                        LoadingState()
+                        SkeletonRows(count: 4) {
+                            HStack(spacing: Space.l) {
+                                SkeletonBlock(width: 8, height: 8, radius: 4)
+                                SkeletonBar(width: 110, height: 13)
+                                Spacer()
+                                SkeletonBar(width: 60, height: 12)
+                            }
+                            .frame(height: 46)
+                            .hairline()
+                        }
                     }
                     if app.backupIsStale {
                         Banner(tone: .red, message: "No backup for more than 36 hours. Check the NAS share is mounted on the Mac mini.")
