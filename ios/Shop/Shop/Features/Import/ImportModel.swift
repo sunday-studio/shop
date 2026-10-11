@@ -12,11 +12,11 @@ enum ImportSource: String, Identifiable {
     var id: String { rawValue }
 }
 
-/// Switches from `docs/DESIGN-UPLOAD-FLOW.md` that depend on the backend.
+/// Import switches that depend on what the backend accepts.
 enum ImportFlags {
-    /// "Let Shop find out": upload without a shop. Off until the server accepts that (§13.1).
+    /// "Let Shop find out": upload without a shop. Only valid while the server accepts a receipt without a shop.
     static let letShopFindOut = true
-    /// Send `photo_taken_at` with an upload. Off until the server has the field (§13.3).
+    /// Send `photo_taken_at` with an upload. Only valid while the server accepts the field.
     static let sendPhotoTakenAt = true
 }
 

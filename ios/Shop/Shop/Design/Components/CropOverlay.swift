@@ -18,7 +18,7 @@ struct CropQuad: Equatable, Sendable {
 }
 
 /// "Straighten and crop": the photo with a dimmed outside, the document outline and four draggable
-/// corner handles (docs/DESIGN-UPLOAD-FLOW.md, S8). It only edits the quad; the perspective
+/// corner handles (the Adjust screen). It only edits the quad; the perspective
 /// correction itself happens in the upload queue's preparing step.
 struct CropOverlay: View {
     let image: UIImage
