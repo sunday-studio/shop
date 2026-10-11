@@ -50,8 +50,8 @@ extension View {
 
 /// The system plays no haptic while a row is swiped. This watches the list's touches (a pan
 /// recognizer that never cancels or blocks anything, so taps and the system swipe are
-/// untouched) and plays one `selection` tick when the finger has pulled the row far enough
-/// that every action on that side is showing. Once per drag.
+/// untouched) and plays a `selection` tick as each action on that side comes into view
+/// (one for a single action, two ticks for two).
 private struct SwipeHapticHost: UIViewRepresentable {
     let leading: Int
     let trailing: Int
@@ -103,7 +103,8 @@ private struct SwipeHapticHost: UIViewRepresentable {
         var trailing = 0
         private weak var scroll: UIScrollView?
         private var pan: UIPanGestureRecognizer?
-        private var fired = false
+        /// How many action ticks already played in this drag.
+        private var ticks = 0
         /// Pull at which n icon-only action capsules are showing (just before fully open).
         private func width(for count: Int) -> CGFloat { CGFloat(count) * 56 }
 
@@ -124,14 +125,16 @@ private struct SwipeHapticHost: UIViewRepresentable {
 
         @objc private func handle(_ g: UIPanGestureRecognizer) {
             switch g.state {
-            case .began: fired = false
+            case .began: ticks = 0
             case .changed:
-                guard !fired, let view = g.view else { return }
+                guard let view = g.view else { return }
                 let t = g.translation(in: view)
                 guard abs(t.x) > abs(t.y) * 1.5 else { return }
                 let count = t.x > 0 ? leading : trailing
-                guard count > 0, abs(t.x) >= width(for: count) else { return }
-                fired = true
+                // One tick as each action comes into view.
+                let showing = min(count, Int(abs(t.x) / 56))
+                guard showing > ticks else { return }
+                ticks = showing
                 Haptics.play(.selection)
             default: break
             }
