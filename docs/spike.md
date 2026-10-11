@@ -104,15 +104,15 @@ What this suggests, before real data:
 - **PaddleOCR-VL** reads text well but returns layout *blocks*, not lines. The adapter spreads block lines evenly over the block's height, which loses the price column, so its 69 % reflects the adapter more than the model. It's also about 78 s and 6.4 GB per receipt on CPU. Only worth more work if the line-based engines fail on real receipts.
 - No engine produced a silent error (a wrong total that passed every check).
 
-## M11 spike progress (2026-10-10)
+## M11 spike results (2026-10-10)
 
-- [x] Spike 3 (HEIC): the 13 HEIC were converted to JPEG by the user; PP-OCRv5 reads all 13 (4–68 s each, first call slowest). No HEIC handling exists in `api/`, `ocr/`, `deploy/` or the iOS sources (grep, no hits); a raw HEIC was not sent through the server. Recommendation: convert on the phone at upload.
+- HEIC and parser: the 13 HEIC were converted to JPEG by the user; PP-OCRv5 reads all 13 (4–68 s each, first call slowest). No HEIC handling exists in `api/`, `ocr/`, `deploy/` or the iOS sources (grep, no hits); a raw HEIC was not sent through the server. Recommendation: convert on the phone at upload.
   - Parser (current code, after the backend's SUBTOTAAL fix): 10/13 receipts reconcile. IMG_1466 is an OCR misread (`20015` for `20,15`), IMG_1470 a clipped Bedrag (`49` for `2,49`); two small token repairs make 12/13 reconcile without breaking any clean receipt. IMG_1475 is a row-reconstruction fault (price column drifts about -24 px to +13 px against the descriptions, perspective rather than skew). Box-angle deskew made things worse. IMG_1475's promo amounts stay unresolved and the receipt stays `needs_review`.
-  - IMG_1469's date, 2025-05-20, is confirmed correct by the user.
+  - IMG_1469's date (2025-05-20) was checked against the paper receipt and is correct.
   - Prototype: `spike/spikeparse.go.txt`. OCR output of the real receipts is kept local in `spike/out/` (git-ignored, as are the photos in `spike/data/`).
-- [x] Spike 1 (shops): 11/13 headers readable (7 Albert Heijn, 4 Dirk); 2 butcher slips have no shop header (cropped, left side cut).
-- [x] Spike 2 (small NL→EN model): opus-mt-nl-en, CTranslate2 int8 (`gaudi/opus-mt-nl-en-ctranslate2`, 158 MB on disk), CPU. Script `spike/nlen/eval.py`. DB has no products yet, so no manual `name_en` eval set; used the 380 glossary terms + 76 distinct item lines from the 13 real receipts.
+- Shop headers: 11/13 headers readable (7 Albert Heijn, 4 Dirk); 2 butcher slips have no shop header (cropped, left side cut).
+- Small NL→EN model: opus-mt-nl-en, CTranslate2 int8 (`gaudi/opus-mt-nl-en-ctranslate2`, 158 MB on disk), CPU. Script `spike/nlen/eval.py`. DB has no products yet, so no manual `name_en` eval set; used the 380 glossary terms + 76 distinct item lines from the 13 real receipts.
   - Glossary terms: 63% exact, 71% contain-match, ~2 ms/term. Receipt items ~3 ms/item (4 threads), peak RSS ~1.2 GB in the Python process.
   - Common produce/meat is fine (thyme, dill, cucumber, parsley, chicken legs). Retail terms go wrong with fluent output: mandarijnen→"Table grapes", bleekselderij→"Liquorice", kalfspoten→"Cabbages, cakes…", winterpeen→"Winter pine", kwark→"cheese", scharrel→"brussels", bolletjes→"Bulbs". Brand/OCR-garbage tokens pass through unchanged (fine).
   - Verdict: GO only as a last-resort suggestion flagged "auto" (never overrides glossary/manual), with a few overrides in the glossary. Not measured: how many current partial/missing products it fixes (no products in the DB).
-- [x] Product auto-population: research and build spec in `docs/PRODUCT-AUTOPOPULATE.md` (simulation `spike/spikeprod.go.txt`, category rules and checks in `spike/autopop/`). Approved: 30-day undo window, 5 s Open Food Facts timeout.
+- Product auto-population: spec in `docs/PRODUCT-AUTOPOPULATE.md` (simulation `spike/spikeprod.go.txt`, category rules and checks in `spike/autopop/`).
