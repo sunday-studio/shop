@@ -345,6 +345,27 @@ func (e ListItemInputSource) Valid() bool {
 	}
 }
 
+// Defines values for ListPlanStatus.
+const (
+	ListPlanStatusNotEnoughData ListPlanStatus = "not_enough_data"
+	ListPlanStatusOneShopFine   ListPlanStatus = "one_shop_fine"
+	ListPlanStatusSplit         ListPlanStatus = "split"
+)
+
+// Valid indicates whether the value is a known member of the ListPlanStatus enum.
+func (e ListPlanStatus) Valid() bool {
+	switch e {
+	case ListPlanStatusNotEnoughData:
+		return true
+	case ListPlanStatusOneShopFine:
+		return true
+	case ListPlanStatusSplit:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListSuggestionReason.
 const (
 	Match      ListSuggestionReason = "match"
@@ -453,6 +474,165 @@ func (e OpenFoodFactsPrefillNetUnit) Valid() bool {
 	case OpenFoodFactsPrefillNetUnitG:
 		return true
 	case OpenFoodFactsPrefillNetUnitMl:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlanItemBaseUnit.
+const (
+	PlanItemBaseUnitKg PlanItemBaseUnit = "kg"
+	PlanItemBaseUnitL  PlanItemBaseUnit = "l"
+	PlanItemBaseUnitPc PlanItemBaseUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the PlanItemBaseUnit enum.
+func (e PlanItemBaseUnit) Valid() bool {
+	switch e {
+	case PlanItemBaseUnitKg:
+		return true
+	case PlanItemBaseUnitL:
+		return true
+	case PlanItemBaseUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlanItemBasis.
+const (
+	PerKg    PlanItemBasis = "per_kg"
+	PerL     PlanItemBasis = "per_l"
+	PerPiece PlanItemBasis = "per_piece"
+)
+
+// Valid indicates whether the value is a known member of the PlanItemBasis enum.
+func (e PlanItemBasis) Valid() bool {
+	switch e {
+	case PerKg:
+		return true
+	case PerL:
+		return true
+	case PerPiece:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlanItemConfidence.
+const (
+	PlanItemConfidenceDifferentPack PlanItemConfidence = "different_pack"
+	PlanItemConfidenceNotEnoughData PlanItemConfidence = "not_enough_data"
+	PlanItemConfidenceOldPrice      PlanItemConfidence = "old_price"
+	PlanItemConfidenceSeenOnce      PlanItemConfidence = "seen_once"
+)
+
+// Valid indicates whether the value is a known member of the PlanItemConfidence enum.
+func (e PlanItemConfidence) Valid() bool {
+	switch e {
+	case PlanItemConfidenceDifferentPack:
+		return true
+	case PlanItemConfidenceNotEnoughData:
+		return true
+	case PlanItemConfidenceOldPrice:
+		return true
+	case PlanItemConfidenceSeenOnce:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlanItemNoPriceReason.
+const (
+	NeverBought PlanItemNoPriceReason = "never_bought"
+	NoUsualShop PlanItemNoPriceReason = "no_usual_shop"
+	NotLinked   PlanItemNoPriceReason = "not_linked"
+	Stale       PlanItemNoPriceReason = "stale"
+)
+
+// Valid indicates whether the value is a known member of the PlanItemNoPriceReason enum.
+func (e PlanItemNoPriceReason) Valid() bool {
+	switch e {
+	case NeverBought:
+		return true
+	case NoUsualShop:
+		return true
+	case NotLinked:
+		return true
+	case Stale:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlanItemStatus.
+const (
+	Compared      PlanItemStatus = "compared"
+	NoPrice       PlanItemStatus = "no_price"
+	OnlyElsewhere PlanItemStatus = "only_elsewhere"
+	OnlyHere      PlanItemStatus = "only_here"
+)
+
+// Valid indicates whether the value is a known member of the PlanItemStatus enum.
+func (e PlanItemStatus) Valid() bool {
+	switch e {
+	case Compared:
+		return true
+	case NoPrice:
+		return true
+	case OnlyElsewhere:
+		return true
+	case OnlyHere:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlanShopPriceBaseUnit.
+const (
+	PlanShopPriceBaseUnitKg PlanShopPriceBaseUnit = "kg"
+	PlanShopPriceBaseUnitL  PlanShopPriceBaseUnit = "l"
+	PlanShopPriceBaseUnitPc PlanShopPriceBaseUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the PlanShopPriceBaseUnit enum.
+func (e PlanShopPriceBaseUnit) Valid() bool {
+	switch e {
+	case PlanShopPriceBaseUnitKg:
+		return true
+	case PlanShopPriceBaseUnitL:
+		return true
+	case PlanShopPriceBaseUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlanSummaryConfidence.
+const (
+	High   PlanSummaryConfidence = "high"
+	Low    PlanSummaryConfidence = "low"
+	Medium PlanSummaryConfidence = "medium"
+	None   PlanSummaryConfidence = "none"
+)
+
+// Valid indicates whether the value is a known member of the PlanSummaryConfidence enum.
+func (e PlanSummaryConfidence) Valid() bool {
+	switch e {
+	case High:
+		return true
+	case Low:
+		return true
+	case Medium:
+		return true
+	case None:
 		return true
 	default:
 		return false
@@ -603,6 +783,63 @@ func (e ProductNetUnit) Valid() bool {
 	case ProductNetUnitMl:
 		return true
 	case ProductNetUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductGroupBaseUnit.
+const (
+	ProductGroupBaseUnitKg ProductGroupBaseUnit = "kg"
+	ProductGroupBaseUnitL  ProductGroupBaseUnit = "l"
+	ProductGroupBaseUnitPc ProductGroupBaseUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the ProductGroupBaseUnit enum.
+func (e ProductGroupBaseUnit) Valid() bool {
+	switch e {
+	case ProductGroupBaseUnitKg:
+		return true
+	case ProductGroupBaseUnitL:
+		return true
+	case ProductGroupBaseUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductGroupMemberBaseUnit.
+const (
+	ProductGroupMemberBaseUnitKg ProductGroupMemberBaseUnit = "kg"
+	ProductGroupMemberBaseUnitL  ProductGroupMemberBaseUnit = "l"
+	ProductGroupMemberBaseUnitPc ProductGroupMemberBaseUnit = "pc"
+)
+
+// Valid indicates whether the value is a known member of the ProductGroupMemberBaseUnit enum.
+func (e ProductGroupMemberBaseUnit) Valid() bool {
+	switch e {
+	case ProductGroupMemberBaseUnitKg:
+		return true
+	case ProductGroupMemberBaseUnitL:
+		return true
+	case ProductGroupMemberBaseUnitPc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductGroupSuggestionReason.
+const (
+	SimilarNameOtherShop ProductGroupSuggestionReason = "similar_name_other_shop"
+)
+
+// Valid indicates whether the value is a known member of the ProductGroupSuggestionReason enum.
+func (e ProductGroupSuggestionReason) Valid() bool {
+	switch e {
+	case SimilarNameOtherShop:
 		return true
 	default:
 		return false
@@ -1447,6 +1684,42 @@ type ListItemInput struct {
 // ListItemInputSource defines model for ListItemInput.Source.
 type ListItemInputSource string
 
+// ListPlan defines model for ListPlan.
+type ListPlan struct {
+	Basis      PlanBasis `json:"basis"`
+	ComputedAt time.Time `json:"computed_at"`
+
+	// Items in list order
+	Items []PlanItem `json:"items"`
+
+	// ListRev the list's rev the plan was made for
+	ListRev int64          `json:"list_rev"`
+	Status  ListPlanStatus `json:"status"`
+
+	// Stores usual shop first; only shops the plan uses
+	Stores      []PlanStore `json:"stores"`
+	Summary     PlanSummary `json:"summary"`
+	UsualShopId *int64      `json:"usual_shop_id,omitempty"`
+}
+
+// ListPlanStatus defines model for ListPlan.Status.
+type ListPlanStatus string
+
+// ListPlanSettings defines model for ListPlanSettings.
+type ListPlanSettings struct {
+	// ExtraStopCents default 250
+	ExtraStopCents int `json:"extra_stop_cents"`
+
+	// MaxStops most shops a plan may use, default 2
+	MaxStops int `json:"max_stops"`
+}
+
+// ListPlanSettingsPatch defines model for ListPlanSettingsPatch.
+type ListPlanSettingsPatch struct {
+	ExtraStopCents *int `json:"extra_stop_cents,omitempty"`
+	MaxStops       *int `json:"max_stops,omitempty"`
+}
+
 // ListSuggestion defines model for ListSuggestion.
 type ListSuggestion struct {
 	CreatedAt time.Time `json:"created_at"`
@@ -1521,6 +1794,190 @@ type OpenFoodFactsPrefill struct {
 
 // OpenFoodFactsPrefillNetUnit defines model for OpenFoodFactsPrefill.NetUnit.
 type OpenFoodFactsPrefillNetUnit string
+
+// PairConfirmation An unconfirmed "same kind of item" question that would give this item a comparison. Answer with /v1/product-groups/confirm or /deny.
+type PairConfirmation struct {
+	NameA    string `json:"name_a"`
+	NameB    string `json:"name_b"`
+	ProductA int64  `json:"product_a"`
+	ProductB int64  `json:"product_b"`
+	ShopA    string `json:"shop_a"`
+	ShopAId  int64  `json:"shop_a_id"`
+	ShopB    string `json:"shop_b"`
+	ShopBId  int64  `json:"shop_b_id"`
+}
+
+// PlanBasis defines model for PlanBasis.
+type PlanBasis struct {
+	Comparison      string `json:"comparison"`
+	FreshWindowDays int    `json:"fresh_window_days"`
+	MedianOf        int    `json:"median_of"`
+	PiecesNote      string `json:"pieces_note"`
+	WindowDays      int    `json:"window_days"`
+}
+
+// PlanItem defines model for PlanItem.
+type PlanItem struct {
+	BaseUnit *PlanItemBaseUnit `json:"base_unit,omitempty"`
+	Basis    *PlanItemBasis    `json:"basis,omitempty"`
+
+	// Confidence seen_once: a compared price rests on one purchase. old_price: older than half the window. different_pack: pack size unknown, packs differ by over 20%, or other units were left out. not_enough_data: priced at one shop only.
+	Confidence []PlanItemConfidence `json:"confidence"`
+
+	// EstimateCents unit price times the pack size (or usual weight) times qty
+	EstimateCents *int64 `json:"estimate_cents,omitempty"`
+
+	// Explanation English sentence with prices and dates; the app may build its own from `prices`
+	Explanation string `json:"explanation"`
+
+	// GroupId the checklist the item is in
+	GroupId        *int64                 `json:"group_id,omitempty"`
+	ItemId         int64                  `json:"item_id"`
+	LastSeen       *time.Time             `json:"last_seen,omitempty"`
+	LastSeenShopId *int64                 `json:"last_seen_shop_id,omitempty"`
+	NoPriceReason  *PlanItemNoPriceReason `json:"no_price_reason,omitempty"`
+
+	// OtherPrices fresh prices at the other shops
+	OtherPrices []PlanOtherPrice `json:"other_prices"`
+
+	// PackSizeKnown false: compared per piece because no pack size is known
+	PackSizeKnown    bool              `json:"pack_size_known"`
+	PairConfirmation *PairConfirmation `json:"pair_confirmation,omitempty"`
+
+	// Prices every shop with a fresh price, cheapest first, with the purchases behind it
+	Prices         []PlanShopPrice `json:"prices"`
+	ProductGroupId *int64          `json:"product_group_id,omitempty"`
+	ProductId      *int64          `json:"product_id,omitempty"`
+	Qty            float32         `json:"qty"`
+
+	// SavingCents counted saving if the plan moves this item, else 0
+	SavingCents int64 `json:"saving_cents"`
+
+	// ShopId where to buy it; the usual shop unless the plan moves it; null without a usual shop
+	ShopId *int64 `json:"shop_id,omitempty"`
+
+	// Status compared: priced at the usual shop and at another candidate. only_here: usual shop only. only_elsewhere:
+	// priced at another shop only; it stays with the usual shop without an estimate and never carries a saving.
+	// no_price: no fresh price anywhere.
+	Status PlanItemStatus `json:"status"`
+	Text   string         `json:"text"`
+
+	// UnitCents price per base_unit at shop_id
+	UnitCents *int64 `json:"unit_cents,omitempty"`
+}
+
+// PlanItemBaseUnit defines model for PlanItem.BaseUnit.
+type PlanItemBaseUnit string
+
+// PlanItemBasis defines model for PlanItem.Basis.
+type PlanItemBasis string
+
+// PlanItemConfidence defines model for PlanItem.Confidence.
+type PlanItemConfidence string
+
+// PlanItemNoPriceReason defines model for PlanItem.NoPriceReason.
+type PlanItemNoPriceReason string
+
+// PlanItemStatus compared: priced at the usual shop and at another candidate. only_here: usual shop only. only_elsewhere:
+// priced at another shop only; it stays with the usual shop without an estimate and never carries a saving.
+// no_price: no fresh price anywhere.
+type PlanItemStatus string
+
+// PlanOtherPrice defines model for PlanOtherPrice.
+type PlanOtherPrice struct {
+	ShopId    int64 `json:"shop_id"`
+	UnitCents int64 `json:"unit_cents"`
+}
+
+// PlanPoint defines model for PlanPoint.
+type PlanPoint struct {
+	At time.Time `json:"at"`
+
+	// PaidCents after discounts
+	PaidCents   int64  `json:"paid_cents"`
+	ProductId   int64  `json:"product_id"`
+	ProductName string `json:"product_name"`
+	UnitCents   int64  `json:"unit_cents"`
+}
+
+// PlanShopPrice defines model for PlanShopPrice.
+type PlanShopPrice struct {
+	AgeDays  int                   `json:"age_days"`
+	BaseUnit PlanShopPriceBaseUnit `json:"base_unit"`
+	IsUsual  bool                  `json:"is_usual"`
+	LatestAt time.Time             `json:"latest_at"`
+
+	// Points the purchases the median is taken from, newest first (at most 3)
+	Points []PlanPoint `json:"points"`
+
+	// Purchases purchases in the window, not only the last 3
+	Purchases int    `json:"purchases"`
+	ShopId    int64  `json:"shop_id"`
+	ShopName  string `json:"shop_name"`
+
+	// UnitCents median of points, per base_unit
+	UnitCents int64 `json:"unit_cents"`
+}
+
+// PlanShopPriceBaseUnit defines model for PlanShopPrice.BaseUnit.
+type PlanShopPriceBaseUnit string
+
+// PlanStore defines model for PlanStore.
+type PlanStore struct {
+	Chain *string `json:"chain,omitempty"`
+
+	// EstimateCents sum of the items that have an estimate here
+	EstimateCents int64  `json:"estimate_cents"`
+	IsUsual       bool   `json:"is_usual"`
+	ItemCount     int    `json:"item_count"`
+	Name          string `json:"name"`
+	Receipts90d   int    `json:"receipts_90d"`
+	ShopId        int64  `json:"shop_id"`
+
+	// UnpricedCount items here without an estimate
+	UnpricedCount int `json:"unpriced_count"`
+}
+
+// PlanSummary defines model for PlanSummary.
+type PlanSummary struct {
+	// BaselineCents the compared items at the usual shop alone
+	BaselineCents int64 `json:"baseline_cents"`
+
+	// ComparedCount items priced at the usual shop and at another shop
+	ComparedCount int                   `json:"compared_count"`
+	Confidence    PlanSummaryConfidence `json:"confidence"`
+
+	// Coverage compared_count / item_count, 0..1
+	Coverage float32 `json:"coverage"`
+
+	// ExtraStopCents cost applied per extra stop
+	ExtraStopCents      int64 `json:"extra_stop_cents"`
+	ExtraStopTotalCents int64 `json:"extra_stop_total_cents"`
+	ExtraStops          int   `json:"extra_stops"`
+	GrossSavingCents    int64 `json:"gross_saving_cents"`
+	ItemCount           int   `json:"item_count"`
+	MaxStops            int   `json:"max_stops"`
+	NoPriceCount        int   `json:"no_price_count"`
+	OneShopFine         bool  `json:"one_shop_fine"`
+
+	// PerPieceCount priced items compared per piece because the pack size is unknown
+	PerPieceCount int `json:"per_piece_count"`
+
+	// PlanCents the same items in the plan
+	PlanCents int64 `json:"plan_cents"`
+
+	// PricedCount items with a fresh price somewhere
+	PricedCount int `json:"priced_count"`
+
+	// SavingCents net: gross minus the extra stops. 0 unless status=split
+	SavingCents int64 `json:"saving_cents"`
+
+	// SplitSavingCents one_shop_fine: gross saving of the best split, before its stops
+	SplitSavingCents int64 `json:"split_saving_cents"`
+}
+
+// PlanSummaryConfidence defines model for PlanSummary.Confidence.
+type PlanSummaryConfidence string
 
 // PriceChange defines model for PriceChange.
 type PriceChange struct {
@@ -1623,6 +2080,72 @@ type ProductNameEnSource string
 
 // ProductNetUnit defines model for Product.NetUnit.
 type ProductNetUnit string
+
+// ProductGroup defines model for ProductGroup.
+type ProductGroup struct {
+	// BaseUnit what the members are priced in; pc when no member has a pack size
+	BaseUnit   ProductGroupBaseUnit `json:"base_unit"`
+	CategoryId *int64               `json:"category_id,omitempty"`
+	CreatedAt  time.Time            `json:"created_at"`
+	Id         int64                `json:"id"`
+	Members    []ProductGroupMember `json:"members"`
+	Name       string               `json:"name"`
+
+	// ShopCount shops the members were bought at; plans need 2
+	ShopCount int       `json:"shop_count"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ProductGroupBaseUnit what the members are priced in; pc when no member has a pack size
+type ProductGroupBaseUnit string
+
+// ProductGroupConfirm defines model for ProductGroupConfirm.
+type ProductGroupConfirm struct {
+	Name       *string `json:"name,omitempty"`
+	ProductIds []int64 `json:"product_ids"`
+}
+
+// ProductGroupMember defines model for ProductGroupMember.
+type ProductGroupMember struct {
+	BaseUnit      ProductGroupMemberBaseUnit `json:"base_unit"`
+	Brand         *string                    `json:"brand,omitempty"`
+	CategoryId    *int64                     `json:"category_id,omitempty"`
+	LastBoughtAt  *time.Time                 `json:"last_bought_at,omitempty"`
+	Name          string                     `json:"name"`
+	NameEn        *string                    `json:"name_en,omitempty"`
+	PackSizeKnown bool                       `json:"pack_size_known"`
+	ProductId     int64                      `json:"product_id"`
+	Purchases     int                        `json:"purchases"`
+
+	// Shops shops it was bought at (ok receipts)
+	Shops []ShopRef `json:"shops"`
+}
+
+// ProductGroupMemberBaseUnit defines model for ProductGroupMember.BaseUnit.
+type ProductGroupMemberBaseUnit string
+
+// ProductGroupResult defines model for ProductGroupResult.
+type ProductGroupResult struct {
+	// DissolvedGroupIds groups that are gone (merged into another, or left with fewer than two products)
+	DissolvedGroupIds []int64       `json:"dissolved_group_ids"`
+	Group             *ProductGroup `json:"group"`
+
+	// OpId pass to /v1/product-group-ops/{id}/undo
+	OpId int64 `json:"op_id"`
+}
+
+// ProductGroupSuggestion defines model for ProductGroupSuggestion.
+type ProductGroupSuggestion struct {
+	A      SuggestedProduct             `json:"a"`
+	B      SuggestedProduct             `json:"b"`
+	Reason ProductGroupSuggestionReason `json:"reason"`
+
+	// Score 0.80 to 1
+	Score float32 `json:"score"`
+}
+
+// ProductGroupSuggestionReason defines model for ProductGroupSuggestion.Reason.
+type ProductGroupSuggestionReason string
 
 // ProductInput defines model for ProductInput.
 type ProductInput struct {
@@ -1804,7 +2327,10 @@ type ReviewQueue struct {
 	// Counts per-reason totals for the whole queue (every reason present)
 	Counts map[string]int `json:"counts"`
 	Items  []ReviewItem   `json:"items"`
-	Total  int            `json:"total"`
+
+	// SameKindTotal open "same kind of item" suggestions (GET /v1/product-groups/suggestions); also shown in the review queue badge
+	SameKindTotal *int `json:"same_kind_total,omitempty"`
+	Total         int  `json:"total"`
 }
 
 // ReviewReason defines model for ReviewReason.
@@ -1884,6 +2410,13 @@ type ShopPrice struct {
 
 // ShopPriceBaseUnit defines model for ShopPrice.BaseUnit.
 type ShopPriceBaseUnit string
+
+// ShopRef defines model for ShopRef.
+type ShopRef struct {
+	Chain *string `json:"chain,omitempty"`
+	Id    int64   `json:"id"`
+	Name  string  `json:"name"`
+}
 
 // ShopSuggestion defines model for ShopSuggestion.
 type ShopSuggestion struct {
@@ -1990,6 +2523,16 @@ type SuggestedMerge struct {
 	NameEn    *string `json:"name_en,omitempty"`
 	ProductId int64   `json:"product_id"`
 	Score     float64 `json:"score"`
+}
+
+// SuggestedProduct defines model for SuggestedProduct.
+type SuggestedProduct struct {
+	// GroupId the group it is already in
+	GroupId   *int64    `json:"group_id,omitempty"`
+	Name      string    `json:"name"`
+	NameEn    *string   `json:"name_en,omitempty"`
+	ProductId int64     `json:"product_id"`
+	Shops     []ShopRef `json:"shops"`
 }
 
 // UndoResult defines model for UndoResult.
@@ -2101,10 +2644,44 @@ type DeleteListGroupParams struct {
 // DeleteListGroupParamsItems defines parameters for DeleteListGroup.
 type DeleteListGroupParamsItems string
 
+// GetListPlanParams defines parameters for GetListPlan.
+type GetListPlanParams struct {
+	ExtraStopCents *int `form:"extra_stop_cents,omitempty" json:"extra_stop_cents,omitempty"`
+	MaxStops       *int `form:"max_stops,omitempty" json:"max_stops,omitempty"`
+}
+
 // MoveListItemJSONBody defines parameters for MoveListItem.
 type MoveListItemJSONBody struct {
 	// GroupId target group, null = main list
 	GroupId *int64 `json:"group_id"`
+}
+
+// DenyProductGroupPairJSONBody defines parameters for DenyProductGroupPair.
+type DenyProductGroupPairJSONBody struct {
+	ProductAId int64 `json:"product_a_id"`
+	ProductBId int64 `json:"product_b_id"`
+}
+
+// ListProductGroupSuggestionsParams defines parameters for ListProductGroupSuggestions.
+type ListProductGroupSuggestionsParams struct {
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// RenameProductGroupJSONBody defines parameters for RenameProductGroup.
+type RenameProductGroupJSONBody struct {
+	Name string `json:"name"`
+}
+
+// MergeProductGroupJSONBody defines parameters for MergeProductGroup.
+type MergeProductGroupJSONBody struct {
+	IntoGroupId int64 `json:"into_group_id"`
+}
+
+// SplitProductGroupJSONBody defines parameters for SplitProductGroup.
+type SplitProductGroupJSONBody struct {
+	KeepTogether *bool   `json:"keep_together,omitempty"`
+	Name         *string `json:"name,omitempty"`
+	ProductIds   []int64 `json:"product_ids"`
 }
 
 // ListProductsParams defines parameters for ListProducts.
@@ -2307,11 +2884,32 @@ type AddListGroupItemsJSONRequestBody = ListGroupItemsInput
 // SaveListGroupAsTemplateJSONRequestBody defines body for SaveListGroupAsTemplate for application/json ContentType.
 type SaveListGroupAsTemplateJSONRequestBody = ListGroupCopyInput
 
+// UpdateListPlanSettingsJSONRequestBody defines body for UpdateListPlanSettings for application/json ContentType.
+type UpdateListPlanSettingsJSONRequestBody = ListPlanSettingsPatch
+
 // UpdateListItemJSONRequestBody defines body for UpdateListItem for application/json ContentType.
 type UpdateListItemJSONRequestBody = ListItemInput
 
 // MoveListItemJSONRequestBody defines body for MoveListItem for application/json ContentType.
 type MoveListItemJSONRequestBody MoveListItemJSONBody
+
+// ConfirmProductGroupJSONRequestBody defines body for ConfirmProductGroup for application/json ContentType.
+type ConfirmProductGroupJSONRequestBody = ProductGroupConfirm
+
+// ConfirmProductGroupPairJSONRequestBody defines body for ConfirmProductGroupPair for application/json ContentType.
+type ConfirmProductGroupPairJSONRequestBody = ProductGroupConfirm
+
+// DenyProductGroupPairJSONRequestBody defines body for DenyProductGroupPair for application/json ContentType.
+type DenyProductGroupPairJSONRequestBody DenyProductGroupPairJSONBody
+
+// RenameProductGroupJSONRequestBody defines body for RenameProductGroup for application/json ContentType.
+type RenameProductGroupJSONRequestBody RenameProductGroupJSONBody
+
+// MergeProductGroupJSONRequestBody defines body for MergeProductGroup for application/json ContentType.
+type MergeProductGroupJSONRequestBody MergeProductGroupJSONBody
+
+// SplitProductGroupJSONRequestBody defines body for SplitProductGroup for application/json ContentType.
+type SplitProductGroupJSONRequestBody SplitProductGroupJSONBody
 
 // CreateProductJSONRequestBody defines body for CreateProduct for application/json ContentType.
 type CreateProductJSONRequestBody = ProductInput

@@ -17,6 +17,7 @@ import (
 	"shop/internal/backup"
 	"shop/internal/categories"
 	"shop/internal/english"
+	"shop/internal/listplan"
 	"shop/internal/logos"
 	"shop/internal/ocr"
 	"shop/internal/products"
@@ -38,6 +39,7 @@ type Deps struct {
 	Products    *products.Service
 	Stats       *stats.Service
 	List        *shopping.Service
+	Plan        *listplan.Service // product groups and the shop plan; created from DB when nil
 	English     *english.Service
 	Search      *search.Service
 	Auto        *autoprod.Service // automatic products; nil disables those routes' work
@@ -60,6 +62,9 @@ type Server struct {
 func New(d Deps) *Server {
 	if d.Location == nil {
 		d.Location = time.UTC
+	}
+	if d.Plan == nil {
+		d.Plan = listplan.New(d.DB)
 	}
 	return &Server{Deps: d, q: db.New(d.DB), pairing: newPairLimiter(), suggest: shopsuggest.NewService(d.DB), categories: categories.New(d.DB)}
 }
@@ -153,6 +158,21 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("DELETE /v1/list/{id}", s.deleteListItem)
 	api.HandleFunc("POST /v1/list/{id}/check", s.setListItemChecked(true))
 	api.HandleFunc("POST /v1/list/{id}/uncheck", s.setListItemChecked(false))
+
+	api.HandleFunc("GET /v1/list/plan", s.getListPlan)
+	api.HandleFunc("GET /v1/list/plan/settings", s.getPlanSettings)
+	api.HandleFunc("PATCH /v1/list/plan/settings", s.updatePlanSettings)
+	api.HandleFunc("GET /v1/product-groups", s.listProductGroups)
+	api.HandleFunc("POST /v1/product-groups", s.confirmProductGroup)
+	api.HandleFunc("POST /v1/product-groups/confirm", s.confirmProductGroup)
+	api.HandleFunc("POST /v1/product-groups/deny", s.denyProductGroupPair)
+	api.HandleFunc("GET /v1/product-groups/suggestions", s.listProductGroupSuggestions)
+	api.HandleFunc("GET /v1/product-groups/{id}", s.getProductGroup)
+	api.HandleFunc("PATCH /v1/product-groups/{id}", s.renameProductGroup)
+	api.HandleFunc("DELETE /v1/product-groups/{id}", s.deleteProductGroup)
+	api.HandleFunc("POST /v1/product-groups/{id}/merge", s.mergeProductGroup)
+	api.HandleFunc("POST /v1/product-groups/{id}/split", s.splitProductGroup)
+	api.HandleFunc("POST /v1/product-group-ops/{id}/undo", s.undoProductGroupOp)
 
 	api.HandleFunc("GET /v1/search", s.search)
 	api.HandleFunc("GET /v1/glossary", s.listGlossary)

@@ -12,6 +12,7 @@ import (
 	"shop/internal/autoprod"
 	"shop/internal/categories"
 	"shop/internal/english"
+	"shop/internal/listplan"
 	"shop/internal/products"
 	"shop/internal/receipts"
 	"shop/internal/shopping"
@@ -65,6 +66,12 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeProblem(w, http.StatusNotFound, "not found", "")
 	case errors.Is(err, categories.ErrInvalid):
 		writeProblem(w, http.StatusBadRequest, "invalid input", err.Error())
+	case errors.Is(err, listplan.ErrNotFound):
+		writeProblem(w, http.StatusNotFound, "not found", "")
+	case errors.Is(err, listplan.ErrInvalid):
+		writeProblem(w, http.StatusBadRequest, "invalid input", err.Error())
+	case errors.Is(err, listplan.ErrConflict):
+		writeProblem(w, http.StatusConflict, "conflict", err.Error())
 	case errors.Is(err, autoprod.ErrDifferentBarcodes):
 		writeProblem(w, http.StatusConflict, "These two have different barcodes.", "")
 	case errors.Is(err, autoprod.ErrNotFound):
