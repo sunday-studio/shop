@@ -24,7 +24,6 @@ struct SwipeButton: View {
             Label(title, systemImage: systemImage).labelStyle(.iconOnly)
         }
         .tint(tint)
-        .onAppear { SwipeTick.reveal() }
     }
 }
 
@@ -37,26 +36,105 @@ extension View {
     }
 
     /// A `List` that looks like the surrounding scroll view.
-    func shopListStyle() -> some View {
-        listStyle(.plain)
+    ///
+    /// `leading` / `trailing`: how many swipe actions the rows on that side have, so the swipe
+    /// haptic can fire when all of them are showing.
+    func shopListStyle(leading: Int = 0, trailing: Int = 0) -> some View {
+        background(SwipeHapticHost(leading: leading, trailing: trailing).allowsHitTesting(false))
+            .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
             .environment(\.defaultMinListRowHeight, 1)
     }
 }
 
-/// The system plays no haptic while a row is swiped. The action buttons are only created when
-/// a swipe opens them, so their appearance is the "revealed" moment: one light tick for the
-/// whole group (not one per button). A drag gesture on the row would break its tap, so this
-/// doesn't read the touch at all.
-@MainActor
-enum SwipeTick {
-    private static var last = Date.distantPast
+/// The system plays no haptic while a row is swiped. This watches the list's touches (a pan
+/// recognizer that never cancels or blocks anything, so taps and the system swipe are
+/// untouched) and plays one `selection` tick when the finger has pulled the row far enough
+/// that every action on that side is showing. Once per drag.
+private struct SwipeHapticHost: UIViewRepresentable {
+    let leading: Int
+    let trailing: Int
 
-    static func reveal() {
-        let now = Date()
-        guard now.timeIntervalSince(last) > 0.4 else { return }
-        last = now
-        Haptics.play(.selection)
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = HostView()
+        view.coordinator = context.coordinator
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) {
+        context.coordinator.leading = leading
+        context.coordinator.trailing = trailing
+    }
+
+    final class HostView: UIView {
+        weak var coordinator: Coordinator?
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            guard window != nil else { return }
+            // The list's scroll view is a sibling of this background view.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                // Walk up until an ancestor contains the list's scroll view.
+                var ancestor = self.superview
+                while let current = ancestor {
+                    if let scroll = Self.firstScrollView(in: current, excluding: self) {
+                        self.coordinator?.attach(to: scroll)
+                        return
+                    }
+                    ancestor = current.superview
+                }
+            }
+        }
+        static func firstScrollView(in view: UIView, excluding host: UIView) -> UIScrollView? {
+            if let scroll = view as? UIScrollView { return scroll }
+            for sub in view.subviews where sub !== host {
+                if let found = firstScrollView(in: sub, excluding: host) { return found }
+            }
+            return nil
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var leading = 0
+        var trailing = 0
+        private weak var scroll: UIScrollView?
+        private var pan: UIPanGestureRecognizer?
+        private var fired = false
+        /// Pull at which n icon-only action capsules are showing (just before fully open).
+        private func width(for count: Int) -> CGFloat { CGFloat(count) * 56 }
+
+        func attach(to scrollView: UIScrollView) {
+            guard scroll !== scrollView else { return }
+            if let pan, let old = scroll { old.removeGestureRecognizer(pan) }
+            let recognizer = UIPanGestureRecognizer(target: self, action: #selector(handle(_:)))
+            recognizer.cancelsTouchesInView = false
+            recognizer.delaysTouchesBegan = false
+            recognizer.delaysTouchesEnded = false
+            recognizer.delegate = self
+            scrollView.addGestureRecognizer(recognizer)
+            scroll = scrollView
+            pan = recognizer
+        }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+
+        @objc private func handle(_ g: UIPanGestureRecognizer) {
+            switch g.state {
+            case .began: fired = false
+            case .changed:
+                guard !fired, let view = g.view else { return }
+                let t = g.translation(in: view)
+                guard abs(t.x) > abs(t.y) * 1.5 else { return }
+                let count = t.x > 0 ? leading : trailing
+                guard count > 0, abs(t.x) >= width(for: count) else { return }
+                fired = true
+                Haptics.play(.selection)
+            default: break
+            }
+        }
     }
 }

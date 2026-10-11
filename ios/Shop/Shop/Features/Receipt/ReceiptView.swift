@@ -120,7 +120,7 @@ private struct ReceiptScreen: View {
 
                 if showsLines(model) { lineRows(model) }
             }
-            .shopListStyle()
+            .shopListStyle(trailing: 2)
             .contentMargins(.bottom, 130, for: .scrollContent)
             .refreshable { await model.load() }
 

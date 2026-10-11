@@ -50,7 +50,7 @@ struct ShoppingListView: View {
 
             items
         }
-        .shopListStyle()
+        .shopListStyle(leading: 1, trailing: 1)
         .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
         .animation(Motion.collapse, value: list.items.map(\.id))
         .refreshable {
