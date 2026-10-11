@@ -70,11 +70,11 @@ struct UnpackView: View {
             Spacer()
             HStack(spacing: Space.ml) {
                 HStack(spacing: 5) {
-                    RoundedRectangle.continuous(3).fill(Color(hex: 0x3DDC84)).frame(width: 8, height: 8)
+                    RoundedRectangle.continuous(Radius.xs).fill(Color(hex: 0x3DDC84)).frame(width: 8, height: 8)
                     Text("\(model?.knownCount ?? 0) known")
                 }
                 HStack(spacing: 5) {
-                    RoundedRectangle.continuous(3).fill(Color(hex: 0xFFB340)).frame(width: 8, height: 8)
+                    RoundedRectangle.continuous(Radius.xs).fill(Color(hex: 0xFFB340)).frame(width: 8, height: 8)
                     Text("\((model?.addedCount ?? 0) + (model?.toNameCount ?? 0)) new")
                 }
             }
@@ -100,6 +100,9 @@ struct UnpackView: View {
 
     // MARK: Viewfinder
 
+    /// The scan line's slow sweep (no Motion token for it yet).
+    private static let scanSweep = Animation.easeInOut(duration: 1.4).repeatForever(autoreverses: true)
+
     private var viewfinder: some View {
         ZStack {
             ForEach(0..<4, id: \.self) { corner in
@@ -115,7 +118,7 @@ struct UnpackView: View {
                 .shadow(color: Color(hex: 0x3DDC84), radius: 7)
                 .padding(.horizontal, 18)
                 .offset(y: scanLine ? 30 : -30)
-                .animation(reduce ? nil : .easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: scanLine)
+                .animation(reduce ? nil : Self.scanSweep, value: scanLine)
                 .onAppear { scanLine = true }
         }
         .frame(width: 250, height: 130)
@@ -384,12 +387,7 @@ struct LinkLineTray: View {
                     TypeStyle.rowSub.text(meta).foregroundStyle(Palette.ink2).lineLimit(1)
                 }
                 Spacer()
-                ZStack {
-                    Circle().strokeBorder(Palette.ink3, lineWidth: 1.5).opacity(on ? 0 : 1)
-                    Circle().fill(Accent.blue).opacity(on ? 1 : 0)
-                    Image(icon: .check).font(.system(size: 10, weight: .heavy)).foregroundStyle(.white).opacity(on ? 1 : 0)
-                }
-                .frame(width: 22, height: 22)
+                SelectionCircle(isOn: on)
             }
             .frame(height: 56)
             .hairline()

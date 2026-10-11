@@ -41,7 +41,7 @@ struct ShoppingListView: View {
                 .shopListRow()
             }
 
-            if let error = list.lastError, !error.isConnectivity, !list.items.isEmpty {
+            if let error = list.lastError, !error.isConnectivity, list.isStale, !list.items.isEmpty {
                 StaleBanner(what: "list") { Task { await list.sync() } }
                     .padding(.horizontal, Space.edge)
                     .padding(.top, Space.l)
