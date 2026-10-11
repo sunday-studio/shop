@@ -47,7 +47,11 @@ extension APIClient {
     func categories() async throws -> [Category] { try await get("/v1/categories") }
     func createCategory(_ input: CategoryInput) async throws -> Category { try await send("POST", "/v1/categories", body: input) }
     func updateCategory(_ id: Int64, _ input: CategoryInput) async throws -> Category { try await send("PATCH", "/v1/categories/\(id)", body: input) }
-    func deleteCategory(_ id: Int64) async throws { try await perform("DELETE", "/v1/categories/\(id)") }
+    /// `moveTo`: a category id, or 0 for "no category". Without it a category that still has
+/// products answers 409 `category_has_products` and nothing is deleted.
+func deleteCategory(_ id: Int64, moveTo: Int64? = nil) async throws {
+        try await perform("DELETE", "/v1/categories/\(id)", query: ["move_to": moveTo.map { String($0) }])
+    }
 
     // MARK: Receipts
 

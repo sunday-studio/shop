@@ -84,7 +84,10 @@ struct ProductsView: View {
         @Bindable var model = model
         List {
             LargeTitleHeader(title: "Products", detail: app.catalog.products.isEmpty ? nil : "\(app.catalog.products.count)") {
-                IconButton(icon: .barcode, label: "Scan barcode") { app.startCapture(.unpack) }
+                HStack(spacing: Space.s) {
+                    IconButton(icon: .plus, label: "Add product") { addProduct() }
+                    IconButton(icon: .barcode, label: "Scan barcode") { app.startCapture(.unpack) }
+                }
             }
             .shopListRow()
 
@@ -191,6 +194,7 @@ struct ProductsView: View {
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDelete(product) }
+                    SwipeButton(title: "Edit", systemImage: "pencil", tint: Accent.blue) { edit(product) }
                 }
             }
             if model.isSearching {
@@ -198,6 +202,18 @@ struct ProductsView: View {
                     .padding(.horizontal, Space.gutter)
                     .shopListRow()
             }
+        }
+    }
+
+    private func addProduct() {
+        app.trays.present("new-product") {
+            ProductFormTray(mode: .create(name: "", barcode: nil, prefill: nil)) { product in app.catalog.upsert(product) }
+        }
+    }
+
+    private func edit(_ product: Product) {
+        app.trays.present("edit-product-\(product.id)") {
+            ProductFormTray(mode: .edit(product)) { saved in app.catalog.upsert(saved) }
         }
     }
 

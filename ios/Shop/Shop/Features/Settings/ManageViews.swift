@@ -238,56 +238,34 @@ struct ShopFormTray: View {
 
 // MARK: - S.4 Categories
 
+extension Category {
+    /// The stored colour token as a colour; falls back to the name-based swatch for old caches.
+    var dotColor: Color {
+        switch color {
+        case "blue": Accent.blue
+        case "green": Accent.green
+        case "red": Accent.red
+        case "orange": Accent.orange
+        case "yellow": Accent.yellow
+        case "cyan": Accent.cyan
+        case "purple": Accent.purple
+        case "teal": Accent.teal
+        case "pink": Accent.pink
+        case "grey": Palette.neutral
+        default: CategoryColor.swatch(for: name).color
+        }
+    }
+}
+
 struct CategoriesView: View {
     @Environment(AppModel.self) private var app
-    @State private var order: [Category] = []
+    @State private var loadError: APIError?
+    @State private var loading = true
+
+    private var categories: [Category] { app.catalog.categories }
 
     var body: some View {
         List {
-            Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Categories").textStyle(.screenTitle).foregroundStyle(Palette.ink)
-                    Text("Drag to change the order in Analytics and Products.").textStyle(.body).foregroundStyle(Palette.ink2)
-                }
-                .padding(.top, Space.lx)
-                .listRowInsets(EdgeInsets(top: 0, leading: Space.gutter, bottom: Space.m, trailing: Space.gutter))
-                .listRowBackground(Palette.bg)
-                .listRowSeparator(.hidden)
-                .moveDisabled(true)
-            }
-            Section {
-                ForEach(order) { c in
-                    Button { openForm(c) } label: {
-                        HStack(spacing: Space.l) {
-                            CategoryDot(color: CategoryColor.swatch(for: c.name).color, size: 12)
-                            Text(c.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
-                            Spacer()
-                            Text("\(productCount(c))").textStyle(.body).foregroundStyle(Palette.ink2)
-                        }
-                        .frame(height: 46)
-                    }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(top: 0, leading: Space.gutter, bottom: 0, trailing: Space.edge))
-                    .listRowBackground(Palette.bg)
-                    .listRowSeparatorTint(Palette.line)
-                }
-                .onMove(perform: move)
-            } header: {
-                HStack {
-                    Text("\(order.count) categories")
-                    Spacer()
-                    Text("Products")
-                }
-                .textStyle(.label)
-                .foregroundStyle(Palette.ink2)
-                .textCase(nil)
-            }
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .environment(\.editMode, .constant(.active))
-        .background(Palette.bg)
-        .safeAreaInset(edge: .top, spacing: 0) {
             NavHeader {
                 Button { openForm(nil) } label: {
                     HStack(spacing: 5) {
@@ -301,91 +279,288 @@ struct CategoriesView: View {
                 }
                 .buttonStyle(.pill)
             }
-            .padding(.bottom, Space.xs)
-            .background(Palette.bg)
+            .shopListRow()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Categories").textStyle(.screenTitle).foregroundStyle(Palette.ink)
+                Text("Listed A to Z. Charts rank them by spend.").textStyle(.body).foregroundStyle(Palette.ink2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.lx)
+            .shopListRow()
+
+            if let error = loadError, !categories.isEmpty {
+                StaleBanner(what: "categories", offline: error.isConnectivity) { Task { await load() } }
+                    .padding(.horizontal, Space.edge)
+                    .padding(.top, Space.l)
+                    .shopListRow()
+            }
+
+            if categories.isEmpty {
+                StatefulContent(phase: loadError.map { .failed($0.message) } ?? (loading ? .loading : .empty), retry: { Task { await load() } }) {
+                    SkeletonRows { SkeletonSimpleRow() }
+                } empty: {
+                    EmptyState(title: "No categories", message: "Categories group your products and your spend.",
+                               action: (title: "Add category", run: { openForm(nil) })) {
+                        GlyphIllustration(icon: .grid, color: Accent.blue)
+                    }
+                } content: {
+                    EmptyView()
+                }
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, Space.xl)
+                .shopListRow()
+            } else {
+                HStack {
+                    Text(categories.count == 1 ? "1 category" : "\(categories.count) categories")
+                    Spacer()
+                    Text("Products")
+                }
+                .textStyle(.label)
+                .foregroundStyle(Palette.ink2)
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, Space.xl)
+                .padding(.bottom, Space.xs)
+                .shopListRow()
+
+                ForEach(categories) { category in
+                    Button { openForm(category) } label: {
+                        HStack(spacing: Space.l) {
+                            CategoryDot(color: category.dotColor, size: 12)
+                            Text(category.name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                            Spacer()
+                            Text("\(category.productCount ?? 0)").textStyle(.body).foregroundStyle(Palette.ink2)
+                            IconView(.forward, size: 13, weight: .bold).foregroundStyle(Palette.ink3)
+                        }
+                        .frame(height: 46)
+                        .hairline()
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.press(haptic: nil))
+                    .padding(.horizontal, Space.gutter)
+                    .shopListRow()
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        SwipeButton(title: "Delete", systemImage: "trash", tint: Accent.red) { askDelete(category) }
+                        SwipeButton(title: "Rename", systemImage: "pencil", tint: Accent.blue) { openForm(category) }
+                    }
+                }
+            }
         }
+        .shopListStyle()
+        .contentMargins(.bottom, 40, for: .scrollContent)
+        .refreshable { await load() }
+        .background(Palette.bg)
         .toolbar(.hidden, for: .navigationBar)
-        .onAppear { order = app.catalog.categories }
-        .onChange(of: app.catalog.categories) { _, new in order = new }
+        .task { await load() }
     }
 
-    private func productCount(_ c: Category) -> Int {
-        app.catalog.products.values.filter { $0.categoryId == c.id }.count
+    private func load() async {
+        do {
+            try await app.catalog.refreshReference()
+            loadError = nil
+        } catch let error as APIError {
+            loadError = error
+        } catch {}
+        loading = false
     }
 
-    private func move(from source: IndexSet, to destination: Int) {
-        Haptics.play(.selection)
-        order.move(fromOffsets: source, toOffset: destination)
-        let changed = order.enumerated().compactMap { i, c -> Category? in c.sort == i ? nil : Category(id: c.id, name: c.name, sort: i) }
-        order = order.enumerated().map { i, c in Category(id: c.id, name: c.name, sort: i) }
-        app.catalog.setCategories(order)
-        Task {
-            for c in changed {
-                _ = try? await app.api.updateCategory(c.id, CategoryInput(name: c.name, sort: c.sort))
+    private func openForm(_ category: Category?) {
+        app.trays.present("category-\(category?.id ?? 0)") { CategoryFormTray(category: category) }
+    }
+
+    private func askDelete(_ category: Category) {
+        let count = category.productCount ?? 0
+        if count == 0 {
+            app.trays.present("delete-category") {
+                ConfirmTray(title: "Delete \(category.name)?", message: "No products use it.", confirmTitle: "Delete category", destructive: true) {
+                    do {
+                        try await app.api.deleteCategory(category.id)
+                        app.catalog.removeCategory(category.id)
+                        Haptics.play(.warning)
+                        app.toasts.show("\(category.name) deleted")
+                        return true
+                    } catch let error as APIError {
+                        if case .conflict(let problem) = error, problem.code == "category_has_products" {
+                            await load()
+                            app.toasts.show("Products were added to it. Try again.")
+                        } else {
+                            app.toasts.error(error.message)
+                        }
+                        return false
+                    } catch { return false }
+                }
+            }
+        } else {
+            app.trays.present("delete-category") { MoveProductsTray(category: category) }
+        }
+    }
+}
+
+/// Delete a category that still has products: pick where they go, then delete in one step.
+struct MoveProductsTray: View {
+    let category: Category
+
+    @Environment(AppModel.self) private var app
+    @Environment(TrayCoordinator.self) private var trays
+    @State private var count: Int
+    /// 0 = no category.
+    @State private var destination: Int64 = 0
+    @State private var working = false
+
+    init(category: Category) {
+        self.category = category
+        _count = State(initialValue: category.productCount ?? 0)
+    }
+
+    private var others: [Category] { app.catalog.categories.filter { $0.id != category.id } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.l) {
+            TrayHeader(title: "Delete \(category.name)?", subtitle: "\(count) product\(count == 1 ? "" : "s") use it. Pick where they go.")
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(others) { other in row(id: other.id, name: other.name, color: other.dotColor) }
+                    row(id: 0, name: "No category", color: Palette.neutral)
+                }
+                .padding(.horizontal, Space.xs)
+            }
+            .frame(maxHeight: 6 * 46)
+            .scrollBounceBehavior(.basedOnSize)
+            HStack(spacing: Space.m) {
+                Button("Cancel") { trays.dismiss() }.buttonStyle(.shop(.secondary))
+                Button { Task { await delete() } } label: {
+                    LoadingLabel(title: "Delete and move \(count)", isLoading: working)
+                }
+                .buttonStyle(.shop(.destructive, haptic: .medium))
+                .disabled(working)
             }
         }
     }
 
-    private func openForm(_ category: Category?) {
-        app.trays.present("category-\(category?.id ?? 0)") { CategoryFormTray(category: category, nextSort: order.count) }
+    private func row(id: Int64, name: String, color: Color) -> some View {
+        Button {
+            Haptics.play(.selection)
+            destination = id
+        } label: {
+            HStack(spacing: Space.l) {
+                CategoryDot(color: color, size: 12)
+                Text(name).textStyle(.rowTitle).foregroundStyle(Palette.ink)
+                Spacer()
+                if destination == id {
+                    Image(icon: .check).font(.system(size: 13, weight: .bold)).foregroundStyle(Accent.blue)
+                }
+            }
+            .frame(height: 46)
+            .hairline()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.press(haptic: nil))
+    }
+
+    private func delete() async {
+        working = true
+        defer { working = false }
+        do {
+            try await app.api.deleteCategory(category.id, moveTo: destination)
+            app.catalog.removeCategory(category.id)
+            Haptics.play(.warning)
+            let target = destination == 0 ? "no category" : app.catalog.category(destination)?.name ?? "another category"
+            app.toasts.show("\(category.name) deleted · \(count) product\(count == 1 ? "" : "s") moved to \(target)")
+            trays.dismiss()
+            try? await app.catalog.refreshReference()
+            try? await app.catalog.refreshProducts()
+        } catch let error as APIError {
+            if case .conflict(let problem) = error, let n = problem.productCount {
+                count = n
+                Haptics.play(.warning)
+            } else {
+                Haptics.play(.error)
+                app.toasts.error(error.message)
+            }
+        } catch {}
     }
 }
 
 struct CategoryFormTray: View {
     let category: Category?
-    let nextSort: Int
+    /// Called with the saved category (used by the product form's "New…" chip).
+    var onSaved: ((Category) -> Void)? = nil
 
     @Environment(AppModel.self) private var app
     @Environment(TrayCoordinator.self) private var trays
     @State private var name = ""
+    @State private var color: String?
+    @State private var saving = false
+    @State private var takenName: String?
     @State private var loaded = false
+
+    private var trimmed: String { name.split(separator: " ").joined(separator: " ") }
+    private var isTaken: Bool { takenName?.caseInsensitiveCompare(trimmed) == .orderedSame }
+    private var canSave: Bool { !trimmed.isEmpty && !saving && (category.map { $0.name != trimmed || $0.color != color } ?? true) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lx) {
             TrayHeader(title: category == nil ? "New category" : "Rename category")
-            FieldTile(label: "Name", text: $name, placeholder: "Snacks", background: Palette.trayField) { Task { await save() } }
-                .submitLabel(.done)
-            HStack(spacing: Space.m) {
-                if let category {
-                    Button("Delete") {
-                        Task {
-                            do {
-                                try await app.api.deleteCategory(category.id)
-                                app.catalog.removeCategory(category.id)
-                                Haptics.play(.error)
-                                trays.dismiss()
-                            } catch let e as APIError { app.toasts.error(e.message) } catch {}
-                        }
-                    }
-                    .buttonStyle(.shop(.destructive))
+            VStack(alignment: .leading, spacing: Space.s) {
+                FieldTile(label: "Name", text: $name, placeholder: "Snacks", error: isTaken, background: Palette.trayField) { Task { await save() } }
+                    .submitLabel(.done)
+                if isTaken {
+                    Text("You already have a category called \(trimmed).")
+                        .textStyle(.caption).foregroundStyle(Palette.redText)
+                        .padding(.horizontal, Space.xs)
                 }
-                Button("Save") { Task { await save() } }
-                    .buttonStyle(.shop(haptic: .medium))
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+            HStack(spacing: Space.m) {
+                ForEach(CategoryTone.tokens, id: \.self) { token in
+                    Button {
+                        Haptics.play(.selection)
+                        color = token
+                    } label: {
+                        Circle()
+                            .fill(Category(id: 0, name: "", color: token).dotColor)
+                            .frame(width: 22, height: 22)
+                            .overlay { if color == token { Circle().strokeBorder(Palette.ink, lineWidth: 2).padding(-4) } }
+                            .frame(maxWidth: .infinity, minHeight: 32)
+                    }
+                    .buttonStyle(.press(haptic: nil))
+                    .accessibilityLabel(token.capitalized)
+                }
+            }
+            Button { Task { await save() } } label: {
+                LoadingLabel(title: "Save", isLoading: saving)
+            }
+            .buttonStyle(.shop(haptic: .medium))
+            .disabled(!canSave)
         }
         .onAppear {
             guard !loaded else { return }
             loaded = true
             name = category?.name ?? ""
+            color = category?.color
         }
     }
 
     private func save() async {
-        let n = name.trimmingCharacters(in: .whitespaces)
-        guard !n.isEmpty else { return }
+        guard canSave else { return }
+        saving = true
+        defer { saving = false }
         do {
-            let saved: Category
-            if let category {
-                saved = try await app.api.updateCategory(category.id, CategoryInput(name: n, sort: category.sort))
-            } else {
-                saved = try await app.api.createCategory(CategoryInput(name: n, sort: nextSort))
-            }
+            let input = CategoryInput(name: trimmed, color: color)
+            let saved = category == nil
+                ? try await app.api.createCategory(input)
+                : try await app.api.updateCategory(category!.id, input)
             app.catalog.upsert(saved)
             Haptics.play(.success)
-            trays.dismiss()
-        } catch let e as APIError {
-            app.toasts.error(e.message)
+            if let onSaved { onSaved(saved) } else { trays.dismiss() }
+        } catch let error as APIError {
+            if case .conflict(let problem) = error, problem.code == "category_name_taken" {
+                takenName = trimmed
+                Haptics.play(.warning)
+            } else {
+                Haptics.play(.error)
+                app.toasts.error(error.message)
+            }
         } catch {}
     }
 }

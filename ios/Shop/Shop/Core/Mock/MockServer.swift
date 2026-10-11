@@ -94,19 +94,37 @@ final class MockServer: HTTPTransport {
 
         // Categories
         case ("GET", "v1/categories"):
-            return ok(categories)
+            let sorted = categories.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            return ok(sorted.map { c in
+                var c = c
+                c.productCount = products.filter { $0.categoryId == c.id }.count
+                c.color = c.color ?? Self.tone(for: c.name)
+                return c
+            })
         case ("POST", "v1/categories"):
             guard let input = try? decoder.decode(CategoryInput.self, from: body) else { return bad() }
-            let c = Category(id: newId(), name: input.name, sort: input.sort ?? categories.count)
+            let name = input.name.split(separator: " ").joined(separator: " ")
+            if categories.contains(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) { return categoryNameTaken() }
+            let c = Category(id: newId(), name: name, productCount: 0, color: input.color ?? CategoryTone.tokens[categories.count % CategoryTone.tokens.count])
             categories.append(c)
             return ok(c, status: 201)
         case ("PATCH", "v1/categories/:id"):
             guard let i = categories.firstIndex(where: { $0.id == id(2) }), let input = try? decoder.decode(CategoryInput.self, from: body) else { return notFound() }
-            categories[i].name = input.name
-            if let s = input.sort { categories[i].sort = s }
+            let name = input.name.split(separator: " ").joined(separator: " ")
+            if categories.contains(where: { $0.id != categories[i].id && $0.name.caseInsensitiveCompare(name) == .orderedSame }) { return categoryNameTaken() }
+            categories[i].name = name
+            if let color = input.color { categories[i].color = color }
             return ok(categories[i])
         case ("DELETE", "v1/categories/:id"):
-            categories.removeAll { $0.id == id(2) }
+            guard let target = id(2), categories.contains(where: { $0.id == target }) else { return notFound() }
+            let inside = products.indices.filter { products[$0].categoryId == target }
+            if !inside.isEmpty {
+                guard let raw = q["move_to"], let moveTo = Int64(raw), moveTo != target else {
+                    return ok(Problem(type: nil, title: "category has products", status: 409, detail: nil, code: "category_has_products", productCount: inside.count), status: 409)
+                }
+                for i in inside { products[i].categoryId = moveTo == 0 ? nil : moveTo }
+            }
+            categories.removeAll { $0.id == target }
             return (204, Data())
 
         // Receipts
@@ -795,6 +813,26 @@ final class MockServer: HTTPTransport {
 
     private func problem(_ status: Int, _ title: String, _ detail: String?) -> (Int, Data) {
         ok(Problem(type: nil, title: title, status: status, detail: detail), status: status)
+    }
+
+    /// Same mapping the real server backfilled from the old name-based colours.
+    private static func tone(for name: String) -> String {
+        switch name {
+        case "Dairy": "blue"
+        case "Produce": "green"
+        case "Meat & fish": "red"
+        case "Bakery": "orange"
+        case "Pantry": "yellow"
+        case "Frozen": "cyan"
+        case "Drinks": "purple"
+        case "Household": "teal"
+        case "Personal care": "pink"
+        default: "grey"
+        }
+    }
+
+    private func categoryNameTaken() -> (Int, Data) {
+        ok(Problem(type: nil, title: "category name taken", status: 409, detail: nil, code: "category_name_taken", productCount: nil), status: 409)
     }
 
     private func notFound() -> (Int, Data) { problem(404, "Not found", nil) }

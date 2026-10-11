@@ -240,8 +240,18 @@ struct ProductFormTray: View {
                 Text("Category").textStyle(.rowSub).foregroundStyle(Palette.ink2).padding(.horizontal, Space.xs)
                 FlowLayout(spacing: 6, lineSpacing: 6) {
                     ForEach(app.catalog.categories) { c in
-                        Chip(title: c.name, isSelected: draft.categoryId == c.id, dot: CategoryColor.swatch(for: c.name).color, idleBackground: Palette.trayField) {
+                        Chip(title: c.name, isSelected: draft.categoryId == c.id, dot: c.dotColor, idleBackground: Palette.trayField) {
                             draft.categoryId = draft.categoryId == c.id ? nil : c.id
+                        }
+                    }
+                    Chip(title: "New…", isSelected: false, idleBackground: Palette.trayField) {
+                        let d = draft
+                        let saved = onSaved
+                        trays.present("category-new") {
+                            CategoryFormTray(category: nil) { category in
+                                d.categoryId = category.id
+                                trays.present("product-form") { ProductFormTray(draft: d, onSaved: saved) }
+                            }
                         }
                     }
                 }
