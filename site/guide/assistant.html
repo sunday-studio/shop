@@ -33,7 +33,7 @@
 <li><i aria-hidden="true">02</i><div>Add Shop to your assistant. For Claude Code, use your server's address instead of <code>localhost</code> if the assistant runs on another machine.<pre class="code"><code>claude mcp add --transport http shop http://localhost:8080/mcp --header "Authorization: Bearer &lt;token&gt;"</code></pre><div class="sub">Other assistants take the same address and the same <code>Authorization</code> header in their configuration.</div></div></li>
 <li><i aria-hidden="true">03</i><div>Ask a question.</div></li></ol>
 <h2 id="things-to-ask">Things to ask</h2>
-<ul class="bl"><li>"How much did I spend on groceries last month, per shop?"</li><li>"Is oat milk cheaper at Lidl or Albert Heijn?"</li><li>"Which products went up more than 10% since summer?"</li><li>"Show me the receipts that still need review."</li></ul>
+<ul class="bl"><li>"How much did I spend on groceries last month, per shop?"</li><li>"Which of my shops sells oat milk for less?"</li><li>"Which products went up more than 10% since summer?"</li><li>"Show me the receipts that still need review."</li></ul>
 <p class="b">The assistant can read spending, receipts, products, prices, shops and the things you buy regularly. It can also read and change your shopping list.</p>
 <h2 id="manage-tokens">Manage tokens</h2>
 <pre class="code"><code>docker compose -f deploy/docker-compose.yml exec api shop token list

@@ -32,9 +32,9 @@
 make up</code></pre>
 <p class="b">When the server starts, it applies any new database migration. Before it does, it saves a copy of the database named <code>pre-migrate-v&lt;N&gt;-&lt;time&gt;.db</code> in the data volume. That copy is your way back if an update goes wrong.</p>
 <h2 id="back-up">Back up</h2>
-<p class="b">A backup service saves a snapshot of the database every night and mirrors the images to a folder. Point that folder at a NAS.</p>
+<p class="b">A backup service saves a snapshot of the database every night and mirrors the images to a folder. Point that folder at another disk or a network share, so a copy lives off the machine.</p>
 <ol class="steps">
-<li><i aria-hidden="true">01</i><div>Mount your NAS share on the machine, and make sure Docker is allowed to use that path.</div></li>
+<li><i aria-hidden="true">01</i><div>Mount the disk or network share on the machine, and make sure Docker is allowed to use that path.</div></li>
 <li><i aria-hidden="true">02</i><div>Set <code>SHOP_BACKUP_DIR</code> in <code>deploy/.env</code>, for example <code>/Volumes/backups/shop</code>.</div></li>
 <li><i aria-hidden="true">03</i><div>Start the stack again, then run a backup now to check it works.<pre class="code"><code>make up
 make backup</code></pre></div></li></ol>

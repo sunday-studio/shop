@@ -25,7 +25,7 @@ Photograph a paper receipt. Shop reads it on your own server, files it, and tell
 
 ## Before you start
 
-> **Note:** Shop is built for Dutch receipts (Albert Heijn, Dirk and similar). The parser, the dictionary and the category rules are Dutch. It runs on an iPhone, and the server speaks plain HTTP, so keep it on your home network or a VPN. See [Limits and privacy](limits-and-privacy).
+> **Note:** Shop is built for Dutch supermarket receipts. The parser, the dictionary and the category rules are Dutch. It runs on an iPhone, and the server speaks plain HTTP, so keep it on your home network or a VPN. See [Limits and privacy](limits-and-privacy).
 
 Everything runs on your own machine, in Docker, on the CPU. Apart from two optional lookups (Open Food Facts for barcodes, logo.dev for shop logos), nothing is sent to a cloud service.
 

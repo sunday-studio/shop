@@ -136,14 +136,14 @@ def build(g):
         return f'<nav class="rail">{trk}{oth}</nav>'
 
     def install_doc(m):
-        chips = f'<div class="chips"><span class="chip">{IC["box"]}Docker, about 4 GB free</span><span class="chip">{IC["term"]}<span><code>git</code> and <code>make</code></span></span><span class="chip">{IC["mac"]}Built on a Mac mini</span></div>'
+        chips = f'<div class="chips"><span class="chip">{IC["box"]}Docker, about 4 GB free</span><span class="chip">{IC["term"]}<span><code>git</code> and <code>make</code></span></span><span class="chip">{IC["mac"]}A computer that can stay on at home</span></div>'
         todo1 = '<div class="draft"><span class="todo">TODO</span>Confirm Linux and Intel/ARM support before saying so.</div>'
         s1 = stepcard(1, 'Get the code', '<p>Clone the repository.</p>' + cmd('git clone &lt;repo-url&gt; shop &amp;&amp; cd shop'), '<div class="draft"><span class="todo">TODO</span>Public repository URL.</div>')
         s2 = stepcard(2, 'Choose your settings', '<p>Optional. Add a logo.dev key if you want real shop logos; without it the app shows initials.</p>' + cmd('cp deploy/.env.example deploy/.env'))
         s3 = stepcard(3, 'Build and start', '<p>The first build downloads the OCR models and takes several minutes. When it ends it prints the pairing password <b style="color:var(--ink);font-weight:500">once</b>. Copy it.</p>' + cmd('make setup'), terminal())
         s4 = stepcard(4, 'Check that it is healthy', '<p>Every line should say <code>ok</code>.</p>' + cmd('curl localhost:8080/healthz'))
         warn = f'<div class="call warn">{IC["warn"]}<div><b>Do not expose the server to the internet.</b> It speaks plain HTTP. Use your home network or a VPN; the next page shows how.</div></div>'
-        rows = [('SHOP_PORT', '8080', 'Port for the API and MCP'), ('SHOP_BACKUP_DIR', 'backups/', 'Where nightly backups go (point it at a NAS)'), ('BACKUP_AT', '03:30', 'Daily backup time'), ('BACKUP_KEEP_DAYS', '30', 'How long snapshots are kept'), ('LOGO_DEV_TOKEN', 'none', 'Shop logos'), ('AUTO_PRODUCTS', 'on', 'Create products when you confirm a receipt')]
+        rows = [('SHOP_PORT', '8080', 'Port for the API and MCP'), ('SHOP_BACKUP_DIR', 'backups/', 'Where nightly backups go (point it at another disk or a network share)'), ('BACKUP_AT', '03:30', 'Daily backup time'), ('BACKUP_KEEP_DAYS', '30', 'How long snapshots are kept'), ('LOGO_DEV_TOKEN', 'none', 'Shop logos'), ('AUTO_PRODUCTS', 'on', 'Create products when you confirm a receipt')]
         if m:
             tb = '<div class="tbl">' + ''.join(f'<div style="padding:14px 18px;border-top:{"0" if i==0 else "1px solid var(--line)"}"><code>{a}</code> <span style="color:var(--ink3)">· {b}</span><div style="color:var(--ink2);font-size:15px;margin-top:4px">{c}</div></div>' for i, (a, b, c) in enumerate(rows)) + '</div>'
         else:

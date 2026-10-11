@@ -20,7 +20,7 @@ summary: Quick checks for the usual problems.
 4. **A receipt stays on processing.** The OCR engine may be down or busy. Check `ocr` and `jobs` in the health check. The first receipt after a start takes longer.
 5. **A receipt says Needs review.** The lines don't add up to the printed total. Fix them on the receipt, or confirm anyway. See [Review and fix a receipt](review-a-receipt).
 6. **A photo won't import.** Use JPEG, PNG, HEIC or PDF. If the app can't find the edges, retake the photo flat and in good light.
-7. **NAS backup is out of date.** The backup folder wasn't available. Mount the share, then run a backup. See [Update, back up and restore](backup).
+7. **NAS backup is out of date.** The backup folder wasn't available. Mount the disk or share again, then run a backup. See [Update, back up and restore](backup).
    ```bash
    make backup
    ```
