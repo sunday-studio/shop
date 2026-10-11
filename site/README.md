@@ -76,11 +76,11 @@ inline code, `**bold**`, `*italic*`, links (a bare slug such as `connect` links 
 
 ## Share image (Open Graph)
 
-`img/og.png` is the 1200x630 share card (logo, tagline, one phone). Social sites need an absolute URL, so once the public address is known add these two lines to the `<head>` of `index.html` and to `head()` in `build.py` (then run `python3 build.py`):
+`img/og.png` is the 2400x1260 (1200x630 at 2x, 1.91:1) share card (logo, tagline, one phone). Social sites need an absolute URL, so once the public address is known add these two lines to the `<head>` of `index.html` and to `head()` in `build.py` (then run `python3 build.py`):
 
 ```html
 <meta property="og:image" content="https://YOUR-DOMAIN/img/og.png">
 <meta name="twitter:image" content="https://YOUR-DOMAIN/img/og.png">
 ```
 
-The card is composed in `design/website/og-image.html` (open it in a browser at 1200x630 and screenshot to regenerate).
+The card is composed in `design/website/og-image.html` (render it at 1200x630 with device scale factor 2 to regenerate).
