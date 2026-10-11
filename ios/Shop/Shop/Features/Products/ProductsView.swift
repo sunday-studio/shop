@@ -112,7 +112,7 @@ struct ProductsView: View {
 
             productRows(model)
         }
-        .shopListStyle()
+        .shopListStyle(leading: 1, trailing: 2)
         .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
         .scrollDismissesKeyboard(.immediately)
         .refreshable { await model.refresh() }

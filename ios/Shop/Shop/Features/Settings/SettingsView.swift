@@ -387,7 +387,7 @@ struct UploadQueueView: View {
                 .shopListRow()
             }
         }
-        .shopListStyle()
+        .shopListStyle(trailing: 1)
         .contentMargins(.bottom, 120, for: .scrollContent)
         .safeAreaInset(edge: .bottom) {
             if !waiting.isEmpty || !failed.isEmpty {

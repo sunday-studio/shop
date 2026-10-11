@@ -58,7 +58,7 @@ struct HomeView: View {
 
             inbox
         }
-        .shopListStyle()
+        .shopListStyle(leading: 1, trailing: 2)
         .contentMargins(.bottom, Space.tabBarClearance, for: .scrollContent)
         .onAppear { app.reviewSequence = [] }
         .transaction(value: home.spendLoaded) { $0.animation = nil }

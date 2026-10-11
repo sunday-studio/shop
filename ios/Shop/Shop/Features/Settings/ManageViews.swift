@@ -86,7 +86,7 @@ struct ShopsView: View {
                 }
             }
         }
-        .shopListStyle()
+        .shopListStyle(trailing: 2)
         .contentMargins(.bottom, 40, for: .scrollContent)
         .background(Palette.bg)
         .toolbar(.hidden, for: .navigationBar)
@@ -334,7 +334,7 @@ struct CategoriesView: View {
                 }
             }
         }
-        .shopListStyle()
+        .shopListStyle(trailing: 2)
         .contentMargins(.bottom, 40, for: .scrollContent)
         .refreshable { await load() }
         .background(Palette.bg)
