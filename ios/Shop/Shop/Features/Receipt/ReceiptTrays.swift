@@ -297,13 +297,7 @@ struct LinkProductTray: View {
                     TypeStyle.label.sized(12.5).text("\(Int((score * 100).rounded()))%")
                         .foregroundStyle(isTop ? Palette.greenText : Palette.ink2)
                 }
-                ZStack {
-                    Circle().strokeBorder(Palette.ink3, lineWidth: 1.5).opacity(isOn ? 0 : 1)
-                    Circle().fill(Accent.blue).opacity(isOn ? 1 : 0)
-                    Image(icon: .check).font(.system(size: 10, weight: .heavy)).foregroundStyle(Accent.white).opacity(isOn ? 1 : 0)
-                }
-                .frame(width: 22, height: 22)
-                .animation(Motion.pop, value: isOn)
+                SelectionCircle(isOn: isOn)
             }
             .frame(minHeight: 58)
             .hairline()
@@ -324,7 +318,7 @@ struct LinkProductTray: View {
             }
         } label: {
             HStack(spacing: Space.l) {
-                RoundedRectangle.continuous(12)
+                RoundedRectangle.continuous(Radius.ml)
                     .strokeBorder(Palette.ink3, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                     .frame(width: 40, height: 40)
                     .overlay(IconView(.plus, size: 16, weight: .semibold).foregroundStyle(Palette.ink2))

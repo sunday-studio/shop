@@ -55,7 +55,15 @@ final class ShoppingListStore {
         self.catalog = catalog
         items = DiskStore.load([ListItem].self, from: Self.itemsFile) ?? []
         ops = DiskStore.load([ListOp].self, from: Self.opsFile) ?? []
+        lastGoodSync = UserDefaults.standard.object(forKey: Self.lastSyncKey) as? Date
     }
+
+    private static let lastSyncKey = "list.lastGoodSync"
+    /// Last time the list was refetched successfully, kept across launches (`lastSync` is per launch).
+    private(set) var lastGoodSync: Date?
+
+    /// The saved list is more than an hour old (or was never synced): worth a banner after a failure.
+    var isStale: Bool { lastGoodSync.map { Date().timeIntervalSince($0) > 3600 } ?? true }
 
     // MARK: Local changes
 
@@ -142,6 +150,8 @@ final class ShoppingListStore {
             let fresh = try await api.shoppingList(includeChecked: true)
             items = fresh
             lastSync = .now
+            lastGoodSync = .now
+            UserDefaults.standard.set(Date.now, forKey: Self.lastSyncKey)
             persist()
         } catch let error as APIError {
             lastError = error

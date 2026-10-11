@@ -280,7 +280,7 @@ private struct ReviewCategoryTray: View {
                                 TypeStyle.rowTitle.text(category.name).foregroundStyle(Palette.ink)
                                 Spacer()
                                 if (model.pickedCategory[item.id] ?? item.product.categoryId) == category.id {
-                                    Image(icon: .check).font(.system(size: 13, weight: .bold)).foregroundStyle(Accent.blue)
+                                    IconView(.check, size: 13, weight: .bold).foregroundStyle(Accent.blue)
                                 }
                             }
                             .frame(height: 46)

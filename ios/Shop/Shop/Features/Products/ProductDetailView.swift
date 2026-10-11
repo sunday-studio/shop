@@ -132,12 +132,18 @@ struct ProductDetailView: View {
                         purchases(model)
                         nutrition(model, product)
                         receiptNames(model)
+                        Button("Merge into another product") { startMerge(model) }
+                            .textStyle(.label)
+                            .foregroundStyle(Palette.ink2)
+                            .buttonStyle(.press(haptic: nil))
+                            .padding(.horizontal, Space.gutter)
+                            .padding(.top, Space.xxl)
                         Button("Delete product") { confirmDelete(model) }
                             .textStyle(.label)
                             .foregroundStyle(Palette.redText)
                             .buttonStyle(.press(haptic: nil))
                             .padding(.horizontal, Space.gutter)
-                            .padding(.top, Space.xxl)
+                            .padding(.top, Space.l)
                     } else {
                         StatefulContent(phase: model.error.map { .failed($0.message) } ?? .loading, retry: { Task { await model.load() } }) {
                             VStack(alignment: .leading, spacing: Space.xl) {
@@ -349,6 +355,15 @@ struct ProductDetailView: View {
         guard let product = model.product else { return }
         app.trays.present("edit-product-\(product.id)") {
             ProductFormTray(mode: .edit(product)) { saved in model.replace(saved) }
+        }
+    }
+
+    private func startMerge(_ model: ProductDetailModel) {
+        guard let source = model.product else { return }
+        app.trays.present("merge-pick") {
+            MergeProductTray(source: source) { target in
+                app.confirmMerge(source, into: target) { dismiss() }
+            }
         }
     }
 

@@ -112,7 +112,7 @@ private struct WelcomeIllustration: View {
             .foregroundStyle(Accent.white)
             .padding(18)
             .frame(width: 250, height: 176)
-            .background(Accent.blue, in: RoundedRectangle.continuous(26))
+            .background(Accent.blue, in: RoundedRectangle.continuous(Radius.card))
             .shadow(color: Accent.blue.opacity(0.3), radius: 20, y: 20)
             .rotationEffect(.degrees(-2))
             .offset(x: 0, y: 82)
@@ -217,11 +217,9 @@ struct ServerScreen: View {
         case .idle:
             EmptyView()
         case .testing:
-            HStack(spacing: Space.l) {
-                ProgressView().tint(Palette.ink2)
-                TypeStyle.body.text("Looking for the server…").foregroundStyle(Palette.ink2)
-            }
-            .padding(.top, Space.m)
+            // The spinner lives inside the button; this line just says what is happening.
+            TypeStyle.body.text("Looking for the server…").foregroundStyle(Palette.ink2)
+                .padding(.top, Space.m)
         case .found(let version, let ms, let checks):
             VStack(spacing: 0) {
                 HStack(spacing: Space.l) {

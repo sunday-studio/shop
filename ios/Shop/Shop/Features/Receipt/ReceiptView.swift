@@ -504,7 +504,7 @@ struct ReceiptShopTray: View {
                                 }
                                 Spacer()
                                 if model.receipt?.shopId == shop.id {
-                                    Image(icon: .check).font(.system(size: 13, weight: .bold)).foregroundStyle(Accent.blue)
+                                    IconView(.check, size: 13, weight: .bold).foregroundStyle(Accent.blue)
                                 }
                             }
                             .frame(height: 52)

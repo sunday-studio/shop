@@ -423,12 +423,7 @@ struct ImportShopTray: View {
                     if !sub.isEmpty { TypeStyle.rowSub.text(sub).foregroundStyle(Palette.ink2) }
                 }
                 Spacer()
-                ZStack {
-                    Circle().strokeBorder(Palette.ink3, lineWidth: 1.5).opacity(on ? 0 : 1)
-                    Circle().fill(Accent.blue).opacity(on ? 1 : 0)
-                    Image(icon: .check).font(.system(size: 10, weight: .heavy)).foregroundStyle(.white).opacity(on ? 1 : 0)
-                }
-                .frame(width: 22, height: 22)
+                SelectionCircle(isOn: on)
             }
             .frame(height: 52)
             .hairline()
@@ -547,8 +542,8 @@ struct ImportDetailsTray: View {
                         Image(uiImage: page.thumbnail)
                             .resizable().scaledToFill()
                             .frame(width: 58, height: 80)
-                            .clipShape(RoundedRectangle.continuous(8))
-                            .overlay(RoundedRectangle.continuous(8).strokeBorder(Palette.line))
+                            .clipShape(RoundedRectangle.continuous(Radius.s))
+                            .overlay(RoundedRectangle.continuous(Radius.s).strokeBorder(Palette.line))
                         if receipt.pages.count > 1 {
                             Button {
                                 model.removePage(page.id, from: receiptId)
