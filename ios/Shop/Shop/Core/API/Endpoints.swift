@@ -271,6 +271,21 @@ func deleteCategory(_ id: Int64, moveTo: Int64? = nil) async throws {
     func uncheckListItem(_ id: Int64) async throws -> ListItem { try await send("POST", "/v1/list/\(id)/uncheck") }
     func clearCheckedItems() async throws -> RemovedCount { try await send("DELETE", "/v1/list/checked") }
 
+    func listChanges(sinceRev: Int64) async throws -> ListChanges { try await get("/v1/list/changes", query: ["since_rev": String(sinceRev)]) }
+    func listGroups(kind: String? = nil, includeArchived: Bool = false, includeItems: Bool = false) async throws -> [ListGroup] {
+        try await get("/v1/list/groups", query: ["kind": kind, "include_archived": includeArchived ? "true" : nil, "include_items": includeItems ? "true" : nil])
+    }
+    func listGroup(_ id: Int64) async throws -> ListGroup { try await get("/v1/list/groups/\(id)") }
+    func createListGroup(_ input: ListGroupInput) async throws -> ListGroup { try await send("POST", "/v1/list/groups", body: input) }
+    func updateListGroup(_ id: Int64, _ patch: ListGroupPatch) async throws -> ListGroup { try await send("PATCH", "/v1/list/groups/\(id)", body: patch) }
+    func deleteListGroup(_ id: Int64, keepItems: Bool) async throws -> ListGroupDeleted {
+        try await send("DELETE", "/v1/list/groups/\(id)", query: ["items": keepItems ? "keep" : "delete"])
+    }
+    func restoreListGroup(_ id: Int64) async throws -> ListGroup { try await send("POST", "/v1/list/groups/\(id)/restore") }
+    func instantiateListTemplate(_ id: Int64, _ body: ListGroupCopyInput) async throws -> ListGroup { try await send("POST", "/v1/list/groups/\(id)/instantiate", body: body) }
+    func saveListGroupAsTemplate(_ id: Int64, _ body: ListGroupCopyInput) async throws -> ListGroup { try await send("POST", "/v1/list/groups/\(id)/save-as-template", body: body) }
+    func moveListItem(_ id: Int64, groupId: Int64?) async throws -> ListItem { try await send("POST", "/v1/list/\(id)/move", body: ListMoveBody(groupId: groupId)) }
+
     func listSuggestions() async throws -> [ListSuggestion] { try await get("/v1/list/suggestions") }
     func acceptListSuggestion(_ id: Int64) async throws -> ListItem { try await send("POST", "/v1/list/suggestions/\(id)/accept") }
     func dismissListSuggestion(_ id: Int64) async throws { try await perform("POST", "/v1/list/suggestions/\(id)/dismiss") }

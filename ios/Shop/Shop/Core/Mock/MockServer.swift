@@ -21,6 +21,12 @@ final class MockServer: HTTPTransport {
     private var reducedBefore: [Int64: (qty: Double?, note: String?)] = [:]
     private var reducedBy: [Int64: Int64] = [:]
     private var reconciledReceipts: Set<Int64> = []
+    private var listGroups: [ListGroup] = []
+    private var listRev: Int64 = 1
+    /// client_id → what the first call made (offline retries must not duplicate).
+    private var createdByClientId: [String: Int64] = [:]
+    private var itemByClientId: [String: Int64] = [:]
+    private var deletedGroups: [Int64: (group: ListGroup, items: [ListItem], kept: Bool)] = [:]
     private var nextId: Int64 = 5000
     private var latency: Duration = .milliseconds(250)
 
@@ -48,6 +54,7 @@ final class MockServer: HTTPTransport {
     }
 
     init() {
+        seedGroups()
         // Simulator aid for profiling: a catalog and inbox the size of a few years of use.
         if ProcessInfo.processInfo.arguments.contains("-mock-large") {
             let words = ["Halfvolle", "Volle", "Biologische", "Verse", "Gerookte", "Gesneden", "Oude", "Jonge", "Roomboter", "Grove"]
@@ -461,24 +468,87 @@ final class MockServer: HTTPTransport {
             return ok(MockData.frequentItems)
 
         // List
+        case ("GET", "v1/list/changes"):
+            // Always the complete list (`full_resync`): valid for any cursor.
+            listRev += 1
+            return ok(ListChanges(items: list, deletedIds: [], groups: listGroups.map { groupWithCounts($0) }, deletedGroupIds: [], rev: listRev, fullResync: true,
+                                  suggestions: listSuggestions.sorted { $0.createdAt < $1.createdAt }))
+        case ("GET", "v1/list/groups"):
+            let kind = q["kind"]
+            let showArchived = q["include_archived"] == "true"
+            let groups = listGroups.filter { (kind == nil || $0.kind == kind) && (showArchived || !$0.isArchived) }
+            return ok(groups.sorted { ($0.sort, $0.id) < ($1.sort, $1.id) }.map { groupWithCounts($0, includeItems: q["include_items"] == "true") })
+        case ("POST", "v1/list/groups"):
+            guard let input = try? decoder.decode(ListGroupInput.self, from: body) else { return bad() }
+            return createGroup(input)
+        case ("GET", "v1/list/groups/:id"):
+            guard let g = listGroups.first(where: { $0.id == id(3) }) else { return notFound() }
+            return ok(groupWithCounts(g, includeItems: true))
+        case ("PATCH", "v1/list/groups/:id"):
+            guard let i = listGroups.firstIndex(where: { $0.id == id(3) }), let patch = try? decoder.decode(ListGroupPatch.self, from: body) else { return notFound() }
+            if let name = patch.name { listGroups[i].name = name }
+            if let note = patch.note { listGroups[i].note = note.isEmpty ? nil : note }
+            if let sort = patch.sort { listGroups[i].sort = sort }
+            if let archived = patch.archived { listGroups[i].archivedAt = archived ? .now : nil }
+            listRev += 1
+            return ok(groupWithCounts(listGroups[i], includeItems: true))
+        case ("DELETE", "v1/list/groups/:id"):
+            guard let i = listGroups.firstIndex(where: { $0.id == id(3) }) else { return notFound() }
+            let g = listGroups.remove(at: i)
+            let keep = q["items"] != "delete" && g.kind != "template"
+            let members = list.filter { $0.groupId == g.id }
+            deletedGroups[g.id] = (g, members, keep)
+            var kept: [ListItem] = []
+            if keep {
+                for j in list.indices where list[j].groupId == g.id { list[j].groupId = nil; kept.append(list[j]) }
+            } else {
+                list.removeAll { $0.groupId == g.id }
+            }
+            listRev += 1
+            return ok(ListGroupDeleted(groupId: g.id, kept: kept, deletedItemIds: keep ? [] : members.map(\.id), restoreUntil: .now.addingTimeInterval(600)))
+        case ("POST", "v1/list/groups/:id/restore"):
+            guard let gone = deletedGroups.removeValue(forKey: id(3) ?? 0) else { return notFound() }
+            listGroups.append(gone.group)
+            if gone.kept { for j in list.indices where gone.items.contains(where: { $0.id == list[j].id }) { list[j].groupId = gone.group.id } } else { list.append(contentsOf: gone.items) }
+            listRev += 1
+            return ok(groupWithCounts(gone.group, includeItems: true))
+        case ("POST", "v1/list/groups/:id/instantiate"):
+            guard let source = listGroups.first(where: { $0.id == id(3) }), source.kind == "template" else { return bad() }
+            let copy = (try? decoder.decode(ListGroupCopyInput.self, from: body)) ?? ListGroupCopyInput()
+            return createGroup(ListGroupInput(clientId: copy.clientId, name: copy.name ?? source.name, kind: "checklist"), copying: templateItems[source.id] ?? [])
+        case ("POST", "v1/list/groups/:id/save-as-template"):
+            guard let source = listGroups.first(where: { $0.id == id(3) }), source.kind == "checklist" else { return bad() }
+            let copy = (try? decoder.decode(ListGroupCopyInput.self, from: body)) ?? ListGroupCopyInput()
+            return createGroup(ListGroupInput(clientId: copy.clientId, name: copy.name ?? source.name, kind: "template"), copying: list.filter { $0.groupId == source.id })
+        case ("POST", "v1/list/:id/move"):
+            guard let i = list.firstIndex(where: { $0.id == id(2) }), let move = try? decoder.decode(ListMoveBody.self, from: body) else { return notFound() }
+            list[i].groupId = move.groupId
+            listRev += 1
+            return ok(list[i])
         case ("GET", "v1/list"):
             let items = q["include_checked"] == "true" ? list : list.filter { !$0.isChecked }
             return ok(items.sorted { ($0.isChecked ? 1 : 0, $1.createdAt) < ($1.isChecked ? 1 : 0, $0.createdAt) })
         case ("POST", "v1/list"):
             guard let input = try? decoder.decode(ListItemInput.self, from: body) else { return bad() }
-            if let pid = input.productId, let i = list.firstIndex(where: { $0.productId == pid && !$0.isChecked }) {
+            if let cid = input.clientId, let existing = itemByClientId[cid] {
+                guard let item = list.first(where: { $0.id == existing }) else { return problem(410, "deleted", nil) }
+                return ok(item)
+            }
+            if let g = input.groupId, !listGroups.contains(where: { $0.id == g }) { return notFound() }
+            if let pid = input.productId, let i = list.firstIndex(where: { $0.productId == pid && !$0.isChecked && $0.groupId == input.groupId }) {
                 list[i].qty = (list[i].qty ?? 1) + (input.qty ?? 1)
                 return ok(list[i])
             }
             let product = products.first { $0.id == input.productId }
             let item = ListItem(id: newId(), text: input.text ?? product?.name ?? "", productId: input.productId, productName: product?.name,
                                 qty: input.qty, note: input.note, checkedAt: nil, createdAt: .now,
-                                cheapest: input.productId.flatMap { MockData.compare(product: $0).first })
+                                cheapest: input.productId.flatMap { MockData.compare(product: $0).first }, groupId: input.groupId)
             list.insert(item, at: 0)
+            if let cid = input.clientId { itemByClientId[cid] = item.id }
             return ok(item, status: 201)
         case ("DELETE", "v1/list/checked"):
-            let n = list.filter(\.isChecked).count
-            list.removeAll(where: \.isChecked)
+            let n = list.filter { $0.isChecked && $0.groupId == nil }.count
+            list.removeAll { $0.isChecked && $0.groupId == nil }
             return ok(RemovedCount(removed: Int64(n)))
         case ("PATCH", "v1/list/:id"):
             guard let i = list.firstIndex(where: { $0.id == id(2) }), let input = try? decoder.decode(ListItemInput.self, from: body) else { return notFound() }
@@ -869,6 +939,62 @@ final class MockServer: HTTPTransport {
         guard id == 102 || unassigned, !acceptedSuggestions.contains(id) else { return nil }
         return ShopSuggestion(kind: .new, key: "new:aldi|lange kerkstraat 34", shopId: nil, name: "Aldi", chain: "Aldi", branch: "Hoofdstraat 12, Teststad", domain: "aldi.nl",
                               confidence: 0.92, evidence: ["ALDI", "Hoofdstraat 12", "Teststad"], waitingReceiptIds: acceptedSuggestions.contains(104) ? [] : [104])
+    }
+
+    private func seedGroups() {
+        func make(_ name: String, kind: String = "checklist", source: String = "user", sort: Int64, lines: [(String, Bool)]) {
+            let id = newId()
+            let items = lines.map { text, done in
+                ListItem(id: newId(), text: text, productId: nil, productName: nil, qty: nil, note: nil, checkedAt: done ? .now : nil, createdAt: .now, cheapest: nil, groupId: id, source: source)
+            }
+            listGroups.append(ListGroup(id: id, name: name, kind: kind, source: source, sort: sort, createdAt: .now, updatedAt: .now))
+            if kind == "checklist" { list.append(contentsOf: items) } else { templateItems[id] = items }
+        }
+        make("Jerk chicken", sort: 1, lines: [("Chicken thighs", true), ("Scotch bonnet", false), ("Allspice", false), ("Limes", true), ("Rice and peas", false)])
+        make("BBQ", source: "assistant", sort: 2, lines: [("Burgers", false), ("Corn on the cob", false), ("Charcoal", false)])
+        make("Pasta night", kind: "template", sort: 3, lines: [("Spaghetti", false), ("Tomato sauce", false), ("Parmesan", false)])
+    }
+
+    private var templateItems: [Int64: [ListItem]] = [:]
+
+    private func groupWithCounts(_ g: ListGroup, includeItems: Bool = false) -> ListGroup {
+        var out = g
+        let members = g.kind == "template" ? (templateItems[g.id] ?? []) : list.filter { $0.groupId == g.id }
+        out.itemCount = Int64(members.count)
+        out.checkedCount = Int64(members.filter(\.isChecked).count)
+        if includeItems { out.items = members }
+        out.rev = listRev
+        return out
+    }
+
+    private func createGroup(_ input: ListGroupInput, copying: [ListItem]? = nil) -> (Int, Data) {
+        if let cid = input.clientId, let existing = createdByClientId[cid] {
+            guard let g = listGroups.first(where: { $0.id == existing }) else { return problem(410, "deleted", nil) }
+            var out = groupWithCounts(g, includeItems: true)
+            out.itemIds = (out.items ?? []).map(\.id)
+            return ok(out)
+        }
+        guard !input.name.trimmingCharacters(in: .whitespaces).isEmpty else { return bad() }
+        let id = newId()
+        let kind = input.kind ?? "checklist"
+        let lines = copying?.map { ListItemInput(text: $0.text, productId: $0.productId, qty: $0.qty, note: $0.note) } ?? input.items ?? []
+        var made: [ListItem] = []
+        var ids: [Int64] = []
+        for line in lines {
+            let product = products.first { $0.id == line.productId }
+            let item = ListItem(id: newId(), text: line.text ?? product?.name ?? "", productId: line.productId, productName: product?.name, qty: line.qty, note: line.note,
+                                checkedAt: nil, createdAt: .now, cheapest: nil, groupId: id, source: input.source ?? "user")
+            made.append(item)
+            ids.append(item.id)
+        }
+        listRev += 1
+        let group = ListGroup(id: id, name: input.name, kind: kind, note: input.note, source: input.source ?? "user", sort: input.sort ?? Int64(listGroups.count + 1), createdAt: .now, updatedAt: .now)
+        listGroups.append(group)
+        if kind == "checklist" { list.append(contentsOf: made) } else { templateItems[id] = made }
+        if let cid = input.clientId { createdByClientId[cid] = id }
+        var out = groupWithCounts(group, includeItems: true)
+        out.itemIds = ids
+        return ok(out, status: 201)
     }
 
     /// What confirming a receipt does to the list in `-mock`: the first confirm of a receipt that

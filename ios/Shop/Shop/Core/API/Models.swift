@@ -525,6 +525,14 @@ nonisolated struct ListItem: Codable, Sendable, Hashable, Identifiable {
     var checkSource: String? = nil
     var checkedReceiptId: Int64? = nil
     var checkedLineId: Int64? = nil
+    /// The checklist this item is in (nil on the main list).
+    var groupId: Int64? = nil
+    /// "user" or "assistant".
+    var source: String? = nil
+    var rev: Int64? = nil
+    /// Other live checklists where the same product is open (as of the response).
+    var otherGroupIds: [Int64]? = nil
+    var onMainList: Bool? = nil
 
     var isChecked: Bool { checkedAt != nil }
     var title: String { productName ?? text }
@@ -564,6 +572,85 @@ nonisolated struct ListItemInput: Codable, Sendable, Hashable {
     var note: String?
     /// Backend need #5 (idempotent offline adds). Ignored by servers that don't know it.
     var clientId: String?
+    /// POST only: put the item in this checklist.
+    var groupId: Int64? = nil
+    var source: String? = nil
+}
+
+/// A checklist (or template) inside the shopping list.
+nonisolated struct ListGroup: Codable, Sendable, Hashable, Identifiable {
+    var id: Int64
+    var name: String
+    /// "checklist" or "template".
+    var kind: String
+    var note: String? = nil
+    /// "user" or "assistant".
+    var source: String
+    var externalRef: String? = nil
+    var sort: Int64
+    var archivedAt: Date? = nil
+    var createdAt: Date
+    var updatedAt: Date
+    var rev: Int64? = nil
+    var itemCount: Int64? = nil
+    var checkedCount: Int64? = nil
+    var items: [ListItem]? = nil
+    var itemIds: [Int64]? = nil
+
+    var isTemplate: Bool { kind == "template" }
+    var isArchived: Bool { archivedAt != nil }
+    var isAssistant: Bool { source == "assistant" }
+}
+
+nonisolated struct ListGroupInput: Codable, Sendable, Hashable {
+    var clientId: String?
+    var name: String
+    var note: String? = nil
+    var kind: String? = nil
+    var source: String? = nil
+    var sort: Int64? = nil
+    var items: [ListItemInput]? = nil
+}
+
+nonisolated struct ListGroupPatch: Codable, Sendable, Hashable {
+    var name: String? = nil
+    var note: String? = nil
+    var sort: Int64? = nil
+    var archived: Bool? = nil
+}
+
+nonisolated struct ListGroupCopyInput: Codable, Sendable, Hashable {
+    var clientId: String?
+    var name: String?
+}
+
+nonisolated struct ListGroupDeleted: Codable, Sendable {
+    var groupId: Int64
+    var kept: [ListItem]
+    var deletedItemIds: [Int64]
+    var restoreUntil: Date
+}
+
+nonisolated struct ListMoveBody: Codable, Sendable {
+    /// nil encodes as null: back to the main list.
+    var groupId: Int64?
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(groupId, forKey: .groupId)
+    }
+    enum CodingKeys: String, CodingKey { case groupId }
+}
+
+/// GET /v1/list/changes (openapi 0.15.0).
+nonisolated struct ListChanges: Codable, Sendable {
+    var items: [ListItem]
+    var deletedIds: [Int64]
+    var groups: [ListGroup]
+    var deletedGroupIds: [Int64]
+    var rev: Int64
+    var fullResync: Bool
+    var suggestions: [ListSuggestion]?
 }
 
 nonisolated struct RemovedCount: Codable, Sendable {
