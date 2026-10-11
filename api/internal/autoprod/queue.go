@@ -3,7 +3,6 @@ package autoprod
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"slices"
 	"strings"
 
@@ -227,6 +226,3 @@ func (s *Service) Review(ctx context.Context, id int64, in ReviewInput) (ReviewR
 	})
 	return res, err
 }
-
-// ErrNotQueued is kept for callers that want to distinguish the 409 case.
-var ErrNotQueued = errors.New("not in the review queue")

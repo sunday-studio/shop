@@ -51,6 +51,7 @@ Set these as environment variables when running `make up`, or put them in `deplo
 | `BACKUP_AT` | `03:30` | Daily backup time (Europe/Amsterdam) |
 | `BACKUP_KEEP_DAYS` | `30` | Snapshot retention; the newest 3 are always kept |
 | `LOGO_DEV_TOKEN` | — | logo.dev publishable key (`pk_…`) for shop logos. Keep it in `deploy/.env` (git-ignored; see `deploy/.env.example`). Without it the app shows monograms |
+| `AUTO_PRODUCTS` | `on` | `on`: confirming a receipt links its lines to products or creates new ones (uncertain ones wait in the review queue). `off` disables that and the backfill. Barcode scans always create products |
 | `OCR_URL` | `http://ocr:8000` | OCR engine (any service implementing the OCR contract) |
 | `OCR_FALLBACK_URL` | — | Second engine to retry `needs_review` receipts with |
 

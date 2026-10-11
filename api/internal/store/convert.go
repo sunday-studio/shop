@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 )
 
@@ -68,4 +69,9 @@ func IntPtr(n sql.NullInt64) *int64 {
 		return nil
 	}
 	return &n.Int64
+}
+
+// IsUniqueViolation reports whether err is a SQLite UNIQUE constraint failure.
+func IsUniqueViolation(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }

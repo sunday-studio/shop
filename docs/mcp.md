@@ -59,6 +59,8 @@ Product and shop arguments take an **id or a name**, in Dutch or English. Names 
 | `shopping_list_remove(id)` | ✓ | |
 | `translation_todo(limit?)` | | Dutch words the English translator doesn't know, ranked by how many products use them |
 | `teach_word(word, english? \| keep_as_is?)` | ✓ | "Elstar is an apple variety, keep it." Re-translates automatic names; never touches names you typed |
+| `review_new_products(reason?, limit?)` | | Products created automatically (from receipts or barcode scans) that wait for a decision: possible duplicates, missing category, odd names, with the receipt text they came from |
+| `resolve_review(product_id, action, into_product_id?)` | ✓ | `accept`, `merge` (same as the suggested product), `keep_separate` or `discard`. Merge and discard can be undone in the app for 30 days |
 
 Resources: `shop://shops` and `shop://categories`.
 

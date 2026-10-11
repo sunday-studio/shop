@@ -29,7 +29,7 @@ func importCmd(ctx context.Context, args []string) error {
 		return err
 	}
 	if *shop == 0 || *token == "" || flags.NArg() == 0 {
-		return errors.New("usage: shop import -shop ID [-url U] [-token T] <dir|file>...")
+		return errors.New("usage: shop import -shop ID [-url U] [-token T] <dir|file> [<dir|file> ...]")
 	}
 
 	var files []string
