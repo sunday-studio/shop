@@ -140,7 +140,7 @@ private struct WelcomeIllustration: View {
         .foregroundStyle(Accent.white)
         .padding(16)
         .frame(width: width, height: height, alignment: .leading)
-        .background(color, in: RoundedRectangle.continuous(24))
+        .background(color, in: RoundedRectangle.continuous(Radius.art))
     }
 }
 
@@ -323,12 +323,12 @@ struct PasswordScreen: View {
                     .font(.custom(ShopFont.bold, size: 11))
                     .foregroundStyle(Accent.onLight)
                     .frame(width: 20, height: 20)
-                    .background(Accent.yellow, in: RoundedRectangle.continuous(6))
+                    .background(Accent.yellow, in: RoundedRectangle.continuous(Radius.badge))
                 TypeStyle.label.withFace(.regular).text("Lost it? On the Mac mini, run")
                     .foregroundStyle(Color(hex: 0x9A9A95))
             }
             HStack(spacing: Space.ml) {
-                (Text("$ ").foregroundStyle(Color(hex: 0x3DDC84)) + Text("shop password generate"))
+                (Text("$ ").foregroundStyle(Palette.scanGreen) + Text("shop password generate"))
                     .textStyle(TypeStyle.mono.sized(14).withFace(.monoRegular))
                     .foregroundStyle(Color(hex: 0xEDEDE9))
                 Spacer()
@@ -348,7 +348,7 @@ struct PasswordScreen: View {
                 .foregroundStyle(Color(hex: 0x77776F))
         }
         .padding(Space.xl)
-        .background(Color(hex: 0x17181A), in: RoundedRectangle.continuous(22))
+        .background(Color(hex: 0x17181A), in: RoundedRectangle.continuous(Radius.hero))
     }
 }
 
@@ -410,7 +410,7 @@ struct ReadyScreen: View {
             return progress.0 > 0 ? "\(progress.0)…" : "…"
         }()
         return HStack(spacing: Space.l) {
-            RoundedRectangle.continuous(10).fill(color).frame(width: 32, height: 32)
+            RoundedRectangle.continuous(Radius.tile).fill(color).frame(width: 32, height: 32)
             VStack(spacing: 5) {
                 HStack {
                     TypeStyle.rowTitle.text(name).foregroundStyle(Palette.ink)
@@ -451,7 +451,7 @@ struct ReadyScreen: View {
         }
         .padding(.vertical, Space.l)
         .padding(.horizontal, Space.lx)
-        .background(Palette.sunk, in: RoundedRectangle.continuous(20))
+        .background(Palette.sunk, in: RoundedRectangle.continuous(Radius.input))
     }
 }
 

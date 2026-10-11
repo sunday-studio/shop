@@ -234,7 +234,7 @@ struct AnalyticsView: View {
                         IconView(.trendUp, size: 16, weight: .bold)
                             .foregroundStyle(Palette.redText)
                             .frame(width: 32, height: 32)
-                            .background(Palette.redTint, in: RoundedRectangle.continuous(10))
+                            .background(Palette.redTint, in: RoundedRectangle.continuous(Radius.tile))
                         VStack(alignment: .leading, spacing: 1) {
                             TypeStyle.rowTitle.text("Price changes").foregroundStyle(Palette.ink)
                             TypeStyle.rowSub.text(model.priceChangeSummary).foregroundStyle(Palette.ink2).lineLimit(1)

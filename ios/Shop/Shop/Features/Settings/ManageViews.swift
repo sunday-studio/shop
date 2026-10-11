@@ -304,7 +304,7 @@ struct CategoriesView: View {
                 .foregroundStyle(Palette.ink2)
                 .padding(.vertical, 7)
                 .padding(.horizontal, 10)
-                .background(Palette.sunk, in: RoundedRectangle.continuous(10))
+                .background(Palette.sunk, in: RoundedRectangle.continuous(Radius.tile))
                 .padding(.horizontal, Space.gutter)
                 .padding(.top, Space.xl)
                 .padding(.bottom, Space.xs)
@@ -314,7 +314,7 @@ struct CategoriesView: View {
                     SwipeActionRow(trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red) { askDelete(category) }) {
                     Button { openForm(category) } label: {
                         HStack(spacing: Space.l) {
-                            RoundedRectangle.continuous(5).fill(category.dotColor).frame(width: 14, height: 14)
+                            RoundedRectangle.continuous(Radius.dot).fill(category.dotColor).frame(width: 14, height: 14)
                             TypeStyle.rowTitle.text(category.name).foregroundStyle(Palette.ink)
                             Spacer()
                             TypeStyle.body.text("\(category.productCount ?? 0)").foregroundStyle(Palette.ink2)

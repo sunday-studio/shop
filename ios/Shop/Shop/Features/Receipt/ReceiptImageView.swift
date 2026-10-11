@@ -11,7 +11,7 @@ struct ReceiptImageView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color(hex: 0x0C0C0B).ignoresSafeArea()
+            Palette.scanBgDeep.ignoresSafeArea()
             if let image {
                 ZoomableImage(image: image)
                     .ignoresSafeArea(edges: .bottom)

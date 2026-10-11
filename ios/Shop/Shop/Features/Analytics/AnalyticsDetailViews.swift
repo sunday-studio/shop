@@ -47,7 +47,7 @@ struct ShopSpendView: View {
                 Text(ShopBrand.mark(for: shop?.name ?? "").monogram)
                     .font(.custom(ShopFont.bold, size: 14))
                     .frame(width: 40, height: 40)
-                    .background(.white.opacity(0.22), in: RoundedRectangle.continuous(13))
+                    .background(.white.opacity(0.22), in: RoundedRectangle.continuous(Radius.glyph))
             }
             if let monthly {
                 MiniBars(values: monthly.buckets.map { (label: AnalyticsModel.barLabel($0, grouping: monthly.groupBy), cents: $0.cents) }, height: 40)
@@ -215,7 +215,7 @@ struct CategorySpendView: View {
             }
         }
         .frame(height: 28)
-        .clipShape(RoundedRectangle.continuous(10))
+        .clipShape(RoundedRectangle.continuous(Radius.tile))
         .accessibilityLabel(shopSplit.map { "\($0.shop.name) \(Money.format($0.cents))" }.joined(separator: ", "))
     }
 

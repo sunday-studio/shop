@@ -99,7 +99,7 @@ struct SettingsView: View {
                     IconTile(icon: .server, color: .white.opacity(0.2), size: 44)
                     Spacer()
                     HStack(spacing: 6) {
-                        StatusDot(color: connected ? Color(hex: 0x3DDC84) : Color(hex: 0xFFB340))
+                        StatusDot(color: connected ? Palette.scanGreen : Palette.scanAmber)
                         Text(connected ? "Connected" : (app.network.isOnline ? "Unreachable" : "Offline"))
                     }
                     .textStyle(TypeStyle.label.sized(12.5))
@@ -486,7 +486,7 @@ struct UploadQueueView: View {
             }
         }
         .frame(width: 32, height: 40)
-        .clipShape(RoundedRectangle.continuous(6))
-        .overlay(RoundedRectangle.continuous(6).strokeBorder(Palette.line))
+        .clipShape(RoundedRectangle.continuous(Radius.badge))
+        .overlay(RoundedRectangle.continuous(Radius.badge).strokeBorder(Palette.line))
     }
 }
