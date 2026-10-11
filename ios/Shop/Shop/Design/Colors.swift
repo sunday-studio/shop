@@ -51,6 +51,8 @@ enum Palette {
     // Primary button (inverts per theme)
     static let btn = Color.dynamic(light: 0x1D1D1B, dark: 0xF4F4F1)
     static let btnInk = Color.dynamic(light: 0xFFFFFF, dark: 0x0C0C0B)
+    static let btnDisabled = Color.dynamic(light: 0xECECEA, dark: 0x2E2E2B)
+    static let btnDisabledInk = Color.dynamic(light: 0xB4B4AF, dark: 0x5C5C58)
 
     static let scrim = Color.dynamic(light: 0x1D1D1B, dark: 0x000000, lightAlpha: 0.34, darkAlpha: 0.62)
     static let seg = Color.dynamic(light: 0xFFFFFF, dark: 0x3A3A37)

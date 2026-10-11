@@ -63,7 +63,7 @@ struct ShopButtonStyle: ButtonStyle {
             .frame(height: size.height)
             .background(background, in: Capsule())
             .contentShape(Capsule())
-            .opacity(isEnabled ? 1 : 0.4)
+            .opacity(isEnabled || isFlatDisabled ? 1 : 0.4)
             .scaleEffect(configuration.isPressed && !reduce ? Motion.pressScale : 1)
             .animation(configuration.isPressed ? Motion.press : Motion.spring, value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { _, pressed in
@@ -71,8 +71,15 @@ struct ShopButtonStyle: ButtonStyle {
             }
     }
 
+    /// Primary buttons go flat grey when disabled (the design's disabled Save), not a faded black pill.
+    private var isFlatDisabled: Bool {
+        if case .primary = kind { return true }
+        return false
+    }
+
     private var foreground: Color {
-        switch kind {
+        if !isEnabled, isFlatDisabled { return Palette.btnDisabledInk }
+        return switch kind {
         case .primary: Palette.btnInk
         case .secondary: Palette.ink
         case .destructive: Palette.redText
@@ -82,7 +89,8 @@ struct ShopButtonStyle: ButtonStyle {
     }
 
     private var background: Color {
-        switch kind {
+        if !isEnabled, isFlatDisabled { return Palette.btnDisabled }
+        return switch kind {
         case .primary: Palette.btn
         case .secondary: Palette.sunk
         case .destructive: Palette.redTint
