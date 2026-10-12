@@ -91,7 +91,7 @@ func (e *env) realFixture() map[string]int64 {
 // coverage the app would show on this data.
 func TestRealReceiptsCoverage(t *testing.T) {
 	e := newEnv(t)
-	e.s.now = func() time.Time { return time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC) }
+	e.s.now = func() time.Time { return time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC) }
 	prods := e.realFixture()
 	if len(prods) != 74 {
 		t.Fatalf("fixture has %d products", len(prods))
@@ -191,7 +191,7 @@ func TestRealReceiptsCoverage(t *testing.T) {
 		}
 	}
 	// the Dirk price is 72 days old: flagged, with the date in the explanation
-	if it := p.item(halfv); !contains(it.Confidence, ConfOldPrice) || !strings.Contains(it.Explanation, "Cheaper at Dirk") || !strings.Contains(it.Explanation, "30 Jun") {
+	if it := p.item(halfv); !contains(it.Confidence, ConfOldPrice) || !strings.Contains(it.Explanation, "Cheaper at Dirk") || !strings.Contains(it.Explanation, "28 Apr") {
 		t.Fatalf("explanation/confidence = %q %v", it.Explanation, it.Confidence)
 	}
 	if p.Stores[1].EstimateCents != 338 || p.Stores[1].ItemCount != 2 {

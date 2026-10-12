@@ -108,7 +108,7 @@ What this suggests, before real data:
 
 - HEIC and parser: the 13 HEIC were converted to JPEG by the user; PP-OCRv5 reads all 13 (4–68 s each, first call slowest). No HEIC handling exists in `api/`, `ocr/`, `deploy/` or the iOS sources (grep, no hits); a raw HEIC was not sent through the server. Recommendation: convert on the phone at upload.
   - Parser (current code, after the backend's SUBTOTAAL fix): 10/13 receipts reconcile. IMG_1466 is an OCR misread (`20015` for `20,15`), IMG_1470 a clipped Bedrag (`49` for `2,49`); two small token repairs make 12/13 reconcile without breaking any clean receipt. IMG_1475 is a row-reconstruction fault (price column drifts about -24 px to +13 px against the descriptions, perspective rather than skew). Box-angle deskew made things worse. IMG_1475's promo amounts stay unresolved and the receipt stays `needs_review`.
-  - IMG_1469's date (2025-05-20) was checked against the paper receipt and is correct.
+  - IMG_1469's date was checked against the paper receipt and is correct (the committed fixture date is fictional).
   - Prototype: `spike/spikeparse.go.txt`. OCR output of the real receipts is kept local in `spike/out/` (git-ignored, as are the photos in `spike/data/`).
 - Shop headers: 11/13 headers readable (7 Albert Heijn, 4 Dirk); 2 butcher slips have no shop header (cropped, left side cut).
 - Small NL→EN model: opus-mt-nl-en, CTranslate2 int8 (`gaudi/opus-mt-nl-en-ctranslate2`, 158 MB on disk), CPU. Script `spike/nlen/eval.py`. DB has no products yet, so no manual `name_en` eval set; used the 380 glossary terms + 76 distinct item lines from the 13 real receipts.
