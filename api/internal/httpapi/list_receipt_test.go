@@ -9,8 +9,18 @@ import (
 
 // Phase A: confirming a receipt checks off the shopping list.
 
-func today() string        { return time.Now().Format("02-01-2006") }
-func daysAgo(n int) string { return time.Now().AddDate(0, 0, -n).Format("02-01-2006") }
+// The server decides what "recent" means in Europe/Amsterdam (see newEnv), so the test dates must be
+// calendar days there too; the machine's own zone (UTC on CI) would be a day off in the evening.
+var amsterdam = func() *time.Location {
+	loc, err := time.LoadLocation("Europe/Amsterdam")
+	if err != nil {
+		panic(err)
+	}
+	return loc
+}()
+
+func today() string        { return time.Now().In(amsterdam).Format("02-01-2006") }
+func daysAgo(n int) string { return time.Now().In(amsterdam).AddDate(0, 0, -n).Format("02-01-2006") }
 
 func (e *env) addItem(body map[string]any) map[string]any {
 	e.t.Helper()
