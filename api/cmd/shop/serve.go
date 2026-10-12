@@ -81,6 +81,9 @@ func openApp(ctx context.Context, log *slog.Logger) (*app, error) {
 		receipts.Config{ImagesDir: cfg.ImagesDir(), Location: cfg.Location}, log)
 	a.matcher = match.NewMatcher(conn)
 	foodFacts := openfoodfacts.New(cfg.FoodFactsUserAgent)
+	if cfg.FoodFactsBaseURL != "" {
+		foodFacts = foodFacts.WithBaseURL(cfg.FoodFactsBaseURL)
+	}
 	a.products = products.New(conn, a.matcher, foodFacts, cfg.ImagesDir(), log)
 	a.auto = autoprod.New(conn, a.matcher, a.products, foodFacts, a.queue, log, cfg.AutoProducts)
 	a.auto.RegisterJobs(a.queue)
