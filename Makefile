@@ -2,7 +2,7 @@ COMPOSE := docker compose -f deploy/docker-compose.yml
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 
-.PHONY: e2e setup help gen test vet lint build run up down logs ps clean backup token spike-up spike-down spike-status spike-ocr spike-label spike-score
+.PHONY: e2e restore-drill offsite-up offsite-down offsite-sync offsite-pull setup help gen test vet lint build run up down logs ps clean backup token spike-up spike-down spike-status spike-ocr spike-label spike-score
 
 help: ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-8s %s\n", $$1, $$2}'
@@ -19,6 +19,21 @@ vet: ## go vet + gofmt check
 e2e: ## end-to-end test in an isolated docker stack (project shop-e2e, port 18080); never touches the live stack
 	@docker image inspect shop-ocr:ppocrv5 >/dev/null 2>&1 || docker build -t shop-ocr:ppocrv5 --build-arg OCR_ENGINE=ppocrv5 ocr
 	cd api && go test -tags e2e -count=1 -v -timeout 40m ./e2e/
+
+restore-drill: ## restore drill in an isolated docker stack (project shop-e2e, port 18481): backup, wipe, restore (also from an off-site copy), verify; never touches the live stack
+	cd api && go test -tags drill -count=1 -v -timeout 30m ./drill/
+
+offsite-up: ## start the optional off-site copy (rclone) after each backup; needs OFFSITE_REMOTE, see docs/operations.md
+	$(COMPOSE) --profile offsite up -d offsite
+
+offsite-down: ## stop the optional off-site copy
+	$(COMPOSE) --profile offsite stop offsite
+
+offsite-sync: ## copy the backup folder off-site now (also needs OFFSITE_REMOTE)
+	$(COMPOSE) --profile offsite run --rm offsite once
+
+offsite-pull: ## bring the off-site copy back into the backup folder (first step of a restore from off-site)
+	$(COMPOSE) --profile offsite run --rm offsite pull
 
 lint: ## golangci-lint (via go run, no install needed)
 	cd api && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0 run

@@ -1,0 +1,36 @@
+# Isolated stack for `make restore-drill`. Always used together with deploy/docker-compose.yml,
+# deploy/docker-compose.e2e.yml and the project name shop-e2e:
+#
+#   docker compose -p shop-e2e --profile offsite \
+#     -f deploy/docker-compose.yml -f deploy/docker-compose.e2e.yml -f deploy/docker-compose.drill.yml ...
+#
+# It adds, on top of the e2e overrides: its own host port (18481), a real (throwaway) volume for
+# the backup folder instead of a tmpfs, and a throwaway "off-site" destination: a folder in a
+# volume, reached through an rclone crypt remote (so the drill also proves that an encrypted
+# copy restores). Nothing here touches the live stack (project "shop", port 8080, volume
+# shop_shop-data); `down -v -p shop-e2e` removes everything it creates.
+services:
+  api:
+    ports: !override ["127.0.0.1:18481:8080"]
+
+  backup:
+    volumes: !override ["shop-data:/data", "backup-dir:/backup"]
+    tmpfs: !reset null
+
+  offsite:
+    volumes: !override
+      - "./offsite/offsite.sh:/offsite.sh:ro"
+      - "shop-data:/data"
+      - "backup-dir:/backup"
+      - "offsite-store:/offsite-store"
+    environment:
+      OFFSITE_REMOTE: "drillcrypt:shop"
+      OFFSITE_LABEL: "drill-offsite"
+      RCLONE_CONFIG_DRILLSTORE_TYPE: local
+      RCLONE_CONFIG_DRILLCRYPT_TYPE: crypt
+      RCLONE_CONFIG_DRILLCRYPT_REMOTE: "drillstore:/offsite-store"
+      RCLONE_CONFIG_DRILLCRYPT_PASSWORD: ${DRILL_CRYPT_PASSWORD:-}   # obscured by the drill at run time
+
+volumes:
+  backup-dir: {}
+  offsite-store: {}

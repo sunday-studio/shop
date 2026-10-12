@@ -1,0 +1,9 @@
+# Used by docker-compose.caddy.example.yml. Caddy gets and renews the HTTPS certificate itself.
+{$SHOP_DOMAIN} {
+	encode zstd gzip
+	# Receipt photos can be several MB.
+	request_body {
+		max_size 25MB
+	}
+	reverse_proxy {$SHOP_UPSTREAM}
+}

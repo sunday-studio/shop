@@ -274,9 +274,36 @@ func check(err error) apitypes.Check {
 // backupStaleAfter: daily backups, plus slack for a missed night.
 const backupStaleAfter = 36 * time.Hour
 
-// backupCheck reports the last backup run. It is absent until backups
-// have run at least once, so a dev setup without a NAS stays healthy.
+// backupCheck reports the last backup run and, when an optional off-site copy has run, its
+// result too. It is absent until a backup (or off-site copy) has run at least once, so a dev
+// setup without backups stays healthy. The off-site part says nothing about where the copy
+// goes: it only reports the label the owner chose and when the last copy succeeded.
 func (s *Server) backupCheck() (apitypes.Check, bool) {
+	local, haveLocal := s.localBackupCheck()
+	off, haveOff := s.offsiteCheck()
+	switch {
+	case haveLocal && haveOff:
+		d := *local.Detail + "; " + *off.Detail
+		return apitypes.Check{Ok: local.Ok && off.Ok, Detail: &d}, true
+	case haveOff:
+		return off, true
+	}
+	return local, haveLocal
+}
+
+func (s *Server) offsiteCheck() (apitypes.Check, bool) {
+	st, err := backup.ReadOffsiteStatus(s.DataDir)
+	if errors.Is(err, os.ErrNotExist) {
+		return apitypes.Check{}, false
+	}
+	if err != nil {
+		return check(err), true
+	}
+	ok, d := st.Evaluate(time.Now())
+	return apitypes.Check{Ok: ok, Detail: &d}, true
+}
+
+func (s *Server) localBackupCheck() (apitypes.Check, bool) {
 	st, err := backup.ReadStatus(filepath.Join(s.DataDir, "backup_status.json"))
 	if errors.Is(err, os.ErrNotExist) {
 		return apitypes.Check{}, false

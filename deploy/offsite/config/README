@@ -1,0 +1,3 @@
+Put your rclone.conf here (this folder is mounted at /config/rclone in the optional
+"offsite" service). Its contents are git-ignored. Alternatively set RCLONE_CONFIG_*
+variables in deploy/offsite/offsite.env. See docs/operations.md.

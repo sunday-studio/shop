@@ -35,3 +35,9 @@ spike/out/
 
 # agents' working notes (local only)
 notes/
+
+# optional off-site copy (rclone): config and secrets stay local
+deploy/offsite/config/*
+!deploy/offsite/config/.gitkeep
+!deploy/offsite/config/README
+deploy/offsite/offsite.env

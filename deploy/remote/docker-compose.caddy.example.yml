@@ -1,0 +1,37 @@
+# OPTIONAL example: Caddy as a reverse proxy with automatic HTTPS (Let's Encrypt).
+#
+# Two ways to use it:
+#  A. Shop runs on a server with a public address (a VPS). Caddy sits in front of it.
+#  B. Shop runs at home, Caddy runs on a VPS, and the two are joined by a VPN (WireGuard or
+#     Tailscale). Run Caddy alone on the VPS with SHOP_UPSTREAM=<home VPN address>:8080.
+#
+# You need a domain whose DNS name points at the machine running Caddy, and ports 80 and 443
+# open to it (80 is only for getting the certificate).
+#
+#   export SHOP_DOMAIN=shop.example.com
+#   docker compose -f deploy/docker-compose.yml -f deploy/remote/docker-compose.caddy.example.yml up -d
+#
+# Use https://shop.example.com as the server URL in the app. Do NOT also publish port 8080
+# to the internet: this file rebinds it to this machine only.
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      SHOP_DOMAIN: ${SHOP_DOMAIN:?set SHOP_DOMAIN, for example shop.example.com}
+      SHOP_UPSTREAM: ${SHOP_UPSTREAM:-api:8080}
+    volumes:
+      - ./remote/Caddyfile.example:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_started
+
+  api:
+    ports: !override ["127.0.0.1:${SHOP_PORT:-8080}:8080"]
+
+volumes:
+  caddy-data: {}
+  caddy-config: {}

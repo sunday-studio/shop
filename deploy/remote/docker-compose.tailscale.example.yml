@@ -1,0 +1,26 @@
+# OPTIONAL example: reach Shop from your phone through Tailscale, running Tailscale in a container.
+# You do not need this if you install Tailscale on the Mac itself (see docs/operations.md); this
+# is for people who prefer everything in Docker. No secrets in this file: the key comes from
+# the environment.
+#
+#   export TS_AUTHKEY=tskey-auth-...        # a one-off auth key from your Tailscale admin console
+#   docker compose -f deploy/docker-compose.yml -f deploy/remote/docker-compose.tailscale.example.yml up -d
+#
+# Then use https://shop.<your-tailnet>.ts.net as the server URL in the app (HTTPS needs "HTTPS
+# Certificates" enabled for your tailnet). Shop itself stays on its normal port.
+services:
+  tailscale:
+    image: tailscale/tailscale:stable
+    hostname: shop
+    restart: unless-stopped
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?set TS_AUTHKEY in your shell, not in this file}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: "true"
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - ./remote/tailscale-serve.example.json:/config/serve.json:ro
+
+volumes:
+  tailscale-state: {}
