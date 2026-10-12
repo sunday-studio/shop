@@ -73,7 +73,7 @@ struct ShopLogo: View {
         HStack(spacing: 8) {
             ShopIconBadge(size: height, tilt: -9 + tilt)
             Text("Shop")
-                .font(.custom(ShopFont.bold, size: height * 0.72))
+                .font(.custom(ShopFont.bold, fixedSize: height * 0.72)) // the badge is fixed-size, so the word is too
                 .tracking(-height * 0.72 * 0.04)
                 .foregroundStyle(Palette.ink)
         }

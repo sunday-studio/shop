@@ -41,7 +41,7 @@ enum Palette {
     static let tray = Color.dynamic(light: 0xFFFFFF, dark: 0x1C1C1A)
     /// Fields and option rows inside a tray (one step lighter than the tray in dark).
     static let trayField = Color.dynamic(light: 0xF4F4F3, dark: 0x262624)
-    static let line = Color.dynamic(light: 0xF0F0EE, dark: 0x1F1F1D)
+    static let line = Color.dynamic(light: 0xE2E2DE, dark: 0x30302D)
 
     // Ink
     static let ink = Color.dynamic(light: 0x1D1D1B, dark: 0xF4F4F1)

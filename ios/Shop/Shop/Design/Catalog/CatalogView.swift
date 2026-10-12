@@ -113,6 +113,14 @@ struct CatalogView: View {
                     }
                     SegmentedControl(options: ["By category", "By shop"], title: { $0 }, selection: $segment)
                 }
+                section("Actions and camera off") {
+                    PillAction(title: "Edit English name") {}
+                    VStack(spacing: 0) {
+                        ActionRow(title: "Merge into another product", icon: .link) {}
+                        ActionRow(title: "Delete product", icon: .trash, tone: .destructive) {}
+                    }
+                    CameraOffState(onOpenSettings: {}).frame(height: 300)
+                }
                 section("Duplicate receipt") {
                     DuplicateReceiptBanner(otherDate: "2 Aug", otherTotal: "€84,68", strength: .totalAndDate, onCompare: {}, onRemoveThis: {}, onKeepBoth: {})
                     DuplicateReceiptBanner(otherDate: "2 Aug", otherTotal: "€84,68", strength: .totalDateAndLines, onCompare: {}, onRemoveThis: {}, onKeepBoth: {})
