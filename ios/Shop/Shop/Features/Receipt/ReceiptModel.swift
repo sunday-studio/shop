@@ -485,6 +485,10 @@ final class ReceiptModel {
         app.home.apply(new)
     }
 
+    func setDuplicateLocally(_ d: PossibleDuplicate?) {
+        withAnimation(Motion.collapse) { receipt?.possibleDuplicateOf = d }
+    }
+
     private func replaceLine(_ line: ReceiptLine) {
         guard let i = receipt?.lines?.firstIndex(where: { $0.id == line.id }) else { return }
         receipt?.lines?[i] = line

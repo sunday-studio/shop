@@ -237,6 +237,53 @@ final class ShopUITests: XCTestCase {
         exists(textContaining("pindakaas"))
     }
 
+    // MARK: Duplicate receipts
+
+    private func openDuplicateReceipt() {
+        exists(text("Receipts to review"))
+        let row = anyElement(startingWith: "Albert Heijn, Possible duplicate")
+        scrollTo(row)
+        row.tap()
+        exists(anyElement(startingWith: "Looks like the receipt from"))
+    }
+
+    func testDuplicateRowAndBannerShowOnTheNewerReceipt() {
+        openDuplicateReceipt()
+        exists(text("Same shop, day, total and items."))
+        XCTAssertTrue(app.buttons["Same receipt, remove this one"].exists)
+        XCTAssertTrue(app.buttons["Keep both"].exists)
+    }
+
+    func testKeepBothHidesTheBannerAndUndoBringsItBack() {
+        openDuplicateReceipt()
+        app.buttons["Keep both"].tap()
+        exists(text("Keeping both"))
+        XCTAssertTrue(waitForDisappearance(anyElement(startingWith: "Looks like the receipt from")), "banner collapses")
+        app.buttons["Undo"].firstMatch.tap()
+        exists(anyElement(startingWith: "Looks like the receipt from"))
+    }
+
+    func testCompareViewShowsBothReceiptsAndTheItems() {
+        openDuplicateReceipt()
+        button(startingWith: "Looks like the receipt from").tap()
+        exists(text("Compare receipts"))
+        exists(text("This receipt"))
+        exists(textContaining("From "))
+        exists(text("All items match"))
+        exists(app.buttons["Open the other receipt"])
+    }
+
+    func testRemoveThisAsksFirstAndSaysItCannotBeUndone() {
+        openDuplicateReceipt()
+        app.buttons["Same receipt, remove this one"].tap()
+        exists(text("Remove this receipt?"))
+        exists(textContaining("can't be undone"))
+        app.buttons["Remove this receipt"].tap()
+        exists(text("Receipt removed"))
+        exists(text("Receipts to review"))
+        XCTAssertFalse(anyElement(startingWith: "Albert Heijn, Possible duplicate").exists)
+    }
+
     private func waitForDisappearance(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
         let predicate = NSPredicate(format: "exists == false")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)

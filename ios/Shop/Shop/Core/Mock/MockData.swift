@@ -112,7 +112,35 @@ enum MockData {
             receipt(108, shop: 3, at: ago(days: 8, hour: 16, minute: 0), total: 3390, status: .ok, lineCount: 12),
             receipt(109, shop: 1, at: ago(days: 12, hour: 11, minute: 15), total: 5273, status: .ok, lineCount: 26),
             receipt(110, shop: 2, at: ago(days: 16, hour: 18, minute: 30), total: 3115, status: .failed, reasons: []),
+            // Duplicate pairs (the newer one carries the warning): same photo scanned twice, and a maybe-second-trip.
+            receipt(111, shop: 1, at: ago(days: 2, hour: 18, minute: 12), total: 2245, status: .ok, lineCount: 11),
+            receipt(112, shop: 2, at: ago(days: 5, hour: 17, minute: 30), total: 2740, status: .ok, lineCount: 14),
         ]
+    }
+
+    /// Possible-duplicate fixtures, keyed by the NEWER receipt (openapi 0.17.0 PossibleDuplicate).
+    static let duplicatePairs: [Int64: PossibleDuplicate] = [
+        // Almost certainly the same receipt: 10 of 11 lines shared, same minute.
+        111: PossibleDuplicate(receiptId: 104, purchasedAt: ago(days: 2, hour: 18, minute: 10), totalCents: 2245, shop: ShopRefLite(id: 1, name: "Albert Heijn"),
+                               shopName: "Albert Heijn", match: "total+date+lines", sharedLines: 10, itemCount: 11, otherItemCount: 11, timeMatches: true),
+        // Same shop, day and total, different items and times: could be a second trip.
+        112: PossibleDuplicate(receiptId: 107, purchasedAt: ago(days: 5, hour: 12, minute: 40), totalCents: 2740, shop: ShopRefLite(id: 2, name: "Lidl"),
+                               shopName: "Lidl", match: "total+date", sharedLines: 3, itemCount: 14, otherItemCount: 14, timeMatches: false),
+    ]
+
+    /// Item lines for the compare view (the other receipts in the mock are summaries).
+    static func comparisonLines(receipt id: Int64) -> [ReceiptLine]? {
+        let common = ["AH HALFV MELK 1,5L", "BANANEN", "AH KIPFILET 500G", "TOMATEN TROS", "AH VOLKOREN BRD", "CALVE PINDAKAAS", "JONGE KAAS 48+", "AH SPINAZIE", "KOFFIEBONEN", "AH EIEREN 10ST"]
+        func make(_ r: Int64, _ names: [String]) -> [ReceiptLine] {
+            names.enumerated().map { i, n in line(r * 100 + Int64(i), receipt: r, i + 1, n, total: Int64(150 + i * 37)) }
+        }
+        switch id {
+        case 104: return make(104, common + ["AH ZUIVELSPREAD"])
+        case 111: return make(111, common + ["AH ZUIVELSPREAD "])
+        case 107: return make(107, (1...14).map { "LIDL ARTIKEL \($0)" })
+        case 112: return make(112, ["LIDL ARTIKEL 1", "LIDL ARTIKEL 2", "LIDL ARTIKEL 3"] + (1...11).map { "LIDL ANDERS \($0)" })
+        default: return nil
+        }
     }
 
     // MARK: Prices

@@ -75,6 +75,14 @@ private struct ReceiptScreen: View {
                             }
                         }
 
+                        if let duplicate = model.duplicate {
+                            DuplicateBannerSection(model: model, duplicate: duplicate) {
+                                if !app.advanceReview(after: model.receiptId) { dismiss() }
+                            }
+                            .padding(.horizontal, Space.edge)
+                            .padding(.top, 18)
+                        }
+
                         // One banner per problem, each with its own single action.
                         if receipt.shopId == nil && model.suggestion == nil {
                             Banner(

@@ -10,6 +10,13 @@ final class MockServer: HTTPTransport {
     private var products = MockData.products
     private var deletedProducts: [Int64: Product] = [:]
     private var receipts = MockData.receipts
+    private var keptDuplicates: Set<Int64> = []
+
+    private func withDuplicate(_ r: Receipt) -> Receipt {
+        var r = r
+        if let d = MockData.duplicatePairs[r.id], !keptDuplicates.contains(r.id), receipts.contains(where: { $0.id == d.receiptId }) { r.possibleDuplicateOf = d }
+        return r
+    }
     private var aliases: [Alias] = [
         Alias(id: 1, text: "ah halfv melk 1,5l", shopId: 1, shopName: "Albert Heijn", productId: 1, createdAt: MockData.ago(days: 90)),
         Alias(id: 2, text: "halfvolle melk", shopId: 2, shopName: "Lidl", productId: 1, createdAt: MockData.ago(days: 60)),
@@ -190,7 +197,8 @@ final class MockServer: HTTPTransport {
         // Receipts
         case ("GET", "v1/receipts/counts"):
             func n(_ s: ReceiptStatus) -> Int { receipts.filter { $0.status == s }.count }
-            return ok(ReceiptCounts(pending: n(.pending), processing: n(.processing), needsReview: n(.needsReview), ok: n(.ok), failed: n(.failed), total: receipts.count))
+            let dupes = receipts.filter { withDuplicate($0).possibleDuplicateOf != nil }.count
+            return ok(ReceiptCounts(pending: n(.pending), processing: n(.processing), needsReview: n(.needsReview), ok: n(.ok), failed: n(.failed), total: receipts.count, possibleDuplicates: dupes))
         case ("GET", "v1/search"):
             return ok(search(q["q"] ?? ""))
         case ("GET", "v1/receipts"):
@@ -199,13 +207,23 @@ final class MockServer: HTTPTransport {
             if let s = q["shop_id"], let sid = Int64(s) { items = items.filter { $0.shopId == sid } }
             if let f = q["from"].flatMap(Dates.parseIsoDay) { items = items.filter { $0.displayDate >= f } }
             if let t = q["to"].flatMap(Dates.parseIsoDay) { items = items.filter { $0.displayDate < Dates.adding(.day, 1, to: t) } }
-            return ok(ReceiptPage(items: items.map { var r = $0; r.lines = nil; return r }, nextCursor: nil))
+            return ok(ReceiptPage(items: items.map { var r = withDuplicate($0); r.lines = nil; return r }, nextCursor: nil))
         case ("POST", "v1/receipts"):
             return upload(body, contentType: contentType)
         case ("GET", "v1/receipts/:id"):
             guard var r = receipts.first(where: { $0.id == id(2) }) else { return notFound() }
             r.shopSuggestion = mockSuggestion(for: r.id)
+            r = withDuplicate(r)
+            if r.lines == nil { r.lines = MockData.comparisonLines(receipt: r.id) }
             return ok(r)
+        case ("POST", "v1/receipts/:id/duplicate/keep"):
+            guard let rid = id(2), receipts.contains(where: { $0.id == rid }) else { return notFound() }
+            keptDuplicates.insert(rid)
+            return (204, Data())
+        case ("DELETE", "v1/receipts/:id/duplicate/keep"):
+            guard let rid = id(2), receipts.contains(where: { $0.id == rid }) else { return notFound() }
+            keptDuplicates.remove(rid)
+            return (204, Data())
         case ("GET", "v1/receipts/:id/shop-suggestion"):
             guard let rid = id(2) else { return notFound() }
             return ok(ShopSuggestionAnswer(receiptId: rid, suggestion: mockSuggestion(for: rid)))
