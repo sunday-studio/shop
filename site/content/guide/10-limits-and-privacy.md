@@ -8,7 +8,7 @@ summary: What Shop does not do, and what leaves your machine.
 
 - **Dutch receipts only.** Other countries need their own parser rules and dictionary.
 - **iPhone only.** There is no Android app, and no App Store build yet.
-- **No hosted version.** You run the server yourself.
+- **No hosted version, one household.** You run the server yourself, for yourself.
 - **Plain HTTP.** Keep the server on your home network or a VPN, never on the open internet.
 - **OCR is not perfect.** A receipt that doesn't add up is flagged so you can fix it.
 
@@ -21,7 +21,7 @@ summary: What Shop does not do, and what leaves your machine.
 
 ## Licence and credits
 
-Shop is released under the MIT licence.
+Shop is licensed under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0). You may use and change it for personal use. Commercial use needs the owner's permission. This is source-available, not open source. The GT America font files are a separate trial licence and are not covered by it. The full text is in `LICENSE` in the repository.
 
 - [Open Food Facts](https://world.openfoodfacts.org) data, under the ODbL
 - [logo.dev](https://logo.dev) shop logos

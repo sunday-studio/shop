@@ -13,7 +13,7 @@ Photograph a paper receipt. Shop reads it on your own server, files it, and tell
 - Creates products from your receipts. Anything uncertain waits in a review queue.
 - Shows spending by month, shop and category, and price changes for the things you buy.
 - Scans product barcodes and looks them up in Open Food Facts.
-- Keeps a shopping list that works offline.
+- Keeps a shopping list that works offline, with checklists and a "By store" view of where it is cheapest.
 - Lets an AI assistant answer questions about your spending.
 
 ## How it works
@@ -29,4 +29,4 @@ Photograph a paper receipt. Shop reads it on your own server, files it, and tell
 
 Everything runs on your own machine, in Docker, on the CPU. Apart from two optional lookups (Open Food Facts for barcodes, logo.dev for shop logos), nothing is sent to a cloud service.
 
-Shop is open source under the MIT licence: [github.com/sunday-studio/shop](https://github.com/sunday-studio/shop).
+Shop is source-available under the PolyForm Noncommercial licence: free to use and change for personal use, not for commercial use. The code is at [github.com/sunday-studio/shop](https://github.com/sunday-studio/shop). See [Limits and privacy](limits-and-privacy).

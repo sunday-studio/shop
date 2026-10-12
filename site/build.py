@@ -324,7 +324,7 @@ BRAND = '<a class="brand" href="../index.html"><img src="../img/logo-badge.svg" 
 
 FOOTER = f'''<footer class="foot" id="credits">
 <div class="foot-row">{BRAND}<a class="link foot-link" href="{GITHUB}">{GH18}View the source and README on GitHub →</a></div>
-<p>MIT licence. Product data from Open Food Facts (ODbL). Full credits and licences in the repository. Not affiliated with any supermarket.</p>
+<p>PolyForm Noncommercial 1.0.0: free for personal use, not for commercial use. Product data from Open Food Facts (ODbL). Full credits and licences in the repository. Not affiliated with any supermarket.</p>
 <p class="made">A product from <a class="link" href="https://www.thesunday.studio/">Sunday Studio</a>.</p>
 </footer>'''
 

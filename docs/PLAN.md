@@ -501,7 +501,7 @@ Estimates are in focused working days. Each milestone ends with a demo and a tag
 
 ### M0 — Foundations (1.5 d)
 - [x] Monorepo, Makefile (`make run`, `make test`, `make gen`, `make up`), `.editorconfig`
-- [ ] Licence (pick one)
+- [x] Licence: PolyForm Noncommercial 1.0.0 (personal and non-commercial use; source-available, not OSI open source). Chosen 2026-10-12, see `LICENSE`
 - [x] Go module skeleton, `cmd/shop serve` with `/healthz`, slog, config
 - [x] goose + `0001_init.sql`, sqlc wired up, `shop migrate`
 - [x] `openapi.yaml` v0 (shops + receipts + healthz), oapi-codegen types
