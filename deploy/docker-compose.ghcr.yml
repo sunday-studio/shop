@@ -1,0 +1,15 @@
+# Use the published images instead of building locally:
+#   cd deploy
+#   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
+# SHOP_TAG picks the API version (default latest, or e.g. 1.2.0).
+# The default `docker compose up` still builds from source.
+services:
+  api:
+    image: ghcr.io/sunday-studio/shop-api:${SHOP_TAG:-latest}
+    build: !reset null
+  backup:
+    image: ghcr.io/sunday-studio/shop-api:${SHOP_TAG:-latest}
+  ocr:
+    image: ghcr.io/sunday-studio/shop-ocr:ppocrv5
+    build: !reset null

@@ -33,6 +33,21 @@ make setup     # build, start, and print the app pairing password once
 
 The first build downloads the OCR models and takes several minutes. Then pair the iPhone app with your server URL and the printed password. The server speaks plain HTTP, so keep it on your LAN or behind a VPN such as Tailscale.
 
+## Run the published image
+
+Instead of building, you can pull ready-made images from GitHub Container Registry (linux/amd64 and linux/arm64):
+
+- `ghcr.io/sunday-studio/shop-api`: the server and the backup service. Tags: `latest` (main), a version such as `1.2.0` for each release, and `sha-<commit>`.
+- `ghcr.io/sunday-studio/shop-ocr`: the OCR service. Tag: `ppocrv5`, published for releases (and by a manual run) only, because it is large.
+
+```bash
+cd deploy
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
+```
+
+Set `SHOP_TAG=1.2.0` to pin a version (default `latest`). A plain `docker compose up` still builds from source. To pull one image by hand: `docker pull ghcr.io/sunday-studio/shop-api:latest`.
+
 ## Repo
 
 | Path | What |

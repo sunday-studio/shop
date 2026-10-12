@@ -1,0 +1,144 @@
+name: docker
+
+# Builds the container images and publishes them to GitHub Container Registry
+# (ghcr.io/sunday-studio/shop-api and shop-ocr) using only the built-in
+# GITHUB_TOKEN. Pull requests build and test but never push.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGISTRY: ghcr.io
+  API_IMAGE: ghcr.io/sunday-studio/shop-api
+  OCR_IMAGE: ghcr.io/sunday-studio/shop-ocr
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git describe needs tags
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      - name: go vet
+        working-directory: api
+        run: go vet ./...
+
+      - name: go test
+        working-directory: api
+        run: go test ./...
+
+      - name: Version and commit
+        id: ver
+        run: |
+          echo "version=$(git describe --tags --always --dirty)" >> "$GITHUB_OUTPUT"
+          echo "commit=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.API_IMAGE }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.title=shop-api
+            org.opencontainers.image.description=Shop API server (also runs the backup service)
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: api
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.ver.outputs.version }}
+            COMMIT=${{ steps.ver.outputs.commit }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+  # The OCR image is heavy: PaddlePaddle plus PaddleOCR from pip, and the model
+  # weights are downloaded at build time (ocr/warmup.py) so the container starts
+  # offline. A cold build takes many minutes and the arm64 half runs under QEMU
+  # emulation on a free runner, which is slower still. So it is NOT built on
+  # every push or pull request: only on v* tags or a manual run.
+  ocr:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.OCR_IMAGE }}
+          tags: |
+            type=raw,value=ppocrv5
+            type=sha,prefix=ppocrv5-
+            type=semver,pattern={{version}}-ppocrv5
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.title=shop-ocr
+            org.opencontainers.image.description=Shop OCR service (PaddleOCR PP-OCRv5)
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ocr
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            OCR_ENGINE=ppocrv5
+          cache-from: type=gha,scope=ocr
+          cache-to: type=gha,scope=ocr,mode=max
