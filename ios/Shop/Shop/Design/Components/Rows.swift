@@ -235,8 +235,7 @@ struct ListItemRow: View {
             }
             .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
             .padding(.horizontal, -10)
-            // The circle's check glyph is decoration; without this VoiceOver reads its symbol name ("checkmark").
-            .accessibilityElement(children: .ignore)
+            // CheckCircle hides its glyph from VoiceOver, so the button's own label is the only name.
             .accessibilityLabel(shownChecked ? "Uncheck \(title)" : "Check off \(title)")
 
             VStack(alignment: .leading, spacing: 2) {
