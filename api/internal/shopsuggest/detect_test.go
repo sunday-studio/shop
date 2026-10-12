@@ -94,7 +94,7 @@ func TestLiveBatchHeaders(t *testing.T) {
 		t.Errorf("glued town: %+v", d)
 	}
 	// a delivery order whose first line is the town: no shop name to suggest
-	d = Detect([]string{"Teststad", "Dorpsstraat 7", "Teststad", "1234 AB", "Nederland", "0105550142", "KVK nummer: 12345678"})
+	d = Detect([]string{"Teststad", "Dorpsstraat 7", "Teststad", "1234AB", "Nederland", "0105550142", "KVK nummer: 12345678"})
 	if d != nil {
 		t.Errorf("a town is not a shop: %+v", d)
 	}
