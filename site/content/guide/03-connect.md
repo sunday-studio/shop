@@ -8,9 +8,9 @@ summary: Pair your phone with your server using its address and the password.
 
 Shop is not on the App Store yet. For now you build the app yourself and install it on your iPhone.
 
-1. Open `ios/Shop/Shop.xcodeproj` in Xcode 27.
+1. Open `ios/Shop/Shop.xcodeproj` in Xcode (the project needs a recent version, set up for iOS 26.5).
 2. Select the Shop target, open Signing & Capabilities, and choose your own team. Change the bundle identifier if Xcode asks you to.
-3. Pick your iPhone (iOS 17 or later) and run the app.
+3. Pick your iPhone (iOS 26.5 or later) and run the app.
 
 The full setup notes are in [IOS-SETUP.md](https://github.com/sunday-studio/shop/blob/main/docs/IOS-SETUP.md).
 
@@ -21,6 +21,11 @@ The full setup notes are in [IOS-SETUP.md](https://github.com/sunday-studio/shop
 3. Tap **Test connection**. When the app says it found a Shop server, tap **Continue**.
 4. Step 2 asks for the pairing password that `make setup` printed. Enter it and tap **Connect**.
 5. When the app says you're connected, scan your first receipt or go to Home.
+
+Which address to use:
+
+- **A real iPhone:** the server machine's address on your network, like the examples above. `localhost` points at the phone itself and will not work.
+- **The iOS Simulator on the same Mac as the server:** `http://localhost:8080`.
 
 The first time, the iPhone asks to allow access to your local network. Allow it, or the app cannot reach the server.
 

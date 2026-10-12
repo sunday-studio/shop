@@ -1,7 +1,7 @@
 ---
-title: Products, categories and shops
+title: Products, shops and the shopping list
 group: Using Shop
-summary: Products appear from your receipts; you only decide the uncertain ones.
+summary: Products appear from your receipts; you only decide the uncertain ones. Plus shops and the shopping list.
 screen: products
 ---
 
@@ -22,11 +22,21 @@ Choose **Unpack groceries** in the add menu and point the camera at a barcode.
 
 - A product you already have shows as known.
 - A new one is created from Open Food Facts, with its name, brand, size, picture and nutrition when they are there.
-- If Open Food Facts has nothing, Shop creates a basic product and asks you to name it.
+- If Open Food Facts has nothing, Shop creates a basic product and asks you to name it. Only the barcode is sent to Open Food Facts.
 
 ## English names
 
-Shop gives Dutch product names an English name from a built-in dictionary. You can change any product's name yourself, and a name you typed is never overwritten.
+Shop gives Dutch product names an English name from a built-in dictionary. Words it does not know go to **Needs English**, where you can teach it a word. You can change any product's name yourself, and a name you typed is never overwritten.
+
+## Shopping list
+
+The List tab works offline and syncs when you are back online.
+
+- Add an item from a product, or type anything. Give it a quantity and a note.
+- **Groups:** make a checklist (for example "Barbecue") with its own items. Save a checklist as a template to reuse it. Finished checklists move to the bottom and can be archived.
+- **Auto-check:** when you confirm a receipt, items on your list that were on it are checked off. A message tells you how many, with **Undo**.
+- **By store:** switch from **Planned** to **By store** to see the list split by the shop that is usually cheapest. Figures are rough ("about"), and each item says how many purchases it rests on.
+- Products you buy often but not lately are suggested for the list.
 
 ## Categories
 

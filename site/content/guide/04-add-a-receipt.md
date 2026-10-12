@@ -10,7 +10,7 @@ screen: home
 1. Tap the add button and choose **Scan receipt**.
 2. Hold the receipt flat on a dark surface. For a long receipt, scan more pages; they are joined into one receipt.
 3. Choose the receipt date: read it from the receipt, or pick the day you shopped.
-4. Choose the shop, or leave it and Shop reads the shop name from the receipt.
+4. Choose the shop, or leave it and Shop reads the shop name from the receipt. If the shop is new, the receipt offers it as a suggestion: accept it, edit it or tap **Not now**.
 
 You can keep scanning while the receipt uploads. If you are offline, the scan is saved and uploads when you reconnect.
 
@@ -19,7 +19,7 @@ You can keep scanning while the receipt uploads. If you are offline, the scan is
 Use this for receipts you already have, including old ones.
 
 1. Tap the add button and choose **Import receipts**.
-2. Pick as many photos or files as you like. JPEG, PNG, HEIC and PDF work.
+2. Choose **Photo library** or **Files**, and pick as many as you like. JPEG, PNG, HEIC and PDF work.
 3. Drag the corners to the receipt's edges. You can rotate a page, reset it, or keep the original.
 4. Set the date and shop, or let Shop read them from each receipt.
 

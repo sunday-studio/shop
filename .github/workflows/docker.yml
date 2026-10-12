@@ -75,7 +75,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0
             org.opencontainers.image.title=shop-api
             org.opencontainers.image.description=Shop API server (also runs the backup service)
 
@@ -126,7 +126,7 @@ jobs:
             type=semver,pattern={{version}}-ppocrv5
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0
             org.opencontainers.image.title=shop-ocr
             org.opencontainers.image.description=Shop OCR service (PaddleOCR PP-OCRv5)
 

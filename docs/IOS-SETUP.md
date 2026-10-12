@@ -1,6 +1,6 @@
 # Shop iOS — Xcode setup
 
-The Xcode project is committed: open `ios/Shop/Shop.xcodeproj`. Requires **Xcode 27** (Swift 6), deployment target **iOS 17.0**, iPhone only.
+The Xcode project is committed: open `ios/Shop/Shop.xcodeproj`. Requires **Xcode 27** (Swift 6), deployment target **iOS 26.5** (as set in the committed project), iPhone only.
 
 ## 1. Open and sign
 

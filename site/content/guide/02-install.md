@@ -40,6 +40,10 @@ summary: Start the Docker stack and get the pairing password.
 
 > **Warning:** The server speaks plain HTTP. Do not expose it to the internet. Reach it over your home network or a VPN (see the next page).
 
+## Without building
+
+You can pull ready-made images from GitHub Container Registry instead of building. The README has the commands; set `SHOP_TAG` in `deploy/.env` to pin a version (default `latest`). Pairing works the same way: run `docker compose -f deploy/docker-compose.yml exec api shop password generate` to get the password.
+
 ## Settings
 
 Set these in `deploy/.env`.

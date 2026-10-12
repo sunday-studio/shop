@@ -18,9 +18,11 @@ Built for Dutch receipts (Albert Heijn, Dirk and similar). Nothing leaves your s
 ## Features
 
 - **Receipts:** photo → local OCR → checked against the printed total. Anything that doesn't add up is flagged, never guessed.
-- **Products:** lines are matched to products and prices are tracked per kg, litre or piece.
+- **Products:** created when you confirm a receipt, and anything uncertain waits in a **New products** review list. Prices are tracked per kg, litre or piece. Shops are suggested from the receipt header.
 - **Analytics:** spend by month, shop, category and product, plus price changes.
-- **Shopping list** that works offline, **barcode scan**, and an **MCP server** for asking an assistant about your spending.
+- **Shopping list** that works offline, with checklists, auto-check when a receipt is confirmed, and a "By store" view.
+- **Barcode scan** (Open Food Facts) and **receipt import** from Photos or Files, including PDFs.
+- **MCP server** at `/mcp` for asking an assistant about your spending (tokens from `make token NAME=...`).
 - **Nightly backups** of the database and images.
 
 ## Quick start
@@ -31,7 +33,9 @@ Needs Docker with about 4 GB of memory to spare.
 make setup     # build, start, and print the app pairing password once
 ```
 
-The first build downloads the OCR models and takes several minutes. Then pair the iPhone app with your server URL and the printed password. The server speaks plain HTTP, so keep it on your LAN or behind a VPN such as Tailscale.
+The first build downloads the OCR models and takes several minutes. Then pair the iPhone app with your server URL and the printed password. On a real iPhone use the server machine's LAN address, for example `http://192.168.1.20:8080`; the iOS Simulator on the same Mac can use `http://localhost:8080`. The server speaks plain HTTP, so keep it on your LAN or behind a VPN such as Tailscale. `make up` later rebuilds and restarts; `make logs` follows the logs.
+
+The iPhone app is built from source with Xcode (see [iOS setup](docs/IOS-SETUP.md)). It is not on the App Store.
 
 ## Run the published image
 
@@ -48,6 +52,16 @@ docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
 
 Set `SHOP_TAG=1.2.0` to pin a version (default `latest`). A plain `docker compose up` still builds from source. To pull one image by hand: `docker pull ghcr.io/sunday-studio/shop-api:latest`.
 
+## Develop and test
+
+```bash
+make test      # Go unit tests
+make e2e       # end-to-end test in an isolated Docker stack (port 18080), leaves your live stack alone
+make backup    # run a backup now
+```
+
+`make help` lists every target.
+
 ## Repo
 
 | Path | What |
@@ -62,4 +76,17 @@ Set `SHOP_TAG=1.2.0` to pin a version (default `latest`). A plain `docker compos
 
 [Guide](https://shop.casprine.com/guide/) · [Operations](docs/operations.md) · [Restore](docs/restore.md) · [MCP](docs/mcp.md) · [Backend status](docs/BACKEND-STATUS.md) · [iOS setup](docs/IOS-SETUP.md)
 
-A product from [Sunday Studio](https://www.thesunday.studio/). [MIT license](LICENSE).
+## Licence
+
+Shop is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+- You may use it and change it for personal use and other non-commercial purposes.
+- Commercial use needs the owner's permission.
+- This is source-available, not open source in the OSI sense.
+
+## Notice
+
+- The GT America font files in this repository (the app and the website) are a separate trial licence from Grilli Type. They are **not** covered by the project licence and may not be reused.
+- Product data comes from [Open Food Facts](https://world.openfoodfacts.org) (ODbL). Text recognition uses [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) (Apache-2.0). Navigation icons are [Phosphor Icons](https://phosphoricons.com) (MIT, copy in `docs/licenses/`). Shop logos come from [logo.dev](https://logo.dev). Not affiliated with any supermarket.
+
+A product from [Sunday Studio](https://www.thesunday.studio/).

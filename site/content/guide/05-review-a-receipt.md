@@ -8,18 +8,19 @@ screen: receipt
 ## Steps
 
 1. Open the receipt from Home. The image and the lines are on the same screen, and you can open the full-size image to zoom in.
-2. Compare the printed total with the lines. If they match, there is nothing left to fix.
-3. Fix a line: tap it, then change its quantity, price or kind (item, discount, deposit, bag or other).
-4. Link a line to a product, or create a new one. Linking remembers the line's text, so the same text is linked on every next receipt.
-5. Add a line the scan missed, or delete one it invented.
-6. Check the date and the shop. Pick a date so the receipt counts in your totals.
-7. Tap **Confirm**.
+2. If the receipt looks like one you already have (same total, same day, same shop), a banner says so. Compare the two, then remove the new one or choose **Keep both**. Nothing is deleted on its own.
+3. Compare the printed total with the lines. If they match, there is nothing left to fix.
+4. Fix a line: tap it, then change its quantity, price or kind (item, discount, deposit, bag or other).
+5. Link a line to a product, or create a new one. Linking remembers the line's text, so the same text is linked on every next receipt.
+6. Add a line the scan missed, or delete one it invented.
+7. Check the date and the shop. Pick a date so the receipt counts in your totals.
+8. Tap **Confirm**.
 
 You can confirm at any time, even if the numbers still differ. Sometimes the receipt itself is odd.
 
 ## After you confirm
 
-- Products are created or linked for the lines of the receipt. See [Products, categories and shops](products).
+- Products are created or linked for the lines of the receipt. See [Products, shops and the shopping list](products).
 - Items on your shopping list that were on the receipt are checked off. A message tells you how many, with **Undo**.
 
 ## If the scan is wrong

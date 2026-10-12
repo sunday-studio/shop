@@ -68,7 +68,7 @@ inline code, `**bold**`, `*italic*`, links (a bare slug such as `connect` links 
 - **Fonts: TRIAL licence.** The GT America files in `fonts/` (Grilli Type) are trial files. A web licence must be bought
   before the site goes public; do not publish with these files.
 - Logo and screens: project assets from `design/website/`.
-- Site code: MIT, like the project.
+- Site code: PolyForm Noncommercial 1.0.0, like the project (the GT America fonts are not covered by it).
 
 ## Deploying (Cloudflare Workers Builds)
 
