@@ -125,7 +125,8 @@ func newEnv(t *testing.T) *env {
 	prods := products.New(conn, match.NewMatcher(conn), openfoodfacts.New("test").WithBaseURL(foodFacts.URL),
 		filepath.Join(dir, "images"), log)
 	st := stats.New(conn, ams)
-	list := shopping.New(conn, match.NewMatcher(conn), st)
+	// The same zone as production (cfg.Location), not the machine's: CI runs in UTC.
+	list := shopping.New(conn, match.NewMatcher(conn), st).WithLocation(ams)
 	logoDev := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/nologo.nl" {
 			http.NotFound(w, r)
