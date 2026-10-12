@@ -75,7 +75,7 @@ struct SearchView: View {
             ForEach(r.products) { p in
                 Button { app.push(.product(p.id)) } label: {
                     ProductRow(name: EnglishDisplay(product: p).title, meta: [EnglishDisplay(product: p).subline, p.sizeText, app.catalog.category(p.categoryId)?.name].compactMap { $0 }.joined(separator: " · "),
-                               category: app.catalog.category(p.categoryId)?.name, categoryToken: app.catalog.category(p.categoryId)?.color, imageURL: app.api.productImageURL(p), showsChevron: true)
+                               category: app.catalog.category(p.categoryId)?.name, categoryToken: app.catalog.category(p.categoryId)?.color, imageURL: app.api.productImageURL(p), showsChevron: true, needsEnglish: EnglishDisplay(product: p).needsEnglish, unknown: EnglishDisplay(product: p).unknown)
                 }
                 .buttonStyle(.press(haptic: .selection))
             }

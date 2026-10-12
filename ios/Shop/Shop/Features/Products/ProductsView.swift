@@ -199,7 +199,9 @@ struct ProductsView: View {
                         categoryToken: app.catalog.category(product.categoryId)?.color,
                         imageURL: app.api.productImageURL(product),
                         price: product.cheapest.map { Money.perUnit($0.latestUnitCents, unit: $0.baseUnit) },
-                        priceShop: product.cheapest?.shopName
+                        priceShop: product.cheapest?.shopName,
+                        needsEnglish: english.needsEnglish,
+                        unknown: english.unknown
                     )
                 }
                 .buttonStyle(.press(haptic: .selection))
