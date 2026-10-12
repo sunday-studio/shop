@@ -9,11 +9,11 @@
 //     encrypted "crypt" remote that points at a throwaway folder), after losing both the
 //     data volume and the backup folder.
 //
-// Isolation: compose project "shop-e2e" only (the same one `make e2e` uses; the two must not
-// run at the same time), host port 18481, its own API image tag, throwaway volumes. The live
+// Isolation: compose project "shop-drill" only (not the project `make e2e` uses), host port
+// 18481, its own API image tag, throwaway volumes. The live
 // stack (project "shop", port 8080, volume shop_shop-data) is never touched: every compose
 // call goes through compose(), which refuses any other project, and every volume removal goes
-// through removeVolume(), which refuses names outside shop-e2e_*.
+// through removeVolume(), which refuses names outside shop-drill_*.
 package drill
 
 import (
@@ -45,7 +45,7 @@ import (
 )
 
 const (
-	project   = "shop-e2e"
+	project   = "shop-drill"
 	apiPort   = "18481"
 	baseURL   = "http://127.0.0.1:" + apiPort
 	pairPass  = "drill-correct-horse-battery"
@@ -61,10 +61,12 @@ var (
 	httpc    = &http.Client{Timeout: 60 * time.Second}
 )
 
-// ---- docker helpers (shop-e2e only) --------------------------------------------------
+// ---- docker helpers (shop-drill only) --------------------------------------------------
 
 func compose(ctx context.Context, stdin string, args ...string) (string, error) {
-	if project != "shop-e2e" {
+	// The only place in this package that starts docker compose. It refuses any project
+	// but shop-drill, so the live stack ("shop") can never be addressed from here.
+	if project != "shop-drill" {
 		panic("refusing to run compose: project is " + project)
 	}
 	full := append([]string{"compose", "-p", project, "--profile", "offsite",
@@ -73,7 +75,7 @@ func compose(ctx context.Context, stdin string, args ...string) (string, error) 
 		"-f", filepath.Join(repoRoot, "deploy/docker-compose.drill.yml")}, args...)
 	cmd := exec.CommandContext(ctx, "docker", full...)
 	cmd.Dir = repoRoot
-	cmd.Env = append(os.Environ(), "SHOP_VERSION=drill", "SHOP_COMMIT=drill", "DRILL_CRYPT_PASSWORD="+cryptPw)
+	cmd.Env = append(os.Environ(), "COMPOSE_PROJECT_NAME="+project, "SHOP_VERSION=drill", "SHOP_COMMIT=drill", "DRILL_CRYPT_PASSWORD="+cryptPw)
 	if stdin != "" {
 		cmd.Stdin = strings.NewReader(stdin)
 	}
@@ -117,7 +119,7 @@ func teardown() {
 		return
 	}
 	tornDown = true
-	fmt.Printf("\nteardown: docker compose project %q (must be shop-e2e): down -v --remove-orphans\n", project)
+	fmt.Printf("\nteardown: docker compose project %q (must be shop-drill): down -v --remove-orphans\n", project)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	if out, err := compose(ctx, "", "down", "-v", "--remove-orphans"); err != nil {
@@ -128,7 +130,7 @@ func teardown() {
 		results.add(result{name: "teardown (down -v)", status: "FAIL", note: "containers or volumes left behind"})
 		return
 	}
-	results.add(result{name: "teardown (down -v)", status: "PASS", note: "no shop-e2e containers or volumes left"})
+	results.add(result{name: "teardown (down -v)", status: "PASS", note: "no shop-drill containers or volumes left"})
 }
 
 // ---- main ------------------------------------------------------------------------------
@@ -169,7 +171,7 @@ func run(m *testing.M) (code int) {
 		return 1
 	}
 	// Leftovers of an earlier, stopped run of this same project are cleared; a running one
-	// (for example `make e2e`) makes preflight refuse instead.
+	// makes preflight refuse instead.
 	if projectCount("container", false) > 0 || projectCount("volume", false) > 0 {
 		fmt.Printf("found stopped leftovers of project %q: removing (down -v)\n", project)
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -185,7 +187,7 @@ func preflight() error {
 		return fmt.Errorf("docker is not available: %s", strings.TrimSpace(string(out)))
 	}
 	if projectCount("container", true) > 0 {
-		return fmt.Errorf("project %s has running containers (is `make e2e` running?); the drill uses the same project, so wait for it or stop it first", project)
+		return fmt.Errorf("project %s has running containers (a drill still running?); wait for it or stop it first", project)
 	}
 	l, err := net.Listen("tcp", "127.0.0.1:"+apiPort)
 	if err != nil {
@@ -432,8 +434,9 @@ func capture(t *testing.T) fingerprint {
 	var fp fingerprint
 	var counts M
 	check(t, json.Unmarshal(call(t, "GET", "/v1/receipts/counts", nil, 200), &counts) == nil, "counts")
-	cb, _ := json.Marshal(counts) // map keys marshal sorted
-	fp.Counts = string(cb)
+	// Only the total: pending/processing move on their own while the job worker runs
+	// (there is no OCR service in the drill), which is not a restore difference.
+	fp.Counts = fmt.Sprint("total=", counts["total"])
 
 	var page struct {
 		Items []M `json:"items"`
@@ -489,7 +492,7 @@ func TestRestoreDrill(t *testing.T) {
 		out, err := compose(ctxBG(), "", "up", "-d", "--build", "--no-deps", "--wait", "--wait-timeout", "600", "api")
 		check(t, err == nil, "compose up: %v: %s", err, trunc([]byte(out)))
 		waitHealthy(t)
-		note(t, "project %s, port %s, volumes shop-e2e_*", project, apiPort)
+		note(t, "project %s, port %s, volumes shop-drill_*", project, apiPort)
 	})
 
 	step(t, "set password + pair", func(t *testing.T) {

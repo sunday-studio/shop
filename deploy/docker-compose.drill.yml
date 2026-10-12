@@ -1,19 +1,23 @@
 # Isolated stack for `make restore-drill`. Always used together with deploy/docker-compose.yml,
-# deploy/docker-compose.e2e.yml and the project name shop-e2e:
+# deploy/docker-compose.e2e.yml and the project name shop-drill:
 #
-#   docker compose -p shop-e2e --profile offsite \
+#   docker compose -p shop-drill --profile offsite \
 #     -f deploy/docker-compose.yml -f deploy/docker-compose.e2e.yml -f deploy/docker-compose.drill.yml ...
 #
 # It adds, on top of the e2e overrides: its own host port (18481), a real (throwaway) volume for
 # the backup folder instead of a tmpfs, and a throwaway "off-site" destination: a folder in a
 # volume, reached through an rclone crypt remote (so the drill also proves that an encrypted
 # copy restores). Nothing here touches the live stack (project "shop", port 8080, volume
-# shop_shop-data); `down -v -p shop-e2e` removes everything it creates.
+# shop_shop-data); `down -v -p shop-drill` removes everything it creates.
+name: shop-drill   # also set by -p; a compose call without -p still cannot land on project "shop"
+
 services:
   api:
+    image: shop-drill-api:latest
     ports: !override ["127.0.0.1:18481:8080"]
 
   backup:
+    image: shop-drill-api:latest
     volumes: !override ["shop-data:/data", "backup-dir:/backup"]
     tmpfs: !reset null
 

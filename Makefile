@@ -16,11 +16,11 @@ test: ## run Go tests
 vet: ## go vet + gofmt check
 	cd api && go vet ./... && test -z "$$(gofmt -l .)"
 
-e2e: ## end-to-end test in an isolated docker stack (project shop-e2e, port 18080); never touches the live stack
+e2e: ## end-to-end test in an isolated docker stack (project shop-e2e, port 18480); never touches the live stack
 	@docker image inspect shop-ocr:ppocrv5 >/dev/null 2>&1 || docker build -t shop-ocr:ppocrv5 --build-arg OCR_ENGINE=ppocrv5 ocr
 	cd api && go test -tags e2e -count=1 -v -timeout 40m ./e2e/
 
-restore-drill: ## restore drill in an isolated docker stack (project shop-e2e, port 18481): backup, wipe, restore (also from an off-site copy), verify; never touches the live stack
+restore-drill: ## restore drill in an isolated docker stack (project shop-drill, port 18481): backup, wipe, restore (also from an off-site copy), verify; never touches the live stack
 	cd api && go test -tags drill -count=1 -v -timeout 30m ./drill/
 
 offsite-up: ## start the optional off-site copy (rclone) after each backup; needs OFFSITE_REMOTE, see docs/operations.md

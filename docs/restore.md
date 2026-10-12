@@ -64,7 +64,7 @@ curl localhost:8080/healthz
 
 ## Test it without risk
 
-`make restore-drill` runs the whole thing automatically in a separate Docker stack (compose project `shop-e2e`, port 18481, throwaway volumes; your real stack, port 8080 and data are never touched). It creates receipts with images, products, categories and list items, takes a backup, wipes that stack's data volume, restores, and compares the counts and a hash of every receipt image. Then it copies the backup to an encrypted rclone destination (a throwaway folder), deletes both the data volume and the backup folder, pulls the copy back, restores again and compares again. It prints PASS or FAIL per step and exits non-zero on any failure. It needs Docker and, the first time, a network connection to fetch the `rclone/rclone` image. It cannot run at the same time as `make e2e`.
+`make restore-drill` runs the whole thing automatically in a separate Docker stack (compose project `shop-drill`, port 18481, throwaway volumes; your real stack, port 8080 and data are never touched). It creates receipts with images, products, categories and list items, takes a backup, wipes that stack's data volume, restores, and compares the counts and a hash of every receipt image. Then it copies the backup to an encrypted rclone destination (a throwaway folder), deletes both the data volume and the backup folder, pulls the copy back, restores again and compares again. It prints PASS or FAIL per step and exits non-zero on any failure. It needs Docker and, the first time, a network connection to fetch the `rclone/rclone` image.
 
 ## Rolling back a failed upgrade
 
