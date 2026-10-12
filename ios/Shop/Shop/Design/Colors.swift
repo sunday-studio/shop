@@ -81,6 +81,8 @@ enum Palette {
     // Semantic text / tint pairs
     static let amberText = Color.dynamic(light: 0xB25E00, dark: 0xFFB340)
     static let amberTint = Color.dynamic(light: 0xFFF0D9, dark: 0x33230A)
+    /// Wash behind an unknown word (Needs English).
+    static let highlight = Color.dynamic(light: 0xFFE6BF, dark: 0x4A3210)
     static let greenText = Color.dynamic(light: 0x0B8A47, dark: 0x3DDC84)
     static let greenTint = Color.dynamic(light: 0xE2F7EA, dark: 0x0F2A1B)
     static let redText = Color.dynamic(light: 0xD1281C, dark: 0xFF6B61)

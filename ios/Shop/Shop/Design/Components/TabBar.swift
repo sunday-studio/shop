@@ -6,6 +6,9 @@ struct TabBarItem<ID: Hashable>: Identifiable {
     let icon: Icon
     let selectedIcon: Icon
     var badge: Int = 0
+    /// Quiet 8pt blue dot ("something here is waiting", no count): List tab when receipts suggest items.
+    /// Ignored when `badge` is above 0.
+    var dot: Bool = false
 }
 
 /// Floating 62pt pill (tray colour, bar shadow) with four tabs, and a detached 62pt Add button.
@@ -75,11 +78,16 @@ struct PillTabBar<ID: Hashable>: View {
                 if item.badge > 0 {
                     CountBadge(count: item.badge, ring: Palette.tray)
                         .offset(x: 13, y: 8)
+                } else if item.dot {
+                    Circle().fill(Accent.blue)
+                        .frame(width: 8, height: 8)
+                        .overlay(Circle().strokeBorder(Palette.tray, lineWidth: 2).padding(-2))
+                        .offset(x: 11, y: 10)
                 }
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(item.badge > 0 ? "\(item.title), \(item.badge) to review" : item.title)
+        .accessibilityLabel(item.badge > 0 ? "\(item.title), \(item.badge) to review" : (item.dot ? "\(item.title), new suggestions" : item.title))
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 }

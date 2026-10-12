@@ -113,6 +113,22 @@ struct CatalogView: View {
                     }
                     SegmentedControl(options: ["By category", "By shop"], title: { $0 }, selection: $segment)
                 }
+                section("Duplicate receipt") {
+                    DuplicateReceiptBanner(otherDate: "2 Aug", otherTotal: "€84,68", strength: .totalAndDate, onCompare: {}, onRemoveThis: {}, onKeepBoth: {})
+                    DuplicateReceiptBanner(otherDate: "2 Aug", otherTotal: "€84,68", strength: .totalDateAndLines, onCompare: {}, onRemoveThis: {}, onKeepBoth: {})
+                }
+                section("Needs English") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            EnglishNameText(text: "AH Hagelslag milk", unknown: [UnknownWord(word: "Hagelslag", key: "hagelslag", start: 3, end: 12)]) { _ in }
+                            NeedsEnglishBadge()
+                        }
+                        HStack(spacing: 8) { EnglishNameText(text: "Mora Kokkie", unknown: []); NeedsEnglishBadge() }
+                        HStack(spacing: 8) { EnglishNameText(text: "AH Organic eggs"); EnglishSourceHint(source: .auto) }
+                        HStack(spacing: 8) { EnglishNameText(text: "Semi-skimmed milk"); EnglishSourceHint(source: .you) }
+                        HStack(spacing: 8) { EnglishNameText(text: "Calvé peanut butter 650 g"); EnglishSourceHint(source: .openFoodFacts) }
+                    }
+                }
                 section("Fields") {
                     FieldTile(label: "Server URL", text: $text, mono: true, large: true)
                     FieldTile(label: "Password", text: $password, large: true, isSecure: true, error: attempts > 0)
