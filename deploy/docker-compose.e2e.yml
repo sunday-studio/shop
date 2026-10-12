@@ -6,6 +6,8 @@
 # Nothing here touches the live stack (project "shop", port 8080, volume shop_shop-data):
 # own project name (so own network, own volumes, own container names), own port, own image tag
 # for the API, no bind mounts. `down -v -p shop-e2e` removes everything it created.
+name: shop-e2e   # also set by -p; a compose call without -p still cannot land on project "shop"
+
 services:
   api:
     image: shop-e2e-api:latest

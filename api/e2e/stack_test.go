@@ -43,6 +43,8 @@ var (
 
 // compose runs docker compose for the e2e project only.
 func compose(ctx context.Context, stdin string, args ...string) (string, error) {
+	// The only place in this package that starts docker compose. It refuses any project
+	// but shop-e2e, so the live stack ("shop") can never be addressed from here.
 	if project != "shop-e2e" {
 		panic("refusing to run compose: project is " + project)
 	}
@@ -51,7 +53,7 @@ func compose(ctx context.Context, stdin string, args ...string) (string, error) 
 		"-f", filepath.Join(repoRoot, "deploy/docker-compose.e2e.yml")}, args...)
 	cmd := exec.CommandContext(ctx, "docker", full...)
 	cmd.Dir = repoRoot
-	cmd.Env = append(os.Environ(), "SHOP_VERSION=e2e", "SHOP_COMMIT=e2e")
+	cmd.Env = append(os.Environ(), "COMPOSE_PROJECT_NAME="+project, "SHOP_VERSION=e2e", "SHOP_COMMIT=e2e")
 	if fakeOFF != nil {
 		cmd.Env = append(cmd.Env, "E2E_OFF_URL="+fakeOFF.containerURL)
 	}
