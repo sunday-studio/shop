@@ -118,8 +118,8 @@ final class ShopUITests: XCTestCase {
     func testShoppingListCheckOffAnItem() {
         tab("List")
         exists(text("Griekse yoghurt 0%"))
-        exists(any("Check off Griekse yoghurt 0%")).tap()
-        XCTAssertTrue(any("Check off Griekse yoghurt 0%").waitForNonExistence(timeout: 8), "it is no longer open")
+        exists(app.buttons["Check off Griekse yoghurt 0%"]).tap()
+        XCTAssertTrue(app.buttons["Check off Griekse yoghurt 0%"].waitForNonExistence(timeout: 8), "it is no longer open")
         scrollTo(text("3 checked off"))
     }
 
