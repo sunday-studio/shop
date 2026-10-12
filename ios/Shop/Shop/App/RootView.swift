@@ -230,6 +230,8 @@ struct RouteView: View {
             case .search: SearchView()
             case .catalog: CatalogView()
             case .productReview: ProductReviewView()
+            case .needsEnglish: NeedsEnglishView()
+            case .glossary: GlossaryView()
             }
         }
         .toolbar(.hidden, for: .navigationBar)

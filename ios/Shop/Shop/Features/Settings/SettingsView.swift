@@ -31,6 +31,9 @@ struct SettingsView: View {
                     Button { app.push(.categories) } label: {
                         SettingsRow(icon: .grid, color: Accent.pink, title: "Categories", value: "\(app.catalog.categories.count)")
                     }
+                    Button { app.push(.needsEnglish) } label: {
+                        SettingsRow(icon: .edit, color: Accent.teal, title: "English names", value: app.needsEnglish.wordsLeft > 0 ? "\(app.needsEnglish.wordsLeft) to teach" : nil)
+                    }
                     Button { app.push(.search) } label: {
                         SettingsRow(icon: .search, color: Accent.green, title: "Search")
                     }

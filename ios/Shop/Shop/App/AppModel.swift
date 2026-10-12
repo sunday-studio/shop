@@ -51,6 +51,8 @@ enum Route: Hashable {
     case search
     case catalog
     case productReview
+    case needsEnglish
+    case glossary
 }
 
 /// Full-screen camera flows started from the Add tray.
@@ -115,6 +117,7 @@ final class AppModel {
     let home: HomeModel
     let isMock: Bool
     @ObservationIgnored lazy var productReview = ProductReviewModel(app: self)
+    @ObservationIgnored lazy var needsEnglish = NeedsEnglishModel(app: self)
 
     private static let serverKey = "session.serverURL"
     private static let deviceKey = "session.deviceName"

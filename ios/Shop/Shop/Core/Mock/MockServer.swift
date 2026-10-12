@@ -21,6 +21,13 @@ final class MockServer: HTTPTransport {
     private var reducedBefore: [Int64: (qty: Double?, note: String?)] = [:]
     private var reducedBy: [Int64: Int64] = [:]
     private var reconciledReceipts: Set<Int64> = []
+    private var todoWords: [TodoWord] = [
+        TodoWord(word: "Hagelslag", key: "hagelslag", products: 4, lines: 2, examples: ["De Ruijter Hagelslag melk", "Venz Hagelslag puur"]),
+        TodoWord(word: "Calvé", key: "calve", products: 2, lines: 0, examples: ["Calvé Pindakaas"]),
+    ]
+    private var glossaryTerms: [GlossaryTerm] = [
+        GlossaryTerm(dutch: "pindakaas", english: "peanut butter", keepAsIs: false, productsCount: 3, updatedAt: MockData.ago(days: 20)),
+    ]
     private var planSettings = ListPlanSettings(extraStopCents: 250, maxStops: 2)
     private var sameKindSuggestions: [ProductGroupSuggestion] = [
         ProductGroupSuggestion(a: SuggestedProduct(productId: 1, name: "Halfvolle melk", nameEn: "Semi-skimmed milk", shops: [ShopRefLite(id: 1, name: "Albert Heijn")]),
@@ -474,6 +481,44 @@ final class MockServer: HTTPTransport {
             return ok(MockData.frequentItems)
 
         // List
+        case ("GET", "v1/translations/todo"):
+            let products = todoWords.flatMap { w in w.examples.enumerated().map { i, name in
+                let range = (name.lowercased() as NSString).range(of: w.word.lowercased())
+                return TodoProduct(id: 9000 + Int64(abs(w.key.hashValue % 500)) + Int64(i), name: name, nameEn: name, nameEnStatus: "partial",
+                                   nameEnUnknown: [SpanDTO(word: w.word, key: w.key, start: range.location, end: range.location + range.length)], shopName: "Albert Heijn", shopChain: nil)
+            } }
+            return ok(TranslationTodo(totals: .init(wordsLeft: todoWords.count, productsLeft: products.count), words: todoWords, products: products))
+        case ("GET", "v1/glossary"):
+            return ok(glossaryTerms)
+        case ("POST", "v1/glossary/preview"):
+            guard let b = try? decoder.decode(GlossaryPreviewBody.self, from: body) else { return bad() }
+            let word = todoWords.first { $0.key == b.dutch.lowercased() }
+            let n = word?.products ?? 0
+            let english = b.keepAsIs ? b.dutch : (b.english ?? "")
+            let examples = (word?.examples ?? []).prefix(b.examples).enumerated().map { i, name in
+                GlossaryPreviewExample(productId: 9000 + Int64(i), name: name, nameEnBefore: name, nameEnAfter: name.replacingOccurrences(of: b.dutch, with: english, options: .caseInsensitive), statusAfter: "dictionary")
+            }
+            return ok(GlossaryPreview(productsAffected: n, examples: Array(examples)))
+        case ("PUT", _) where shape.hasPrefix("v1/glossary/"):
+            guard let key = p.last?.removingPercentEncoding, let input = try? decoder.decode(GlossaryTermInput.self, from: body) else { return bad() }
+            let affected = todoWords.first { $0.key == key }?.products ?? glossaryTerms.first { $0.dutch == key }?.productsCount ?? 0
+            let previous = glossaryTerms.first { $0.dutch == key }.map { GlossaryTermInput(english: $0.english, keepAsIs: $0.keepAsIs) }
+            let term = GlossaryTerm(dutch: key, english: input.keepAsIs ? nil : input.english, keepAsIs: input.keepAsIs, productsCount: affected, updatedAt: .now)
+            glossaryTerms.removeAll { $0.dutch == key }
+            glossaryTerms.append(term)
+            todoWords.removeAll { $0.key == key }
+            return ok(TeachResult(term: term, previous: previous, productsUpdated: affected))
+        case ("DELETE", _) where shape.hasPrefix("v1/glossary/"):
+            guard let key = p.last?.removingPercentEncoding, let gone = glossaryTerms.first(where: { $0.dutch == key }) else { return notFound() }
+            glossaryTerms.removeAll { $0.dutch == key }
+            return ok(ForgetResult(productsUpdated: gone.productsCount))
+        case ("GET", "v1/translate"):
+            let text = q["text"] ?? ""
+            if let w = todoWords.first(where: { text.lowercased().contains($0.key) }) {
+                let r = (text.lowercased() as NSString).range(of: w.key)
+                return ok(TranslatePreview(english: text, status: "partial", unknown: [SpanDTO(word: w.word, key: w.key, start: r.location, end: r.location + r.length)]))
+            }
+            return ok(TranslatePreview(english: text, status: "dictionary", unknown: []))
         case ("GET", "v1/list/plan/settings"):
             return ok(planSettings)
         case ("PATCH", "v1/list/plan/settings"):
