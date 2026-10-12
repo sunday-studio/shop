@@ -281,6 +281,8 @@ struct FeatureCard<Accessory: View>: View {
                 Spacer(minLength: Space.l)
                 VStack(alignment: .leading, spacing: 3) {
                     TypeStyle.rowTitle.sized(17).text(title)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.75)
                     if let caption {
                         TypeStyle.body.sized(13).text(caption)
                             .opacity(0.82)
@@ -298,6 +300,11 @@ struct FeatureCard<Accessory: View>: View {
         }
         .buttonStyle(.press(haptic: .light))
     }
+}
+
+extension DynamicTypeSize {
+    /// Two-up grids of cards (Add tray) should become one column from here, or words break mid-word.
+    var prefersSingleColumn: Bool { self >= .xxLarge }
 }
 
 extension FeatureCard where Accessory == EmptyView {

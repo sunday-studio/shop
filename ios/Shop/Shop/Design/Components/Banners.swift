@@ -46,17 +46,27 @@ struct AttentionCard: View {
     var tone: Tone = .amber
     let action: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
+        // At the accessibility sizes the hint moves under the title so the title keeps the full width.
+        let hintBelow = typeSize >= .xxxLarge
         Button(action: action) {
             HStack(spacing: Space.ml) {
                 CountBadge(count: count, size: 22, color: tone.solid)
-                TypeStyle.rowTitle.text(title)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let hint { TypeStyle.body.sized(13).text(hint) }
+                    .fixedSize()
+                VStack(alignment: .leading, spacing: 2) {
+                    TypeStyle.rowTitle.text(title)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if hintBelow, let hint { TypeStyle.body.sized(13).text(hint) }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if !hintBelow, let hint { TypeStyle.body.sized(13).text(hint) }
                 IconView(.forward, size: 14, weight: .bold)
             }
             .foregroundStyle(tone.text)
             .padding(.horizontal, Space.lx)
+            .padding(.vertical, hintBelow ? Space.ml : 0)
             .frame(minHeight: Size.attention)
             .background(tone.tint, in: RoundedRectangle.continuous(Radius.l))
         }

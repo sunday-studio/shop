@@ -43,9 +43,13 @@ struct DeltaChip: View {
     let deltaCents: Int64
     var caption: String? = nil
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         let less = deltaCents <= 0
-        HStack(spacing: Space.m) {
+        // From the accessibility sizes the caption goes under the chip instead of squeezing beside it.
+        let layout = typeSize >= .accessibility1 ? AnyLayout(VStackLayout(alignment: .leading, spacing: Space.s)) : AnyLayout(HStackLayout(spacing: Space.m))
+        layout {
             HStack(spacing: 3) {
                 IconView(less ? .arrowDown : .arrowUp, size: 12, weight: .heavy)
                 Text(Money.format(Int64(deltaCents.magnitude)))
@@ -59,7 +63,8 @@ struct DeltaChip: View {
             if let caption {
                 TypeStyle.body.sized(13.5).text(caption)
                     .foregroundStyle(Palette.ink2)
-                    .lineLimit(2)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

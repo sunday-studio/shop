@@ -79,9 +79,14 @@ struct LargeTitleHeader<Trailing: View>: View {
     var detail: String? = nil
     @ViewBuilder var trailing: () -> Trailing
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
+        // The detail ("8 to buy · about €23") goes under the title from XL up instead of wrapping beside it.
+        let stacked = typeSize >= .xxxLarge
+        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Space.m))
         HStack(alignment: .center) {
-            HStack(alignment: .firstTextBaseline, spacing: Space.m) {
+            layout {
                 TypeStyle.screenTitle.text(title).foregroundStyle(Palette.ink)
                     .accessibilityAddTraits(.isHeader)
                 if let detail {

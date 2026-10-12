@@ -20,6 +20,7 @@ struct PillTabBar<ID: Hashable>: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduce
     @Environment(\.navIconStyle) private var iconStyle
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         HStack(spacing: Space.ml) {
@@ -68,7 +69,10 @@ struct PillTabBar<ID: Hashable>: View {
                 tabIcon(item, on: on)
                     .scaleEffect(on && !reduce ? 1 : 0.96)
                     .animation(reduce ? Motion.reducedFade : Motion.pop, value: on)
-                TypeStyle.tab.text(item.title)
+                // Labels would truncate to "H…" at the large sizes: icons only from XXXL, the name stays for VoiceOver.
+                if typeSize < .xxxLarge {
+                    TypeStyle.tab.text(item.title).lineLimit(1).minimumScaleFactor(0.8)
+                }
             }
             .foregroundStyle(on ? Palette.ink : Palette.ink3)
             .frame(maxWidth: .infinity)

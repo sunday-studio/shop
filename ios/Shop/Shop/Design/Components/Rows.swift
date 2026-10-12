@@ -192,11 +192,13 @@ struct CheckCircle: View {
             Circle().strokeBorder(Palette.ink3, lineWidth: 2).opacity(isChecked ? 0 : 1)
             Circle().fill(Accent.green).scaleEffect(isChecked ? 1 : 0.4).opacity(isChecked ? 1 : 0)
             Image(icon: .check)
+                .accessibilityHidden(true)
                 .font(.system(size: 11, weight: .heavy))
                 .foregroundStyle(Accent.white)
                 .opacity(isChecked ? 1 : 0)
         }
         .frame(width: 24, height: 24)
+        .accessibilityHidden(true)
     }
 }
 
@@ -215,8 +217,12 @@ struct ListItemRow: View {
     /// Optimistic checked state while a check-off plays out, before the parent moves the row.
     @State private var pendingCheck = false
     @Environment(\.accessibilityReduceMotion) private var reduce
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var shownChecked: Bool { isChecked || pendingCheck }
+
+    /// One line normally, two from XXXL, three at the accessibility sizes, so names and hints stay readable.
+    private var lines: Int { typeSize.isAccessibilitySize ? 3 : (typeSize >= .xxxLarge ? 2 : 1) }
 
     var body: some View {
         HStack(spacing: Space.l) {
@@ -229,17 +235,19 @@ struct ListItemRow: View {
             }
             .buttonStyle(.press(scale: Motion.pillScale, haptic: .selection))
             .padding(.horizontal, -10)
+            // The circle's check glyph is decoration; without this VoiceOver reads its symbol name ("checkmark").
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(shownChecked ? "Uncheck \(title)" : "Check off \(title)")
 
             VStack(alignment: .leading, spacing: 2) {
                 TypeStyle.rowTitle.text(title)
                     .strikethrough(struck || (isChecked && reduce), color: Palette.ink3)
                     .foregroundStyle(struck || shownChecked ? Palette.ink3 : Palette.ink)
-                    .lineLimit(1)
+                    .lineLimit(lines)
                 if let hint {
                     HStack(spacing: 5) {
                         if let hintShop { ShopMark(name: hintShop, size: 14) }
-                        TypeStyle.caption.text(hint).foregroundStyle(Palette.ink2).lineLimit(1)
+                        TypeStyle.caption.text(hint).foregroundStyle(Palette.ink2).lineLimit(lines)
                     }
                 }
             }
