@@ -190,6 +190,14 @@ private struct TabStack: View {
 
     @ViewBuilder
     private var root: some View {
+        rootScreen
+            // SwiftUI's accessibilityHidden doesn't reach the UIKit navigation container, so a tab
+            // that is not showing was still readable by VoiceOver: hide its container directly.
+            .background(NavigationAccessibilityHider(hidden: tab != model.tab).allowsHitTesting(false))
+    }
+
+    @ViewBuilder
+    private var rootScreen: some View {
         switch tab {
         case .home: HomeView()
         case .analytics: AnalyticsView()
@@ -225,5 +233,26 @@ struct RouteView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+/// Hides the surrounding `UINavigationController`'s view from assistive technologies.
+private struct NavigationAccessibilityHider: UIViewRepresentable {
+    let hidden: Bool
+
+    func makeUIView(context: Context) -> UIView { UIView() }
+
+    func updateUIView(_ view: UIView, context: Context) {
+        let hidden = hidden
+        DispatchQueue.main.async {
+            var responder: UIResponder? = view
+            while let current = responder {
+                if let navigation = current as? UINavigationController {
+                    navigation.view.accessibilityElementsHidden = hidden
+                    return
+                }
+                responder = current.next
+            }
+        }
     }
 }

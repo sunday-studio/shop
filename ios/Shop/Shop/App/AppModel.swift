@@ -123,6 +123,13 @@ final class AppModel {
 
     init(mock: Bool = ProcessInfo.processInfo.arguments.contains("-mock")) {
         LaunchTrace.mark("AppModel init start")
+        // Test aid: `-mock -mock-fresh` forgets everything saved by earlier launches (caches, queue,
+        // list, preferences) so each UI test starts from the same state.
+        if mock, ProcessInfo.processInfo.arguments.contains("-mock-fresh") {
+            DiskStore.removeAll()
+            if let id = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: id) }
+            ImageCache.shared.removeAll()
+        }
         isMock = mock
         let storedURL = mock ? URL(string: "http://mock.shop.local:8080") : UserDefaults.standard.url(forKey: Self.serverKey)
         let token = mock ? "st_mock" : Keychain.get(Self.tokenAccount)
@@ -295,7 +302,31 @@ final class AppModel {
     /// Add tray / empty state / queue: dismiss the tray and show the chosen system picker.
     func beginImport(_ source: ImportSource) {
         trays.dismiss()
+        // Simulator and UI-test aid: `-mock -mock-import-demo` skips the system picker and imports
+        // three generated receipt pictures, so the whole import flow can run unattended.
+        if isMock, ProcessInfo.processInfo.arguments.contains("-mock-import-demo") {
+            let flow = ImportModel()
+            flow.source = source == .files ? .files : .photos
+            Task {
+                try? await Task.sleep(for: .milliseconds(350))
+                importFlow = flow
+                await flow.load(images: Self.demoReceiptImages())
+            }
+            return
+        }
         importPicker = source
+    }
+
+    private static func demoReceiptImages() -> [UIImage] {
+        (0..<3).map { n in
+            let format = UIGraphicsImageRendererFormat(); format.scale = 1
+            return UIGraphicsImageRenderer(size: CGSize(width: 900, height: 1400), format: format).image { ctx in
+                UIColor(white: 0.18, alpha: 1).setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 900, height: 1400))
+                UIColor(white: 0.97, alpha: 1).setFill(); ctx.fill(CGRect(x: 120, y: 80, width: 660, height: 1240))
+                UIColor.black.setFill()
+                for row in 0..<22 { ctx.fill(CGRect(x: 170, y: 160 + row * 48 + n * 3, width: 280 + (row * 37 + n * 61) % 300, height: 14)) }
+            }
+        }
     }
 
     func openImportSources() {

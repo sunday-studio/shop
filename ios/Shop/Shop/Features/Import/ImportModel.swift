@@ -122,6 +122,11 @@ final class ImportModel: Identifiable {
         await ingest(datas.map { ($0.0, $0.1, "Photo") })
     }
 
+    /// Pictures that are already in memory (the `-mock-import-demo` launch argument uses this).
+    func load(images: [UIImage]) async {
+        await ingest(images.enumerated().compactMap { i, image in image.jpegData(compressionQuality: 0.85).map { ($0, "jpg", "Photo \(i + 1)") } })
+    }
+
     func load(files urls: [URL]) async {
         var datas: [(Data, String, String)] = []
         for url in urls {
