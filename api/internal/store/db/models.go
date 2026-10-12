@@ -178,6 +178,11 @@ type Receipt struct {
 	HeaderVersion  sql.NullInt64  `json:"header_version"`
 }
 
+type ReceiptDuplicateDismissal struct {
+	ReceiptID   int64  `json:"receipt_id"`
+	DismissedAt string `json:"dismissed_at"`
+}
+
 type ReceiptLine struct {
 	ID             int64          `json:"id"`
 	ReceiptID      int64          `json:"receipt_id"`

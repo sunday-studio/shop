@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -89,7 +91,62 @@ func (s *Server) receiptCounts(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
+	dups, err := s.Receipts.PossibleDuplicates(r.Context())
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	c["possible_duplicates"] = int64(len(dups))
 	writeJSON(w, http.StatusOK, c)
+}
+
+// toPossibleDuplicate adds the older receipt's shop to a detected duplicate.
+func (s *Server) toPossibleDuplicate(r *http.Request, d *receipts.Duplicate) (*apitypes.PossibleDuplicate, error) {
+	if d == nil {
+		return nil, nil
+	}
+	at := d.PurchasedAt
+	out := &apitypes.PossibleDuplicate{
+		ReceiptId: d.ReceiptID, PurchasedAt: &at, TotalCents: d.TotalCents, Match: apitypes.PossibleDuplicateMatch(d.Match),
+		SharedLines: d.SharedLines, ItemCount: d.ItemLines, OtherItemCount: d.OtherItemLines, TimeMatches: d.TimeMatches,
+	}
+	if d.ShopID != nil {
+		sh, err := s.q.GetShop(r.Context(), *d.ShopID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		if err == nil {
+			out.Shop = &apitypes.ShopRef{Id: sh.ID, Name: sh.Name, Chain: store.StrPtr(sh.Chain)}
+			out.ShopName = &sh.Name
+		}
+	}
+	return out, nil
+}
+
+func (s *Server) keepDuplicate(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	if err := s.Receipts.DismissDuplicate(r.Context(), id); err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) undoKeepDuplicate(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	if err := s.Receipts.UndismissDuplicate(r.Context(), id); err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func toLine(l db.ReceiptLine) apitypes.ReceiptLine {
@@ -154,9 +211,18 @@ func (s *Server) listReceipts(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
+	dups, err := s.Receipts.PossibleDuplicates(r.Context())
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
 	page := apitypes.ReceiptPage{Items: make([]apitypes.Receipt, len(recs))}
 	for i, rec := range recs {
 		page.Items[i] = toReceipt(rec.Receipt, nil)
+		if page.Items[i].PossibleDuplicateOf, err = s.toPossibleDuplicate(r, dups[rec.Receipt.ID]); err != nil {
+			s.writeErr(w, r, err)
+			return
+		}
 		lc, uc := int(rec.LineCount), int(rec.UnlinkedCount)
 		page.Items[i].LineCount, page.Items[i].UnlinkedCount = &lc, &uc
 	}
@@ -265,6 +331,13 @@ func (s *Server) receiptOut(r *http.Request, id int64) (apitypes.Receipt, error)
 		return apitypes.Receipt{}, err
 	}
 	out.ShopSuggestion = toShopSuggestion(sug)
+	dup, err := s.Receipts.PossibleDuplicate(r.Context(), id)
+	if err != nil {
+		return apitypes.Receipt{}, err
+	}
+	if out.PossibleDuplicateOf, err = s.toPossibleDuplicate(r, dup); err != nil {
+		return apitypes.Receipt{}, err
+	}
 	if err := s.withProducts(r, *out.Lines); err != nil {
 		return apitypes.Receipt{}, err
 	}
