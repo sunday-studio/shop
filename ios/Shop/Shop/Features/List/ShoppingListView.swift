@@ -348,6 +348,8 @@ struct ShoppingListView: View {
             hint: [english?.subline.flatMap { $0 == "No English yet" ? nil : $0 }, hintOverride ?? hint(item)].compactMap { $0 }.joined(separator: " · "),
             hintShop: hintOverride != nil ? nil : (receiptNote(item)?.shop ?? item.cheapest?.shopName),
             quantity: quantity(item),
+            needsEnglish: english?.needsEnglish ?? false,
+            unknown: english?.unknown ?? [],
             isChecked: item.isChecked,
             onToggle: { checked in toggle(item, checked) },
             onTap: { if let onHint { onHint() } else { openEdit(item) } }
