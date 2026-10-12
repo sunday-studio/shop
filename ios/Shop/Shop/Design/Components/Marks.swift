@@ -101,6 +101,8 @@ struct CountBadge: View {
             .overlay {
                 if let ring { Capsule().strokeBorder(ring, lineWidth: 2) }
             }
+            // A count in a small badge stays a small badge; the number is read aloud with its row anyway.
+            .dynamicTypeSize(...DynamicTypeSize.large)
     }
 }
 
