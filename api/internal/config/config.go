@@ -16,6 +16,7 @@ type Config struct {
 	OCRURL             string
 	OCRFallbackURL     string
 	FoodFactsUserAgent string
+	FoodFactsBaseURL   string // OFF_BASE_URL: empty = the real Open Food Facts (the e2e stack points it at a fake)
 	Workers            int
 	LogoDevToken       string // logo.dev publishable key; logos are off without it
 	BackupDir          string
@@ -35,6 +36,7 @@ func Load() (Config, error) {
 		OCRURL:             env("OCR_URL", "http://localhost:8000"),
 		OCRFallbackURL:     env("OCR_FALLBACK_URL", ""),
 		FoodFactsUserAgent: env("OFF_USER_AGENT", "Shop/0.1 (self-hosted)"),
+		FoodFactsBaseURL:   env("OFF_BASE_URL", ""),
 	}
 
 	c.LogoDevToken = env("LOGO_DEV_TOKEN", "")

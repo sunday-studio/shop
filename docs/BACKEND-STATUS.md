@@ -1,10 +1,10 @@
 # Backend status (handoff)
 
-_Last updated 2026-10-11._ Read this first if you're picking up the server side. The detailed spec and milestone checklists are in [PLAN.md](PLAN.md).
+_Last updated 2026-10-12._ Read this first if you're picking up the server side. The detailed spec and milestone checklists are in [PLAN.md](PLAN.md).
 
 ## What it is
 
-A Go server (`api/`) with SQLite, an OCR sidecar (`ocr/`, Python + PaddleOCR) and Docker Compose (`deploy/`). It serves the REST API (`/v1`, contract in [`openapi.yaml`](../openapi.yaml) **0.12.1**; migrations `00001`-`00013`), MCP for an AI assistant (`/mcp`), and the iOS app. Everything runs CPU-only in Docker, with no macOS dependency (a deliberate decision).
+A Go server (`api/`) with SQLite, an OCR sidecar (`ocr/`, Python + PaddleOCR) and Docker Compose (`deploy/`). It serves the REST API (`/v1`, contract in [`openapi.yaml`](../openapi.yaml) **0.16.0**; migrations `00001`-`00019`), MCP for an AI assistant (`/mcp`), and the iOS app. Everything runs CPU-only in Docker, with no macOS dependency (a deliberate decision).
 
 ## Run it
 
@@ -12,6 +12,7 @@ A Go server (`api/`) with SQLite, an OCR sidecar (`ocr/`, Python + PaddleOCR) an
 cp deploy/.env.example deploy/.env    # add LOGO_DEV_TOKEN (logo.dev pk_…), optional
 make setup                            # build + start; prints the app pairing password once
 make test                             # Go tests (all green at the time of writing)
+make e2e                              # whole-loop test in an isolated docker stack (see "End-to-end test" below)
 make token NAME=assistant             # bearer token for MCP/scripts
 ```
 
@@ -29,10 +30,13 @@ make token NAME=assistant             # bearer token for MCP/scripts
 | Stats, list | `internal/stats`, `internal/shopping` | Spend (time/shop/category/product, split_by), per-unit prices, price changes, frequent items. List: idempotent adds (client_id), changes feed |
 | Search, logos | `internal/search`, `internal/logos` | Unified search; shop logos via logo.dev, cached on disk |
 | Auth | `internal/auth`, `internal/httpapi/pairing.go` | Pairing password (bcrypt) → per-device tokens; rate-limited |
-| MCP | `internal/mcpserver` | 17 tools (incl. `review_new_products`, `resolve_review`), 2 resources (stateless streamable HTTP) |
+| MCP | `internal/mcpserver` | 21 tools (incl. `review_new_products`, `resolve_review`, the `shopping_group_*` tools), 2 resources (stateless streamable HTTP) |
 | Ops | `internal/backup`, `cmd/shop` | Nightly NAS backup service, restore, pre-migration snapshots, health checks |
 | Shop suggestions | `internal/shopsuggest` | Chain + branch read from the receipt header; suggestion / accept / reject endpoints; migrations 00011, 00012 (nullable `receipts.shop_id`, `photo_taken_at`) |
 | Auto products | `internal/autoprod` | `create_or_link`, category rules, review queue, merge / undo / split / discard, barcode create, `off_refresh`, backfill; migration 00013; `AUTO_PRODUCTS` on by default |
+| Shopping list A: receipts check the list | `internal/shopping/receipt.go` | Migration 00017, openapi 0.14.0. Confirming a receipt checks off open items (linked product, or free text scoring 0.90 or more) and keeps an item open with a smaller qty and the note "1 of 3 bought" when fewer were bought. 0.75 to 0.90, or a different product of the same category, becomes a "Looks bought?" suggestion (`GET /v1/list/suggestions`, `.../accept`, `.../dismiss`). Only receipts dated within 3 days before the confirmation count. The result is on the confirm response (`list`); `POST /v1/receipts/{id}/list-checks/undo` puts everything back; deleting a receipt or a forced re-parse reverts its checks; a failure never fails the confirm |
+| Shopping list B: groups and checklists | `internal/shopping/groups.go`, `internal/httpapi/list_groups.go` | Migration 00018, openapi 0.15.0. Groups (checklist or template) inside the one list: CRUD, atomic idempotent create with items (`client_id`, or `external_ref` for the assistant), bulk add, move between groups, delete with `items=keep|delete` and a 10 minute restore, template instantiate and save-as-template. A global `rev` counter and `GET /v1/list/changes?since_rev=` (the time cursor still works), tombstones for items and groups. A purchase checks a product in every live group. 4 MCP tools |
+| Shopping list C: product groups and the plan | `internal/listplan`, `internal/httpapi/list_plan.go` | Migration 00019, openapi 0.16.0. "Same kind of item" product groups (suggested, never applied silently; confirm, deny, merge, split, every change undoable for 30 days). `GET /v1/list/plan` splits the open list by shop net of the cost of an extra stop (settings `GET/PATCH /v1/list/plan/settings`, defaults 250 cents and 2 shops); prices are the median of the last 3 purchases per shop inside 90 days (30 for fresh produce), savings are counted only on items priced at both shops, a missing pack size compares per piece and says so. Status `split`, `one_shop_fine` or `not_enough_data` |
 | Spike tooling | `cmd/shop-spike`, `internal/spike`, `docs/spike.md` | Multi-engine OCR, labelling web page, scoring report |
 
 All iOS backend needs (#1–#11 in [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md)) are live.
@@ -47,6 +51,17 @@ All iOS backend needs (#1–#11 in [IOS-BACKEND-NEEDS.md](IOS-BACKEND-NEEDS.md))
 6. **Never observed:** the nightly backup firing on schedule; backups to a real NAS (only the local `backups/` folder so far).
 7. **No CI:** the workflow was removed on purpose by the owner. Run `make test` locally.
 8. **Owner decisions pending:** Tailscale setup; connecting the AI assistant to MCP; whether to drop PaddleOCR-VL from the spike (recommended: keep it parked); confirming the GT America font licences.
+
+## End-to-end test
+
+`make e2e` starts a separate Docker stack, drives it over HTTP the way the iOS app does, prints a pass/fail table and exits non-zero on any failure. It always tears the stack down, also after a failure or Ctrl-C.
+
+- **Isolation:** compose project `shop-e2e` (`deploy/docker-compose.e2e.yml` on top of `deploy/docker-compose.yml`), API on `127.0.0.1:18480`, its own API image tag (`shop-e2e-api`), a throwaway data volume, a throwaway tmpfs for backups. The live stack (project `shop`, port 8080, volume `shop_shop-data`) is never touched, and the test refuses to run any compose command for another project. The OCR container uses the existing `shop-ocr:ppocrv5` image (built once by `make e2e` if missing).
+- **Needs:** Docker running, a free port 18480, and Go. About 1 to 2 minutes with a warm image cache.
+- **Covers:** pairing (password set with the `shop` CLI inside the container, wrong password, device token), uploading a rendered receipt photo (real OCR, nothing mocked; dedupe 409, wrong type 415), status, lines, date and totals (printed total equals parsed sum), re-parse, shop suggestion and accept, list items with idempotent `client_id`, confirm (auto-created products and list auto-check), undo of the list checks, barcode create, the review queue and accepting a card, product merge and undo, groups and checklists (create, repeat, items, move, template, instantiate, delete, restore, `since_rev` feed), `GET /v1/list/plan` on thin data (`not_enough_data`) and its settings, categories (CRUD, delete with `move_to`), a backup run and the backup health check.
+- **Open Food Facts** is external, so the API is pointed at a fake server on the host (`OFF_BASE_URL`, default empty = the real service) that answers found, not found and down. The real service is never contacted.
+- **Private receipt photos:** if `spike/data/` (or `spike/receipts/`, or the folder in `E2E_PHOTOS`) holds JPEGs, they are uploaded too and the known-good ones (IMG_1463 to IMG_1474) must reconcile with the printed total; IMG_1475 is the documented curled photo and is only reported. Without photos this step is skipped and says so in the table.
+- **Not covered:** no export endpoint exists (the backup status is checked through `/healthz`); the cheapest-store plan with real savings (`split`) needs receipts from two shops with the same product, which one rendered receipt cannot give, and is covered by the unit tests; the nightly schedule firing; backups to a real NAS; the iOS app.
 
 ## Conventions that matter
 

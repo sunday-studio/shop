@@ -1,0 +1,32 @@
+# Isolated stack for `make e2e`. Always used together with deploy/docker-compose.yml and
+# the project name shop-e2e:
+#
+#   docker compose -p shop-e2e -f deploy/docker-compose.yml -f deploy/docker-compose.e2e.yml up -d --build --wait
+#
+# Nothing here touches the live stack (project "shop", port 8080, volume shop_shop-data):
+# own project name (so own network, own volumes, own container names), own port, own image tag
+# for the API, no bind mounts. `down -v -p shop-e2e` removes everything it created.
+services:
+  api:
+    image: shop-e2e-api:latest
+    restart: "no"
+    ports: !override ["127.0.0.1:18480:8080"]
+    extra_hosts: ["host.docker.internal:host-gateway"]   # the fake Open Food Facts server runs on the host
+    environment:
+      OFF_BASE_URL: ${E2E_OFF_URL:-http://host.docker.internal:18081}
+      LOGO_DEV_TOKEN: ""        # no external logo lookups
+      AUTO_PRODUCTS: "on"
+      SHOP_TZ: Europe/Amsterdam
+
+  ocr:
+    # The same OCR image the live stack uses, only read: not rebuilt, not retagged
+    # (`make e2e` builds it once if it is missing).
+    build: !reset null
+    pull_policy: never
+    restart: "no"
+
+  backup:
+    image: shop-e2e-api:latest
+    restart: "no"
+    volumes: !override ["shop-data:/data"]
+    tmpfs: ["/backup:mode=1777"]            # throwaway target instead of the host ./backups folder
