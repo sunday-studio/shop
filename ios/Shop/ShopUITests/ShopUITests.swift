@@ -182,6 +182,36 @@ final class ShopUITests: XCTestCase {
         exists(text("Server & sync").exists ? text("Server & sync") : text("Settings"), "settings screen")
     }
 
+    // MARK: Accessibility
+
+    /// Buttons VoiceOver would read as the raw name of an SF Symbol ("checkmark", "xmark"), which
+    /// an icon-only button falls back to without an accessibility label. Buttons with an empty
+    /// label are not flagged: a SwiftUI `Menu` shows up that way next to its labelled twin.
+    private func unlabelledButtons() -> [String] {
+        var found: [String] = []
+        for line in app.debugDescription.split(separator: "\n") where line.contains(" Button,") || line.hasPrefix("Button,") {
+            let label = line.components(separatedBy: "label: '").dropFirst().first?.components(separatedBy: "'").first ?? ""
+            let symbolLike = label.range(of: "^[a-z]+(\\.[a-z0-9]+)*$", options: .regularExpression) != nil
+            let frame = line.components(separatedBy: "{{").dropFirst().first?.components(separatedBy: ",").first ?? "0"
+            let x = Double(frame) ?? 0
+            if symbolLike && x >= -1 && x < 402 { found.append(String(line.trimmingCharacters(in: .whitespaces).prefix(160))) }
+        }
+        return found
+    }
+
+    func testIconButtonsHaveNamesOnTheMainScreens() {
+        exists(text("Receipts to review"))
+        var problems: [String: [String]] = [:]
+        func check(_ screen: String) { let bad = unlabelledButtons(); if !bad.isEmpty { problems[screen] = bad } }
+        check("Home")
+        tab("Analytics"); exists(text("Analytics")); check("Analytics")
+        tab("Products"); exists(text("Products")); check("Products")
+        tab("List"); exists(text("List")); check("List")
+        tab("Home")
+        app.buttons["Add"].firstMatch.tap(); exists(anyElement(startingWith: "Scan receipt")); check("Add tray")
+        XCTAssertTrue(problems.isEmpty, "Buttons without a VoiceOver name: \(problems)")
+    }
+
     private func waitForDisappearance(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
         let predicate = NSPredicate(format: "exists == false")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
