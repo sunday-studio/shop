@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.16.0
+  version: 0.17.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -232,6 +232,7 @@ paths:
                 type: object
                 required: [pending, processing, needs_review, ok, failed, total]
                 properties:
+                  possible_duplicates: { type: integer, description: "receipts that currently look like an older one and have not been dismissed (Keep both). Not part of the review counters: it blocks nothing" }
                   pending: { type: integer }
                   processing: { type: integer }
                   needs_review: { type: integer }
@@ -269,6 +270,24 @@ paths:
       operationId: deleteReceipt
       responses:
         "204": { description: Deleted (image file too) }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/receipts/{id}/duplicate/keep:
+    parameters:
+      - $ref: "#/components/parameters/ID"
+    post:
+      operationId: keepDuplicateReceipt
+      description: >
+        "Keep both": remembers that the user looked at the possible duplicate and wants this receipt anyway.
+        `possible_duplicate_of` is null on this receipt from now on. Idempotent. Deletes and merges nothing.
+      responses:
+        "204": { description: Remembered }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: undoKeepDuplicateReceipt
+      description: Undo of Keep both. The warning can show again (if the receipts still match). Idempotent.
+      responses:
+        "204": { description: Forgotten }
         default: { $ref: "#/components/responses/Problem" }
 
   /v1/receipts/{id}/shop-suggestion:
@@ -2143,6 +2162,13 @@ components:
           nullable: true
           description: single-receipt GET only; null/absent when there is nothing to suggest
           allOf: [{ $ref: "#/components/schemas/ShopSuggestion" }]
+        possible_duplicate_of:
+          nullable: true
+          description: >
+            Set on the NEWER receipt (the one uploaded later) when it looks like an older one; computed on every
+            read, never stored; null when nothing matches, after "Keep both", when the other receipt is gone, or
+            while this receipt is not parsed yet. Present on the single-receipt GET and on list rows.
+          allOf: [{ $ref: "#/components/schemas/PossibleDuplicate" }]
         id: { type: integer, format: int64 }
         shop_id: { type: integer, format: int64 }
         purchased_at: { type: string, format: date-time }
@@ -2164,6 +2190,27 @@ components:
         lines:
           type: array
           items: { $ref: "#/components/schemas/ReceiptLine" }
+
+    PossibleDuplicate:
+      type: object
+      description: >
+        The older receipt a newer one looks like. Rule: both parsed, same printed total, same purchase day
+        (Europe/Amsterdam), same shop or at least one without a shop; baskets under 10 euro also need 3 item lines
+        on both or a line overlap. `total+date+lines` when at least 60% of the normalised item lines are shared
+        (shared lines divided by the longer item list), else `total+date`. With several candidates the strongest wins
+        (lines first, then equal time of day, then the oldest date).
+      required: [receipt_id, total_cents, match, shared_lines, item_count, other_item_count, time_matches]
+      properties:
+        receipt_id: { type: integer, format: int64, description: "the older receipt; fetch it with GET /v1/receipts/{id}, its photo is at /v1/receipts/{id}/image" }
+        purchased_at: { type: string, format: date-time, description: "of the older receipt" }
+        total_cents: { type: integer, format: int64 }
+        shop: { allOf: [{ $ref: "#/components/schemas/ShopRef" }], nullable: true, description: "shop of the older receipt; null when it is unassigned" }
+        shop_name: { type: string, description: "same as shop.name, for convenience" }
+        match: { type: string, enum: ["total+date", "total+date+lines"] }
+        shared_lines: { type: integer, description: "item lines both receipts have" }
+        item_count: { type: integer, description: "item lines on this (newer) receipt" }
+        other_item_count: { type: integer, description: "item lines on the older receipt" }
+        time_matches: { type: boolean, description: "both receipts carry a time of day and it is equal to the minute" }
 
     ReceiptPage:
       type: object

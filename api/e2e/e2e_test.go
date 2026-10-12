@@ -22,6 +22,7 @@ var st struct {
 	bananaItem int64
 	shopID     int64
 	prodBanana int64
+	img        []byte
 }
 
 var syntheticLines = []recLine{
@@ -73,6 +74,7 @@ func TestE2E(t *testing.T) {
 		needs(t, token != "", "pairing")
 		img, total := renderReceipt(syntheticLines, time.Now().In(amsterdam()))
 		st.total = total
+		st.img = img
 		code, r := upload(t, "e2e-receipt.jpg", img, "image/jpeg", nil)
 		check(t, code == 202, "upload = %d %v", code, r)
 		st.rid = num(r, "id")
@@ -206,6 +208,41 @@ func TestE2E(t *testing.T) {
 		}
 		res = obj(t, "POST", fmt.Sprintf("/v1/receipts/%d/list-checks/undo", st.rid), nil, 200)
 		check(t, len(list(res, "restored")) == 0, "second undo restored %d", len(list(res, "restored")))
+	})
+
+	step(t, "duplicate warning: re-photo flagged on the newer receipt, keep both, undo, remove", func(t *testing.T) {
+		needs(t, st.rid != 0 && len(st.img) > 0, "upload")
+		// The same receipt photographed again: other bytes (so the upload dedupe does not fire), same content.
+		again := append(append([]byte{}, st.img...), 0, 0, 0)
+		code, r := upload(t, "e2e-rephoto.jpg", again, "image/jpeg", nil)
+		check(t, code == 202, "re-photo upload = %d %v", code, r)
+		dup := num(r, "id")
+		r = waitReceipt(t, dup, 10*time.Minute)
+		check(t, str(r, "status") == "ok", "re-photo status %q", str(r, "status"))
+		pd, _ := r["possible_duplicate_of"].(M)
+		check(t, pd != nil && num(pd, "receipt_id") == st.rid && str(pd, "match") == "total+date+lines", "possible_duplicate_of = %v", r["possible_duplicate_of"])
+		orig := obj(t, "GET", fmt.Sprintf("/v1/receipts/%d", st.rid), nil, 200)
+		check(t, orig["possible_duplicate_of"] == nil, "the older receipt must show nothing: %v", orig["possible_duplicate_of"])
+		counts := obj(t, "GET", "/v1/receipts/counts", nil, 200)
+		check(t, num(counts, "possible_duplicates") == 1, "possible_duplicates = %d, want 1", num(counts, "possible_duplicates"))
+
+		keep := fmt.Sprintf("/v1/receipts/%d/duplicate/keep", dup)
+		for _, c := range []struct{ m string }{{"POST"}, {"POST"}} {
+			code, _ := status(t, c.m, keep, nil)
+			check(t, code == 204, "keep = %d", code)
+		}
+		r = obj(t, "GET", fmt.Sprintf("/v1/receipts/%d", dup), nil, 200)
+		check(t, r["possible_duplicate_of"] == nil, "still flagged after keep both: %v", r["possible_duplicate_of"])
+		code, _ = status(t, "DELETE", keep, nil)
+		check(t, code == 204, "undo keep = %d", code)
+		r = obj(t, "GET", fmt.Sprintf("/v1/receipts/%d", dup), nil, 200)
+		check(t, r["possible_duplicate_of"] != nil, "not flagged again after undo")
+
+		// Removing the duplicate leaves the original untouched.
+		code, _ = status(t, "DELETE", fmt.Sprintf("/v1/receipts/%d", dup), nil)
+		check(t, code == 204, "delete duplicate = %d", code)
+		orig = obj(t, "GET", fmt.Sprintf("/v1/receipts/%d", st.rid), nil, 200)
+		check(t, str(orig, "status") == "ok", "original after removing the copy: %q", str(orig, "status"))
 	})
 
 	var barcodes struct{ found, missing, down string }

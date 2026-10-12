@@ -92,6 +92,8 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("POST /v1/receipts/{id}/list-checks/undo", s.undoListChecks)
 	api.HandleFunc("POST /v1/receipts", s.uploadReceipt)
 	api.HandleFunc("GET /v1/receipts/counts", s.receiptCounts)
+	api.HandleFunc("POST /v1/receipts/{id}/duplicate/keep", s.keepDuplicate)
+	api.HandleFunc("DELETE /v1/receipts/{id}/duplicate/keep", s.undoKeepDuplicate)
 	api.HandleFunc("GET /v1/receipts/{id}", s.getReceipt)
 	api.HandleFunc("PATCH /v1/receipts/{id}", s.updateReceipt)
 	api.HandleFunc("DELETE /v1/receipts/{id}", s.deleteReceipt)

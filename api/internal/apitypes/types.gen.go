@@ -639,6 +639,24 @@ func (e PlanSummaryConfidence) Valid() bool {
 	}
 }
 
+// Defines values for PossibleDuplicateMatch.
+const (
+	TotalDate      PossibleDuplicateMatch = "total+date"
+	TotalDateLines PossibleDuplicateMatch = "total+date+lines"
+)
+
+// Valid indicates whether the value is a known member of the PossibleDuplicateMatch enum.
+func (e PossibleDuplicateMatch) Valid() bool {
+	switch e {
+	case TotalDate:
+		return true
+	case TotalDateLines:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PriceChangeBaseUnit.
 const (
 	PriceChangeBaseUnitKg PriceChangeBaseUnit = "kg"
@@ -1979,6 +1997,38 @@ type PlanSummary struct {
 // PlanSummaryConfidence defines model for PlanSummary.Confidence.
 type PlanSummaryConfidence string
 
+// PossibleDuplicate The older receipt a newer one looks like. Rule: both parsed, same printed total, same purchase day (Europe/Amsterdam), same shop or at least one without a shop; baskets under 10 euro also need 3 item lines on both or a line overlap. `total+date+lines` when at least 60% of the normalised item lines are shared (shared lines divided by the longer item list), else `total+date`. With several candidates the strongest wins (lines first, then equal time of day, then the oldest date).
+type PossibleDuplicate struct {
+	// ItemCount item lines on this (newer) receipt
+	ItemCount int                    `json:"item_count"`
+	Match     PossibleDuplicateMatch `json:"match"`
+
+	// OtherItemCount item lines on the older receipt
+	OtherItemCount int `json:"other_item_count"`
+
+	// PurchasedAt of the older receipt
+	PurchasedAt *time.Time `json:"purchased_at,omitempty"`
+
+	// ReceiptId the older receipt; fetch it with GET /v1/receipts/{id}, its photo is at /v1/receipts/{id}/image
+	ReceiptId int64 `json:"receipt_id"`
+
+	// SharedLines item lines both receipts have
+	SharedLines int `json:"shared_lines"`
+
+	// Shop shop of the older receipt; null when it is unassigned
+	Shop *ShopRef `json:"shop,omitempty"`
+
+	// ShopName same as shop.name, for convenience
+	ShopName *string `json:"shop_name,omitempty"`
+
+	// TimeMatches both receipts carry a time of day and it is equal to the minute
+	TimeMatches bool  `json:"time_matches"`
+	TotalCents  int64 `json:"total_cents"`
+}
+
+// PossibleDuplicateMatch defines model for PossibleDuplicate.Match.
+type PossibleDuplicateMatch string
+
 // PriceChange defines model for PriceChange.
 type PriceChange struct {
 	BaseUnit     PriceChangeBaseUnit `json:"base_unit"`
@@ -2214,10 +2264,13 @@ type Receipt struct {
 	PaymentMethod  *string            `json:"payment_method,omitempty"`
 
 	// PhotoTakenAt hint from the photo's EXIF; never the purchase date unless the user picks it
-	PhotoTakenAt  *time.Time             `json:"photo_taken_at,omitempty"`
-	PurchasedAt   *time.Time             `json:"purchased_at,omitempty"`
-	ReviewReasons []ReceiptReviewReasons `json:"review_reasons"`
-	ShopId        *int64                 `json:"shop_id,omitempty"`
+	PhotoTakenAt *time.Time `json:"photo_taken_at,omitempty"`
+
+	// PossibleDuplicateOf Set on the NEWER receipt (the one uploaded later) when it looks like an older one; computed on every read, never stored; null when nothing matches, after "Keep both", when the other receipt is gone, or while this receipt is not parsed yet. Present on the single-receipt GET and on list rows.
+	PossibleDuplicateOf *PossibleDuplicate     `json:"possible_duplicate_of,omitempty"`
+	PurchasedAt         *time.Time             `json:"purchased_at,omitempty"`
+	ReviewReasons       []ReceiptReviewReasons `json:"review_reasons"`
+	ShopId              *int64                 `json:"shop_id,omitempty"`
 
 	// ShopSuggestion single-receipt GET only; null/absent when there is nothing to suggest
 	ShopSuggestion *ShopSuggestion `json:"shop_suggestion,omitempty"`
