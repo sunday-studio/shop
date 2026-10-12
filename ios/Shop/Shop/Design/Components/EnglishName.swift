@@ -52,11 +52,12 @@ struct EnglishNameText: View {
     let text: String
     var unknown: [UnknownWord] = []
     var style: TypeStyle = .rowTitle
+    var lineLimit: Int = 2
     var onTapWord: ((UnknownWord) -> Void)? = nil
 
     var body: some View {
         Text(attributed)
-            .lineLimit(2)
+            .lineLimit(lineLimit)
             .environment(\.openURL, OpenURLAction { url in
                 guard let onTapWord, let index = Self.index(of: url), unknown.indices.contains(index) else {
                     return .discarded

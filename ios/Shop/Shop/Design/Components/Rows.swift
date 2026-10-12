@@ -156,12 +156,22 @@ struct ProductRow: View {
     var price: String? = nil
     var priceShop: String? = nil
     var showsChevron: Bool = false
+    /// "Needs English": amber badge after the name, and the unknown words of `name` highlighted.
+    var needsEnglish: Bool = false
+    var unknown: [UnknownWord] = []
 
     var body: some View {
         HStack(spacing: Space.l) {
             ProductTile(name: name, category: category, categoryToken: categoryToken, imageURL: imageURL)
             VStack(alignment: .leading, spacing: 1) {
-                TypeStyle.rowTitle.text(name).foregroundStyle(Palette.ink).lineLimit(1)
+                HStack(spacing: 6) {
+                    if unknown.isEmpty {
+                        TypeStyle.rowTitle.text(name).foregroundStyle(Palette.ink).lineLimit(1)
+                    } else {
+                        EnglishNameText(text: name, unknown: unknown, lineLimit: 1)
+                    }
+                    if needsEnglish { NeedsEnglishBadge().fixedSize() }
+                }
                 if let meta {
                     TypeStyle.rowSub.text(meta).foregroundStyle(Palette.ink2).lineLimit(1)
                 }
@@ -212,6 +222,9 @@ struct ListItemRow: View {
     var hint: String? = nil
     var hintShop: String? = nil
     var quantity: String? = nil
+    /// "Needs English": amber badge after the title, and the unknown words of `title` highlighted (open items only).
+    var needsEnglish: Bool = false
+    var unknown: [UnknownWord] = []
     var isChecked: Bool
     let onToggle: (Bool) -> Void
     var onTap: (() -> Void)? = nil
@@ -242,10 +255,17 @@ struct ListItemRow: View {
             .accessibilityLabel(shownChecked ? "Uncheck \(title)" : "Check off \(title)")
 
             VStack(alignment: .leading, spacing: 2) {
-                TypeStyle.rowTitle.text(title)
-                    .strikethrough(struck || (isChecked && reduce), color: Palette.ink3)
-                    .foregroundStyle(struck || shownChecked ? Palette.ink3 : Palette.ink)
-                    .lineLimit(lines)
+                HStack(spacing: 6) {
+                    if unknown.isEmpty || shownChecked {
+                        TypeStyle.rowTitle.text(title)
+                            .strikethrough(struck || (isChecked && reduce), color: Palette.ink3)
+                            .foregroundStyle(struck || shownChecked ? Palette.ink3 : Palette.ink)
+                            .lineLimit(lines)
+                    } else {
+                        EnglishNameText(text: title, unknown: unknown, lineLimit: lines)
+                    }
+                    if needsEnglish && !shownChecked { NeedsEnglishBadge().fixedSize() }
+                }
                 if let hint {
                     HStack(spacing: 5) {
                         if let hintShop { ShopMark(name: hintShop, size: 14) }
