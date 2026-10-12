@@ -111,7 +111,7 @@ struct ReceiptCaptureView: View {
         .onAppear {
             if shopId == nil { shopId = app.catalog.lastShop?.id }
             guard pages.isEmpty else { return }
-            if DocumentScanner.isAvailable { scanning = true }
+            if DocumentScanner.isAvailable && !CameraAccess.isDenied { scanning = true }
         }
         .animation(Motion.spring, value: pages.isEmpty)
     }
@@ -121,17 +121,22 @@ struct ReceiptCaptureView: View {
     private var noPagesPlaceholder: some View {
         VStack(spacing: Space.xl) {
             Spacer()
-            PaperReceipt(lines: 7)
-                .frame(width: 150, height: 200)
-                .rotationEffect(.degrees(-3))
-                .opacity(0.9)
-            TypeStyle.emptyTitle.text(DocumentScanner.isAvailable ? "Opening the scanner…" : "No camera here")
-                .foregroundStyle(Palette.scanInk)
-            TypeStyle.body.text(DocumentScanner.isAvailable ? "Hold the receipt flat on a dark surface." : "Pick a photo of a receipt instead.")
-                .foregroundStyle(Palette.scanInk2)
+            if CameraAccess.isDenied {
+                CameraOffState(onOpenSettings: { CameraAccess.openSettings() })
+                    .environment(\.colorScheme, .dark)
+            } else {
+                PaperReceipt(lines: 7)
+                    .frame(width: 150, height: 200)
+                    .rotationEffect(.degrees(-3))
+                    .opacity(0.9)
+                TypeStyle.emptyTitle.text(DocumentScanner.isAvailable ? "Opening the scanner…" : "No camera here")
+                    .foregroundStyle(Palette.scanInk)
+                TypeStyle.body.text(DocumentScanner.isAvailable ? "Hold the receipt flat on a dark surface." : "Pick a photo of a receipt instead.")
+                    .foregroundStyle(Palette.scanInk2)
+            }
             Spacer()
             VStack(spacing: Space.m) {
-                if DocumentScanner.isAvailable {
+                if DocumentScanner.isAvailable && !CameraAccess.isDenied {
                     Button("Open scanner") { scanning = true }
                         .buttonStyle(.shop(.solid(Accent.blue)))
                 }

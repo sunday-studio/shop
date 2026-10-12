@@ -22,7 +22,7 @@ struct UnpackView: View {
         ZStack(alignment: .bottom) {
             ScanBackdrop()
 
-            if BarcodeScanner.isAvailable {
+            if BarcodeScanner.isAvailable && !CameraAccess.isDenied {
                 BarcodeScanner { code in model?.scanned(code) }
                     .ignoresSafeArea()
             }
@@ -143,7 +143,12 @@ struct UnpackView: View {
                         .padding(.bottom, 6)
                 }
 
-                if !BarcodeScanner.isAvailable {
+                if CameraAccess.isDenied {
+                    CameraOffState(message: "Shop needs the camera to scan barcodes. You can still type a barcode.", onOpenSettings: { CameraAccess.openSettings() })
+                        .environment(\.colorScheme, .dark)
+                        .frame(maxHeight: 260)
+                }
+                if !BarcodeScanner.isAvailable || CameraAccess.isDenied {
                     manualEntry
                 }
 
@@ -170,7 +175,7 @@ struct UnpackView: View {
                     .frame(maxHeight: 210)
                     .scrollBounceBehavior(.basedOnSize)
                 } else {
-                    TypeStyle.body.text(BarcodeScanner.isAvailable ? "Point the camera at a barcode." : "Type a barcode to look it up.")
+                    TypeStyle.body.text(BarcodeScanner.isAvailable && !CameraAccess.isDenied ? "Point the camera at a barcode." : "Type a barcode to look it up.")
                         .foregroundStyle(darkInk2)
                         .padding(.horizontal, Space.xs)
                         .padding(.vertical, Space.l)

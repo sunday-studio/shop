@@ -140,7 +140,8 @@ struct ShoppingListView: View {
                 StoreSectionHeader(store: store)
                     .padding(.horizontal, Space.gutter).shopListRow()
                 let here = plan.items.filter { ($0.shopId ?? plan.usualShopId) == store.shopId && $0.status != "no_price" }
-                ForEach(here.compactMap { p in list.items.first { $0.id == p.itemId } }) { item in
+                let hereItems = here.compactMap { p in list.items.first { $0.id == p.itemId } }
+                ForEach(hereItems.filter { !$0.isChecked } + hereItems.filter(\.isChecked)) { item in
                     planRow(item, plan: byId[item.id], usualId: plan.usualShopId)
                 }
                 if store.isUsual {
@@ -165,7 +166,9 @@ struct ShoppingListView: View {
     }
 
     private func planRow(_ item: ListItem, plan: PlanItem?, usualId: Int64?) -> some View {
-        row(item, hintOverride: plan.map { planHint($0, usualId: usualId) }, onHint: plan.map { p in { app.trays.present("plan-why") { PlanWhyTray(item: p) } } })
+        // A checked item keeps its "Bought at …" note instead of the plan hint, and sinks below the open ones.
+        if item.isChecked { return AnyView(row(item)) }
+        return AnyView(row(item, hintOverride: plan.map { planHint($0, usualId: usualId) }, onHint: plan.map { p in { app.trays.present("plan-why") { PlanWhyTray(item: p) } } }))
     }
 
     /// `€1,29 / l here · €1,79 at Greenfield`, or why there is nothing to compare.
@@ -339,9 +342,10 @@ struct ShoppingListView: View {
             leading: SwipeAction(icon: "checkmark", title: item.isChecked ? "Uncheck" : "Check off", tint: Accent.green, haptic: .soft) { toggleBySwipe(item) },
             trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red, removesRow: true, haptic: .soft) { remove(item) }
         ) {
+        let english = app.catalog.englishDisplay(item.productId)
         ListItemRow(
-            title: item.title,
-            hint: hintOverride ?? hint(item),
+            title: english?.title ?? item.title,
+            hint: [english?.subline.flatMap { $0 == "No English yet" ? nil : $0 }, hintOverride ?? hint(item)].compactMap { $0 }.joined(separator: " · "),
             hintShop: hintOverride != nil ? nil : (receiptNote(item)?.shop ?? item.cheapest?.shopName),
             quantity: quantity(item),
             isChecked: item.isChecked,

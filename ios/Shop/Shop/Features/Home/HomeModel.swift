@@ -81,6 +81,20 @@ final class HomeModel {
         attention.filter { $0.shopId == nil && $0.status != .needsReview && $0.status != .failed }.count
     }
     var attentionCount: Int { (counts.map { $0.needsReview + $0.failed } ?? attention.count) + unassignedCount }
+    /// Receipts that look like an older one (not part of the review count: they block nothing).
+    var possibleDuplicateCount: Int {
+        counts?.possibleDuplicates ?? receipts.filter { $0.possibleDuplicateOf != nil }.count
+    }
+    /// "Keep both" (or its Undo) changes the count at once; the next counts fetch confirms it.
+    func adjustDuplicateCount(by delta: Int) {
+        guard let n = counts?.possibleDuplicates else { return }
+        counts?.possibleDuplicates = max(0, n + delta)
+    }
+    func refreshCounts() async { counts = try? await api.receiptCounts() }
+    /// The newest flagged receipt Home knows about, where the card leads.
+    var firstPossibleDuplicateId: Int64? {
+        receipts.filter { $0.possibleDuplicateOf != nil }.max { $0.displayDate < $1.displayDate }?.id
+    }
     var processingCount: Int { receipts.filter { $0.status == .processing || $0.status == .pending }.count }
 
     /// Rough review time: about a minute per receipt.

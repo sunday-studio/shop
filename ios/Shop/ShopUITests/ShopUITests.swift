@@ -84,7 +84,7 @@ final class ShopUITests: XCTestCase {
 
     func testReceiptLineOpensItsEditor() {
         exists(button(startingWith: "Albert Heijn, Total doesn’t match")).tap()
-        exists(button(startingWith: "Halfvolle melk")).tap()
+        exists(button(startingWith: "Semi-skimmed milk")).tap()
         exists(text("Edit line"), "line tray")
         app.buttons["Close"].firstMatch.tap()
     }
@@ -117,9 +117,9 @@ final class ShopUITests: XCTestCase {
 
     func testShoppingListCheckOffAnItem() {
         tab("List")
-        exists(text("Griekse yoghurt 0%"))
-        exists(app.buttons["Check off Griekse yoghurt 0%"]).tap()
-        XCTAssertTrue(app.buttons["Check off Griekse yoghurt 0%"].waitForNonExistence(timeout: 8), "it is no longer open")
+        exists(text("Greek yoghurt 0%"))
+        exists(app.buttons["Check off Greek yoghurt 0%"]).tap()
+        XCTAssertTrue(app.buttons["Check off Greek yoghurt 0%"].waitForNonExistence(timeout: 8), "it is no longer open")
         scrollTo(text("3 checked off"))
     }
 
@@ -280,8 +280,36 @@ final class ShopUITests: XCTestCase {
         exists(textContaining("can't be undone"))
         app.buttons["Remove this receipt"].tap()
         exists(text("Receipt removed"))
-        exists(text("Receipts to review"))
+        exists(app.buttons["Filter"].firstMatch)
         XCTAssertFalse(anyElement(startingWith: "Albert Heijn, Possible duplicate").exists)
+    }
+
+    func testCameraOffStateShowsWhenAccessIsDenied() {
+        app.terminate()
+        app.launchArguments += ["-mock-camera-denied"]
+        app.launch()
+        exists(text("Receipts to review"))
+        app.buttons["Add"].firstMatch.tap()
+        exists(anyElement(startingWith: "Scan receipt")).tap()
+        exists(text("Camera is off"))
+        XCTAssertTrue(app.buttons["Open Settings"].exists)
+        XCTAssertTrue(app.buttons["Choose a photo"].exists, "photos stay available")
+    }
+
+    func testHomeShowsThePossibleDuplicateCountAndItGoesDownAfterKeepBoth() {
+        exists(button(containing: "Possible duplicates"))
+        button(containing: "Possible duplicates").tap()
+        exists(button(startingWith: "Looks like the receipt from"))
+        app.buttons["Keep both"].tap()
+        exists(text("Keeping both"))
+    }
+
+    func testProductDetailHasAnEditEnglishPillAndActionRows() {
+        tab("Products"); exists(text("Products"))
+        exists(anyElement(startingWith: "Young cheese")).tap()
+        exists(app.buttons["Edit English name"])
+        scrollTo(app.buttons["Merge into another product"])
+        XCTAssertTrue(app.buttons["Delete product"].exists)
     }
 
     private func waitForDisappearance(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {

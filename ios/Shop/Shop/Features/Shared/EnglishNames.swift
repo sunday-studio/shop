@@ -195,3 +195,27 @@ extension AppModel {
     /// Teaching a word rewrites many English names on the server; pull the catalog again.
     func refreshCatalogNames() async { try? await catalog.refreshProducts() }
 }
+
+extension Catalog {
+    /// English-first display for a product id (nil when the product isn't in the catalog).
+    func englishDisplay(_ id: Int64?) -> EnglishDisplay? {
+        product(id).map(EnglishDisplay.init(product:))
+    }
+}
+
+import AVFoundation
+
+/// Camera permission as the scan flows need it: denied (or restricted) means show "Camera is off".
+enum CameraAccess {
+    static var isDenied: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-mock-camera-denied") { return true }
+        guard !args.contains("-mock") else { return false }
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        return status == .denied || status == .restricted
+    }
+
+    @MainActor static func openSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+    }
+}

@@ -57,6 +57,13 @@ struct HomeView: View {
                     .padding(.top, 18)
                 }
 
+                if home.possibleDuplicateCount > 0 && !home.filter.isActive, let first = home.firstPossibleDuplicateId {
+                    AttentionCard(count: home.possibleDuplicateCount, title: home.possibleDuplicateCount == 1 ? "Possible duplicate" : "Possible duplicates", hint: "Compare") {
+                        app.push(.receipt(first))
+                    }
+                    .padding(.horizontal, Space.edge)
+                    .padding(.top, Space.m)
+                }
             }
             .shopListRow()
 
