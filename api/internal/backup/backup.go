@@ -1,5 +1,5 @@
 // Package backup snapshots the SQLite database and mirrors images to a
-// backup directory (typically a NAS mount), and restores from it.
+// backup directory (a local folder, an external disk or a network mount), and restores from it.
 //
 // Layout of the backup directory:
 //
@@ -32,7 +32,7 @@ const (
 )
 
 // Status describes a backup run. A copy is written to the backup dir and
-// to the data dir (so the API can report it without seeing the NAS).
+// to the data dir (so the API can report it without seeing the backup folder).
 type Status struct {
 	OK            bool      `json:"ok"`
 	At            time.Time `json:"at"`
@@ -66,7 +66,7 @@ func Run(ctx context.Context, o Options) Status {
 	if err != nil {
 		st.Error = err.Error()
 	}
-	// Record status in both places; ignore failures writing to a missing NAS.
+	// Record status in both places; ignore failures writing to a missing backup folder.
 	_ = writeStatus(filepath.Join(o.DataDir, "backup_status.json"), st)
 	if err == nil || !errors.Is(err, errNoBackupDir) {
 		_ = writeStatus(filepath.Join(o.BackupDir, statusFile), st)
@@ -78,7 +78,7 @@ var errNoBackupDir = errors.New("backup directory not available")
 
 func run(ctx context.Context, o Options, st *Status) error {
 	if fi, err := os.Stat(o.BackupDir); err != nil || !fi.IsDir() {
-		return fmt.Errorf("%w: %s (is the NAS mounted?)", errNoBackupDir, o.BackupDir)
+		return fmt.Errorf("%w: %s (is the folder or drive mounted?)", errNoBackupDir, o.BackupDir)
 	}
 	dbDir := filepath.Join(o.BackupDir, "db")
 	if err := os.MkdirAll(dbDir, 0o755); err != nil {

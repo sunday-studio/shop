@@ -24,7 +24,7 @@ func backupCmd(ctx context.Context, log *slog.Logger, args []string) error {
 		return err
 	}
 	fs := flag.NewFlagSet("backup", flag.ContinueOnError)
-	dir := fs.String("dir", cfg.BackupDir, "backup directory, e.g. the NAS mount (env BACKUP_DIR)")
+	dir := fs.String("dir", cfg.BackupDir, "backup directory, a local folder or a mounted drive (env BACKUP_DIR)")
 	keep := fs.Int("keep-days", cfg.BackupKeepDays, "delete snapshots older than this (env BACKUP_KEEP_DAYS)")
 	schedule := fs.Bool("schedule", false, "run forever, backing up daily at BACKUP_AT (local time)")
 	at := fs.String("at", cfg.BackupAt, "daily time HH:MM for -schedule (env BACKUP_AT)")

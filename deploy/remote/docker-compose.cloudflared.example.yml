@@ -1,0 +1,26 @@
+# OPTIONAL example: reach Shop through a Cloudflare Tunnel. Nothing is opened on your router
+# and the Mac needs no public address. You need a Cloudflare account and a domain on it.
+#
+# 1. In the Cloudflare dashboard (Zero Trust > Networks > Tunnels) create a tunnel and copy its token.
+# 2. Add a public hostname for the tunnel, for example shop.example.com, with the service
+#    http://api:8080 (the API's name on the compose network).
+# 3. export CLOUDFLARE_TUNNEL_TOKEN=...      # in your shell, never in this file
+#    docker compose -f deploy/docker-compose.yml -f deploy/remote/docker-compose.cloudflared.example.yml up -d
+#
+# Use https://shop.example.com as the server URL in the app. Consider also putting a Cloudflare
+# Access policy in front of it; the app sends a bearer token, so use a service-token or bypass
+# rule for /v1 and /healthz and keep the pairing password strong.
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in your shell, not in this file}
+    depends_on:
+      api:
+        condition: service_started
+
+  # Nothing needs the plain port on the network any more: keep it on this machine only.
+  api:
+    ports: !override ["127.0.0.1:${SHOP_PORT:-8080}:8080"]

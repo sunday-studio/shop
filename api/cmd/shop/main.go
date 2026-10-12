@@ -27,7 +27,7 @@ admin (run where the database lives, e.g. docker compose exec api shop ...):
   token list                    list tokens
   token revoke <name>           delete a token
   reparse [-status S]           re-parse unedited receipts from stored OCR output
-  backup [-dir D] [-schedule]   snapshot DB + mirror images to D (the NAS); -schedule runs daily
+  backup [-dir D] [-schedule]   snapshot DB + mirror images to D; -schedule runs daily
   restore -yes [-dir D] [-snapshot NAME|latest]
                                 replace the DB with a snapshot (API must be stopped)
   healthcheck                   exit 0 if the local server answers (container probe)
