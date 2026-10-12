@@ -177,6 +177,8 @@ nonisolated struct ReceiptLine: Codable, Sendable, Hashable, Identifiable {
     var productId: Int64?
     var userEdited: Bool
     var textEn: String?
+    var textEnStatus: String? = nil
+    var textEnUnknown: [SpanDTO]? = nil
     var suggestions: [ProductMatch]?
     /// Linked product's name and category (single-receipt GET).
     var productName: String?
@@ -279,6 +281,10 @@ nonisolated struct Product: Codable, Sendable, Hashable, Identifiable {
     var name: String
     var nameEn: String?
     var nameEnSource: String?
+    /// manual | openfoodfacts | dictionary | partial | missing (openapi 0.11+).
+    var nameEnStatus: String? = nil
+    /// Unknown Dutch words, as UTF-16 spans into `nameEn` (partial) or `name` (missing).
+    var nameEnUnknown: [SpanDTO]? = nil
     var brand: String?
     var categoryId: Int64?
     var barcode: String?
@@ -984,4 +990,92 @@ nonisolated struct ProductGroupSuggestion: Codable, Sendable, Hashable, Identifi
     var b: SuggestedProduct
     var score: Double
     var id: String { "\(a.productId)-\(b.productId)" }
+}
+
+
+// MARK: - English names (M10)
+
+/// An unknown word: `start`/`end` are UTF-16 offsets (end exclusive) into the displayed string.
+nonisolated struct SpanDTO: Codable, Sendable, Hashable {
+    var word: String
+    var key: String
+    var start: Int
+    var end: Int
+}
+
+nonisolated struct GlossaryTerm: Codable, Sendable, Hashable, Identifiable {
+    var dutch: String
+    var english: String? = nil
+    var keepAsIs: Bool
+    var productsCount: Int
+    var updatedAt: Date
+    var id: String { dutch }
+}
+
+nonisolated struct GlossaryTermInput: Codable, Sendable, Hashable {
+    var english: String? = nil
+    var keepAsIs: Bool = false
+}
+
+nonisolated struct GlossaryPreviewBody: Codable, Sendable {
+    var dutch: String
+    var english: String? = nil
+    var keepAsIs: Bool = false
+    var examples: Int = 3
+}
+
+nonisolated struct GlossaryPreviewExample: Codable, Sendable, Hashable, Identifiable {
+    var productId: Int64
+    var name: String
+    var nameEnBefore: String? = nil
+    var nameEnAfter: String? = nil
+    var statusAfter: String
+    var id: Int64 { productId }
+}
+
+nonisolated struct GlossaryPreview: Codable, Sendable {
+    var productsAffected: Int
+    var examples: [GlossaryPreviewExample]
+}
+
+nonisolated struct TeachResult: Codable, Sendable {
+    var term: GlossaryTerm
+    var previous: GlossaryTermInput? = nil
+    var productsUpdated: Int
+}
+
+nonisolated struct ForgetResult: Codable, Sendable {
+    var productsUpdated: Int
+}
+
+nonisolated struct TodoWord: Codable, Sendable, Hashable, Identifiable {
+    var word: String
+    var key: String
+    var products: Int
+    var lines: Int
+    var examples: [String]
+    var id: String { key }
+}
+
+nonisolated struct TodoProduct: Codable, Sendable, Hashable, Identifiable {
+    var id: Int64
+    var name: String
+    var nameEn: String? = nil
+    var nameEnStatus: String
+    var nameEnUnknown: [SpanDTO]
+    var shopName: String? = nil
+    var shopChain: String? = nil
+}
+
+nonisolated struct TranslationTodo: Codable, Sendable {
+    struct Totals: Codable, Sendable { var wordsLeft: Int; var productsLeft: Int }
+    var totals: Totals
+    var words: [TodoWord]
+    var products: [TodoProduct]
+}
+
+nonisolated struct TranslatePreview: Codable, Sendable {
+    var english: String? = nil
+    var status: String
+    var unknown: [SpanDTO]
 }

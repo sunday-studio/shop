@@ -184,12 +184,21 @@ struct ProductDetailView: View {
         HStack(spacing: Space.xl) {
             ProductHero(name: product.name, category: app.catalog.category(product.categoryId)?.name, categoryToken: app.catalog.category(product.categoryId)?.color, imageURL: app.api.productImageURL(product))
             VStack(alignment: .leading, spacing: Space.xs) {
-                TypeStyle.emptyTitle.sized(26).text(product.name)
-                    .tracking(-0.04 * 26)
-                    .foregroundStyle(Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let en = product.nameEn, en.lowercased() != product.name.lowercased() {
-                    TypeStyle.rowSub.text(en).foregroundStyle(Palette.ink3)
+                let english = EnglishDisplay(product: product)
+                EnglishNameText(text: english.title, unknown: english.unknown, style: TypeStyle.emptyTitle.sized(26)) { word in
+                    app.trays.present("teach-word") { TeachWordTray(key: word.key, word: word.word) }
+                }
+                .tracking(-0.04 * 26)
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .onTapGesture { app.trays.present("english-edit") { EditEnglishTray(productId: product.id) } }
+                if let sub = english.subline {
+                    TypeStyle.rowSub.text(sub).foregroundStyle(Palette.ink3)
+                }
+                if english.needsEnglish {
+                    Button { app.trays.present("english-edit") { EditEnglishTray(productId: product.id) } } label: { NeedsEnglishBadge() }
+                } else if let source = english.source {
+                    EnglishSourceHint(source: source)
                 }
                 TypeStyle.body.sized(13.5).text(model.metaLine).foregroundStyle(Palette.ink2)
             }

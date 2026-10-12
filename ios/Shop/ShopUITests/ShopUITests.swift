@@ -118,8 +118,8 @@ final class ShopUITests: XCTestCase {
     func testShoppingListCheckOffAnItem() {
         tab("List")
         exists(text("Griekse yoghurt 0%"))
-        exists(app.buttons["Check off Griekse yoghurt 0%"]).tap()
-        XCTAssertTrue(app.buttons["Check off Griekse yoghurt 0%"].waitForNonExistence(timeout: 8), "it is no longer open")
+        exists(any("Check off Griekse yoghurt 0%")).tap()
+        XCTAssertTrue(any("Check off Griekse yoghurt 0%").waitForNonExistence(timeout: 8), "it is no longer open")
         scrollTo(text("3 checked off"))
     }
 
@@ -210,6 +210,31 @@ final class ShopUITests: XCTestCase {
         tab("Home")
         app.buttons["Add"].firstMatch.tap(); exists(anyElement(startingWith: "Scan receipt")); check("Add tray")
         XCTAssertTrue(problems.isEmpty, "Buttons without a VoiceOver name: \(problems)")
+    }
+
+    func testTeachAWordFromTheNeedsEnglishQueue() {
+        exists(text("Receipts to review"))
+        tab("Products"); exists(text("Products"))
+        exists(button(containing: "Needs English")).tap()
+        exists(text("Needs English"))
+        exists(button(containing: "Hagelslag")).tap()
+        exists(text("Teach a word"))
+        let field = app.textFields.firstMatch
+        exists(field).tap()
+        field.typeText("chocolate sprinkles")
+        let save = exists(button(startingWith: "Save"))
+        XCTAssertTrue(save.isEnabled)
+        save.tap()
+        exists(textContaining("Updated"))
+    }
+
+    func testGlossaryListsTaughtWords() {
+        exists(text("Receipts to review"))
+        tab("Products"); exists(text("Products"))
+        exists(button(containing: "Needs English")).tap()
+        exists(button(startingWith: "Your glossary")).tap()
+        exists(text("Your glossary"))
+        exists(textContaining("pindakaas"))
     }
 
     private func waitForDisappearance(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {

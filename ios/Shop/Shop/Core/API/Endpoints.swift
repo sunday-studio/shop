@@ -297,6 +297,19 @@ func deleteCategory(_ id: Int64, moveTo: Int64? = nil) async throws {
     func denySameKind(_ a: Int64, _ b: Int64) async throws -> ProductGroupOp { try await send("POST", "/v1/product-groups/deny", body: ProductPairBody(productAId: a, productBId: b)) }
     func undoProductGroupOp(_ id: Int64) async throws { try await perform("POST", "/v1/product-group-ops/\(id)/undo") }
 
+    // MARK: English names
+
+    func translationTodo(limit: Int = 100) async throws -> TranslationTodo { try await get("/v1/translations/todo", query: ["limit": String(limit)]) }
+    func glossary() async throws -> [GlossaryTerm] { try await get("/v1/glossary") }
+    func previewGlossary(_ body: GlossaryPreviewBody) async throws -> GlossaryPreview { try await send("POST", "/v1/glossary/preview", body: body) }
+    func teachWord(_ key: String, _ input: GlossaryTermInput) async throws -> TeachResult {
+        try await send("PUT", "/v1/glossary/\(Self.pathSegment(key))", body: input)
+    }
+    func forgetWord(_ key: String) async throws -> ForgetResult { try await send("DELETE", "/v1/glossary/\(Self.pathSegment(key))") }
+    func previewTranslation(_ text: String) async throws -> TranslatePreview { try await get("/v1/translate", query: ["text": text]) }
+
+    private static func pathSegment(_ s: String) -> String { s.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? s }
+
     func listSuggestions() async throws -> [ListSuggestion] { try await get("/v1/list/suggestions") }
     func acceptListSuggestion(_ id: Int64) async throws -> ListItem { try await send("POST", "/v1/list/suggestions/\(id)/accept") }
     func dismissListSuggestion(_ id: Int64) async throws { try await perform("POST", "/v1/list/suggestions/\(id)/dismiss") }
