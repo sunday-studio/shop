@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/img/banner.jpg" alt="Shop: know what your groceries really cost over time" width="100%">
+  <a href="https://shop.casprine.com"><img src="docs/img/banner.jpg" alt="Shop: know what your groceries really cost over time" width="100%"></a>
 </p>
 
 # Shop
@@ -8,10 +8,12 @@ A self-hosted grocery receipt tracker. Photograph a receipt, and Shop reads it o
 
 Built for Dutch receipts (Albert Heijn, Dirk and similar). Nothing leaves your server except two optional lookups: Open Food Facts for barcodes and logo.dev for shop logos.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/screens-dark.png">
-  <img src="docs/img/screens-light.png" alt="Home, a receipt, analytics and products in the iPhone app" width="100%">
-</picture>
+<a href="https://shop.casprine.com/guide/">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/screens-dark.png">
+    <img src="docs/img/screens-light.png" alt="Home, a receipt, analytics and products in the iPhone app" width="100%">
+  </picture>
+</a>
 
 ## Features
 
