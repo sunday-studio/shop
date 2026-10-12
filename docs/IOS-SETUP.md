@@ -33,3 +33,24 @@ The keys below are already set in the committed project; this table is the refer
 ## 4. On-device checklists
 
 Per milestone, in [IOS-PLAN.md](IOS-PLAN.md) §4.
+
+## 5. Automated tests
+
+Two test targets in `ios/Shop/Shop.xcodeproj`, both on the scheme **Shop**:
+
+- **ShopTests** (unit, about a second): money and date formatting, product size and barcode parsing, the shopping list's offline queue and temporary-id remapping, the `since_rev` sync, plan and list-change decoding, and the import pipeline's pure parts (straighten, crop, rotate, stitch).
+- **ShopUITests** (about 2.5 minutes): end-to-end flows on the app's built-in mock server. Home, tabs, opening and confirming a receipt, the Add tray, the whole import flow (it uses generated pictures through `-mock-import-demo`, so no photo library is needed), shopping list check-off, groups and By store, the products review queue with Undo, Settings. Each test launches with `-mock -mock-fresh`, which wipes saved state first.
+
+Run everything headless (no window, no server, no camera):
+
+```bash
+cd ios/Shop
+xcodebuild test -project Shop.xcodeproj -scheme Shop \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+```
+
+Only the unit tests: add `-only-testing:ShopTests`. Only the UI tests: `-only-testing:ShopUITests`.
+
+If other projects run UI tests on the same Mac, give Shop its own simulator so they don't share one (a shared one makes the UI tests flaky): `xcrun simctl create "Shop Tests" "iPhone 17 Pro"`, then use `-destination 'platform=iOS Simulator,id=<the id it prints>'`.
+
+When a UI test fails it prints what was on screen. Launch aids the tests use: `-mock`, `-mock-fresh` (forget saved state), `-mock-import-demo` (skip the photo picker), `-mock-large` (1,500 products), `-bench` (log timings).
