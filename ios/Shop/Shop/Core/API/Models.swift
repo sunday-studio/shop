@@ -237,6 +237,8 @@ nonisolated struct Receipt: Codable, Sendable, Hashable, Identifiable {
     var photoTakenAt: Date?
     /// Confirm only: what the receipt did to the shopping list (openapi 0.14.0).
     var list: ReceiptListChecks?
+    /// Newer receipt only: the older one it looks like (openapi 0.17.0). Absent after "Keep both".
+    var possibleDuplicateOf: PossibleDuplicate?
 
     var reasons: [ReviewReason] { reviewReasons.compactMap(ReviewReason.init(rawValue:)) }
     /// The date to show and group by: purchase time, else upload time.
@@ -250,6 +252,23 @@ nonisolated struct ReceiptCounts: Codable, Sendable, Hashable {
     var ok: Int
     var failed: Int
     var total: Int
+    var possibleDuplicates: Int? = nil
+}
+
+nonisolated struct PossibleDuplicate: Codable, Sendable, Hashable {
+    var receiptId: Int64
+    var purchasedAt: Date?
+    var totalCents: Int64
+    var shop: ShopRefLite?
+    var shopName: String?
+    /// "total+date" or "total+date+lines" (at least 60 % of the item lines are shared).
+    var match: String
+    var sharedLines: Int
+    var itemCount: Int
+    var otherItemCount: Int
+    var timeMatches: Bool
+
+    var isStrong: Bool { match == "total+date+lines" }
 }
 
 nonisolated struct ReceiptPage: Codable, Sendable, Hashable {

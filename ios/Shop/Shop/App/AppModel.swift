@@ -114,6 +114,7 @@ final class AppModel {
     let network: NetworkMonitor
     let trays = TrayCoordinator()
     let toasts = ToastCenter()
+    let duplicates = DuplicateDecisions()
     let home: HomeModel
     let isMock: Bool
     @ObservationIgnored lazy var productReview = ProductReviewModel(app: self)
@@ -177,7 +178,8 @@ final class AppModel {
         async let i: Void = home.refresh()
         async let l: Void = list.sync()
         async let r: Void = productReview.refreshCount()
-        _ = await (h, i, l, r)
+        async let d: Void = duplicates.flush(api: api)
+        _ = await (h, i, l, r, d)
         if catalog.lastSync == nil || (catalog.lastSync ?? .distantPast) < .now.addingTimeInterval(-60 * 30) {
             await catalog.syncAll()
         } else {
@@ -195,6 +197,7 @@ final class AppModel {
         Task {
             await list.sync()
             await home.refresh()
+            await duplicates.flush(api: api)
         }
         // Barcodes scanned offline become products now (safe to repeat).
         Task {

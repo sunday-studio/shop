@@ -93,6 +93,8 @@ func deleteCategory(_ id: Int64, moveTo: Int64? = nil) async throws {
         try await get("/v1/search", query: ["q": query, "limit": String(limit)])
     }
     func updateReceipt(_ id: Int64, _ patch: ReceiptPatch) async throws -> Receipt { try await send("PATCH", "/v1/receipts/\(id)", body: patch) }
+    func keepDuplicate(_ id: Int64) async throws { try await perform("POST", "/v1/receipts/\(id)/duplicate/keep") }
+    func undoKeepDuplicate(_ id: Int64) async throws { try await perform("DELETE", "/v1/receipts/\(id)/duplicate/keep") }
     func deleteReceipt(_ id: Int64) async throws { try await perform("DELETE", "/v1/receipts/\(id)") }
     func confirmReceipt(_ id: Int64) async throws -> Receipt { try await send("POST", "/v1/receipts/\(id)/confirm") }
 
