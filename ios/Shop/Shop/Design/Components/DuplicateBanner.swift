@@ -29,11 +29,13 @@ struct DuplicateReceiptBanner: View {
                     GlyphBadge(glyph: .alert, color: Accent.amber, size: 20)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title).textStyle(.rowTitle).multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
                         TypeStyle.body.sized(13).text(detail)
                             .foregroundStyle(Palette.amberText.opacity(0.85))
                             .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Spacer(minLength: 0)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     IconView(.forward, size: 14, weight: .bold).padding(.top, 3)
                 }
                 .foregroundStyle(Palette.amberText)

@@ -79,14 +79,14 @@ struct TypeStyle: Sendable {
 
 extension TypeStyle {
     /// Hero number (Home, Analytics), 60. Currency and cents use `heroMinor`.
-    static let hero = TypeStyle(size: 60, face: .regular, trackingEm: -0.05, relativeTo: .largeTitle)
-    static let heroMinor = TypeStyle(size: 40, face: .regular, trackingEm: -0.05, relativeTo: .largeTitle)
+    static let hero = TypeStyle(size: 60, face: .bold, trackingEm: -0.05, relativeTo: .largeTitle)
+    static let heroMinor = TypeStyle(size: 40, face: .bold, trackingEm: -0.05, relativeTo: .largeTitle)
     /// Onboarding headline, 38 (O.1) / 32 (O.2–O.4).
     static let display = TypeStyle(size: 38, face: .regular, trackingEm: -0.045, relativeTo: .largeTitle)
-    static let screenTitle = TypeStyle(size: 28, face: .medium, trackingEm: -0.04, relativeTo: .title)
+    static let screenTitle = TypeStyle(size: 28, face: .bold, trackingEm: -0.04, relativeTo: .title)
     static let emptyTitle = TypeStyle(size: 22, face: .regular, trackingEm: -0.03, relativeTo: .title2)
-    static let trayTitle = TypeStyle(size: 19, face: .medium, trackingEm: -0.02, relativeTo: .title3)
-    static let navTitle = TypeStyle(size: 16, face: .medium, trackingEm: 0, relativeTo: .headline)
+    static let trayTitle = TypeStyle(size: 19, face: .bold, trackingEm: -0.02, relativeTo: .title3)
+    static let navTitle = TypeStyle(size: 16, face: .bold, trackingEm: 0, relativeTo: .headline)
     static let button = TypeStyle(size: 16, face: .medium, trackingEm: 0, relativeTo: .body)
     static let input = TypeStyle(size: 16, face: .regular, trackingEm: 0, relativeTo: .body)
     static let rowTitle = TypeStyle(size: 15, face: .medium, trackingEm: 0, relativeTo: .body)

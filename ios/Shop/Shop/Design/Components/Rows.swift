@@ -4,21 +4,24 @@ import SwiftUI
 
 // MARK: - Section headers
 
-/// "Today ……… €38,12" — 13pt Medium ink2.
+/// "Today ……… €38,12": a `sunk` pill (padding 7 x 10, radius 10), 12.5pt Medium ink2, as on the canvas Home.
 struct DaySectionHeader: View {
     let title: String
     var trailing: String? = nil
 
     var body: some View {
         HStack {
-            Text(title)
+            TypeStyle.captionMedium.sized(12.5).text(title)
             Spacer()
-            if let trailing { Text(trailing) }
+            if let trailing { TypeStyle.captionMedium.sized(12.5).text(trailing) }
         }
-        .textStyle(.label)
         .foregroundStyle(Palette.ink2)
+        .padding(.vertical, 7)
+        .padding(.horizontal, 10)
+        .background(Palette.sunk, in: RoundedRectangle.continuous(10))
         .padding(.top, Space.ml)
-        .padding(.bottom, Space.xs)
+        .padding(.bottom, 2)
+        .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
     }
 }

@@ -19,7 +19,7 @@ Semantic tokens, resolved per colour scheme (`Color(light:dark:)` via `UIColor {
 | `sunk` | #F4F4F3 | #1C1C1A | Icon buttons, chips, fields on screens, meter track |
 | `tray` | #FFFFFF | #1C1C1A | Trays, tab bar (`bar`), confirm bar |
 | `trayField` | #F4F4F3 | #262624 | Fields/options **inside** a tray |
-| `line` | #F0F0EE | #1F1F1D | Hairline dividers |
+| `line` | #E2E2DE | #30302D | Hairline dividers |
 | `ink` | #1D1D1B | #F4F4F1 | Primary text |
 | `ink2` | #73736F | #8F8F8A | Secondary text, labels |
 | `ink3` | #B4B4AF | #5C5C58 | Tertiary, currency symbol/cents in hero, inactive tab |
@@ -52,12 +52,12 @@ Fonts: **GT America** 400/500/700, **GT America Mono** 400/500 (bundled). All te
 
 | Style | Size | Weight | Tracking | Relative to | Use |
 |---|---|---|---|---|---|
-| `hero` | 60 (symbol/cents 40, `ink3`) | 400 | −0.05em | largeTitle | Home, Analytics totals |
+| `hero` | 60 (symbol/cents 40, `ink3`) | 700 | −0.05em | largeTitle | Home, Analytics totals |
 | `heroDetail` | 48 (30) | 400 | −0.05em | largeTitle | Receipt total |
 | `screenTitle` | 28 | 700 | −0.04em | title | Screen headers |
 | `emptyTitle` | 22 | 400 | −0.03em | title2 | Empty-state headline |
-| `trayTitle` | 19 | 400 | −0.02em | title3 | Tray headers |
-| `navTitle` | 16 | 500 | 0 | headline | Centered pushed-screen title |
+| `trayTitle` | 19 | 700 | −0.02em | title3 | Tray headers |
+| `navTitle` | 16 | 700 | 0 | headline | Centered pushed-screen title |
 | `button` | 16 | 500 | 0 | body | Buttons |
 | `input` | 16–17 | 400 | 0 | body | Fields |
 | `rowTitle` | 15 | 500 | 0 | body | Row titles, amounts |
@@ -90,7 +90,7 @@ Weight rule: 700 only for `screenTitle`, tray headers that are screen-like, and 
 **Motion** (`Motion` namespace; all fall back to 0.12 s opacity under Reduce Motion)
 | Token | Curve | Use |
 |---|---|---|
-| `spring` | `.spring(response: 0.42, dampingFraction: 0.72)` ≈ cubic-bezier(.32,1.28,.5,1) 420 ms | Tray enter, toggles, tray height change (360 ms) |
+| `spring` | `.spring(response: 0.42, dampingFraction: 0.78)` ≈ cubic-bezier(.32,1.28,.5,1) 420 ms | Tray enter, toggles, tray height change (360 ms) |
 | `ease` | `.timingCurve(0.22, 1, 0.36, 1, duration: 0.24)` | Fades, slides, tray exit, scrim |
 | `press` | 0.09 s ease-out to scale 0.97 (pills / + 0.94), spring back | `PressableButtonStyle` on every tappable |
 | `rowStagger` | fade + 8 pt slide, 24 ms stagger, first 8 rows | Lists on first paint |
