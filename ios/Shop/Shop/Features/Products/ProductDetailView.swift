@@ -132,18 +132,12 @@ struct ProductDetailView: View {
                         purchases(model)
                         nutrition(model, product)
                         receiptNames(model)
-                        Button("Merge into another product") { startMerge(model) }
-                            .textStyle(.label)
-                            .foregroundStyle(Palette.ink2)
-                            .buttonStyle(.press(haptic: .selection))
-                            .padding(.horizontal, Space.gutter)
-                            .padding(.top, Space.xxl)
-                        Button("Delete product") { confirmDelete(model) }
-                            .textStyle(.label)
-                            .foregroundStyle(Palette.redText)
-                            .buttonStyle(.press(haptic: .selection))
-                            .padding(.horizontal, Space.gutter)
-                            .padding(.top, Space.l)
+                        VStack(spacing: 0) {
+                            ActionRow(title: "Merge into another product", icon: .link) { startMerge(model) }
+                            ActionRow(title: "Delete product", icon: .trash, tone: .destructive) { confirmDelete(model) }
+                        }
+                        .padding(.horizontal, Space.gutter)
+                        .padding(.top, Space.xxl)
                     } else {
                         StatefulContent(phase: model.error.map { .failed($0.message) } ?? .loading, retry: { Task { await model.load() } }) {
                             VStack(alignment: .leading, spacing: Space.xl) {
@@ -191,15 +185,16 @@ struct ProductDetailView: View {
                 .tracking(-0.04 * 26)
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
-                .onTapGesture { app.trays.present("english-edit") { EditEnglishTray(productId: product.id) } }
                 if let sub = english.subline {
                     TypeStyle.rowSub.text(sub).foregroundStyle(Palette.ink3)
                 }
                 if english.needsEnglish {
-                    Button { app.trays.present("english-edit") { EditEnglishTray(productId: product.id) } } label: { NeedsEnglishBadge() }
+                    NeedsEnglishBadge()
                 } else if let source = english.source {
                     EnglishSourceHint(source: source)
                 }
+                PillAction(title: "Edit English name") { app.trays.present("english-edit") { EditEnglishTray(productId: product.id) } }
+                    .padding(.top, 2)
                 TypeStyle.body.sized(13.5).text(model.metaLine).foregroundStyle(Palette.ink2)
             }
         }

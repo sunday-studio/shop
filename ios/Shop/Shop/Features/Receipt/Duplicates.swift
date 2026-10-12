@@ -78,6 +78,8 @@ final class DuplicateDecisions {
     /// receipt id → true (keep both) or false (undo), not yet confirmed by the server.
     private(set) var pending: [String: Bool]
     @ObservationIgnored private var flushing = false
+    /// Called after the server accepted a decision (Home refreshes its count).
+    @ObservationIgnored var onSynced: (() -> Void)?
 
     init() {
         pending = DiskStore.load([String: Bool].self, from: Self.file) ?? [:]
@@ -100,6 +102,7 @@ final class DuplicateDecisions {
             do {
                 if keep { try await api.keepDuplicate(id) } else { try await api.undoKeepDuplicate(id) }
                 if pending[key] == keep { pending[key] = nil }
+                onSynced?()
             } catch let e as APIError where !e.isConnectivity {
                 // 404: the receipt is gone, nothing to remember.
                 pending[key] = nil
@@ -121,6 +124,7 @@ extension ReceiptModel {
     func keepBoth() {
         guard let d = duplicate else { return }
         app.duplicates.set(receiptId, keep: true, api: api)
+        app.home.adjustDuplicateCount(by: -1)
         setDuplicateLocally(nil)
         Haptics.play(.light)
         app.toasts.show("Keeping both", duration: .seconds(6), action: (title: "Undo", run: { [weak self] in
@@ -132,6 +136,7 @@ extension ReceiptModel {
 
     private func restoreDuplicate(_ d: PossibleDuplicate) {
         app.duplicates.set(receiptId, keep: false, api: api)
+        app.home.adjustDuplicateCount(by: 1)
         setDuplicateLocally(d)
     }
 

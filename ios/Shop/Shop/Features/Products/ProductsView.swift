@@ -191,9 +191,10 @@ struct ProductsView: View {
                     trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red) { askDelete(product) }
                 ) {
                 Button { app.push(.product(product.id)) } label: {
+                    let english = EnglishDisplay(product: product)
                     ProductRow(
-                        name: product.name,
-                        meta: meta(product),
+                        name: english.title,
+                        meta: [english.subline, meta(product)].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "),
                         category: app.catalog.category(product.categoryId)?.name,
                         categoryToken: app.catalog.category(product.categoryId)?.color,
                         imageURL: app.api.productImageURL(product),

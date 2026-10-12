@@ -183,7 +183,7 @@ final class ReceiptModel {
         // Prefer the server's name/category on the line; fall back to the cached catalog.
         let categoryName = catalog.category(line.categoryId)?.name ?? catalog.categoryName(forProduct: line.productId)
         let swatch = CategoryColor.swatch(for: catalog.category(line.categoryId ?? product?.categoryId))
-        let productName = line.productName ?? product?.name
+        let productName = product.map { EnglishDisplay(product: $0).title } ?? line.productNameEn ?? line.productName
         let amount = Money.plain(line.lineTotalCents)
 
         switch line.kind {
@@ -487,6 +487,7 @@ final class ReceiptModel {
 
     func setDuplicateLocally(_ d: PossibleDuplicate?) {
         withAnimation(Motion.collapse) { receipt?.possibleDuplicateOf = d }
+        if let receipt { app.home.apply(receipt) }
     }
 
     private func replaceLine(_ line: ReceiptLine) {

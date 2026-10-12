@@ -159,6 +159,7 @@ final class AppModel {
         uploads.onUnauthorized = { [weak self] in self?.handleUnauthorized() }
         uploads.onUploaded = { [weak self] item in self?.uploadFinished(item) }
         network.onReconnect = { [weak self] in self?.reconnected() }
+        duplicates.onSynced = { [weak self] in Task { await self?.home.refreshCounts() } }
         ShopFont.register()
         LaunchTrace.mark("AppModel init done")
     }
