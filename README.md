@@ -62,6 +62,10 @@ make backup    # run a backup now
 
 `make help` lists every target.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Contributors sign a [CLA](CLA.md).
+
 ## Repo
 
 | Path | What |
@@ -83,6 +87,7 @@ Shop is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
 - You may use it and change it for personal use and other non-commercial purposes.
 - Commercial use needs the owner's permission.
 - This is source-available, not open source in the OSI sense.
+- Contributions are accepted under a [contributor agreement](CLA.md): you keep your copyright and license your work to the owner, who may also use it in a paid hosted service.
 
 ## Notice
 
