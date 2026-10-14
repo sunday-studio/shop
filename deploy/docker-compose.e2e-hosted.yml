@@ -1,0 +1,84 @@
+# Isolated stack for `make e2e-hosted` (the whole hosted paid product, fake Apple, real OCR).
+# Standalone file, always used with the project name shop-e2e-hosted, only through the guarded
+# compose() in api/e2ehosted/stack_test.go:
+#
+#   docker compose -p shop-e2e-hosted -f deploy/docker-compose.e2e-hosted.yml up -d --build --wait
+#
+# Nothing here touches the live stack (project "shop", port 8080, volume shop_shop-data) or the
+# other harnesses (shop-e2e 18480, shop-drill 18481, shop-hosted-test 18490/18491): own project
+# name (own network, volumes and container names), own host ports 18500 (public API) and 18501
+# (admin API through the sidecar), own API image tag, throwaway volume. The OCR image is the one
+# the live stack uses, only read (never built or retagged here).
+name: shop-e2e-hosted   # also set by -p; a compose call without -p still cannot land on project "shop"
+
+services:
+  api:
+    image: shop-e2e-hosted-api:latest
+    build:
+      context: ../api
+      args:
+        VERSION: e2e-hosted
+        COMMIT: e2e-hosted
+    entrypoint: ["/usr/local/bin/shop-hosted"]
+    command: ["serve"]
+    restart: "no"
+    ports: ["127.0.0.1:18500:8080", "127.0.0.1:18501:18501"]
+    volumes: ["hosted-data:/data"]
+    environment:
+      SHOP_MODE: hosted
+      SHOP_DATA_DIR: /data
+      SHOP_ADDR: ":8080"
+      ADMIN_ADDR: "127.0.0.1:8081"           # loopback, as in production; the sidecar forwards to it
+      ADMIN_TOKEN_HASH: ${E2E_ADMIN_HASH:?set by the harness}
+      SHOP_APPLE_MODE: fake                    # Apple simulated in process; refused with a production environment
+      SHOP_APPLE_ENVIRONMENT: sandbox
+      OCR_URL: http://ocr:8000
+      OFF_BASE_URL: http://127.0.0.1:9         # no Open Food Facts calls
+      LOGO_DEV_TOKEN: ""
+      AUTO_PRODUCTS: "on"
+      SHOP_TZ: Europe/Amsterdam
+      SHOP_SCHEDULER_INTERVAL: 2s              # the lifecycle scheduler (erasure) runs every 2 s
+      # tiny limits so the test can hit each one
+      SHOP_LIMIT_RECEIPTS_PER_DAY: "3"
+      SHOP_LIMIT_RECEIPTS_PER_MONTH: "5"
+      SHOP_LIMIT_RECEIPTS_PER_MONTH_SOFT: "4"
+      SHOP_LIMIT_MAX_UPLOAD_BYTES: "1500000"
+      SHOP_LIMIT_EXPORTS_PER_DAY: "2"
+    depends_on:
+      ocr:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/shop-hosted", "healthcheck"]
+      interval: 5s
+      timeout: 5s
+      start_period: 5s
+      retries: 20
+
+  ocr:
+    # The same OCR image the live stack uses, only read: not rebuilt, not retagged.
+    image: shop-ocr:ppocrv5
+    pull_policy: never
+    restart: "no"
+    mem_limit: 3g
+    healthcheck:                    # same probe as the image, polled faster so the test starts sooner
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/healthz || exit 1"]
+      interval: 3s
+      timeout: 5s
+      start_period: 120s
+
+  tools:
+    image: shop-ocr:ppocrv5
+    pull_policy: never
+    restart: "no"
+    network_mode: "service:api"
+    healthcheck: { disable: true }   # the image's OCR probe does not apply here
+    entrypoint: ["python3", "/tools.py"]
+    volumes:
+      - "hosted-data:/data:ro"
+      - "./e2e-hosted/tools.py:/tools.py:ro"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  hosted-data: {}
