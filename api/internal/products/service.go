@@ -346,9 +346,27 @@ func (s *Service) SetImage(ctx context.Context, id int64, data []byte) (Product,
 		return Product{}, err
 	}
 	if old := cur.ImagePath.String; cur.ImagePath.Valid && old != rel {
-		_ = os.Remove(filepath.Join(s.imagesDir, old))
+		// The file is content-addressed and can be shared (the same Open Food Facts photo on two products,
+		// a merged product): removing it would blank the image for everyone else who points at it.
+		if n, err := s.q.CountOtherProductsWithImage(ctx, db.CountOtherProductsWithImageParams{ImagePath: cur.ImagePath, ID: id}); err == nil && n == 0 {
+			_ = os.Remove(filepath.Join(s.imagesDir, old))
+		}
 	}
 	return s.Get(ctx, id)
+}
+
+// ImageVersion identifies the picture of a product: it changes exactly when the picture changes
+// (the stored file is named after the SHA-256 of its bytes). Empty without a picture. Clients use it to
+// refresh a changed image; the image endpoint uses it as its ETag.
+func ImageVersion(p db.Product) string {
+	if !p.ImagePath.Valid {
+		return ""
+	}
+	name := strings.TrimSuffix(filepath.Base(p.ImagePath.String), filepath.Ext(p.ImagePath.String))
+	if len(name) > 16 {
+		name = name[:16]
+	}
+	return name
 }
 
 func (s *Service) ImagePath(p Product) string {
