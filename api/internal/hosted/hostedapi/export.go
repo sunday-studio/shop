@@ -69,7 +69,7 @@ func (a *API) createExport(w http.ResponseWriter, r *http.Request, p *principal)
 		return
 	}
 	ctx := r.Context()
-	if j, err := a.Store.LatestExportJob(ctx, p.HH.ID); err == nil && (j.Status == control.ExportQueued || j.Status == control.ExportRunning) {
+	if j, err := a.Store.LatestExportJobBy(ctx, p.HH.ID, p.Acc.ID); err == nil && (j.Status == control.ExportQueued || j.Status == control.ExportRunning) {
 		writeJSON(w, http.StatusOK, a.exportView(j))
 		return
 	}
@@ -90,7 +90,7 @@ func (a *API) getExport(w http.ResponseWriter, r *http.Request, p *principal) {
 	if !a.exportContext(w, r, p) {
 		return
 	}
-	j, err := a.Store.LatestExportJob(r.Context(), p.HH.ID)
+	j, err := a.Store.LatestExportJobBy(r.Context(), p.HH.ID, p.Acc.ID)
 	if err != nil {
 		a.fail(w, r, err)
 		return
@@ -103,7 +103,8 @@ func (a *API) downloadExport(w http.ResponseWriter, r *http.Request, p *principa
 		return
 	}
 	j, err := a.Store.ExportJobByID(r.Context(), r.PathValue("id"))
-	if err != nil || j.HouseholdID != p.HH.ID {
+	// An export holds the requester's own account data (email, support code): only they may download it.
+	if err != nil || j.HouseholdID != p.HH.ID || j.RequestedBy != p.Acc.ID {
 		a.fail(w, r, control.ErrNotFound)
 		return
 	}
@@ -227,8 +228,9 @@ const exportReadme = `Shop export
 
 This archive holds everything in your Shop household.
 
-  account.json     the account that asked for this export
-  household.json   the household and its members
+  account.json     your own account (the person who asked for this export)
+  household.json   the household and its members (display names and roles; other members'
+                   email addresses and codes are never included)
   manifest.json    what is in this archive and when it was made
   data/            one JSON file per table of the household database (rows as objects;
                    binary values are base64). Money is integer cents.
@@ -294,9 +296,9 @@ func (a *API) buildExport(ctx context.Context, j control.ExportJob) (string, int
 	}
 	ms := []map[string]any{}
 	for _, m := range members {
-		ms = append(ms, map[string]any{"account_id": m.AccountID, "display_name": sptr(m.DisplayName), "role": m.Role, "joined_at": m.JoinedAt})
+		ms = append(ms, map[string]any{"display_name": sptr(m.DisplayName), "role": m.Role, "joined_at": m.JoinedAt, "is_you": m.AccountID == j.RequestedBy})
 	}
-	if err := addJSON("household.json", map[string]any{"id": h.ID, "name": h.Name, "owner_account_id": h.OwnerAccountID, "created_at": h.CreatedAt, "members": ms}); err != nil {
+	if err := addJSON("household.json", map[string]any{"id": h.ID, "name": h.Name, "created_at": h.CreatedAt, "you_are_owner": h.OwnerAccountID == j.RequestedBy, "members": ms}); err != nil {
 		return "", 0, err
 	}
 	version, _ := store.MigrationVersion(ctx, t.DB)

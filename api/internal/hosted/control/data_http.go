@@ -155,6 +155,15 @@ func (s *Store) LatestExportJob(ctx context.Context, householdID string) (Export
 	return j, err
 }
 
+// LatestExportJobBy is the most recent job the account asked for in the household.
+func (s *Store) LatestExportJobBy(ctx context.Context, householdID, accountID string) (ExportJob, error) {
+	j, err := scanExport(s.q.QueryRowContext(ctx, `SELECT `+exportCols+` FROM export_jobs WHERE household_id = ? AND requested_by = ? ORDER BY created_at DESC, rowid DESC LIMIT 1`, householdID, accountID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return j, ErrNotFound
+	}
+	return j, err
+}
+
 // ExportJobsByStatus lists jobs in any of the states, oldest first.
 func (s *Store) ExportJobsByStatus(ctx context.Context, statuses ...string) ([]ExportJob, error) {
 	q := `SELECT ` + exportCols + ` FROM export_jobs WHERE status IN (?` + repeat(",?", len(statuses)-1) + `) ORDER BY created_at, rowid`

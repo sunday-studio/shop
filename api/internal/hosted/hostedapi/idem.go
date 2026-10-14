@@ -56,9 +56,16 @@ func (a *API) idempotent(scope string, next http.Handler) http.Handler {
 			if rec.Location != "" {
 				w.Header().Set("Location", rec.Location)
 			}
+			body, oerr := a.openIdem(rec.Response)
+			if oerr != nil {
+				// a record we cannot read (the sealer key changed): forget it and run the request for real
+				_ = a.Store.ForgetIdempotent(r.Context(), scope, key)
+				next.ServeHTTP(w, r)
+				return
+			}
 			w.Header().Set("Idempotent-Replay", "true")
 			w.WriteHeader(rec.Status)
-			_, _ = w.Write(rec.Response)
+			_, _ = w.Write(body)
 		default:
 			cw := &captureWriter{ResponseWriter: w, status: http.StatusOK}
 			func() {
@@ -76,11 +83,33 @@ func (a *API) idempotent(scope string, next http.Handler) http.Handler {
 				_ = a.Store.ForgetIdempotent(r.Context(), scope, key)
 				return
 			}
-			if err := a.Store.FinishIdempotent(r.Context(), scope, key, cw.status, ct, cw.Header().Get("Location"), cw.buf.Bytes()); err != nil {
+			stored, serr := a.sealIdem(cw.buf.Bytes())
+			if serr != nil {
+				_ = a.Store.ForgetIdempotent(r.Context(), scope, key)
+				return
+			}
+			if err := a.Store.FinishIdempotent(r.Context(), scope, key, cw.status, ct, cw.Header().Get("Location"), stored); err != nil {
 				a.Log.Error("store idempotent response", "err", err)
 			}
 		}
 	})
+}
+
+// sealIdem encrypts a response before it is kept: the answer to POST /v1/household/invites holds the
+// invite code (a bearer secret) and other answers hold household data, none of which may sit in the
+// control database in plaintext (a backup or a support read would show it). Empty stays empty.
+func (a *API) sealIdem(b []byte) ([]byte, error) {
+	if len(b) == 0 {
+		return nil, nil
+	}
+	return a.Sealer.Seal(b)
+}
+
+func (a *API) openIdem(b []byte) ([]byte, error) {
+	if len(b) == 0 {
+		return nil, nil
+	}
+	return a.Sealer.Open(b)
 }
 
 // storable: successes and deterministic client errors are kept; auth, quota and server errors are
