@@ -98,19 +98,19 @@ func (e BarcodeCreateResultOffStatus) Valid() bool {
 
 // Defines values for BarcodeCreateResultStatus.
 const (
-	Created        BarcodeCreateResultStatus = "created"
-	CreatedMinimal BarcodeCreateResultStatus = "created_minimal"
-	Known          BarcodeCreateResultStatus = "known"
+	BarcodeCreateResultStatusCreated        BarcodeCreateResultStatus = "created"
+	BarcodeCreateResultStatusCreatedMinimal BarcodeCreateResultStatus = "created_minimal"
+	BarcodeCreateResultStatusKnown          BarcodeCreateResultStatus = "known"
 )
 
 // Valid indicates whether the value is a known member of the BarcodeCreateResultStatus enum.
 func (e BarcodeCreateResultStatus) Valid() bool {
 	switch e {
-	case Created:
+	case BarcodeCreateResultStatusCreated:
 		return true
-	case CreatedMinimal:
+	case BarcodeCreateResultStatusCreatedMinimal:
 		return true
-	case Known:
+	case BarcodeCreateResultStatusKnown:
 		return true
 	default:
 		return false
@@ -1155,6 +1155,48 @@ func (e ReceiptLineTextEnStatus) Valid() bool {
 	}
 }
 
+// Defines values for ReceiptLineLoadAction.
+const (
+	ReceiptLineLoadActionCreated ReceiptLineLoadAction = "created"
+	ReceiptLineLoadActionLinked  ReceiptLineLoadAction = "linked"
+	ReceiptLineLoadActionSkipped ReceiptLineLoadAction = "skipped"
+)
+
+// Valid indicates whether the value is a known member of the ReceiptLineLoadAction enum.
+func (e ReceiptLineLoadAction) Valid() bool {
+	switch e {
+	case ReceiptLineLoadActionCreated:
+		return true
+	case ReceiptLineLoadActionLinked:
+		return true
+	case ReceiptLineLoadActionSkipped:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReceiptLineLoadSkipReason.
+const (
+	Discarded   ReceiptLineLoadSkipReason = "discarded"
+	NotAProduct ReceiptLineLoadSkipReason = "not_a_product"
+	ProductGone ReceiptLineLoadSkipReason = "product_gone"
+)
+
+// Valid indicates whether the value is a known member of the ReceiptLineLoadSkipReason enum.
+func (e ReceiptLineLoadSkipReason) Valid() bool {
+	switch e {
+	case Discarded:
+		return true
+	case NotAProduct:
+		return true
+	case ProductGone:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ReceiptStatus.
 const (
 	ReceiptStatusFailed      ReceiptStatus = "failed"
@@ -1796,16 +1838,28 @@ type AutoProductsSummary struct {
 
 // BackfillState defines model for BackfillState.
 type BackfillState struct {
-	Created       int     `json:"created"`
-	DryRun        bool    `json:"dry_run"`
-	Error         *string `json:"error,omitempty"`
-	Linked        int     `json:"linked"`
-	NeedsReview   int     `json:"needs_review"`
-	ReceiptsDone  int     `json:"receipts_done"`
-	ReceiptsTotal int     `json:"receipts_total"`
+	Created int `json:"created"`
+
+	// CreatedNames names of the products created (dry run: that would be created), at most 200
+	CreatedNames *[]string `json:"created_names,omitempty"`
+	DryRun       bool      `json:"dry_run"`
+
+	// EligibleReceipts confirmed receipts that still have item lines without a product (GET only)
+	EligibleReceipts *int       `json:"eligible_receipts,omitempty"`
+	Error            *string    `json:"error,omitempty"`
+	FinishedAt       *time.Time `json:"finished_at,omitempty"`
+
+	// LinesSkipped odd lines (totals, weights, ...) that are no product
+	LinesSkipped   *int  `json:"lines_skipped,omitempty"`
+	Linked         int   `json:"linked"`
+	NamesTruncated *bool `json:"names_truncated,omitempty"`
+	NeedsReview    int   `json:"needs_review"`
+	ReceiptsDone   int   `json:"receipts_done"`
+	ReceiptsTotal  int   `json:"receipts_total"`
 
 	// SkippedReceiptIds receipts left out on request
 	SkippedReceiptIds *[]int64           `json:"skipped_receipt_ids,omitempty"`
+	StartedAt         *time.Time         `json:"started_at,omitempty"`
 	State             BackfillStateState `json:"state"`
 }
 
@@ -2617,8 +2671,11 @@ type Product struct {
 	HasImage       bool                   `json:"has_image"`
 	Id             int64                  `json:"id"`
 
-	// ImageUrl path of GET /v1/products/{id}/image; absent without a photo
-	ImageUrl      *string              `json:"image_url,omitempty"`
+	// ImageUrl path of GET /v1/products/{id}/image?v={image_version}; absent without a photo. The same for every device and member of the household, and it changes when the picture changes: use it as the cache key.
+	ImageUrl *string `json:"image_url,omitempty"`
+
+	// ImageVersion identifies the current picture (changes exactly when the picture changes); also the ETag of the image response. Absent without a photo.
+	ImageVersion  *string              `json:"image_version,omitempty"`
 	LastBoughtAt  *time.Time           `json:"last_bought_at,omitempty"`
 	Name          string               `json:"name"`
 	NameEn        *string              `json:"name_en,omitempty"`
@@ -2852,6 +2909,26 @@ type ReceiptLineMatchedBy string
 // ReceiptLineTextEnStatus defines model for ReceiptLine.TextEnStatus.
 type ReceiptLineTextEnStatus string
 
+// ReceiptLineLoad defines model for ReceiptLineLoad.
+type ReceiptLineLoad struct {
+	Action ReceiptLineLoadAction `json:"action"`
+	LineId int64                 `json:"line_id"`
+
+	// NeedsReview created and waiting in the review queue
+	NeedsReview  *bool                      `json:"needs_review,omitempty"`
+	ProductId    *int64                     `json:"product_id,omitempty"`
+	ProductName  *string                    `json:"product_name,omitempty"`
+	RawText      string                     `json:"raw_text"`
+	ReviewReason *ReviewReason              `json:"review_reason,omitempty"`
+	SkipReason   *ReceiptLineLoadSkipReason `json:"skip_reason,omitempty"`
+}
+
+// ReceiptLineLoadAction defines model for ReceiptLineLoad.Action.
+type ReceiptLineLoadAction string
+
+// ReceiptLineLoadSkipReason defines model for ReceiptLineLoad.SkipReason.
+type ReceiptLineLoadSkipReason string
+
 // ReceiptListChecks defines model for ReceiptListChecks.
 type ReceiptListChecks struct {
 	// Checked items checked off by this receipt
@@ -2877,6 +2954,22 @@ type ReceiptPatch struct {
 	// ShopId absent while the receipt is unassigned (shown as Unassigned)
 	ShopId     *int64 `json:"shop_id,omitempty"`
 	TotalCents *int64 `json:"total_cents,omitempty"`
+}
+
+// ReceiptProductLoad defines model for ReceiptProductLoad.
+type ReceiptProductLoad struct {
+	Confirmed bool `json:"confirmed"`
+	Created   int  `json:"created"`
+	DryRun    bool `json:"dry_run"`
+
+	// Lines only the lines this call looked at (item lines without a product), in receipt order
+	Lines  []ReceiptLineLoad `json:"lines"`
+	Linked int               `json:"linked"`
+
+	// NeedsReview of the created products, how many wait in the review queue
+	NeedsReview int   `json:"needs_review"`
+	ReceiptId   int64 `json:"receipt_id"`
+	Skipped     int   `json:"skipped"`
 }
 
 // ReceiptStatus defines model for ReceiptStatus.
@@ -3454,6 +3547,12 @@ type GetReviewQueueParams struct {
 	Reason *ReviewReason `form:"reason,omitempty" json:"reason,omitempty"`
 }
 
+// GetProductImageParams defines parameters for GetProductImage.
+type GetProductImageParams struct {
+	// V image_version from the product (cache key)
+	V *string `form:"v,omitempty" json:"v,omitempty"`
+}
+
 // PutProductImageMultipartBody defines parameters for PutProductImage.
 type PutProductImageMultipartBody struct {
 	Image openapi_types.File `json:"image"`
@@ -3498,6 +3597,12 @@ type UploadReceiptMultipartBody struct {
 
 	// ShopId optional: without it the receipt is unassigned until a shop is chosen or suggested
 	ShopId *int64 `json:"shop_id,omitempty"`
+}
+
+// LoadReceiptProductsJSONBody defines parameters for LoadReceiptProducts.
+type LoadReceiptProductsJSONBody struct {
+	// DryRun report what would happen, write nothing
+	DryRun *bool `json:"dry_run,omitempty"`
 }
 
 // ReocrReceiptParams defines parameters for ReocrReceipt.
@@ -3701,6 +3806,9 @@ type UpdateReceiptJSONRequestBody = ReceiptPatch
 
 // CreateLineJSONRequestBody defines body for CreateLine for application/json ContentType.
 type CreateLineJSONRequestBody = LineInput
+
+// LoadReceiptProductsJSONRequestBody defines body for LoadReceiptProducts for application/json ContentType.
+type LoadReceiptProductsJSONRequestBody LoadReceiptProductsJSONBody
 
 // AcceptShopSuggestionJSONRequestBody defines body for AcceptShopSuggestion for application/json ContentType.
 type AcceptShopSuggestionJSONRequestBody AcceptShopSuggestionJSONBody

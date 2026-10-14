@@ -136,3 +136,8 @@ UPDATE products SET deleted_at = NULL,
   barcode = CASE WHEN deleted_barcode IS NOT NULL AND NOT EXISTS (SELECT 1 FROM products o WHERE o.barcode = products.deleted_barcode AND o.deleted_at IS NULL) THEN deleted_barcode ELSE NULL END,
   deleted_barcode = NULL, updated_at = sqlc.arg(updated_at)
 WHERE products.id = sqlc.arg(id) AND products.deleted_at IS NOT NULL AND products.merged_into_id IS NULL AND products.deleted_at >= sqlc.arg(since);
+
+-- name: CountOtherProductsWithImage :one
+-- Product images are content-addressed files that two products can share (same Open Food Facts photo,
+-- a merge). The file may be deleted only when no other row, deleted or not, still points at it.
+SELECT COUNT(*) FROM products WHERE image_path = ? AND id != ?;

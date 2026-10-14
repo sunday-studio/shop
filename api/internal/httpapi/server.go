@@ -118,6 +118,7 @@ func (s *Server) Inner() http.Handler {
 	api.HandleFunc("POST /v1/receipts/{id}/shop-suggestion/reject", s.rejectShopSuggestion)
 	api.HandleFunc("GET /v1/receipts/{id}/image", s.receiptImage)
 	api.HandleFunc("POST /v1/receipts/{id}/confirm", s.confirmReceipt)
+	api.HandleFunc("POST /v1/receipts/{id}/load-products", s.loadReceiptProducts)
 	api.HandleFunc("POST /v1/receipts/{id}/reparse", s.requeue(false))
 	api.HandleFunc("POST /v1/receipts/{id}/reocr", s.requeue(true))
 	api.HandleFunc("POST /v1/receipts/{id}/lines", s.createLine)
