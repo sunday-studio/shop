@@ -38,7 +38,10 @@ type Gateway struct {
 }
 
 // publicPaths are answered by the gateway itself in multi mode and by the default tenant in single mode.
-var publicPaths = []string{"GET /healthz", "GET /version", "GET /v1/auth/status", "POST /v1/auth/pair", "GET /v1/server-info"}
+var publicPaths = []string{"GET /healthz", "GET /version", "GET /v1/auth/status", "POST /v1/auth/pair", "GET /v1/server-info",
+	// hosted-only routes: the default tenant answers them 404 (login_method_unavailable / hosted_only)
+	"POST /v1/auth/apple/nonce", "POST /v1/auth/apple", "POST /v1/auth/apple/events", "GET /v1/billing/plan-states",
+	"POST /v1/billing/apple/notifications", "GET /v1/household/invites/{code}"}
 
 func (g *Gateway) Handler() http.Handler {
 	if g.Log == nil {
@@ -49,14 +52,6 @@ func (g *Gateway) Handler() http.Handler {
 		for _, p := range publicPaths {
 			root.HandleFunc(p, g.serveDefault)
 		}
-		// Routes of the hosted service answer 404 here, with the code the contract names, so the app
-		// can tell "wrong kind of server" from "route missing".
-		root.HandleFunc("POST /v1/auth/apple/nonce", loginMethodUnavailable)
-		root.HandleFunc("POST /v1/auth/apple", loginMethodUnavailable)
-		root.HandleFunc("POST /v1/auth/apple/events", loginMethodUnavailable)
-		root.HandleFunc("GET /v1/billing/plan-states", hostedOnly)
-		root.HandleFunc("POST /v1/billing/apple/notifications", hostedOnly)
-		root.HandleFunc("GET /v1/household/invites/{code}", hostedOnly)
 	} else {
 		root.HandleFunc("GET /healthz", g.health)
 		root.HandleFunc("GET /version", g.version)

@@ -68,6 +68,8 @@ type world struct {
 	erase func(h *household) error
 	// mode is a label for the failure output.
 	mode string
+	// hosted: the world is the hosted service (device tokens live in the control database, MCP is off).
+	hosted bool
 	// bytes of the PNG used for the "same image in both households" check
 	closers []func()
 }
@@ -387,7 +389,9 @@ func (h *household) mcpSession() (*mcp.ClientSession, error) {
 func bootWorld(t *testing.T) *world {
 	t.Helper()
 	var w *world
-	if os.Getenv("ISOLATION_WORLD") == "shared" {
+	if os.Getenv("ISOLATION_WORLD") == "hosted" {
+		w = bootHostedWorld(t)
+	} else if os.Getenv("ISOLATION_WORLD") == "shared" {
 		// The control: two tokens in ONE database. Every check must fail here; if one passes, it tests nothing.
 		w = bootSharedDatabaseWorld(t)
 	} else {

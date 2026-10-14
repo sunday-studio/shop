@@ -1,0 +1,171 @@
+openapi: 3.0.3
+info:
+  title: Shop hosted admin API
+  version: 0.19.0
+  description: >
+    Operator routes of the hosted service (notes/hosted-api-contract.md section 6). Served only on the
+    separate loopback listener (ADMIN_ADDR, default 127.0.0.1:8081), never through the public proxy.
+    Every request needs `Authorization: Bearer sa_...` (its sha256 is ADMIN_TOKEN_HASH; make one with
+    `shop-hosted admin token create`) and `X-Admin-Operator` (1 to 40 characters, written to the audit log).
+    A device token never works here and the admin token never works on /v1. Errors are problem+json.
+servers:
+  - url: http://127.0.0.1:8081
+security:
+  - admin: []
+paths:
+  /admin/v1/accounts:
+    get:
+      operationId: findAccounts
+      parameters:
+        - { name: support_code, in: query, schema: { type: string } }
+        - { name: account_id, in: query, schema: { type: string } }
+        - { name: email, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Matching accounts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        support_code: { type: string }
+                        email: { type: string }
+                        display_name: { type: string }
+                        created_at: { type: string, format: date-time }
+                        plan_state: { type: string }
+                        household_id: { type: string, nullable: true }
+  /admin/v1/grants:
+    get:
+      operationId: listGrants
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [active, expired, revoked] } }
+        - { name: account_id, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Grants, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  grants: { type: array, items: { $ref: "#/components/schemas/Grant" } }
+    post:
+      operationId: createGrant
+      description: >
+        `Idempotency-Key` is required; a repeat returns the first grant with 200. Without `expires_at` or
+        `days` the grant lasts 90 days; the maximum is 366. Errors: 409 grant_exists, 409 grant_cap_reached.
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 100 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                account_id: { type: string }
+                support_code: { type: string }
+                key: { type: string, enum: [hosted], default: hosted }
+                expires_at: { type: string, format: date-time }
+                days: { type: integer }
+                reason: { type: string }
+      responses:
+        "200": { description: Existing grant (idempotent repeat), content: { application/json: { schema: { $ref: "#/components/schemas/Grant" } } } }
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Grant" } } } }
+  /admin/v1/grants/{id}/extend:
+    post:
+      operationId: extendGrant
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expires_at, reason]
+              properties:
+                expires_at: { type: string, format: date-time }
+                reason: { type: string }
+      responses:
+        "200": { description: Extended, content: { application/json: { schema: { $ref: "#/components/schemas/Grant" } } } }
+  /admin/v1/grants/{id}/revoke:
+    post:
+      operationId: revokeGrant
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "200": { description: Revoked, content: { application/json: { schema: { $ref: "#/components/schemas/Grant" } } } }
+  /admin/v1/audit:
+    get:
+      operationId: tailAudit
+      parameters:
+        - { name: subject, in: query, schema: { type: string } }
+        - { name: action, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 500 } }
+      responses:
+        "200":
+          description: Newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        at: { type: string, format: date-time }
+                        actor: { type: string }
+                        action: { type: string }
+                        subject: { type: string }
+                        details: { type: object }
+  /admin/v1/dev/{what}:
+    post:
+      operationId: devFakeApple
+      description: >
+        Only with SHOP_APPLE_MODE=fake (local stacks and the e2e). `what` is identity-token (sub, nonce),
+        transaction (app_account_token, original_transaction_id, trial, days, status), notification (type,
+        subtype, uuid, plus the transaction fields) or siwa-event (sub, type). Answers a signed value the
+        public API accepts as if Apple had sent it.
+      parameters:
+        - { name: what, in: path, required: true, schema: { type: string, enum: [identity-token, transaction, notification, siwa-event] } }
+      responses:
+        "200": { description: Signed value, content: { application/json: { schema: { type: object } } } }
+components:
+  securitySchemes:
+    admin: { type: http, scheme: bearer }
+  schemas:
+    Grant:
+      type: object
+      properties:
+        id: { type: string }
+        account_id: { type: string }
+        support_code: { type: string }
+        key: { type: string }
+        status: { type: string, enum: [active, expired, revoked] }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        reason: { type: string }
+        created_by: { type: string }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        revoked_by: { type: string, nullable: true }
+        revoked_reason: { type: string, nullable: true }

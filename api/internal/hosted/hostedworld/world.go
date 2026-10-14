@@ -72,7 +72,10 @@ type World struct {
 type Option func(*hostedapi.Config)
 
 // New builds a world. Rate limits are on (as in production) unless NoRates is given.
-func New(t testing.TB, opts ...Option) *World {
+func New(t testing.TB, opts ...Option) *World { return NewWith(t, "", opts...) }
+
+// NewWith is New with the URL of the OCR sidecar the households use ("" = a stub that is never ready).
+func NewWith(t testing.TB, ocrURL string, opts ...Option) *World {
 	t.Helper()
 	w := &World{T: t, Ctx: context.Background(), Clock: hclock.NewFake(T0), IDP: hostedtest.NewFakeIDP(), Apple: appleauth.NewFakeApple(),
 		API: billing.NewFakeAPI(), Sink: &lifecycle.MemorySink{}, Dir: t.TempDir()}
@@ -102,10 +105,13 @@ func New(t testing.TB, opts ...Option) *World {
 	w.Grants = grants.New(w.Ctl, grants.DefaultConfig())
 	w.Meter = limits.NewMeter(st, cfg.Limits)
 
-	ocrSrv := httptest.NewServer(http.NotFoundHandler())
-	t.Cleanup(ocrSrv.Close)
+	if ocrURL == "" {
+		ocrSrv := httptest.NewServer(http.NotFoundHandler())
+		t.Cleanup(ocrSrv.Close)
+		ocrURL = ocrSrv.URL
+	}
 	ams, _ := time.LoadLocation("Europe/Amsterdam")
-	rt := tenantapp.NewRuntime(config.Config{DataDir: w.Dir, OCRURL: ocrSrv.URL, FoodFactsUserAgent: "test", Location: ams, Workers: 1, AutoProducts: true}, quiet)
+	rt := tenantapp.NewRuntime(config.Config{DataDir: w.Dir, OCRURL: ocrURL, FoodFactsUserAgent: "test", Location: ams, Workers: 1, AutoProducts: true}, quiet)
 	w.RT = rt
 	prov, err := tenancy.NewMulti(tenancy.MultiConfig{Root: filepath.Join(w.Dir, "data"), BackupRoot: filepath.Join(w.Dir, "backup"), MaxOpen: 16, Log: quiet})
 	if err != nil {
@@ -235,14 +241,17 @@ func (w *World) Nonce() string {
 func (r Resp) Status() int { return r.ResponseRecorder.Code }
 
 // SignIn runs the whole sign-in over HTTP.
-func (w *World) SignIn(sub, name string) User {
+func (w *World) SignIn(sub, name string) User { return w.SignInDevice(sub, name, name+"'s iPhone") }
+
+// SignInDevice is SignIn with a chosen device name.
+func (w *World) SignInDevice(sub, name, device string) User {
 	w.T.Helper()
 	nonce := w.Nonce()
 	w.n++
 	code := "code-" + sub + "-" + nonce[:6]
 	w.Apple.AddCode(code, "refresh-"+sub)
 	r := w.Do("POST", "/v1/auth/apple", "", map[string]any{"identity_token": w.IdentityToken(sub, nonce), "authorization_code": code, "nonce": nonce,
-		"device_name": name + "'s iPhone", "name": map[string]any{"given_name": name, "family_name": "Test"}})
+		"device_name": device, "name": map[string]any{"given_name": name, "family_name": "Test"}})
 	if r.Status() != 200 && r.Status() != 201 {
 		w.T.Fatalf("sign in %s: %d %s", sub, r.Status(), r.Body)
 	}

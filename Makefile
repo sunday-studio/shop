@@ -26,9 +26,23 @@ restore-drill: ## restore drill in an isolated docker stack (project shop-drill,
 hosted-kit-test: ## test the hosted server kit (deploy/hosted) in an isolated stack (project shop-hosted-test, port 18490); never touches the live stack
 	deploy/hosted/test/run.sh
 
+HOSTED_RUN_ADMIN_TOKEN ?= sa_hosted_run_local
+HOSTED_RUN_PORT ?= 18495
+HOSTED_RUN_ADMIN_PORT ?= 18496
+
+.PHONY: hosted-run
+hosted-run: ## run the hosted server (cmd/shop-hosted) locally in a throwaway folder against the in-process fake Apple: public API on 127.0.0.1:18495, admin API on 127.0.0.1:18496 (token sa_hosted_run_local; fake Apple helpers at /admin/v1/dev/*, see docs/BACKEND-STATUS.md); never touches the live stack
+	cd api && go build -o bin/shop-hosted ./cmd/shop-hosted
+	@d=$$(mktemp -d "$${TMPDIR:-/tmp}/shop-hosted-run.XXXXXX"); trap 'rm -rf "$$d"' EXIT INT TERM; \
+	echo "hosted-run: data in $$d (removed on exit); public http://127.0.0.1:$(HOSTED_RUN_PORT) admin http://127.0.0.1:$(HOSTED_RUN_ADMIN_PORT) token $(HOSTED_RUN_ADMIN_TOKEN)"; \
+	cd api && SHOP_MODE=hosted SHOP_DATA_DIR="$$d" SHOP_ADDR=127.0.0.1:$(HOSTED_RUN_PORT) ADMIN_ADDR=127.0.0.1:$(HOSTED_RUN_ADMIN_PORT) \
+	ADMIN_TOKEN_HASH=$$(printf %s '$(HOSTED_RUN_ADMIN_TOKEN)' | shasum -a 256 | cut -d' ' -f1) SHOP_APPLE_MODE=fake SHOP_APPLE_ENVIRONMENT=sandbox \
+	OCR_URL=$${OCR_URL:-http://127.0.0.1:1} ./bin/shop-hosted serve
+
 .PHONY: isolation
-isolation: ## household isolation tests (build tag isolation): two households, every endpoint and MCP tool, plus the process-state scan; fails with a "not isolated: ..." checklist until the tenant seam is complete
+isolation: ## household isolation tests (build tag isolation): two households, every endpoint and MCP tool, plus the process-state scan, then the same suite against the hosted service (two accounts, control database, plan gate) and a household member; fails with a "not isolated: ..." checklist
 	cd api && go test -tags isolation -count=1 -run 'TestIsolation' ./internal/httpapi/
+	cd api && ISOLATION_WORLD=hosted go test -tags isolation -count=1 -run 'TestIsolation' ./internal/httpapi/
 
 offsite-up: ## start the optional off-site copy (rclone) after each backup; needs OFFSITE_REMOTE, see docs/operations.md
 	$(COMPOSE) --profile offsite up -d offsite
