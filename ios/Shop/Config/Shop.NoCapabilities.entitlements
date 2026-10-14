@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- For builds signed with a free personal team: no capabilities, so Sign in with Apple does not
+	     work on a device (the hosted door is unavailable); the own-server door and the simulator are unaffected. -->
+</dict>
+</plist>

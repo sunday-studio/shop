@@ -2,6 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- From Config/Shop.xcconfig: the StoreKit product id used when the server doesn't list one. -->
+	<key>ShopSubscriptionProductID</key>
+	<string>$(SHOP_PRODUCT_ID)</string>
 	<!-- Lets ProMotion iPhones run Core Animation above 60 Hz (smooth sheet and scroll animation). -->
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>

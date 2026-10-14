@@ -115,6 +115,8 @@ final class AppModel {
     let trays = TrayCoordinator()
     let toasts = ToastCenter()
     let duplicates = DuplicateDecisions()
+    /// Server mode, login methods and (hosted) the plan: what screens ask "may I?" of.
+    let account: AccountModel
     let home: HomeModel
     let isMock: Bool
     @ObservationIgnored lazy var productReview = ProductReviewModel(app: self)
@@ -144,6 +146,7 @@ final class AppModel {
         serverURL = storedURL
         deviceName = UserDefaults.standard.string(forKey: Self.deviceKey) ?? "iPhone"
         catalog = Catalog(api: api)
+        account = AccountModel(api: api)
         LaunchTrace.mark("catalog loaded")
         uploads = UploadQueue(api: api)
         LaunchTrace.mark("upload queue loaded")
@@ -180,7 +183,8 @@ final class AppModel {
         async let l: Void = list.sync()
         async let r: Void = productReview.refreshCount()
         async let d: Void = duplicates.flush(api: api)
-        _ = await (h, i, l, r, d)
+        async let a: Void = account.refresh()
+        _ = await (h, i, l, r, d, a)
         if catalog.lastSync == nil || (catalog.lastSync ?? .distantPast) < .now.addingTimeInterval(-60 * 30) {
             await catalog.syncAll()
         } else {
@@ -257,6 +261,7 @@ final class AppModel {
         list.reset()
         home.reset()
         productReview.reset()
+        account.reset()
         api.configure(baseURL: nil, token: nil)
         serverURL = nil
         paths = [:]
