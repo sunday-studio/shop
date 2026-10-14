@@ -100,8 +100,8 @@ var (
 	weightRe    = regexp.MustCompile(`(\d+[.,]\d{1,3})\s*kg\s*[x×*@]?\s*(?:€|eur)?\s*(\d+[.,]\d{2})(?:\s*(?:€|eur)?\s*/\s*kg)?`)
 	// "1,25 l x 1,89": litres. Only with an explicit multiplication sign, since "0,92L 1,59" is a bottle size.
 	packSizeRe = regexp.MustCompile(`^\s*(?:l|ltr|liter|ml|cl|dl|g|gr|gram|kg|cm|mm)\b`)
-	litreRe = regexp.MustCompile(`(\d+[.,]\d{1,3})\s*(?:l|ltr)\s*[x×*@]\s*(?:€|eur)?\s*(\d+[.,]\d{2})(?:\s*(?:€|eur)?\s*/\s*(?:l|ltr))?`)
-	letters = regexp.MustCompile(`[a-z]{2,}`)
+	litreRe    = regexp.MustCompile(`(\d+[.,]\d{1,3})\s*(?:l|ltr)\s*[x×*@]\s*(?:€|eur)?\s*(\d+[.,]\d{2})(?:\s*(?:€|eur)?\s*/\s*(?:l|ltr))?`)
+	letters    = regexp.MustCompile(`[a-z]{2,}`)
 )
 
 type rowInfo struct {
