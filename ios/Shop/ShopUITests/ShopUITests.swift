@@ -336,6 +336,40 @@ final class ShopUITests: XCTestCase {
         exists(app.buttons["Confirm"])
     }
 
+    // MARK: Matching products on a receipt, loading products
+
+    private func openReviewReceipt() {
+        exists(button(startingWith: "Albert Heijn, Total doesn’t match")).tap()
+        exists(text("Lines"))
+    }
+
+    func testAnUnmatchedLineOffersTheLikelyProductAsOneTap() {
+        openReviewReceipt()
+        let chip = exists(app.buttons["Greek yoghurt 0%"].firstMatch, "suggestion chip under the unmatched line")
+        XCTAssertTrue(app.buttons["Create product"].firstMatch.exists)
+        chip.tap()
+        XCTAssertTrue(waitForDisappearance(app.buttons["Greek yoghurt 0%"].firstMatch), "the line is linked, its chip goes")
+    }
+
+    func testAddProductsFromThisReceiptShowsAPreviewThenDoesIt() {
+        openReviewReceipt()
+        app.buttons["More actions"].firstMatch.tap()
+        exists(anyElement(startingWith: "Add products from this receipt")).tap()
+        exists(textContaining("will link"), "dry-run summary")
+        exists(button(startingWith: "Link 1 line")).tap()
+        exists(textContaining("Linked 1 line"), "result toast")
+    }
+
+    func testLoadProductsFromReceiptsOnTheProductsTab() {
+        tab("Products"); exists(text("Products"))
+        exists(button(containing: "Load products from receipts")).tap()
+        exists(textContaining("would be created"), "preview")
+        exists(button(startingWith: "Load 5 products")).tap()
+        exists(textContaining("Done."), "result")
+        app.buttons["Close"].firstMatch.tap()
+        XCTAssertTrue(waitForDisappearance(button(containing: "Load products from receipts")), "the card is gone once nothing is left")
+    }
+
     private func waitForDisappearance(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
         let predicate = NSPredicate(format: "exists == false")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)

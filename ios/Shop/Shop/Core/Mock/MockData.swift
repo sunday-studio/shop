@@ -70,7 +70,7 @@ enum MockData {
             line(1002, receipt: r, 2, "BONUS HALFV MELK", kind: .discount, total: -45, parent: 1001),
             line(1003, receipt: r, 3, "BANANEN", qty: 0.842, unit: .kg, unitPrice: 199, total: 168, product: 3),
             line(1004, receipt: r, 4, "AH GRIEKS YOGH 0%", total: 219, suggestions: [
-                ProductMatch(productId: 2, name: "Griekse yoghurt 0%", nameEn: "Greek yoghurt 0%", brand: nil, score: 0.92),
+                ProductMatch(productId: 2, name: "Griekse yoghurt 0%", nameEn: "Greek yoghurt 0%", brand: nil, score: 0.78),
                 ProductMatch(productId: 6, name: "Hummus naturel", nameEn: nil, brand: nil, score: 0.41),
             ]),
             line(1005, receipt: r, 5, "HUMMUS NATUREL", total: 149, suggestions: [

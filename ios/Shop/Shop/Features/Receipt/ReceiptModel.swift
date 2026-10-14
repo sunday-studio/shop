@@ -226,7 +226,8 @@ final class ReceiptModel {
                                     amount: amount, titleColor: Palette.ink, amountColor: Palette.ink3, dot: Accent.amber, indented: false)
         case .item:
             if let productName {
-                return LinePresentation(title: productName, isRaw: false, subtitle: itemDetail(line, product: product, category: categoryName),
+                let auto = line.matchedBy == "alias" || line.matchedBy == "score"
+                return LinePresentation(title: productName, isRaw: false, subtitle: (auto ? "Matched automatically · " : "") + itemDetail(line, product: product, category: categoryName),
                                         subtitleColor: Palette.ink2, amount: amount, titleColor: Palette.ink, amountColor: Palette.ink,
                                         dot: swatch.color, indented: false)
             }

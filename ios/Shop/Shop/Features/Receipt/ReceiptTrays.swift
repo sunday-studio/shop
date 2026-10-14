@@ -406,6 +406,9 @@ struct ReceiptActionsTray: View {
                     trays.dismiss()
                     app.push(.receiptImage(model.receiptId))
                 }
+                OptionRow(icon: .plus, title: "Add products from this receipt", hint: "Link or create a product for every item") {
+                    trays.present("load-products") { LoadReceiptProductsTray(model: model) }
+                }
                 OptionRow(icon: .reparse, title: "Reparse", hint: "Apply the latest rules · keeps your edits") {
                     rerun(ocr: false)
                 }

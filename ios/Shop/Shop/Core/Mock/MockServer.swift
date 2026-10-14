@@ -12,6 +12,8 @@ final class MockServer: HTTPTransport {
     private var receipts = MockData.receipts
     private var keptDuplicates: Set<Int64> = []
     private let hosted = MockHosted()
+    /// Backfill ("load products from all receipts") state; 3 confirmed receipts have lines without a product at first.
+    private var backfill = BackfillState(state: "idle", dryRun: false, receiptsTotal: 0, receiptsDone: 0, linked: 0, created: 0, needsReview: 0, eligibleReceipts: 3)
     /// `-mock-fail-receipt-once`: the first single-receipt fetch fails (a dropped connection), the next works.
     private var receiptFetchFailed = !ProcessInfo.processInfo.arguments.contains("-mock-fail-receipt-once")
 
@@ -333,6 +335,50 @@ final class MockServer: HTTPTransport {
             receipts[ri].lines!.remove(at: li)
             revalidate(ri)
             return (204, Data())
+        case ("POST", "v1/receipts/:id/load-products"):
+            guard let ri = receipts.firstIndex(where: { $0.id == id(2) }) else { return notFound() }
+            if receipts[ri].status == .processing || receipts[ri].status == .pending || receipts[ri].status == .failed {
+                return ok(Problem(type: nil, title: "Receipt not ready", status: 409, detail: "This receipt is still being read.", code: "receipt_not_ready"), status: 409)
+            }
+            let dry = ((try? JSONSerialization.jsonObject(with: body)) as? [String: Any])?["dry_run"] as? Bool ?? false
+            if receipts[ri].lines == nil, let more = MockData.comparisonLines(receipt: receipts[ri].id) { receipts[ri].lines = more }
+            var results: [ReceiptLineLoad] = []
+            var created = 0, linked = 0, skipped = 0
+            for li in (receipts[ri].lines ?? []).indices {
+                let line = receipts[ri].lines![li]
+                guard line.productId == nil else { continue }
+                if line.kind != .item { skipped += 1; results.append(ReceiptLineLoad(lineId: line.id, rawText: line.rawText, action: "skipped", skipReason: "not_a_product")); continue }
+                if let best = line.suggestions?.first, let p = products.first(where: { $0.id == best.productId }) {
+                    linked += 1
+                    results.append(ReceiptLineLoad(lineId: line.id, rawText: line.rawText, action: "linked", productId: p.id, productName: p.name))
+                    if !dry { receipts[ri].lines![li].productId = p.id; receipts[ri].lines![li].suggestions = nil }
+                } else {
+                    created += 1
+                    let name = line.rawText.capitalized
+                    var pid = newId()
+                    if let existing = products.first(where: { $0.name.lowercased() == name.lowercased() }) { pid = existing.id }
+                    results.append(ReceiptLineLoad(lineId: line.id, rawText: line.rawText, action: "created", productId: pid, productName: name, needsReview: true))
+                    if !dry {
+                        if !products.contains(where: { $0.id == pid }) {
+                            var p = MockData.product(pid, name, en: name, cat: 1, size: nil, unit: nil)
+                            p.createdVia = "receipt"; p.needsReview = true; p.reviewReason = "new_product"
+                            products.append(p)
+                        }
+                        receipts[ri].lines![li].productId = pid
+                        receipts[ri].lines![li].suggestions = nil
+                    }
+                }
+            }
+            if !dry { revalidate(ri) }
+            return ok(ReceiptProductLoad(receiptId: receipts[ri].id, dryRun: dry, confirmed: receipts[ri].confirmedAt != nil, linked: linked, created: created, needsReview: created, skipped: skipped, lines: results))
+        case ("GET", "v1/products/autopopulate/backfill"):
+            return ok(backfill)
+        case ("POST", "v1/products/autopopulate/backfill"):
+            let dry = ((try? JSONSerialization.jsonObject(with: body)) as? [String: Any])?["dry_run"] as? Bool ?? false
+            let names = ["Hagelslag Puur", "Pindakaas Naturel", "Volle Melk 1L", "Kipfilet 500G", "Komkommer"]
+            backfill = BackfillState(state: "done", dryRun: dry, receiptsTotal: 3, receiptsDone: 3, linked: dry ? 9 : 9, created: 5, needsReview: 5, createdNames: names, namesTruncated: false,
+                                     linesSkipped: 2, startedAt: .now, finishedAt: .now, eligibleReceipts: dry ? 3 : 0)
+            return ok(BackfillJob(jobId: 1), status: 202)
         case ("PUT", "v1/lines/:id/product"):
             guard let idx = lineIndex(id(2)) else { return notFound() }
             let (ri, li) = idx

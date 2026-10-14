@@ -187,6 +187,9 @@ nonisolated struct ReceiptLine: Codable, Sendable, Hashable, Identifiable {
     var textEn: String?
     var textEnStatus: String? = nil
     var textEnUnknown: [SpanDTO]? = nil
+    /// How the line got its product: alias, score (both made at scan time, "auto") or user. Absent without a product.
+    var matchedBy: String? = nil
+    var matchScore: Double? = nil
     var suggestions: [ProductMatch]?
     /// Linked product's name and category (single-receipt GET).
     var productName: String?
@@ -1107,4 +1110,62 @@ nonisolated struct TranslatePreview: Codable, Sendable {
     var english: String? = nil
     var status: String
     var unknown: [SpanDTO]
+}
+
+
+// MARK: - Load products from receipts (openapi 0.20.0)
+
+nonisolated struct ReceiptLineLoad: Codable, Sendable, Hashable, Identifiable {
+    var lineId: Int64
+    var rawText: String
+    /// created | linked | skipped
+    var action: String
+    var productId: Int64?
+    var productName: String?
+    var needsReview: Bool?
+    /// not_a_product | discarded | product_gone
+    var skipReason: String?
+    var id: Int64 { lineId }
+}
+
+nonisolated struct ReceiptProductLoad: Codable, Sendable, Hashable {
+    var receiptId: Int64
+    var dryRun: Bool
+    var confirmed: Bool
+    var linked: Int
+    var created: Int
+    var needsReview: Int
+    var skipped: Int
+    var lines: [ReceiptLineLoad]
+}
+
+nonisolated struct LoadProductsBody: Codable, Sendable { var dryRun: Bool }
+
+nonisolated struct BackfillBody: Codable, Sendable {
+    var dryRun: Bool
+    var skipReceiptIds: [Int64]? = nil
+}
+
+nonisolated struct BackfillJob: Codable, Sendable { var jobId: Int64 }
+
+nonisolated struct BackfillState: Codable, Sendable, Hashable {
+    /// idle | running | done | failed
+    var state: String
+    var dryRun: Bool
+    var receiptsTotal: Int
+    var receiptsDone: Int
+    var linked: Int
+    var created: Int
+    var needsReview: Int
+    var skippedReceiptIds: [Int64]? = nil
+    var error: String? = nil
+    var createdNames: [String]? = nil
+    var namesTruncated: Bool? = nil
+    var linesSkipped: Int? = nil
+    var startedAt: Date? = nil
+    var finishedAt: Date? = nil
+    /// Confirmed receipts that still have item lines without a product (GET only).
+    var eligibleReceipts: Int? = nil
+
+    var isRunning: Bool { state == "running" }
 }

@@ -127,6 +127,19 @@ func deleteCategory(_ id: Int64, moveTo: Int64? = nil) async throws {
     func updateReceipt(_ id: Int64, _ patch: ReceiptPatch) async throws -> Receipt { try await send("PATCH", "/v1/receipts/\(id)", body: patch) }
     func keepDuplicate(_ id: Int64) async throws { try await perform("POST", "/v1/receipts/\(id)/duplicate/keep") }
     func undoKeepDuplicate(_ id: Int64) async throws { try await perform("DELETE", "/v1/receipts/\(id)/duplicate/keep") }
+    /// Links or creates products for this receipt's item lines (409 while it is being read, when it failed, or when
+    /// automatic products are off). `dryRun` reports what would happen and writes nothing.
+    func loadReceiptProducts(_ id: Int64, dryRun: Bool) async throws -> ReceiptProductLoad {
+        try await send("POST", "/v1/receipts/\(id)/load-products", body: LoadProductsBody(dryRun: dryRun))
+    }
+
+    func backfillState() async throws -> BackfillState { try await get("/v1/products/autopopulate/backfill") }
+
+    @discardableResult
+    func startBackfill(dryRun: Bool, skipReceiptIds: [Int64]? = nil) async throws -> BackfillJob {
+        try await send("POST", "/v1/products/autopopulate/backfill", body: BackfillBody(dryRun: dryRun, skipReceiptIds: skipReceiptIds))
+    }
+
     func deleteReceipt(_ id: Int64) async throws { try await perform("DELETE", "/v1/receipts/\(id)") }
     func confirmReceipt(_ id: Int64) async throws -> Receipt { try await send("POST", "/v1/receipts/\(id)/confirm") }
 

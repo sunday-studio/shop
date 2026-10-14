@@ -294,11 +294,14 @@ private struct ReceiptScreen: View {
         ForEach(Array(model.visibleLines.enumerated()), id: \.element.id) { index, line in
             let p = model.present(line)
             SwipeActionRow(trailing: SwipeAction(icon: "trash", title: "Delete", tint: Accent.red) { askDeleteLine(line, model: model) }) {
-            Button { tap(line, model: model) } label: {
-                LineRow(title: p.title, isRaw: p.isRaw, subtitle: p.subtitle, subtitleColor: p.subtitleColor, amount: p.amount,
-                        titleColor: p.titleColor, amountColor: p.amountColor, dot: p.dot, indented: p.indented)
+            VStack(alignment: .leading, spacing: 0) {
+                Button { tap(line, model: model) } label: {
+                    LineRow(title: p.title, isRaw: p.isRaw, subtitle: p.subtitle, subtitleColor: p.subtitleColor, amount: p.amount,
+                            titleColor: p.titleColor, amountColor: p.amountColor, dot: p.dot, indented: p.indented)
+                }
+                .buttonStyle(.press(haptic: .selection))
+                matchChips(line, model: model)
             }
-            .buttonStyle(.press(haptic: .selection))
             .staggeredAppear(index: openedOnSummary || !staggerOn ? Motion.staggerMax : index)
             .padding(.horizontal, Space.gutter)
             }
@@ -307,6 +310,9 @@ private struct ReceiptScreen: View {
                 Button("Edit line", systemImage: "pencil") { openEdit(line, model: model) }
                 if line.kind == .item {
                     Button(line.productId == nil ? "Link product" : "Change product", systemImage: "link") { openLink(line, model: model) }
+                }
+                if line.kind == .item && line.productId != nil && (line.matchedBy == "alias" || line.matchedBy == "score") {
+                    Button("Not this product", systemImage: "arrow.uturn.backward") { Task { _ = await model.link(line.id, productId: nil, remember: false) } }
                 }
                 if line.kind == .item && line.productId != nil {
                     Button("This isn't the same product", systemImage: "square.split.2x1") {
@@ -317,6 +323,12 @@ private struct ReceiptScreen: View {
                     askDeleteLine(line, model: model)
                 }
             }
+        }
+
+        if (model.receipt?.unlinkedCount ?? 0) > 0 || model.lines.contains(where: { $0.kind == .item && $0.productId == nil }) {
+            LinkButton(title: "Add products from this receipt") { app.trays.present("load-products") { LoadReceiptProductsTray(model: model) } }
+                .padding(.horizontal, Space.gutter)
+                .shopListRow()
         }
 
         LinkButton(title: "Add line") { openEdit(nil, model: model) }
@@ -380,6 +392,34 @@ private struct ReceiptScreen: View {
     private func openEdit(_ line: ReceiptLine?, model: ReceiptModel) {
         app.trays.present("edit-line-\(line?.id ?? 0)") {
             EditLineTray(model: model, line: line)
+        }
+    }
+
+    /// One-tap answers under an unmatched item line: the server's likely products (0.75 up to 0.92, not sure enough to
+    /// link by itself) and "Create product". A line the scan already linked shows nothing here.
+    @ViewBuilder
+    private func matchChips(_ line: ReceiptLine, model: ReceiptModel) -> some View {
+        if line.kind == .item, line.productId == nil, model.receipt?.status != .processing {
+            let options = (line.suggestions ?? []).filter { $0.score >= 0.75 }.prefix(3)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Space.m) {
+                    ForEach(Array(options), id: \.productId) { match in
+                        SuggestionChip(title: match.nameEn ?? match.name, icon: .link) {
+                            Task { _ = await model.link(line.id, productId: match.productId, remember: true) }
+                        }
+                    }
+                    SuggestionChip(title: "Create product", icon: .plus) {
+                        app.trays.present("new-product-from-line") {
+                            ProductFormTray(mode: .create(name: ReceiptModel.tidy(line.rawText), barcode: nil, prefill: nil)) { product in
+                                Task { _ = await model.link(line.id, productId: product.id, remember: true) }
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, Space.s)
+            }
+            .padding(.leading, 22)
+            .padding(.bottom, Space.s)
         }
     }
 

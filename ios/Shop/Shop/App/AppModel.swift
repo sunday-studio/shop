@@ -115,6 +115,8 @@ final class AppModel {
     let trays = TrayCoordinator()
     let toasts = ToastCenter()
     let duplicates = DuplicateDecisions()
+    /// Confirmed receipts that still have item lines without a product (Products offers to load them).
+    private(set) var backfillEligible = 0
     /// Server mode, login methods and (hosted) the plan: what screens ask "may I?" of.
     let account: AccountModel
     let home: HomeModel
@@ -221,6 +223,11 @@ final class AppModel {
             toasts.show("Already uploaded · \(item.shopName)", tone: .amber, haptic: .warning)
         }
         Task { await home.refresh() }
+    }
+
+    func refreshBackfill() async {
+        guard let state = try? await api.backfillState() else { return }
+        backfillEligible = state.eligibleReceipts ?? 0
     }
 
     // MARK: Session

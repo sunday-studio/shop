@@ -70,7 +70,7 @@ struct ProductsView: View {
         .background(Palette.bg)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { if model == nil { model = ProductsModel(app: app) } }
-        .task { await app.needsEnglish.load() }
+        .task { await app.needsEnglish.load(); await app.refreshBackfill() }
     }
 
     @ViewBuilder
@@ -97,6 +97,15 @@ struct ProductsView: View {
             if app.needsEnglish.wordsLeft > 0 {
                 AttentionCard(count: app.needsEnglish.wordsLeft, title: "Needs English", hint: "\(app.needsEnglish.wordsLeft) word\(app.needsEnglish.wordsLeft == 1 ? "" : "s")") {
                     app.push(.needsEnglish)
+                }
+                .padding(.horizontal, Space.edge)
+                .padding(.top, Space.m)
+                .shopListRow()
+            }
+
+            if app.backfillEligible > 0 {
+                AttentionCard(count: app.backfillEligible, title: "Load products from receipts", hint: app.backfillEligible == 1 ? "1 receipt" : "\(app.backfillEligible) receipts", tone: .blue) {
+                    app.trays.present("backfill") { BackfillTray() }
                 }
                 .padding(.horizontal, Space.edge)
                 .padding(.top, Space.m)
