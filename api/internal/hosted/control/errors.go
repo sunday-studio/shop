@@ -9,9 +9,10 @@ import (
 
 // Error carries the stable contract code and the HTTP status the thin HTTP layer will use.
 type Error struct {
-	Code   string
-	Status int
-	Msg    string
+	Code              string
+	Status            int
+	Msg               string
+	RetryAfterSeconds int // rate_limited, apple_unavailable
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Msg }
@@ -44,8 +45,8 @@ func Code(err error) string {
 	if errors.As(err, &e) {
 		return e.Code
 	}
-	if _, ok := IsLimit(err); ok {
-		return "limit_reached"
+	if le, ok := IsLimit(err); ok {
+		return le.ErrCode()
 	}
 	return ""
 }
@@ -59,6 +60,24 @@ type LimitError struct {
 	Value    int64  // the limit
 	Current  int64
 	ResetsAt time.Time // zero for non-periodic limits
+	// FileTooLarge turns the error into code file_too_large (HTTP 413) for max_upload_bytes.
+	FileTooLarge bool
+}
+
+// ErrCode is the contract code.
+func (e *LimitError) ErrCode() string {
+	if e.FileTooLarge {
+		return "file_too_large"
+	}
+	return "limit_reached"
+}
+
+// HTTPStatus is 413 for file_too_large, else 429.
+func (e *LimitError) HTTPStatus() int {
+	if e.FileTooLarge {
+		return http.StatusRequestEntityTooLarge
+	}
+	return http.StatusTooManyRequests
 }
 
 func (e *LimitError) Error() string {
