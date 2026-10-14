@@ -398,6 +398,10 @@ func TestTransferRules(t *testing.T) {
 	if _, err := e.svc.Transfer(e.ctx, m.ID, z.ID, true); err != nil {
 		t.Fatal(err)
 	}
+	hh2, _ := e.s.HouseholdByID(e.ctx, h.ID)
+	if !hh2.ForcedLapseAt.Equal(t0) {
+		t.Fatalf("plan-less transfer must start the lapse clock, got %v", hh2.ForcedLapseAt)
+	}
 }
 
 func fillInvite2(t *testing.T, e *env, owner control.Account) (string, control.Invite) {

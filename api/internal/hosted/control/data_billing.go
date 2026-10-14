@@ -10,19 +10,20 @@ import (
 
 // ---- entitlements ----
 
-const entCols = `id, account_id, key, source, state, is_trial, starts_at, expires_at, grace_until, auto_renew, product_id, environment, original_transaction_id, latest_transaction_id, offer_type, offer_id, grant_id, revoked_at, last_signed_ms, updated_at`
+const entCols = `id, account_id, key, source, state, is_trial, starts_at, expires_at, grace_until, auto_renew, product_id, environment, original_transaction_id, latest_transaction_id, offer_type, offer_id, grant_id, revoked_at, ended_at, last_signed_ms, updated_at`
 
 func scanEnt(r scanner) (Entitlement, error) {
 	var e Entitlement
-	var acc, sa, ea, gu, otx, gid, ra, ua sql.NullString
+	var acc, sa, ea, gu, otx, gid, ra, ed, ua sql.NullString
 	var tr int
 	var ar sql.NullInt64
-	err := r.Scan(&e.ID, &acc, &e.Key, &e.Source, &e.State, &tr, &sa, &ea, &gu, &ar, &e.ProductID, &e.Environment, &otx, &e.LatestTransactionID, &e.OfferType, &e.OfferID, &gid, &ra, &e.LastSignedMs, &ua)
+	err := r.Scan(&e.ID, &acc, &e.Key, &e.Source, &e.State, &tr, &sa, &ea, &gu, &ar, &e.ProductID, &e.Environment, &otx, &e.LatestTransactionID, &e.OfferType, &e.OfferID, &gid, &ra, &ed, &e.LastSignedMs, &ua)
 	if err != nil {
 		return e, err
 	}
 	e.AccountID, e.IsTrial = acc.String, tr == 1
 	e.StartsAt, e.ExpiresAt, e.GraceUntil, e.RevokedAt, e.UpdatedAt = pt(sa), pt(ea), pt(gu), pt(ra), pt(ua)
+	e.EndedAt = pt(ed)
 	if ar.Valid {
 		b := ar.Int64 == 1
 		e.AutoRenew = &b
@@ -44,16 +45,16 @@ func (s *Store) UpsertEntitlement(ctx context.Context, e Entitlement) (Entitleme
 	if e.AutoRenew != nil {
 		ar = b2i(*e.AutoRenew)
 	}
-	_, err := s.q.ExecContext(ctx, `INSERT INTO entitlements (`+entCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+	_, err := s.q.ExecContext(ctx, `INSERT INTO entitlements (`+entCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(id) DO UPDATE SET account_id=excluded.account_id, key=excluded.key, source=excluded.source, state=excluded.state,
 		is_trial=excluded.is_trial, starts_at=excluded.starts_at, expires_at=excluded.expires_at, grace_until=excluded.grace_until,
 		auto_renew=excluded.auto_renew, product_id=excluded.product_id, environment=excluded.environment,
 		original_transaction_id=excluded.original_transaction_id, latest_transaction_id=excluded.latest_transaction_id,
-		offer_type=excluded.offer_type, offer_id=excluded.offer_id, grant_id=excluded.grant_id, revoked_at=excluded.revoked_at,
+		offer_type=excluded.offer_type, offer_id=excluded.offer_id, grant_id=excluded.grant_id, revoked_at=excluded.revoked_at, ended_at=excluded.ended_at,
 		last_signed_ms=excluded.last_signed_ms, updated_at=excluded.updated_at`,
 		e.ID, nullStr(e.AccountID), e.Key, e.Source, e.State, b2i(e.IsTrial), nts(e.StartsAt), nts(e.ExpiresAt), nts(e.GraceUntil), ar,
 		e.ProductID, e.Environment, nullStr(e.OriginalTransactionID), e.LatestTransactionID, e.OfferType, e.OfferID, nullStr(e.GrantID),
-		nts(e.RevokedAt), e.LastSignedMs, ts(e.UpdatedAt))
+		nts(e.RevokedAt), nts(e.EndedAt), e.LastSignedMs, ts(e.UpdatedAt))
 	return e, err
 }
 

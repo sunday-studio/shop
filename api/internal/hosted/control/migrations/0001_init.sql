@@ -105,6 +105,7 @@ CREATE TABLE entitlements (
     offer_id                TEXT NOT NULL DEFAULT '',
     grant_id                TEXT UNIQUE REFERENCES grants(id),
     revoked_at              TEXT,
+    ended_at                TEXT,                           -- when an Apple subscription was first seen expired
     last_signed_ms          INTEGER NOT NULL DEFAULT 0,
     updated_at              TEXT NOT NULL
 );
