@@ -555,7 +555,7 @@ func (q *Queries) ListProductsByRecent(ctx context.Context, arg ListProductsByRe
 }
 
 const recentUnmatchedLines = `-- name: RecentUnmatchedLines :many
-SELECT l.id, l.receipt_id, l.line_no, l.raw_text, l.norm_text, l.kind, l.qty, l.unit, l.unit_price_cents, l.line_total_cents, l.vat_code, l.parent_line_id, l.product_id, l.user_edited, r.shop_id, r.purchased_at, CAST(COALESCE(s.name, 'Unassigned') AS TEXT) AS shop_name
+SELECT l.id, l.receipt_id, l.line_no, l.raw_text, l.norm_text, l.kind, l.qty, l.unit, l.unit_price_cents, l.line_total_cents, l.vat_code, l.parent_line_id, l.product_id, l.user_edited, l.match_source, l.match_score, l.suggestions, r.shop_id, r.purchased_at, CAST(COALESCE(s.name, 'Unassigned') AS TEXT) AS shop_name
 FROM receipt_lines l
 JOIN receipts r ON r.id = l.receipt_id
 LEFT JOIN shops s ON s.id = r.shop_id
@@ -567,23 +567,26 @@ LIMIT 500
 `
 
 type RecentUnmatchedLinesRow struct {
-	ID             int64          `json:"id"`
-	ReceiptID      int64          `json:"receipt_id"`
-	LineNo         int64          `json:"line_no"`
-	RawText        string         `json:"raw_text"`
-	NormText       string         `json:"norm_text"`
-	Kind           string         `json:"kind"`
-	Qty            float64        `json:"qty"`
-	Unit           string         `json:"unit"`
-	UnitPriceCents sql.NullInt64  `json:"unit_price_cents"`
-	LineTotalCents int64          `json:"line_total_cents"`
-	VatCode        sql.NullString `json:"vat_code"`
-	ParentLineID   sql.NullInt64  `json:"parent_line_id"`
-	ProductID      sql.NullInt64  `json:"product_id"`
-	UserEdited     int64          `json:"user_edited"`
-	ShopID         sql.NullInt64  `json:"shop_id"`
-	PurchasedAt    sql.NullString `json:"purchased_at"`
-	ShopName       string         `json:"shop_name"`
+	ID             int64           `json:"id"`
+	ReceiptID      int64           `json:"receipt_id"`
+	LineNo         int64           `json:"line_no"`
+	RawText        string          `json:"raw_text"`
+	NormText       string          `json:"norm_text"`
+	Kind           string          `json:"kind"`
+	Qty            float64         `json:"qty"`
+	Unit           string          `json:"unit"`
+	UnitPriceCents sql.NullInt64   `json:"unit_price_cents"`
+	LineTotalCents int64           `json:"line_total_cents"`
+	VatCode        sql.NullString  `json:"vat_code"`
+	ParentLineID   sql.NullInt64   `json:"parent_line_id"`
+	ProductID      sql.NullInt64   `json:"product_id"`
+	UserEdited     int64           `json:"user_edited"`
+	MatchSource    sql.NullString  `json:"match_source"`
+	MatchScore     sql.NullFloat64 `json:"match_score"`
+	Suggestions    sql.NullString  `json:"suggestions"`
+	ShopID         sql.NullInt64   `json:"shop_id"`
+	PurchasedAt    sql.NullString  `json:"purchased_at"`
+	ShopName       string          `json:"shop_name"`
 }
 
 func (q *Queries) RecentUnmatchedLines(ctx context.Context, since sql.NullString) ([]RecentUnmatchedLinesRow, error) {
@@ -610,6 +613,9 @@ func (q *Queries) RecentUnmatchedLines(ctx context.Context, since sql.NullString
 			&i.ParentLineID,
 			&i.ProductID,
 			&i.UserEdited,
+			&i.MatchSource,
+			&i.MatchScore,
+			&i.Suggestions,
 			&i.ShopID,
 			&i.PurchasedAt,
 			&i.ShopName,
@@ -665,7 +671,7 @@ func (q *Queries) SetAliasProduct(ctx context.Context, arg SetAliasProductParams
 
 const setLineProduct = `-- name: SetLineProduct :one
 UPDATE receipt_lines SET product_id = ? WHERE id = ?
-RETURNING id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited
+RETURNING id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited, match_source, match_score, suggestions
 `
 
 type SetLineProductParams struct {
@@ -691,6 +697,9 @@ func (q *Queries) SetLineProduct(ctx context.Context, arg SetLineProductParams) 
 		&i.ParentLineID,
 		&i.ProductID,
 		&i.UserEdited,
+		&i.MatchSource,
+		&i.MatchScore,
+		&i.Suggestions,
 	)
 	return i, err
 }

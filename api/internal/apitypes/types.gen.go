@@ -1113,6 +1113,27 @@ func (e ReceiptReviewReasons) Valid() bool {
 	}
 }
 
+// Defines values for ReceiptLineMatchedBy.
+const (
+	ReceiptLineMatchedByAlias ReceiptLineMatchedBy = "alias"
+	ReceiptLineMatchedByScore ReceiptLineMatchedBy = "score"
+	ReceiptLineMatchedByUser  ReceiptLineMatchedBy = "user"
+)
+
+// Valid indicates whether the value is a known member of the ReceiptLineMatchedBy enum.
+func (e ReceiptLineMatchedBy) Valid() bool {
+	switch e {
+	case ReceiptLineMatchedByAlias:
+		return true
+	case ReceiptLineMatchedByScore:
+		return true
+	case ReceiptLineMatchedByUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ReceiptLineTextEnStatus.
 const (
 	ReceiptLineTextEnStatusDictionary ReceiptLineTextEnStatus = "dictionary"
@@ -2796,8 +2817,14 @@ type ReceiptLine struct {
 	Kind           LineKind `json:"kind"`
 	LineNo         int      `json:"line_no"`
 	LineTotalCents int64    `json:"line_total_cents"`
-	ParentLineId   *int64   `json:"parent_line_id,omitempty"`
-	ProductId      *int64   `json:"product_id,omitempty"`
+
+	// MatchScore Score of an auto link (1 for an alias); present when matched_by is alias or score.
+	MatchScore *float64 `json:"match_score,omitempty"`
+
+	// MatchedBy How the line got its product; absent while it has none. alias = the receipt text is a learned alias of the product, score = the matcher found it at scan time with a score of 0.92 or more (both are made when the receipt is processed, before anyone opens it, and are "auto": show them as such and let the user undo them with PUT /v1/lines/{id}/product {product_id: null}); user = every other link (the user's own choice, or a link made when the receipt was confirmed). A link by the user is never replaced by the scan.
+	MatchedBy    *ReceiptLineMatchedBy `json:"matched_by,omitempty"`
+	ParentLineId *int64                `json:"parent_line_id,omitempty"`
+	ProductId    *int64                `json:"product_id,omitempty"`
 
 	// ProductName linked product (single-receipt GET)
 	ProductName   *string `json:"product_name,omitempty"`
@@ -2806,7 +2833,7 @@ type ReceiptLine struct {
 	RawText       string  `json:"raw_text"`
 	ReceiptId     int64   `json:"receipt_id"`
 
-	// Suggestions Up to 3 likely products for unmatched item lines (single-receipt GET only).
+	// Suggestions Up to 3 likely products for an unmatched item line (single-receipt GET only), best first, scores from 0.75 up to 0.92: the scan found them but was not sure enough to link. Show them as one-tap chips; a tap is PUT /v1/lines/{id}/product with that product_id. Empty once the line has a product.
 	Suggestions *[]ProductMatch `json:"suggestions,omitempty"`
 
 	// TextEn dictionary English rendering of raw_text, when good enough
@@ -2818,6 +2845,9 @@ type ReceiptLine struct {
 	UserEdited     bool                     `json:"user_edited"`
 	VatCode        *string                  `json:"vat_code,omitempty"`
 }
+
+// ReceiptLineMatchedBy How the line got its product; absent while it has none. alias = the receipt text is a learned alias of the product, score = the matcher found it at scan time with a score of 0.92 or more (both are made when the receipt is processed, before anyone opens it, and are "auto": show them as such and let the user undo them with PUT /v1/lines/{id}/product {product_id: null}); user = every other link (the user's own choice, or a link made when the receipt was confirmed). A link by the user is never replaced by the scan.
+type ReceiptLineMatchedBy string
 
 // ReceiptLineTextEnStatus defines model for ReceiptLine.TextEnStatus.
 type ReceiptLineTextEnStatus string

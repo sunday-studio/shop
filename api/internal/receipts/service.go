@@ -24,6 +24,7 @@ import (
 	"shop/internal/shopsuggest"
 	"shop/internal/store"
 	"shop/internal/store/db"
+	"shop/internal/translate"
 )
 
 const JobProcess = "process_receipt"
@@ -52,6 +53,8 @@ type Service struct {
 	imagesDir string
 	loc       *time.Location
 	log       *slog.Logger
+	matcher   *match.Matcher      // scan-time product matching, on this household's database
+	gloss     *translate.Glossary // the household's taught words; nil = built-in glossary only
 }
 
 type Config struct {
@@ -62,7 +65,7 @@ type Config struct {
 func New(conn *sql.DB, ocrClient, fallback *ocr.Client, queue *jobs.Queue, cfg Config, log *slog.Logger) *Service {
 	s := &Service{
 		conn: conn, q: db.New(conn), ocr: ocrClient, fallback: fallback, queue: queue,
-		imagesDir: cfg.ImagesDir, loc: cfg.Location, log: log,
+		imagesDir: cfg.ImagesDir, loc: cfg.Location, log: log, matcher: match.NewMatcher(conn),
 	}
 	queue.Register(JobProcess, jobs.Handler{Run: s.runJob, OnFail: s.onJobFail})
 	return s
@@ -249,6 +252,14 @@ func (s *Service) persist(ctx context.Context, rec db.Receipt, res ocr.Result, p
 	}
 	reasons, _ := json.Marshal(parsed.Reasons)
 
+	// Product matching reads only: done before the write transaction opens. A matcher failure never fails
+	// the receipt; its lines just stay unlinked and unsuggested (the app falls back to live suggestions).
+	matches, err := s.matchLines(ctx, rec, parsed.Lines)
+	if err != nil {
+		s.log.Warn("scan matching", "receipt", rec.ID, "err", err)
+		matches = make([]lineMatch, len(parsed.Lines))
+	}
+
 	return store.InTx(ctx, s.conn, func(q *db.Queries) error {
 		now := store.Now()
 		if err := q.SetReceiptOCR(ctx, db.SetReceiptOCRParams{
@@ -258,6 +269,10 @@ func (s *Service) persist(ctx context.Context, rec db.Receipt, res ocr.Result, p
 			return err
 		}
 		if err := shopsuggest.StoreHeader(ctx, q, rec.ID, string(raw)); err != nil {
+			return err
+		}
+		kept, err := collectUserLinks(ctx, q, rec.ID)
+		if err != nil {
 			return err
 		}
 		if err := q.DeleteLinesForReceipt(ctx, rec.ID); err != nil {
@@ -270,20 +285,17 @@ func (s *Service) persist(ctx context.Context, rec db.Receipt, res ocr.Result, p
 			if l.Parent >= 0 && l.Parent < i {
 				parent = sql.NullInt64{Int64: ids[l.Parent], Valid: true}
 			}
-			var product sql.NullInt64
-			if l.Kind == receipt.KindItem && norm != "" {
-				if pid, err := q.LookupAlias(ctx, db.LookupAliasParams{NormText: norm, ShopID: rec.ShopID}); err == nil {
-					product = sql.NullInt64{Int64: pid, Valid: true}
-				} else if !errors.Is(err, sql.ErrNoRows) {
-					return err
-				}
-			}
-			row, err := q.InsertLine(ctx, db.InsertLineParams{
+			arg := db.InsertLineParams{
 				ReceiptID: rec.ID, LineNo: int64(i + 1), RawText: l.RawText, NormText: norm,
 				Kind: string(l.Kind), Qty: l.Qty, Unit: l.Unit, UnitPriceCents: store.NullInt(l.UnitPriceCents),
 				LineTotalCents: l.LineTotalCents, VatCode: store.Str(l.VATCode), ParentLineID: parent,
-				ProductID: product,
-			})
+			}
+			var keptProduct int64
+			if l.Kind == receipt.KindItem && norm != "" {
+				keptProduct, _ = takeUserLink(kept, norm, l.LineTotalCents)
+			}
+			lineParams(&arg, matches[i], keptProduct)
+			row, err := q.InsertLine(ctx, arg)
 			if err != nil {
 				return err
 			}

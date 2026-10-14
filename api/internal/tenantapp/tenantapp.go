@@ -136,6 +136,13 @@ func (rt *Runtime) build(ctx context.Context, t *tenancy.Tenant) (*Instance, err
 	}
 	in.Products.UseGlossary(in.English.Glossary())
 	in.Auto.UseGlossary(in.English.Glossary())
+	in.Receipts.UseGlossary(in.English.Glossary())
+	// Quantities read by an older parser are corrected once (stored OCR, unedited lines only).
+	if n, err := in.Receipts.RequantifyOnce(ctx); err != nil {
+		log.Warn("requantify", "household", t.ID, "err", err)
+	} else if n > 0 {
+		log.Info("quantities corrected", "household", t.ID, "lines", n)
+	}
 	if n, err := in.English.Retranslate(ctx); err != nil {
 		log.Warn("english names", "household", t.ID, "err", err)
 	} else if n > 0 {

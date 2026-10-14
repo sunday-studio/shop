@@ -184,20 +184,23 @@ type ReceiptDuplicateDismissal struct {
 }
 
 type ReceiptLine struct {
-	ID             int64          `json:"id"`
-	ReceiptID      int64          `json:"receipt_id"`
-	LineNo         int64          `json:"line_no"`
-	RawText        string         `json:"raw_text"`
-	NormText       string         `json:"norm_text"`
-	Kind           string         `json:"kind"`
-	Qty            float64        `json:"qty"`
-	Unit           string         `json:"unit"`
-	UnitPriceCents sql.NullInt64  `json:"unit_price_cents"`
-	LineTotalCents int64          `json:"line_total_cents"`
-	VatCode        sql.NullString `json:"vat_code"`
-	ParentLineID   sql.NullInt64  `json:"parent_line_id"`
-	ProductID      sql.NullInt64  `json:"product_id"`
-	UserEdited     int64          `json:"user_edited"`
+	ID             int64           `json:"id"`
+	ReceiptID      int64           `json:"receipt_id"`
+	LineNo         int64           `json:"line_no"`
+	RawText        string          `json:"raw_text"`
+	NormText       string          `json:"norm_text"`
+	Kind           string          `json:"kind"`
+	Qty            float64         `json:"qty"`
+	Unit           string          `json:"unit"`
+	UnitPriceCents sql.NullInt64   `json:"unit_price_cents"`
+	LineTotalCents int64           `json:"line_total_cents"`
+	VatCode        sql.NullString  `json:"vat_code"`
+	ParentLineID   sql.NullInt64   `json:"parent_line_id"`
+	ProductID      sql.NullInt64   `json:"product_id"`
+	UserEdited     int64           `json:"user_edited"`
+	MatchSource    sql.NullString  `json:"match_source"`
+	MatchScore     sql.NullFloat64 `json:"match_score"`
+	Suggestions    sql.NullString  `json:"suggestions"`
 }
 
 type SearchFt struct {

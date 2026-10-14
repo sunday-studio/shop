@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.19.0
+  version: 0.21.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -396,7 +396,10 @@ paths:
       - { name: force, in: query, description: "discard user edits", schema: { type: boolean, default: false } }
     post:
       operationId: reparseReceipt
-      description: Re-runs the parser on stored OCR output. Refused (409) for confirmed or user-edited receipts unless force=true.
+      description: >
+        Re-runs the parser and the scan-time product matching on stored OCR output. Refused (409) for confirmed or
+        user-edited receipts unless force=true. Product links the user made (matched_by=user) are kept on the new
+        lines that have the same text and amount; automatic links and suggestions are made again.
       responses:
         "202":
           description: Queued
@@ -849,7 +852,9 @@ paths:
       description: >
         Set or clear (product_id null) a line's product. With remember (default true) the
         line text at this shop becomes an alias: other unmatched lines with the same text are
-        linked now, and future receipts link automatically.
+        linked now, and future receipts link automatically. This is also how a suggestion on a line is
+        accepted (send the suggested product_id) and how an automatic link is undone (product_id null);
+        the line then reports matched_by=user (or no link) and no suggestions.
       requestBody:
         required: true
         content:
@@ -2788,9 +2793,26 @@ components:
         text_en: { type: string, description: "dictionary English rendering of raw_text, when good enough" }
         text_en_status: { type: string, enum: [dictionary, partial, missing] }
         text_en_unknown: { type: array, items: { $ref: "#/components/schemas/Span" } }
+        matched_by:
+          type: string
+          enum: [alias, score, user]
+          description: >
+            How the line got its product; absent while it has none. alias = the receipt text is a learned alias
+            of the product, score = the matcher found it at scan time with a score of 0.92 or more (both are
+            made when the receipt is processed, before anyone opens it, and are "auto": show them as such and
+            let the user undo them with PUT /v1/lines/{id}/product {product_id: null}); user = every other
+            link (the user's own choice, or a link made when the receipt was confirmed). A link by the user is
+            never replaced by the scan.
+        match_score:
+          type: number
+          format: double
+          description: Score of an auto link (1 for an alias); present when matched_by is alias or score.
         suggestions:
           type: array
-          description: Up to 3 likely products for unmatched item lines (single-receipt GET only).
+          description: >
+            Up to 3 likely products for an unmatched item line (single-receipt GET only), best first, scores
+            from 0.75 up to 0.92: the scan found them but was not sure enough to link. Show them as one-tap
+            chips; a tap is PUT /v1/lines/{id}/product with that product_id. Empty once the line has a product.
           items: { $ref: "#/components/schemas/ProductMatch" }
 
     ReceiptPatch:

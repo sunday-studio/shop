@@ -32,7 +32,7 @@ func (q *Queries) DeleteLinesForReceipt(ctx context.Context, receiptID int64) er
 }
 
 const getLine = `-- name: GetLine :one
-SELECT id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited FROM receipt_lines WHERE id = ?
+SELECT id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited, match_source, match_score, suggestions FROM receipt_lines WHERE id = ?
 `
 
 func (q *Queries) GetLine(ctx context.Context, id int64) (ReceiptLine, error) {
@@ -53,6 +53,9 @@ func (q *Queries) GetLine(ctx context.Context, id int64) (ReceiptLine, error) {
 		&i.ParentLineID,
 		&i.ProductID,
 		&i.UserEdited,
+		&i.MatchSource,
+		&i.MatchScore,
+		&i.Suggestions,
 	)
 	return i, err
 }
@@ -60,25 +63,29 @@ func (q *Queries) GetLine(ctx context.Context, id int64) (ReceiptLine, error) {
 const insertLine = `-- name: InsertLine :one
 INSERT INTO receipt_lines (
   receipt_id, line_no, raw_text, norm_text, kind, qty, unit,
-  unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited
+  unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited,
+  match_source, match_score, suggestions)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited, match_source, match_score, suggestions
 `
 
 type InsertLineParams struct {
-	ReceiptID      int64          `json:"receipt_id"`
-	LineNo         int64          `json:"line_no"`
-	RawText        string         `json:"raw_text"`
-	NormText       string         `json:"norm_text"`
-	Kind           string         `json:"kind"`
-	Qty            float64        `json:"qty"`
-	Unit           string         `json:"unit"`
-	UnitPriceCents sql.NullInt64  `json:"unit_price_cents"`
-	LineTotalCents int64          `json:"line_total_cents"`
-	VatCode        sql.NullString `json:"vat_code"`
-	ParentLineID   sql.NullInt64  `json:"parent_line_id"`
-	ProductID      sql.NullInt64  `json:"product_id"`
-	UserEdited     int64          `json:"user_edited"`
+	ReceiptID      int64           `json:"receipt_id"`
+	LineNo         int64           `json:"line_no"`
+	RawText        string          `json:"raw_text"`
+	NormText       string          `json:"norm_text"`
+	Kind           string          `json:"kind"`
+	Qty            float64         `json:"qty"`
+	Unit           string          `json:"unit"`
+	UnitPriceCents sql.NullInt64   `json:"unit_price_cents"`
+	LineTotalCents int64           `json:"line_total_cents"`
+	VatCode        sql.NullString  `json:"vat_code"`
+	ParentLineID   sql.NullInt64   `json:"parent_line_id"`
+	ProductID      sql.NullInt64   `json:"product_id"`
+	UserEdited     int64           `json:"user_edited"`
+	MatchSource    sql.NullString  `json:"match_source"`
+	MatchScore     sql.NullFloat64 `json:"match_score"`
+	Suggestions    sql.NullString  `json:"suggestions"`
 }
 
 func (q *Queries) InsertLine(ctx context.Context, arg InsertLineParams) (ReceiptLine, error) {
@@ -96,6 +103,9 @@ func (q *Queries) InsertLine(ctx context.Context, arg InsertLineParams) (Receipt
 		arg.ParentLineID,
 		arg.ProductID,
 		arg.UserEdited,
+		arg.MatchSource,
+		arg.MatchScore,
+		arg.Suggestions,
 	)
 	var i ReceiptLine
 	err := row.Scan(
@@ -113,12 +123,15 @@ func (q *Queries) InsertLine(ctx context.Context, arg InsertLineParams) (Receipt
 		&i.ParentLineID,
 		&i.ProductID,
 		&i.UserEdited,
+		&i.MatchSource,
+		&i.MatchScore,
+		&i.Suggestions,
 	)
 	return i, err
 }
 
 const listLines = `-- name: ListLines :many
-SELECT id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited FROM receipt_lines WHERE receipt_id = ? ORDER BY line_no, id
+SELECT id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited, match_source, match_score, suggestions FROM receipt_lines WHERE receipt_id = ? ORDER BY line_no, id
 `
 
 func (q *Queries) ListLines(ctx context.Context, receiptID int64) ([]ReceiptLine, error) {
@@ -145,10 +158,41 @@ func (q *Queries) ListLines(ctx context.Context, receiptID int64) ([]ReceiptLine
 			&i.ParentLineID,
 			&i.ProductID,
 			&i.UserEdited,
+			&i.MatchSource,
+			&i.MatchScore,
+			&i.Suggestions,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReceiptIDsToRequantify = `-- name: ListReceiptIDsToRequantify :many
+SELECT id FROM receipts WHERE raw_ocr_json IS NOT NULL AND COALESCE(parser_version, 0) < ? ORDER BY id
+`
+
+// Receipts read by an older parser, with their stored OCR: the quantity rules are applied to them once.
+func (q *Queries) ListReceiptIDsToRequantify(ctx context.Context, parserVersion sql.NullInt64) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, listReceiptIDsToRequantify, parserVersion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -170,6 +214,27 @@ func (q *Queries) MaxLineNo(ctx context.Context, receiptID int64) (int64, error)
 	return column_1, err
 }
 
+const setLineQuantity = `-- name: SetLineQuantity :exec
+UPDATE receipt_lines SET qty = ?, unit = ?, unit_price_cents = ? WHERE id = ? AND user_edited = 0
+`
+
+type SetLineQuantityParams struct {
+	Qty            float64       `json:"qty"`
+	Unit           string        `json:"unit"`
+	UnitPriceCents sql.NullInt64 `json:"unit_price_cents"`
+	ID             int64         `json:"id"`
+}
+
+func (q *Queries) SetLineQuantity(ctx context.Context, arg SetLineQuantityParams) error {
+	_, err := q.db.ExecContext(ctx, setLineQuantity,
+		arg.Qty,
+		arg.Unit,
+		arg.UnitPriceCents,
+		arg.ID,
+	)
+	return err
+}
+
 const sumLines = `-- name: SumLines :one
 SELECT CAST(COALESCE(SUM(line_total_cents), 0) AS INTEGER) FROM receipt_lines WHERE receipt_id = ?
 `
@@ -186,7 +251,7 @@ UPDATE receipt_lines
 SET raw_text = ?, norm_text = ?, kind = ?, qty = ?, unit = ?, unit_price_cents = ?,
     line_total_cents = ?, vat_code = ?, parent_line_id = ?, user_edited = 1
 WHERE id = ?
-RETURNING id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited
+RETURNING id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited, match_source, match_score, suggestions
 `
 
 type UpdateLineParams struct {
@@ -231,6 +296,9 @@ func (q *Queries) UpdateLine(ctx context.Context, arg UpdateLineParams) (Receipt
 		&i.ParentLineID,
 		&i.ProductID,
 		&i.UserEdited,
+		&i.MatchSource,
+		&i.MatchScore,
+		&i.Suggestions,
 	)
 	return i, err
 }

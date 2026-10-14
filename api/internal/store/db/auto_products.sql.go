@@ -358,7 +358,7 @@ func (q *Queries) IsDistinctPair(ctx context.Context, arg IsDistinctPairParams) 
 }
 
 const itemLinesToLink = `-- name: ItemLinesToLink :many
-SELECT id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited FROM receipt_lines
+SELECT id, receipt_id, line_no, raw_text, norm_text, kind, qty, unit, unit_price_cents, line_total_cents, vat_code, parent_line_id, product_id, user_edited, match_source, match_score, suggestions FROM receipt_lines
 WHERE receipt_id = ? AND kind = 'item' AND product_id IS NULL AND user_edited = 0
 ORDER BY line_no
 `
@@ -387,6 +387,9 @@ func (q *Queries) ItemLinesToLink(ctx context.Context, receiptID int64) ([]Recei
 			&i.ParentLineID,
 			&i.ProductID,
 			&i.UserEdited,
+			&i.MatchSource,
+			&i.MatchScore,
+			&i.Suggestions,
 		); err != nil {
 			return nil, err
 		}

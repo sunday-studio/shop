@@ -156,6 +156,14 @@ func (s *Server) toLine(l db.ReceiptLine) apitypes.ReceiptLine {
 		VatCode: store.StrPtr(l.VatCode), ParentLineId: store.IntPtr(l.ParentLineID),
 		ProductId: store.IntPtr(l.ProductID), UserEdited: l.UserEdited != 0,
 	}
+	if by := receipts.MatchedBy(l); by != "" {
+		m := apitypes.ReceiptLineMatchedBy(by)
+		out.MatchedBy = &m
+		if l.MatchScore.Valid {
+			sc := l.MatchScore.Float64
+			out.MatchScore = &sc
+		}
+	}
 	if l.Kind == "item" {
 		g := s.English.Gloss(l.RawText)
 		status := apitypes.ReceiptLineTextEnStatus(g.Status)
@@ -350,19 +358,59 @@ func (s *Server) receiptOut(r *http.Request, id int64) (apitypes.Receipt, error)
 	if err := s.withProducts(r, *out.Lines); err != nil {
 		return apitypes.Receipt{}, err
 	}
-	if s.Products != nil {
-		for i, l := range *out.Lines {
-			if l.Kind != apitypes.Item || l.ProductId != nil {
-				continue
-			}
-			cands, err := s.Products.Suggest(r.Context(), rec.ShopID.Int64, l.RawText)
-			if err != nil {
-				return apitypes.Receipt{}, err
-			}
-			(*out.Lines)[i].Suggestions = toMatches(cands)
+	for i, l := range *out.Lines {
+		if l.Kind != apitypes.Item || l.ProductId != nil {
+			continue
 		}
+		sugg, err := s.lineSuggestions(r, rec.ShopID.Int64, lines[i], l.RawText)
+		if err != nil {
+			return apitypes.Receipt{}, err
+		}
+		(*out.Lines)[i].Suggestions = sugg
 	}
 	return out, nil
+}
+
+// lineSuggestions returns the suggestions the scan stored on an unlinked item line, with the products'
+// current names (a product deleted or merged away since is dropped). A line the scan never looked at
+// (read before scan-time matching existed, or the matcher failed) is matched now.
+func (s *Server) lineSuggestions(r *http.Request, shopID int64, l db.ReceiptLine, rawText string) (*[]apitypes.ProductMatch, error) {
+	stored, ok := receipts.ParseSuggestions(l.Suggestions)
+	if !ok {
+		if s.Products == nil {
+			return nil, nil
+		}
+		cands, err := s.Products.Suggest(r.Context(), shopID, rawText)
+		if err != nil {
+			return nil, err
+		}
+		return toMatches(cands), nil
+	}
+	out := []apitypes.ProductMatch{}
+	if len(stored) == 0 {
+		return &out, nil
+	}
+	ids := make([]int64, len(stored))
+	for i, c := range stored {
+		ids[i] = c.ProductID
+	}
+	ps, err := s.q.GetProductsByIDs(r.Context(), ids)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[int64]db.Product, len(ps))
+	for _, p := range ps {
+		byID[p.ID] = p
+	}
+	for _, c := range stored {
+		p, ok := byID[c.ProductID]
+		if !ok {
+			continue
+		}
+		m := apitypes.ProductMatch{ProductId: p.ID, Name: p.Name, Score: c.Score, NameEn: store.StrPtr(p.NameEn), Brand: store.StrPtr(p.Brand)}
+		out = append(out, m)
+	}
+	return &out, nil
 }
 
 func (s *Server) updateReceipt(w http.ResponseWriter, r *http.Request) {

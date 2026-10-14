@@ -371,7 +371,7 @@ func (q *Queries) InsertReceiptCheck(ctx context.Context, arg InsertReceiptCheck
 }
 
 const listLinesOfReceipt = `-- name: ListLinesOfReceipt :many
-SELECT l.id, l.receipt_id, l.line_no, l.raw_text, l.norm_text, l.kind, l.qty, l.unit, l.unit_price_cents, l.line_total_cents, l.vat_code, l.parent_line_id, l.product_id, l.user_edited, COALESCE(p.name, '') AS product_name, COALESCE(p.name_en, '') AS product_name_en,
+SELECT l.id, l.receipt_id, l.line_no, l.raw_text, l.norm_text, l.kind, l.qty, l.unit, l.unit_price_cents, l.line_total_cents, l.vat_code, l.parent_line_id, l.product_id, l.user_edited, l.match_source, l.match_score, l.suggestions, COALESCE(p.name, '') AS product_name, COALESCE(p.name_en, '') AS product_name_en,
        p.category_id AS product_category_id
 FROM receipt_lines l LEFT JOIN products p ON p.id = l.product_id
 WHERE l.receipt_id = ? AND l.kind = 'item'
@@ -379,23 +379,26 @@ ORDER BY l.line_no, l.id
 `
 
 type ListLinesOfReceiptRow struct {
-	ID                int64          `json:"id"`
-	ReceiptID         int64          `json:"receipt_id"`
-	LineNo            int64          `json:"line_no"`
-	RawText           string         `json:"raw_text"`
-	NormText          string         `json:"norm_text"`
-	Kind              string         `json:"kind"`
-	Qty               float64        `json:"qty"`
-	Unit              string         `json:"unit"`
-	UnitPriceCents    sql.NullInt64  `json:"unit_price_cents"`
-	LineTotalCents    int64          `json:"line_total_cents"`
-	VatCode           sql.NullString `json:"vat_code"`
-	ParentLineID      sql.NullInt64  `json:"parent_line_id"`
-	ProductID         sql.NullInt64  `json:"product_id"`
-	UserEdited        int64          `json:"user_edited"`
-	ProductName       string         `json:"product_name"`
-	ProductNameEn     string         `json:"product_name_en"`
-	ProductCategoryID sql.NullInt64  `json:"product_category_id"`
+	ID                int64           `json:"id"`
+	ReceiptID         int64           `json:"receipt_id"`
+	LineNo            int64           `json:"line_no"`
+	RawText           string          `json:"raw_text"`
+	NormText          string          `json:"norm_text"`
+	Kind              string          `json:"kind"`
+	Qty               float64         `json:"qty"`
+	Unit              string          `json:"unit"`
+	UnitPriceCents    sql.NullInt64   `json:"unit_price_cents"`
+	LineTotalCents    int64           `json:"line_total_cents"`
+	VatCode           sql.NullString  `json:"vat_code"`
+	ParentLineID      sql.NullInt64   `json:"parent_line_id"`
+	ProductID         sql.NullInt64   `json:"product_id"`
+	UserEdited        int64           `json:"user_edited"`
+	MatchSource       sql.NullString  `json:"match_source"`
+	MatchScore        sql.NullFloat64 `json:"match_score"`
+	Suggestions       sql.NullString  `json:"suggestions"`
+	ProductName       string          `json:"product_name"`
+	ProductNameEn     string          `json:"product_name_en"`
+	ProductCategoryID sql.NullInt64   `json:"product_category_id"`
 }
 
 func (q *Queries) ListLinesOfReceipt(ctx context.Context, receiptID int64) ([]ListLinesOfReceiptRow, error) {
@@ -422,6 +425,9 @@ func (q *Queries) ListLinesOfReceipt(ctx context.Context, receiptID int64) ([]Li
 			&i.ParentLineID,
 			&i.ProductID,
 			&i.UserEdited,
+			&i.MatchSource,
+			&i.MatchScore,
+			&i.Suggestions,
 			&i.ProductName,
 			&i.ProductNameEn,
 			&i.ProductCategoryID,

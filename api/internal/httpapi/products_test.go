@@ -187,9 +187,14 @@ func TestLinkingLearnsAliases(t *testing.T) {
 	if (*r3.Lines)[0].ProductId == nil {
 		t.Error("new AH receipt should auto-link via alias")
 	}
+	if l := (*r3.Lines)[0]; l.MatchedBy == nil || *l.MatchedBy != apitypes.ReceiptLineMatchedByAlias || l.MatchScore == nil || *l.MatchScore != 1 {
+		t.Errorf("alias link at scan: matched_by %v score %v", l.MatchedBy, l.MatchScore)
+	}
+	// The alias is the AH shop's, but the identical text scores 1.0 against the catalogue, which is what
+	// the confirm step would link too: the scan links it now (by score, not by alias).
 	r4 := e.receipt(lidl.Id, 4, "03-10-2026|", "AH HALFV MELK|1,35", "TOTAAL|1,35")
-	if (*r4.Lines)[0].ProductId != nil {
-		t.Error("alias is per shop; Lidl receipt must not auto-link")
+	if l := (*r4.Lines)[0]; l.ProductId == nil || l.MatchedBy == nil || *l.MatchedBy != apitypes.ReceiptLineMatchedByScore {
+		t.Errorf("Lidl receipt: %+v", l)
 	}
 
 	// Aliases are listed and deletable.
