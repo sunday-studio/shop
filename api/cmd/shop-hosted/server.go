@@ -51,6 +51,9 @@ func newServer(cfg hostedConfig, log *slog.Logger, clock hclock.Clock, backgroun
 	if err != nil {
 		return nil, err
 	}
+	if off, ok := clock.(*hclock.Offset); ok && apple.Dev != nil {
+		apple.Dev = devWithClock(apple.Dev, off) // fake Apple only: POST /admin/v1/dev/advance-clock
+	}
 	s.Apple = apple
 	key := cfg.SealerKey
 	if key == nil {
@@ -113,7 +116,11 @@ func serve(ctx context.Context, log *slog.Logger) error {
 	if err := os.MkdirAll(cfg.App.DataDir, 0o755); err != nil {
 		return err
 	}
-	s, err := newServer(cfg, log, hclock.System{}, true)
+	clock, err := serveClock(cfg)
+	if err != nil {
+		return err
+	}
+	s, err := newServer(cfg, log, clock, true)
 	if err != nil {
 		return err
 	}
