@@ -36,6 +36,40 @@ needs JavaScript, no login was available). Check every [M] item in the portal be
 |---|---|
 | `auto` (production first, sandbox on "transaction not found", Apple's rule), `production` or `sandbox` | `SHOP_APPLE_ENVIRONMENT` (default `auto`) |
 | Overrides for the API hosts (tests only) | none; `appleclient.StoreKitConfig.ProductionURL/SandboxURL` |
+| Accept sandbox purchases on a production server (`true` default, `false` strict) | `SHOP_APPLE_ACCEPT_SANDBOX` |
+| Lifetime cap of a sandbox entitlement in days, 1 to 366 (default 30) | `SHOP_APPLE_SANDBOX_MAX_DAYS` |
+
+### Sandbox purchases on the production server
+
+Apple's App Review tests in-app purchases **in the sandbox against the app's production backend**,
+and TestFlight beta testers also buy in the sandbox. Apple signs those transactions and
+notifications from the same chain as production ones, so they cannot be told apart by signature,
+only by the `environment` field. `SHOP_APPLE_ACCEPT_SANDBOX` decides what a server with
+`SHOP_APPLE_ENVIRONMENT=production` does with them:
+
+* `true` (default): accepted and verified exactly like production data (same pinned chain, same
+  checks; the App Store Server API client runs in `auto` mode: production first, the sandbox host
+  on "transaction not found"). The entitlement is stored with `environment = sandbox` and:
+  * `GET /v1/account` shows `plan.environment = "sandbox"` (the app can label it), the admin
+    account lookup shows `plan_environment` and `account find` prints `(sandbox)`;
+  * it never counts as revenue: `GET /admin/v1/subscriptions/summary` counts it under `sandbox`,
+    never under `paying` (`billing.CountsAsRevenue`: production, not a trial, active or in grace);
+  * its lifetime is capped: access ends `SHOP_APPLE_SANDBOX_MAX_DAYS` (30) after the first
+    purchase (`startsAt`), whatever Apple's compressed renewals say; after that the household lapses
+    like any other (read-only, then the normal deletion timeline), and the plan shows no renewal;
+  * production wins: when the same owner has any production Apple entitlement, sandbox ones are
+    ignored for the plan, also after the production one lapsed. A sandbox one never extends a
+    production one. Grants are unaffected.
+* `false`: the strict behaviour of the security review. Sandbox notifications are answered 200 but
+  ignored, sandbox transactions are refused with `apple_transaction_invalid`; App Review and
+  TestFlight purchases then give no access.
+
+Recommendation: leave it **on during beta and App Review**; after launch turn it off
+(`SHOP_APPLE_ACCEPT_SANDBOX=false`) if no TestFlight testing is needed any more. Entitlements
+already stored keep their capped lifetime. Sandbox data with no `environment` at all is refused.
+`SHOP_APPLE_MODE=fake` has no cap by default (the simulated Apple signs as Sandbox and the
+end-to-end test moves time by months). The Sandbox Server URL in App Store Connect can point to
+the same endpoint as the Production one; with the switch off its notifications are ignored.
 
 Env var names are a proposal for the wiring code; the loaders are
 `appleclient.LoadKeyFromEnv("SHOP_APPLE_SIWA_KEY")` (reads `$NAME`, with `\n` escapes allowed, or

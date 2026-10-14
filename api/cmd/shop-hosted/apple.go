@@ -104,6 +104,9 @@ func buildApple(c hostedConfig, clock hclock.Clock, log *slog.Logger) (*applePar
 		switch ap.Environment {
 		case "production":
 			mode = appleclient.Production
+			if ap.AcceptSandbox {
+				mode = appleclient.Auto // production first, the sandbox host on "transaction not found" (App Review, TestFlight)
+			}
 		case "sandbox":
 			mode = appleclient.Sandbox
 		}
