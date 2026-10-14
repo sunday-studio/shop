@@ -43,6 +43,7 @@ type API struct {
 	Store *control.Store
 
 	rl      *rateLimiter
+	upSlots chan struct{} // process-wide cap on receipt uploads in flight
 	gw      *httpapi.Gateway
 	gwH     http.Handler
 	exports *exportRunner
@@ -73,6 +74,9 @@ func New(d Deps) (*API, error) {
 		d.Gate = limits.NewGate(0)
 	}
 	a := &API{Deps: d, Store: d.Ctl.S, rl: newRateLimiter(d.Clock)}
+	if n := d.Cfg.Rates.UploadsInFlight; n > 0 {
+		a.upSlots = make(chan struct{}, n)
+	}
 	a.gw = d.Runtime.Gateway(d.Provider, ctxResolver{fallback: tenancy.DirectoryResolver{Dir: a.Directory()}})
 	a.gwH = a.gw.Handler()
 	a.exports = newExportRunner(a)

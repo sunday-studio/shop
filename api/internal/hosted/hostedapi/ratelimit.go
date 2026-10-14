@@ -81,19 +81,31 @@ func (a *API) limit(key string, max int, window time.Duration) error {
 	return nil
 }
 
-// clientIP is the caller's address (the last X-Forwarded-For entry when behind our own proxy).
+// clientIP is the caller's address (the last X-Forwarded-For entry when behind our own proxy). The
+// result is the key of the per-address rate limits, so an IPv6 address is reduced to its /64: one
+// subscriber holds a whole /64 and could otherwise start every request from a fresh address.
 func (a *API) clientIP(r *http.Request) string {
 	if a.Cfg.TrustProxy {
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 			parts := strings.Split(xff, ",")
-			if ip := strings.TrimSpace(parts[len(parts)-1]); ip != "" {
-				return ip
+			if ip := net.ParseIP(strings.TrimSpace(parts[len(parts)-1])); ip != nil {
+				return limitKeyIP(ip)
 			}
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = r.RemoteAddr
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return limitKeyIP(ip)
 	}
 	return host
+}
+
+func limitKeyIP(ip net.IP) string {
+	if v4 := ip.To4(); v4 != nil {
+		return v4.String()
+	}
+	return ip.Mask(net.CIDRMask(64, 128)).String() + "/64"
 }
