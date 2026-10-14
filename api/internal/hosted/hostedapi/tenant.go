@@ -99,19 +99,21 @@ func (a *API) tenantChain() http.Handler {
 			return
 		}
 		defer release()
+		// Receipt photos and product pictures (any multipart body) are read into memory and decoded:
+		// only a few may run at once in the whole process, whichever household sends them.
+		if a.upSlots != nil && (action == billing.ActUpload || strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/")) {
+			select {
+			case a.upSlots <- struct{}{}:
+				defer func() { <-a.upSlots }()
+			default:
+				a.fail(w, r, rateLimited(2*time.Second))
+				return
+			}
+		}
 		if action == billing.ActUpload {
 			if err := a.limit("upl:"+p.HH.ID, a.Cfg.Rates.UploadsPerMin, time.Minute); err != nil {
 				a.fail(w, r, err)
 				return
-			}
-			if a.upSlots != nil {
-				select {
-				case a.upSlots <- struct{}{}:
-					defer func() { <-a.upSlots }()
-				default:
-					a.fail(w, r, rateLimited(2*time.Second)) // memory guard: a receipt upload is read into memory
-					return
-				}
 			}
 			if r.ContentLength > lim.MaxUploadBytes+(1<<20) && lim.MaxUploadBytes > 0 {
 				a.fail(w, r, &control.LimitError{Limit: "max_upload_bytes", Value: lim.MaxUploadBytes, Current: r.ContentLength, FileTooLarge: true})
