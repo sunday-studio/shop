@@ -32,6 +32,9 @@ const usage = `usage: shop-hosted <command>
       audit tail
       lifecycle run [--dry-run]
     mutating commands need --operator NAME or SHOP_OPERATOR
+  backup [-schedule]           snapshot the control database and every household into BACKUP_DIR
+                               (BACKUP_AT, BACKUP_KEEP_DAYS); see deploy/hosted/RUNBOOK.md
+  restore -yes [-snapshot S]   put a backup set back (server stopped); erased households stay erased
   healthcheck                  exit 0 if the local server answers
   version
 
@@ -56,6 +59,10 @@ func main() {
 	case "admin":
 		stop()
 		os.Exit(adminCmd(context.Background(), os.Args[2:]))
+	case "backup":
+		err = backupCmd(ctx, log, os.Args[2:])
+	case "restore":
+		err = restoreCmd(ctx, os.Args[2:])
 	case "healthcheck":
 		err = healthcheck()
 	case "version":
