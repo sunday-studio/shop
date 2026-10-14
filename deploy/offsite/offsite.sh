@@ -60,7 +60,7 @@ last_ok_from_file() {
   sed -n 's/.*"last_ok_at": *"\([^"]*\)".*/\1/p' "$STATUS" | head -n 1
 }
 
-write_status() { # ok(true|false) at last_ok_at snapshot error duration_ms
+write_status() { # ok(true|false) at last_ok_at snapshot error duration_ms last_ok_unix
   dir=$(dirname "$STATUS")
   [ -d "$dir" ] || return 0
   tmp="$STATUS.tmp"
@@ -69,6 +69,7 @@ write_status() { # ok(true|false) at last_ok_at snapshot error duration_ms
     printf '  "ok": %s,\n' "$1"
     printf '  "at": "%s",\n' "$2"
     [ -n "$3" ] && printf '  "last_ok_at": "%s",\n' "$3"
+    [ -n "${7:-}" ] && printf '  "last_ok_unix": %s,\n' "$7"
     printf '  "destination": "%s",\n' "$(json_clean "$LABEL")"
     [ -n "$4" ] && printf '  "snapshot": "%s",\n' "$(json_clean "$4")"
     [ -n "$5" ] && printf '  "error": "%s",\n' "$(json_clean "$5")"
@@ -99,6 +100,19 @@ sync_once() {
   # shellcheck disable=SC2086
   out=$(rclone check "$SRC/db" "$(join "$REMOTE" db)" --one-way --size-only --exclude '*.partial' $FLAGS 2>&1) \
     || { ERR="check: $(printf '%s' "$out" | tail -n 1)"; return 1; }
+  if [ -d "$SRC/households" ]; then
+    # Hosted layout: one folder per household. Images are append-only (copied once), snapshots follow
+    # the prune setting; the last_backup.json below is copied last, so a complete set is recognisable.
+    # shellcheck disable=SC2086
+    out=$(rclone copy "$SRC/households" "$(join "$REMOTE" households)" --ignore-existing --exclude '*.partial' --exclude '.*' --exclude '/*/db/**' $FLAGS 2>&1) \
+      || { ERR="household images: $(printf '%s' "$out" | tail -n 1)"; return 1; }
+    # shellcheck disable=SC2086
+    out=$(rclone "$verb" "$SRC/households" "$(join "$REMOTE" households)" --exclude '*.partial' --exclude '/*/images/**' $FLAGS 2>&1) \
+      || { ERR="household snapshots: $(printf '%s' "$out" | tail -n 1)"; return 1; }
+    # shellcheck disable=SC2086
+    out=$(rclone check "$SRC/households" "$(join "$REMOTE" households)" --one-way --size-only --exclude '*.partial' $FLAGS 2>&1) \
+      || { ERR="household check: $(printf '%s' "$out" | tail -n 1)"; return 1; }
+  fi
   if [ -f "$SRC/last_backup.json" ]; then
     # shellcheck disable=SC2086
     out=$(rclone copyto "$SRC/last_backup.json" "$(join "$REMOTE" last_backup.json)" $FLAGS 2>&1) \
@@ -114,12 +128,12 @@ record() { # runs sync_once and writes the status file; returns its result
   at=$(now)
   if sync_once; then
     ms=$(( ($(date -u +%s) - start) * 1000 ))
-    write_status true "$at" "$at" "$SNAP" "" "$ms"
+    write_status true "$at" "$at" "$SNAP" "" "$ms" "$(date -u +%s)"
     log "synced $SNAP to $LABEL"
     return 0
   fi
   ms=$(( ($(date -u +%s) - start) * 1000 ))
-  write_status false "$at" "$prev_ok" "" "$ERR" "$ms"
+  write_status false "$at" "$prev_ok" "" "$ERR" "$ms" "$(sed -n 's/.*"last_ok_unix": *\([0-9]*\).*/\1/p' "$STATUS" 2>/dev/null | head -n 1)"
   log "FAILED: $ERR"
   return 1
 }
@@ -140,8 +154,17 @@ case "$cmd" in
     mkdir -p "$SRC" || exit 1
     # shellcheck disable=SC2086
     rclone copy "$(join "$REMOTE" db)" "$SRC/db" --exclude '*.partial' $FLAGS || exit 1
+    # (a hosted copy has no top-level images/: its images live under households/)
     # shellcheck disable=SC2086
-    rclone copy "$(join "$REMOTE" images)" "$SRC/images" --ignore-existing $FLAGS || exit 1
+    if [ -n "$(rclone lsf "$(join "$REMOTE" images)" --max-depth 1 $FLAGS 2>/dev/null | head -n 1)" ]; then
+      # shellcheck disable=SC2086
+      rclone copy "$(join "$REMOTE" images)" "$SRC/images" --ignore-existing $FLAGS || exit 1
+    fi
+    # Hosted layout: the household folders come back too (nothing there for a single-household copy).
+    if [ -n "$(rclone lsf "$(join "$REMOTE" households)" --max-depth 1 $FLAGS 2>/dev/null | head -n 1)" ]; then
+      # shellcheck disable=SC2086
+      rclone copy "$(join "$REMOTE" households)" "$SRC/households" --exclude '*.partial' $FLAGS || exit 1
+    fi
     n=$(ls "$SRC/db" 2>/dev/null | grep -c '^shop-.*\.db$')
     [ "$n" -gt 0 ] || { echo "offsite: no snapshots came back from $LABEL" >&2; exit 1; }
     log "pulled $n snapshot(s) from $LABEL into $SRC; now run the restore (docs/restore.md)"
