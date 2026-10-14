@@ -123,3 +123,13 @@ WHERE l.product_id = sqlc.arg(product_id) AND l.norm_text = sqlc.arg(norm_text) 
 -- name: ListAliasesForSplit :many
 SELECT * FROM product_aliases
 WHERE product_id = sqlc.arg(product_id) AND shop_id IS sqlc.narg(shop_id) AND norm_text IN (sqlc.arg(norm_a), sqlc.arg(norm_b));
+
+-- name: ListDiscardedLineIDs :many
+-- Lines whose product the user discarded in the review queue (not undone): loading products from receipts
+-- must not bring those products back.
+SELECT line_ids FROM product_merges WHERE kind = 'discard' AND undone_at IS NULL;
+
+-- name: UnlinkedItemLinesOfConfirmed :many
+-- Item lines of confirmed receipts that have no product yet (candidates for loading products from receipts).
+SELECT l.id, l.receipt_id, l.raw_text FROM receipt_lines l JOIN receipts r ON r.id = l.receipt_id
+WHERE r.status = 'ok' AND r.confirmed_at IS NOT NULL AND l.kind = 'item' AND l.product_id IS NULL AND l.user_edited = 0;

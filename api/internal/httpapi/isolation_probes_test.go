@@ -84,6 +84,7 @@ var probes = map[string]probe{
 	"POST /v1/receipts/{id}/shop-suggestion/reject": {Ctrl: []int{200, 204, 404, 409}},
 	"GET /v1/receipts/{id}/image":                   {},
 	"POST /v1/receipts/{id}/confirm":                {Ctrl: []int{200, 409}},
+	"POST /v1/receipts/{id}/load-products":          {Ctrl: []int{200, 409}},
 	"POST /v1/receipts/{id}/reparse":                {Ctrl: []int{200, 202}},
 	"POST /v1/receipts/{id}/reocr":                  {Ctrl: []int{200, 202}},
 	"POST /v1/receipts/{id}/lines": {Body: bodyOf(func(v, x *household) any {

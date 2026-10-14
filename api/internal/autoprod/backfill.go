@@ -28,6 +28,31 @@ type BackfillState struct {
 	NeedsReview   int     `json:"needs_review"`
 	SkippedIDs    []int64 `json:"skipped_receipt_ids,omitempty"` // left out on request
 	Error         string  `json:"error,omitempty"`
+
+	// Names of the products created (a dry run: that would be created), oldest receipt first, at most MaxNames.
+	CreatedNames   []string `json:"created_names"`
+	NamesTruncated bool     `json:"names_truncated,omitempty"`
+	LinesSkipped   int      `json:"lines_skipped"` // totals, weight rows and other odd lines that are no product
+	StartedAt      string   `json:"started_at,omitempty"`
+	FinishedAt     string   `json:"finished_at,omitempty"`
+	// Confirmed receipts that still have item lines without a product; filled in by GET when no run is going.
+	EligibleReceipts int `json:"eligible_receipts"`
+}
+
+// MaxNames bounds the product names a backfill keeps for its preview and result.
+const MaxNames = 200
+
+func (st *BackfillState) addNames(lines []LineOutcome) {
+	for _, l := range lines {
+		if l.Action != ActionCreated {
+			continue
+		}
+		if len(st.CreatedNames) >= MaxNames {
+			st.NamesTruncated = true
+			return
+		}
+		st.CreatedNames = append(st.CreatedNames, l.ProductName)
+	}
 }
 
 func (s *Service) loadBackfill(ctx context.Context) (BackfillState, error) {
@@ -50,8 +75,42 @@ func (s *Service) saveBackfill(ctx context.Context, st BackfillState) error {
 	return s.q.PutSetting(ctx, db.PutSettingParams{Key: backfillSetting, Value: string(b), UpdatedAt: store.Now()})
 }
 
-// GetBackfill reports the state of the last / current backfill.
-func (s *Service) GetBackfill(ctx context.Context) (BackfillState, error) { return s.loadBackfill(ctx) }
+// GetBackfill reports the state of the last / current backfill, with how many receipts still have lines
+// to load.
+func (s *Service) GetBackfill(ctx context.Context) (BackfillState, error) {
+	st, err := s.loadBackfill(ctx)
+	if err != nil {
+		return st, err
+	}
+	if st.CreatedNames == nil {
+		st.CreatedNames = []string{}
+	}
+	st.EligibleReceipts = s.eligibleReceipts(ctx)
+	return st, nil
+}
+
+// eligibleReceipts counts the confirmed receipts with at least one item line a load would act on (odd rows
+// and discarded lines do not count). Errors count as 0: it is information for a button, nothing more.
+func (s *Service) eligibleReceipts(ctx context.Context) int {
+	rows, err := s.q.UnlinkedItemLinesOfConfirmed(ctx)
+	if err != nil {
+		return 0
+	}
+	discarded, err := discardedLines(ctx, s.q)
+	if err != nil {
+		return 0
+	}
+	seen := map[int64]bool{}
+	for _, l := range rows {
+		if seen[l.ReceiptID] || discarded[l.ID] {
+			continue
+		}
+		if c := CleanLineWith(s.gloss, l.RawText); !c.Skip && c.Norm != "" {
+			seen[l.ReceiptID] = true
+		}
+	}
+	return len(seen)
+}
 
 // StartBackfill queues the backfill job. It is refused (ErrDisabled) while AUTO_PRODUCTS is off and
 // (ErrConflict) while one is running.
@@ -70,7 +129,7 @@ func (s *Service) StartBackfill(ctx context.Context, dryRun bool, skip []int64) 
 	if err != nil {
 		return 0, err
 	}
-	if err := s.saveBackfill(ctx, BackfillState{State: "running", DryRun: dryRun, ReceiptsTotal: int(total), SkippedIDs: skip}); err != nil {
+	if err := s.saveBackfill(ctx, BackfillState{State: "running", DryRun: dryRun, ReceiptsTotal: int(total), SkippedIDs: skip, StartedAt: store.TS(s.now())}); err != nil {
 		return 0, err
 	}
 	b, _ := json.Marshal(map[string]any{"dry_run": dryRun, "skip_receipt_ids": skip})
@@ -112,7 +171,7 @@ func (s *Service) RunBackfill(ctx context.Context, dryRun bool, skip []int64) er
 		return err
 	}
 	if st.State != "running" || st.DryRun != dryRun {
-		st = BackfillState{State: "running", DryRun: dryRun}
+		st = BackfillState{State: "running", DryRun: dryRun, StartedAt: store.TS(s.now())}
 	}
 	ids, err := s.q.ConfirmedReceiptIDs(ctx, 0)
 	if err != nil {
@@ -135,7 +194,7 @@ func (s *Service) RunBackfill(ctx context.Context, dryRun bool, skip []int64) er
 			return err
 		}
 		defer tx.Rollback() //nolint:errcheck
-		st = BackfillState{State: "running", DryRun: true, ReceiptsTotal: len(ids), SkippedIDs: skip}
+		st = BackfillState{State: "running", DryRun: true, ReceiptsTotal: len(ids), SkippedIDs: skip, StartedAt: st.StartedAt}
 	}
 	for i := st.ReceiptsDone; i < len(ids); i++ {
 		var r Stats
@@ -144,17 +203,23 @@ func (s *Service) RunBackfill(ctx context.Context, dryRun bool, skip []int64) er
 		} else {
 			r, err = s.ProcessReceipt(ctx, ids[i], "backfill")
 		}
+		if errors.Is(err, sql.ErrNoRows) { // deleted while the run was going
+			st.ReceiptsDone = i + 1
+			continue
+		}
 		if err != nil {
 			return err
 		}
 		st.Linked += r.Linked
 		st.Created += r.Created
 		st.NeedsReview += r.NeedsReview
+		st.LinesSkipped += r.Skipped
+		st.addNames(r.lines)
 		st.ReceiptsDone = i + 1
 		if !dryRun { // let the app's own writes in between receipts
 			time.Sleep(5 * time.Millisecond)
 		}
-		if !dryRun && (i%10 == 9 || i == len(ids)-1) {
+		if !dryRun && (i%5 == 4 || i == len(ids)-1) {
 			if err := s.saveBackfill(ctx, st); err != nil {
 				return err
 			}
@@ -163,6 +228,6 @@ func (s *Service) RunBackfill(ctx context.Context, dryRun bool, skip []int64) er
 	if tx != nil {
 		_ = tx.Rollback() // release the write lock before saving the state
 	}
-	st.State = "done"
+	st.State, st.FinishedAt = "done", store.TS(s.now())
 	return s.saveBackfill(ctx, st)
 }

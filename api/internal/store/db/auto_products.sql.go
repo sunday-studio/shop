@@ -480,6 +480,35 @@ func (q *Queries) ListAliasesForSplit(ctx context.Context, arg ListAliasesForSpl
 	return items, nil
 }
 
+const listDiscardedLineIDs = `-- name: ListDiscardedLineIDs :many
+SELECT line_ids FROM product_merges WHERE kind = 'discard' AND undone_at IS NULL
+`
+
+// Lines whose product the user discarded in the review queue (not undone): loading products from receipts
+// must not bring those products back.
+func (q *Queries) ListDiscardedLineIDs(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listDiscardedLineIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var line_ids string
+		if err := rows.Scan(&line_ids); err != nil {
+			return nil, err
+		}
+		items = append(items, line_ids)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLineIDsByProduct = `-- name: ListLineIDsByProduct :many
 SELECT id FROM receipt_lines WHERE product_id = ? ORDER BY id
 `
@@ -886,6 +915,41 @@ func (q *Queries) SourceLines(ctx context.Context, arg SourceLinesParams) ([]Sou
 			&i.PurchasedAt,
 			&i.CreatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const unlinkedItemLinesOfConfirmed = `-- name: UnlinkedItemLinesOfConfirmed :many
+SELECT l.id, l.receipt_id, l.raw_text FROM receipt_lines l JOIN receipts r ON r.id = l.receipt_id
+WHERE r.status = 'ok' AND r.confirmed_at IS NOT NULL AND l.kind = 'item' AND l.product_id IS NULL AND l.user_edited = 0
+`
+
+type UnlinkedItemLinesOfConfirmedRow struct {
+	ID        int64  `json:"id"`
+	ReceiptID int64  `json:"receipt_id"`
+	RawText   string `json:"raw_text"`
+}
+
+// Item lines of confirmed receipts that have no product yet (candidates for loading products from receipts).
+func (q *Queries) UnlinkedItemLinesOfConfirmed(ctx context.Context) ([]UnlinkedItemLinesOfConfirmedRow, error) {
+	rows, err := q.db.QueryContext(ctx, unlinkedItemLinesOfConfirmed)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UnlinkedItemLinesOfConfirmedRow{}
+	for rows.Next() {
+		var i UnlinkedItemLinesOfConfirmedRow
+		if err := rows.Scan(&i.ID, &i.ReceiptID, &i.RawText); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

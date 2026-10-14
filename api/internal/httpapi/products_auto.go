@@ -305,3 +305,31 @@ func (s *Server) startBackfill(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusAccepted, map[string]int64{"job_id": id})
 }
+
+// loadReceiptProducts runs create-or-link over one receipt's item lines on request.
+func (s *Server) loadReceiptProducts(w http.ResponseWriter, r *http.Request) {
+	a := s.auto(w, r)
+	if a == nil {
+		return
+	}
+	id, err := pathID(r)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	var in struct {
+		DryRun bool `json:"dry_run"`
+	}
+	if body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<16)); len(body) > 0 {
+		if err := json.Unmarshal(body, &in); err != nil {
+			s.writeErr(w, r, badf("invalid JSON body"))
+			return
+		}
+	}
+	res, err := a.LoadFromReceipt(r.Context(), id, in.DryRun)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
