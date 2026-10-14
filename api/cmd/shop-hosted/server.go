@@ -91,6 +91,9 @@ func newServer(cfg hostedConfig, log *slog.Logger, clock hclock.Clock, backgroun
 	layout := lifecycle.Layout{DataDir: cfg.App.DataDir, BackupDir: cfg.BackupDir, ExportDir: cfg.ExportDir}
 	lcfg := lifecycle.DefaultConfig()
 	lcfg.KillSwitch = cfg.KillSwitch
+	if cfg.Apple.Mode != "fake" {
+		lcfg.ClockJumpGuard = 24 * time.Hour // a wrong system clock must not start erasures (the e2e moves time on purpose)
+	}
 	sinks := hostedapi.MultiSink{hostedapi.LogSink{Log: log}}
 	if cfg.WebhookURL != "" {
 		sinks = append(sinks, hostedapi.WebhookSink{URL: cfg.WebhookURL, Secret: cfg.WebhookToken})

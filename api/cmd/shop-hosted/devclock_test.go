@@ -16,6 +16,7 @@ func TestDevClockOnlyForTheFakeApple(t *testing.T) {
 	t.Setenv("SHOP_MODE", "hosted")
 	t.Setenv("SHOP_DATA_DIR", dir)
 	t.Setenv("SHOP_APPLE_MODE", "fake")
+	t.Setenv("SHOP_APPLE_FAKE_ACK", "i-know-this-is-a-test")
 	t.Setenv("SHOP_APPLE_ENVIRONMENT", "sandbox")
 	cfg, err := loadConfig()
 	if err != nil {

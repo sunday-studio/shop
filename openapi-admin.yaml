@@ -39,7 +39,30 @@ paths:
                         display_name: { type: string }
                         created_at: { type: string, format: date-time }
                         plan_state: { type: string }
+                        plan_environment: { type: string, description: "sandbox when the plan comes from a TestFlight / App Review purchase (not a paying customer); production or empty otherwise" }
                         household_id: { type: string, nullable: true }
+  /admin/v1/health:
+    get:
+      operationId: adminHealth
+      description: The full health answer (OCR engines, open households). The public /healthz only returns the status.
+      responses:
+        "200": { description: Health with checks }
+        "503": { description: Degraded, with checks }
+  /admin/v1/subscriptions/summary:
+    get:
+      operationId: subscriptionSummary
+      description: Counts of Apple entitlements. Only production, non-trial subscriptions in the active or grace state are paying; sandbox entitlements are counted apart and never as revenue.
+      responses:
+        "200":
+          description: Counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paying: { type: integer }
+                  sandbox: { type: integer }
+                  other_apple: { type: integer }
   /admin/v1/grants:
     get:
       operationId: listGrants

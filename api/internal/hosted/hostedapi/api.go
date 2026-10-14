@@ -120,7 +120,8 @@ func (a *API) Handler() http.Handler {
 	_ = pass
 
 	// Public routes that the gateway answers (health, version, status, pairing refusal).
-	for _, p := range []string{"GET /healthz", "GET /version", "GET /v1/auth/status", "POST /v1/auth/pair"} {
+	mux.HandleFunc("GET /healthz", a.publicHealth)
+	for _, p := range []string{"GET /version", "GET /v1/auth/status", "POST /v1/auth/pair"} {
 		mux.Handle(p, a.gwH)
 	}
 	mux.Handle("GET /v1/server-info", a.logged(http.HandlerFunc(a.serverInfo)))

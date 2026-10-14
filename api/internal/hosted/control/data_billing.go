@@ -242,6 +242,17 @@ func (s *Store) AppendAudit(ctx context.Context, actor, action, subject string, 
 	return err
 }
 
+// LatestAuditAt is the time of the newest audit row (of the given action when not empty), ok false
+// when there is none.
+func (s *Store) LatestAuditAt(ctx context.Context, action string) (time.Time, bool, error) {
+	var at sql.NullString
+	err := s.q.QueryRowContext(ctx, `SELECT MAX(at) FROM audit_log WHERE (? = '' OR action = ?)`, action, action).Scan(&at)
+	if err != nil || !at.Valid {
+		return time.Time{}, false, err
+	}
+	return pt(at), true, nil
+}
+
 // AuditFilter narrows ListAudit.
 type AuditFilter struct {
 	Subject string

@@ -66,6 +66,7 @@ func (a *API) AdminHandler(tokenHash string) http.Handler {
 			fn(w, r, op)
 		})
 	}
+	route("GET /admin/v1/health", func(w http.ResponseWriter, r *http.Request, op string) { a.adminHealth(w, r) })
 	route("GET /admin/v1/accounts", func(w http.ResponseWriter, r *http.Request, op string) {
 		q := r.URL.Query()
 		var found []control.Account
