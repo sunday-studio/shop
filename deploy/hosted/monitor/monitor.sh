@@ -6,10 +6,14 @@
 #   monitor.sh once    one check; exit 0 when everything is fine, 1 when something is wrong
 #
 # What it watches (each is an independent alert with a recovery message):
-#   api      /healthz does not answer, or says db is down
-#   ocr      OCR engine not ready
-#   backup   /healthz "backup" check failed: the nightly snapshot failed, no good backup for
-#            36 h, or the encrypted off-site copy failed (the API folds offsite status into it)
+#   api      /healthz does not answer or is not 200. The public /healthz of the hosted server only
+#            says ok or degraded; the details are not shown to anyone but a local caller.
+#   ocr      OCR engine not ready: read from MONITOR_OCR_URL (the OCR service's own /healthz) and,
+#            when /healthz carries details (single-household server), from there
+#   backup   the nightly backup set failed or is older than 36 h, or the encrypted off-site copy
+#            failed or is older than 36 h. With MONITOR_BACKUP_DIR set (hosted) the status files
+#            last_backup.json and offsite_status.json in that folder are read; otherwise the
+#            "backup" check of /healthz is used
 #   disk     DISK_PATH is at or above DISK_ALERT_PCT percent
 #   queue    more than QUEUE_ALERT_PENDING receipt jobs queued/running for QUEUE_ALERT_CHECKS
 #            checks in a row (OCR is falling behind)
@@ -42,6 +46,9 @@ MAIL_TO="${ALERT_EMAIL_TO:-}"
 MAIL_FROM="${ALERT_EMAIL_FROM:-}"
 SMTP="${SMTP_URL:-}"
 PING="${HEALTHCHECKS_PING_URL:-}"
+OCR_URL="${MONITOR_OCR_URL:-}"
+BACKUP_DIR="${MONITOR_BACKUP_DIR:-}"
+STALE_S=$(( 36 * 3600 ))
 
 log() { echo "monitor: $*"; }
 mkdir -p "$STATE" 2>/dev/null || STATE=/tmp/shop-monitor-state && mkdir -p "$STATE"
@@ -106,6 +113,24 @@ check_ok() {
 }
 check_detail() { printf '%s' "$1" | sed -n "s/.*\"$2\":{\([^}]*\)}.*/\1/p" | sed -n 's/.*"detail":"\([^"]*\)".*/\1/p'; }
 
+# status_file_problem <flat-json-file> <label>: prints a problem description, or nothing when the
+# file says ok and its time (at_unix / last_ok_unix) is less than 36 h old. A file that does not
+# exist yet is only a problem once the monitor has been running for 2 hours (the first backup of a
+# new deployment is taken right after the first start).
+status_file_problem() {
+  f="$1"; label="$2"; key="$3"
+  [ -f "$STATE/first_seen" ] || now >"$STATE/first_seen"
+  if [ ! -f "$f" ]; then
+    [ $(( $(now) - $(cat "$STATE/first_seen" 2>/dev/null || now) )) -ge 7200 ] && echo "$label: no status file ($f)"
+    return 0
+  fi
+  j=$(tr -d ' \n' <"$f")
+  case "$j" in *'"ok":true'*) ;; *) echo "$label failing: $(printf '%s' "$j" | sed -n 's/.*"error":"\([^"]*\)".*/\1/p' | cut -c1-200)"; return 0 ;; esac
+  t=$(printf '%s' "$j" | sed -n "s/.*\"$key\":\([0-9][0-9]*\).*/\1/p")
+  if [ -n "$t" ] && [ $(( $(now) - t )) -gt "$STALE_S" ]; then echo "$label stale: last good one $(( ($(now) - t) / 3600 )) h ago"; fi
+  return 0
+}
+
 run_once() {
   FAILED=0
   tmp="$STATE/healthz.json"
@@ -119,14 +144,32 @@ run_once() {
     raise api "healthz did not answer ($HEALTH_URL)"
     q=""
   else
-    clear api
+    if [ "$code" = 200 ]; then clear api; else
+      case "$flat" in *'"checks"'*) ;; *) raise api "healthz answered $code" ;; esac
+    fi
     dbok=$(check_ok "$flat" db)
     if [ "$dbok" = false ]; then raise api "database check failing: $(check_detail "$flat" db)"; fi
     ocrok=$(check_ok "$flat" ocr)
     if [ "$ocrok" = false ]; then raise ocr "OCR not ready: $(check_detail "$flat" ocr)"; else clear ocr; fi
     bok=$(check_ok "$flat" backup)
-    if [ "$bok" = false ]; then raise backup "backup or off-site copy failing: $(check_detail "$flat" backup)"; else clear backup; fi
+    if [ -z "$BACKUP_DIR" ]; then
+      if [ "$bok" = false ]; then raise backup "backup or off-site copy failing: $(check_detail "$flat" backup)"; else clear backup; fi
+    fi
     q=$(check_detail "$flat" jobs | sed -n 's/^\([0-9][0-9]*\)pending.*/\1/p')
+  fi
+
+  # OCR, read from the OCR service itself (the hosted /healthz shows no details)
+  if [ -n "$OCR_URL" ]; then
+    oj=$(curl -sS -m 10 "$OCR_URL" 2>/dev/null | tr -d ' \n')
+    case "$oj" in *'"ready":true'*) clear ocr ;; *) raise ocr "OCR not ready or not answering ($OCR_URL)" ;; esac
+  fi
+
+  # Backup set and off-site copy, read from the status files in the backups volume
+  if [ -n "$BACKUP_DIR" ]; then
+    bp="$(status_file_problem "$BACKUP_DIR/last_backup.json" "backup" at_unix)
+$(status_file_problem "$BACKUP_DIR/offsite_status.json" "off-site copy" last_ok_unix)"
+    bp=$(printf '%s' "$bp" | sed '/^$/d' | tr '\n' ';')
+    if [ -n "$bp" ]; then raise backup "$bp"; else clear backup; fi
   fi
 
   # Disk

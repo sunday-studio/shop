@@ -6,8 +6,8 @@
 #   ./deploy.sh first                   first deploy: pull, start, wait healthy, first backup + off-site copy, smoke test
 #   ./deploy.sh update <tag>            snapshot first, then switch to image tag <tag>, wait healthy, smoke test
 #   ./deploy.sh rollback [--restore-db] go back to the previous tag; --restore-db also restores the pre-update snapshot
-#   ./deploy.sh restore [--from-offsite] [--snapshot NAME|latest] --yes     restore the database (see RUNBOOK.md)
-#   ./deploy.sh smoke [url]             healthz + server-info checks
+#   ./deploy.sh restore [--from-offsite] [--snapshot NAME|latest] --yes     restore the control database and every household (see RUNBOOK.md)
+#   ./deploy.sh smoke [url]             healthz, server-info and "the admin API is not public" checks
 #   ./deploy.sh status | logs [service] | backup-now | gen-offsite
 #
 # Environment (for tests): HOSTED_COMPOSE (wrapper path), HOSTED_ENV_FILE, HOSTED_TEST=1 (skips DNS and file-mode checks).
@@ -68,6 +68,25 @@ preflight() {
     local free; free=$(df -Pk / | awk 'NR==2 {print int($4/1024/1024)}')
     [ "$free" -ge 10 ] && good "free disk ${free} GB" || warn "free disk only ${free} GB"
   fi
+  if [ "${HOSTED_TEST:-0}" != 1 ]; then
+    # The hosted server refuses to start without these (production Apple environment).
+    local k
+    for k in SHOP_APPLE_TEAM_ID SHOP_APPLE_APP_ID SHOP_APPLE_SIWA_KEY_ID SHOP_APPLE_IAP_KEY_ID SHOP_APPLE_IAP_ISSUER_ID SHOP_APPLE_PRODUCT_IDS; do
+      [ -n "$(envget "$k")" ] || bad "$k is empty in .env (see api/internal/hosted/APPLE.md)"
+    done
+    if [ -f "$HERE/secrets.env" ]; then
+      local sm; sm=$(stat -c %a "$HERE/secrets.env" 2>/dev/null || stat -f %Lp "$HERE/secrets.env")
+      [ "$sm" = 600 ] && good "secrets.env mode 600" || bad "secrets.env mode is $sm, run: chmod 600 secrets.env"
+      grep -q 'CHANGE_ME' "$HERE/secrets.env" && bad "secrets.env still contains CHANGE_ME"
+      for k in SHOP_SEALER_KEY ADMIN_TOKEN_HASH SHOP_APPLE_SIWA_KEY SHOP_APPLE_IAP_KEY; do
+        grep -q "^$k=." "$HERE/secrets.env" || bad "secrets.env has no $k (template: secrets.env.example)"
+      done
+    else
+      bad "secrets.env missing (copy secrets.env.example, fill it in, chmod 600)"
+    fi
+    case "$(envget SHOP_APPLE_ENVIRONMENT)" in production|"") ;; *) warn "SHOP_APPLE_ENVIRONMENT=$(envget SHOP_APPLE_ENVIRONMENT): this is a staging server, not production" ;; esac
+    [ "$(envget SHOP_APPLE_ACCEPT_SANDBOX)" = false ] && warn "SHOP_APPLE_ACCEPT_SANDBOX=false: App Review and TestFlight purchases will be refused" || good "sandbox purchases accepted but capped and never counted as revenue (SHOP_APPLE_ACCEPT_SANDBOX)"
+  fi
   c config -q >/dev/null 2>"$STATE_DIR/config.err" && good "compose file renders" || { bad "compose config failed: $(head -n 3 "$STATE_DIR/config.err")"; }
   [ "$err" = 0 ] || die "preflight failed"
   return 0
@@ -92,7 +111,7 @@ wait_healthy() { # wait until every service with a healthcheck is healthy
 base_url() { if [ -n "${HOSTED_BASE_URL:-}" ]; then echo "$HOSTED_BASE_URL"; else echo "https://$(envget SHOP_DOMAIN)"; fi; }
 smoke() { "$HERE/smoke.sh" "${1:-$(base_url)}"; }
 
-latest_snapshot() { # newest file in the backup volume's db folder
+latest_snapshot() { # newest control snapshot in the backup volume's db folder
   c run --rm --no-deps -T --entrypoint ls offsite -1 /backup/db 2>/dev/null | grep '^shop-.*\.db$' | sort | tail -n 1 || true
 }
 backup_now() {
@@ -115,7 +134,8 @@ case "$cmd" in
     backup_now || die "first backup or off-site copy failed; fix before relying on this server (see RUNBOOK.md)"
     smoke || die "smoke test failed"
     echo
-    echo "Deployed. In single mode create the pairing password now: ./compose.sh exec api shop password generate"
+    echo "Deployed (hosted server). Next: set up the external uptime monitor and the App Store Server Notifications URL"
+    echo "  https://$(envget SHOP_DOMAIN)/v1/billing/apple/notifications (RUNBOOK.md). Operator commands: ./compose.sh exec api /usr/local/bin/shop-hosted admin ..."
     ;;
 
   update)

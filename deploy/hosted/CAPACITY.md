@@ -7,9 +7,9 @@ Numbers marked (assumed) are estimates, not measurements. Measure on the real se
 | Part | Limit in the compose file | Typical use | Notes |
 |---|---|---|---|
 | OCR (PaddleOCR PP-OCRv5, 1 worker) | `OCR_MEM_LIMIT` 3g, no swap | 1.5 to 3 GB (assumed) | The big one. The limit is a ceiling: hit it and Docker kills and restarts only OCR; receipts retry |
-| API | `API_MEM_LIMIT` 768m | 50 to 200 MB (assumed) | Go, SQLite. Grows with households (per-household connections) |
+| API (`shop-hosted`) | `API_MEM_LIMIT` 768m | 50 to 200 MB (assumed) | Go, SQLite. Grows with households (up to 64 open household databases at once); at most 6 receipt uploads at a time process wide, each read into memory |
 | Caddy | 128m | 20 to 40 MB | |
-| backup | 256m | idle ~20 MB, snapshot peaks | |
+| backup | 256m | idle ~20 MB, snapshot peaks | One run snapshots the control database and every household one after another, so a run takes longer as households are added (assumed: a second or two per household); the offsite copy follows |
 | offsite (rclone) | 256m | idle ~20 MB, peaks while copying | |
 | monitor | 64m | ~5 MB | |
 | OS + Docker | | 300 to 500 MB | |
@@ -27,7 +27,7 @@ Sum of limits: about 4.5 GB, so a 4 GB machine is the bare minimum and only work
 | 250 | 450 MB | 125 MB |
 | 500 | 900 MB | 250 MB |
 
-The backup volume keeps an append-only mirror of every image on the same disk, so **local disk use is about twice the image size**, plus 30 daily database snapshots. The off-site copy adds the same again in the bucket (encrypted, about the same size). Example, 250 receipts a year raw: 1000 households is about 450 GB of images, about 900 GB local with the mirror. Recompression, or not mirroring images locally, is the first lever. Alert at 80 percent is configured (`DISK_ALERT_PCT`); on UpCloud, block storage can be grown without rebuilding the server.
+The backup volume keeps an append-only mirror of every image on the same disk (`households/<id>/images`), so **local disk use is about twice the image size**, plus 30 daily snapshots of the control database and of every household database (each household snapshot is the size of its database, so many small households mean many small files: the off-site `rclone` run lists them all every time). The off-site copy adds the same again in the bucket (encrypted, about the same size). Example, 250 receipts a year raw: 1000 households is about 450 GB of images, about 900 GB local with the mirror. Recompression, or not mirroring images locally, is the first lever. Alert at 80 percent is configured (`DISK_ALERT_PCT`); on UpCloud, block storage can be grown without rebuilding the server.
 
 ## Knobs, in the order to reach for them
 
