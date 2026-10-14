@@ -92,6 +92,24 @@ func (s *Store) EntitlementsForAccount(ctx context.Context, accountID string) ([
 	return out, rows.Err()
 }
 
+// AppleEntitlements lists every Apple entitlement of every account (admin counts).
+func (s *Store) AppleEntitlements(ctx context.Context) ([]Entitlement, error) {
+	rows, err := s.q.QueryContext(ctx, `SELECT `+entCols+` FROM entitlements WHERE source = 'apple' ORDER BY updated_at, id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Entitlement
+	for rows.Next() {
+		e, err := scanEnt(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 // ---- grants ----
 
 const grantCols = `id, account_id, key, expires_at, reason, created_by, created_at, revoked_at, revoked_by, revoked_reason, idempotency_key`

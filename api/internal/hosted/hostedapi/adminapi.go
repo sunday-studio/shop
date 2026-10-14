@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"shop/internal/hosted/admin"
+	"shop/internal/hosted/billing"
 	"shop/internal/hosted/control"
 	"shop/internal/hosted/grants"
 )
@@ -94,6 +95,9 @@ func (a *API) AdminHandler(tokenHash string) http.Handler {
 			row := admin.AccountJSON{ID: acc.ID, SupportCode: acc.SupportCode, Email: acc.Email, DisplayName: acc.DisplayName, CreatedAt: acc.CreatedAt}
 			if pl, perr := a.Calc.ForAccount(r.Context(), acc.ID); perr == nil {
 				row.PlanState = pl.State
+				if pl.Environment != nil {
+					row.PlanEnvironment = *pl.Environment
+				}
 			}
 			if hh, _, herr := a.Store.HouseholdOfAccount(r.Context(), acc.ID); herr == nil {
 				id := hh.ID
@@ -102,6 +106,28 @@ func (a *API) AdminHandler(tokenHash string) http.Handler {
 			out = append(out, row)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"accounts": out})
+	})
+	// Subscription counts. Only production, non-trial Apple subscriptions pay; sandbox entitlements
+	// (TestFlight, App Review) are listed separately and never add to "paying".
+	route("GET /admin/v1/subscriptions/summary", func(w http.ResponseWriter, r *http.Request, op string) {
+		ents, err := a.Store.AppleEntitlements(r.Context())
+		if err != nil {
+			a.fail(w, r, err)
+			return
+		}
+		now := a.Clock.Now()
+		paying, sandbox, other := 0, 0, 0
+		for _, e := range ents {
+			switch {
+			case billing.CountsAsRevenue(e, now):
+				paying++
+			case billing.IsSandbox(e):
+				sandbox++
+			default:
+				other++
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"paying": paying, "sandbox": sandbox, "other_apple": other})
 	})
 	route("POST /admin/v1/grants", func(w http.ResponseWriter, r *http.Request, op string) {
 		var in struct {

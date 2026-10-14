@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"shop/internal/config"
+	"shop/internal/hosted/billing"
 	"shop/internal/hosted/hostedapi"
 	"shop/internal/hosted/limits"
 )
@@ -73,6 +74,13 @@ type appleConfig struct {
 	JWKSURL, SIWAURL, StoreKitURL, StoreKitSandboxURL string
 	// RootCAFile replaces the pinned Apple root (a test chain). Refused in the production environment.
 	RootCAFile string
+	// AcceptSandbox (SHOP_APPLE_ACCEPT_SANDBOX, default true): a production server also accepts
+	// sandbox-signed transactions and notifications (App Review and TestFlight buy in the sandbox
+	// against the production backend). They are flagged environment=sandbox, capped in lifetime
+	// (SandboxMax), never counted as revenue, and lose against a production entitlement.
+	AcceptSandbox bool
+	// SandboxMax (SHOP_APPLE_SANDBOX_MAX_DAYS, default 30, 1 to 366) is that cap; 0 = none (fake mode only).
+	SandboxMax time.Duration
 }
 
 func env(key, def string) string {
@@ -80,6 +88,15 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// isFalse is true for an explicit "no" (so that an unset or garbled value keeps a default of true).
+func isFalse(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "0", "false", "no", "off":
+		return true
+	}
+	return false
 }
 
 func truthy(s string) bool {
@@ -162,6 +179,18 @@ func loadConfig() (hostedConfig, error) {
 		StoreKitURL:        env("SHOP_APPLE_STOREKIT_URL", ""),
 		StoreKitSandboxURL: env("SHOP_APPLE_STOREKIT_SANDBOX_URL", ""),
 		RootCAFile:         env("SHOP_APPLE_ROOT_CA_FILE", ""),
+	}
+	ap.AcceptSandbox = !isFalse(env("SHOP_APPLE_ACCEPT_SANDBOX", "true"))
+	ap.SandboxMax = billing.DefaultSandboxMax
+	if ap.Mode == "fake" {
+		ap.SandboxMax = 0 // the simulated Apple signs everything as Sandbox and the e2e moves time by months
+	}
+	if v := env("SHOP_APPLE_SANDBOX_MAX_DAYS", ""); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 || n > 366 {
+			return c, errors.New("SHOP_APPLE_SANDBOX_MAX_DAYS must be a whole number of days from 1 to 366")
+		}
+		ap.SandboxMax = time.Duration(n) * 24 * time.Hour
 	}
 	ap.ProductIDs = splitList(env("SHOP_APPLE_PRODUCT_IDS", strings.Join(a.ProductIDs, ",")))
 	switch ap.Mode {

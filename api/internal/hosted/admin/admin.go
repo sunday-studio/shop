@@ -345,7 +345,10 @@ type AccountJSON struct {
 	DisplayName string    `json:"display_name"`
 	CreatedAt   time.Time `json:"created_at"`
 	PlanState   string    `json:"plan_state"`
-	HouseholdID *string   `json:"household_id"`
+	// PlanEnvironment is "sandbox" for a plan that comes from an Apple sandbox purchase (TestFlight,
+	// App Review): not a paying customer. Empty for grants and accounts without a plan.
+	PlanEnvironment string  `json:"plan_environment"`
+	HouseholdID     *string `json:"household_id"`
 }
 
 func accountFind(ctx context.Context, args []string, env Env) error {
@@ -382,6 +385,9 @@ func accountFind(ctx context.Context, args []string, env Env) error {
 		row := AccountJSON{ID: a.ID, SupportCode: a.SupportCode, Email: a.Email, DisplayName: a.DisplayName, CreatedAt: a.CreatedAt}
 		if p, perr := env.Calc.ForAccount(ctx, a.ID); perr == nil {
 			row.PlanState = p.State
+			if p.Environment != nil {
+				row.PlanEnvironment = *p.Environment
+			}
 		}
 		if h, _, herr := env.Ctl.S.HouseholdOfAccount(ctx, a.ID); herr == nil {
 			hid := h.ID
@@ -403,7 +409,11 @@ func accountFind(ctx context.Context, args []string, env Env) error {
 		if r.HouseholdID != nil {
 			hh = *r.HouseholdID
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", r.ID, r.SupportCode, r.PlanState, r.Email, r.DisplayName, hh)
+		plan := r.PlanState
+		if r.PlanEnvironment == "sandbox" {
+			plan += " (sandbox)"
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", r.ID, r.SupportCode, plan, r.Email, r.DisplayName, hh)
 	}
 	return tw.Flush()
 }

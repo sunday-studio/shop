@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"shop/internal/hosted/control"
@@ -96,6 +97,74 @@ type PlanInput struct {
 	ForcedLapseAt                time.Time             // Apple account-deleted, plan-less ownership transfer
 	HouseholdDeletionRequestedAt time.Time             // the owner asked to delete the account
 	AccountDeletionRequested     bool                  // the caller asked (for plan.deletion_requested)
+	SandboxMax                   time.Duration         // lifetime cap of sandbox entitlements from their first purchase; 0 = no cap
+}
+
+// DefaultSandboxMax is the default lifetime cap of an entitlement bought in the Apple sandbox
+// (SHOP_APPLE_SANDBOX_MAX_DAYS). Sandbox subscriptions renew on a compressed clock.
+const DefaultSandboxMax = 30 * 24 * time.Hour
+
+// IsSandbox reports whether an entitlement came from a non-production Apple environment. Grants and
+// entitlements without an environment are not sandbox.
+func IsSandbox(e control.Entitlement) bool {
+	return e.Source == control.SourceApple && e.Environment != "" && !strings.EqualFold(e.Environment, EnvProduction)
+}
+
+// CountsAsRevenue reports whether an entitlement is a paying production subscription at now: an
+// Apple entitlement bought in production, not a free trial, in the active or grace state and not
+// expired (grace excepted). Sandbox, grant and trial entitlements never count.
+func CountsAsRevenue(e control.Entitlement, now time.Time) bool {
+	if e.Source != control.SourceApple || IsSandbox(e) || e.IsTrial {
+		return false
+	}
+	switch e.State {
+	case control.EntActive:
+		return now.Before(e.ExpiresAt)
+	case control.EntGrace:
+		return now.Before(e.GraceUntil) || now.Before(e.ExpiresAt)
+	}
+	return false
+}
+
+// effectiveEntitlements applies the sandbox rules before any plan is computed: when the owner has a
+// production Apple entitlement the sandbox ones are ignored (production wins, even if the sandbox
+// one lasts longer or the production one lapsed); otherwise each sandbox entitlement is cut off
+// sandboxMax after its first purchase and cannot renew past that. Entitlements are copied, never
+// written back.
+func effectiveEntitlements(ents []control.Entitlement, sandboxMax time.Duration) []control.Entitlement {
+	prod := false
+	for _, e := range ents {
+		if e.Source == control.SourceApple && !IsSandbox(e) {
+			prod = true
+		}
+	}
+	out := make([]control.Entitlement, 0, len(ents))
+	for _, e := range ents {
+		if IsSandbox(e) {
+			if prod {
+				continue
+			}
+			if sandboxMax > 0 {
+				anchor := e.StartsAt
+				if anchor.IsZero() {
+					anchor = e.UpdatedAt
+				}
+				if !anchor.IsZero() {
+					limit := anchor.Add(sandboxMax)
+					if e.ExpiresAt.After(limit) {
+						e.ExpiresAt = limit
+						f := false
+						e.AutoRenew = &f
+					}
+					if e.GraceUntil.After(limit) {
+						e.GraceUntil = limit
+					}
+				}
+			}
+		}
+		out = append(out, e)
+	}
+	return out
 }
 
 // access describes what one source gives now and when it ended.
@@ -215,7 +284,7 @@ func Compute(in PlanInput) Plan {
 	}
 
 	var apple, grant access
-	for _, e := range in.Entitlements {
+	for _, e := range effectiveEntitlements(in.Entitlements, in.SandboxMax) {
 		switch e.Source {
 		case control.SourceApple:
 			apple = better(apple, appleAccess(e, now))
@@ -422,6 +491,9 @@ type Calculator struct {
 	S        *control.Store
 	Clock    hclock.Clock
 	Timeline Timeline
+	// SandboxMax caps sandbox entitlements (see effectiveEntitlements); 0 = no cap (the default
+	// here; the hosted binary sets it from SHOP_APPLE_SANDBOX_MAX_DAYS).
+	SandboxMax time.Duration
 }
 
 // NewCalculator builds a Calculator with the default timeline.
@@ -435,7 +507,7 @@ func (c *Calculator) Input(ctx context.Context, accountID string) (PlanInput, er
 	if err != nil {
 		return PlanInput{}, err
 	}
-	in := PlanInput{Now: c.Clock.Now().UTC(), Timeline: c.Timeline, IsOwner: true, AccountDeletionRequested: !acc.DeletionRequestedAt.IsZero()}
+	in := PlanInput{Now: c.Clock.Now().UTC(), Timeline: c.Timeline, SandboxMax: c.SandboxMax, IsOwner: true, AccountDeletionRequested: !acc.DeletionRequestedAt.IsZero()}
 	h, m, err := c.S.HouseholdOfAccount(ctx, accountID)
 	switch {
 	case err == nil:
@@ -480,7 +552,7 @@ func (c *Calculator) HasFullAccess(ctx context.Context, accountID string, now ti
 	if err != nil {
 		return false, err
 	}
-	for _, e := range ents {
+	for _, e := range effectiveEntitlements(ents, c.SandboxMax) {
 		var a access
 		if e.Source == control.SourceApple {
 			a = appleAccess(e, now)

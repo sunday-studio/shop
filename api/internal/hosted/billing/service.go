@@ -31,7 +31,14 @@ type Config struct {
 	// and signed transactions are genuinely signed by Apple, so without this switch they would
 	// give paid access to anyone who can make a sandbox purchase.
 	ProductionOnly bool
-	GraceFallback  time.Duration // grace length when Apple does not say (16 days)
+	// AcceptSandbox lets a ProductionOnly server accept sandbox-signed data anyway (verified the same
+	// way, from Apple's chain). Apple's App Review and TestFlight testers buy in the Sandbox against
+	// the production backend, so this is on by default (SHOP_APPLE_ACCEPT_SANDBOX). Such entitlements
+	// are stored with environment=sandbox, are capped in lifetime by the plan calculator, never count
+	// as revenue (CountsAsRevenue) and lose against a production entitlement of the same account.
+	// With false a ProductionOnly server ignores sandbox notifications and refuses sandbox transactions.
+	AcceptSandbox bool
+	GraceFallback time.Duration // grace length when Apple does not say (16 days)
 }
 
 // Service verifies Apple data and keeps the entitlements table in step with it.
@@ -63,8 +70,9 @@ func (s *Service) productAllowed(id string) bool {
 	return false
 }
 
-// productionOK reports whether data from these environments may be used. With ProductionOnly every
-// non-empty environment must be Production and at least one must be given; otherwise anything goes.
+// productionOK reports whether data from these environments may be used. With ProductionOnly at
+// least one environment must be given (unlabelled data would be stored as production) and, unless
+// AcceptSandbox is set, every non-empty environment must be Production; otherwise anything goes.
 func (s *Service) productionOK(envs ...string) bool {
 	if !s.Cfg.ProductionOnly {
 		return true
@@ -74,7 +82,7 @@ func (s *Service) productionOK(envs ...string) bool {
 		if e == "" {
 			continue
 		}
-		if !strings.EqualFold(e, EnvProduction) {
+		if !strings.EqualFold(e, EnvProduction) && !s.Cfg.AcceptSandbox {
 			return false
 		}
 		seen = true

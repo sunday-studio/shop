@@ -36,3 +36,24 @@ func TestHTTPServerHasTimeouts(t *testing.T) {
 		t.Fatalf("read %v write %v", s.ReadTimeout, s.WriteTimeout)
 	}
 }
+
+func TestAcceptSandboxSettings(t *testing.T) {
+	t.Setenv("SHOP_DATA_DIR", t.TempDir())
+	t.Setenv("SHOP_APPLE_ENVIRONMENT", "production")
+	c, err := loadConfig()
+	if err != nil || !c.Apple.AcceptSandbox || c.Apple.SandboxMax != 30*24*time.Hour {
+		t.Fatalf("default: accept %v max %v err %v", c.Apple.AcceptSandbox, c.Apple.SandboxMax, err)
+	}
+	t.Setenv("SHOP_APPLE_ACCEPT_SANDBOX", "false")
+	t.Setenv("SHOP_APPLE_SANDBOX_MAX_DAYS", "7")
+	c, err = loadConfig()
+	if err != nil || c.Apple.AcceptSandbox || c.Apple.SandboxMax != 7*24*time.Hour {
+		t.Fatalf("off: accept %v max %v err %v", c.Apple.AcceptSandbox, c.Apple.SandboxMax, err)
+	}
+	for _, bad := range []string{"0", "-1", "400", "soon"} {
+		t.Setenv("SHOP_APPLE_SANDBOX_MAX_DAYS", bad)
+		if _, err := loadConfig(); err == nil {
+			t.Fatalf("SHOP_APPLE_SANDBOX_MAX_DAYS=%s accepted", bad)
+		}
+	}
+}
