@@ -136,3 +136,21 @@ func (s *Store) EraseAccount(ctx context.Context, id string, at time.Time) error
 		apple_refresh_token_enc = NULL, apple_sub = ?, email_is_private = 0, email_deliverable = 0 WHERE id = ?`,
 		ts(at), fmt.Sprintf("deleted:%s", id), id)
 }
+
+// AccountsByEmail finds accounts by exact (case-insensitive) email.
+func (s *Store) AccountsByEmail(ctx context.Context, email string) ([]Account, error) {
+	rows, err := s.q.QueryContext(ctx, `SELECT `+accountCols+` FROM accounts WHERE lower(email) = lower(?) ORDER BY created_at`, email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Account
+	for rows.Next() {
+		a, err := scanAccount(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
