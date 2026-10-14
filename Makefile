@@ -40,7 +40,7 @@ hosted-run: ## run the hosted server (cmd/shop-hosted) locally in a throwaway fo
 	@d=$$(mktemp -d "$${TMPDIR:-/tmp}/shop-hosted-run.XXXXXX"); trap 'rm -rf "$$d"' EXIT INT TERM; \
 	echo "hosted-run: data in $$d (removed on exit); public http://127.0.0.1:$(HOSTED_RUN_PORT) admin http://127.0.0.1:$(HOSTED_RUN_ADMIN_PORT) token $(HOSTED_RUN_ADMIN_TOKEN)"; \
 	cd api && SHOP_MODE=hosted SHOP_DATA_DIR="$$d" SHOP_ADDR=127.0.0.1:$(HOSTED_RUN_PORT) ADMIN_ADDR=127.0.0.1:$(HOSTED_RUN_ADMIN_PORT) \
-	ADMIN_TOKEN_HASH=$$(printf %s '$(HOSTED_RUN_ADMIN_TOKEN)' | shasum -a 256 | cut -d' ' -f1) SHOP_APPLE_MODE=fake SHOP_APPLE_ENVIRONMENT=sandbox \
+	ADMIN_TOKEN_HASH=$$(printf %s '$(HOSTED_RUN_ADMIN_TOKEN)' | shasum -a 256 | cut -d' ' -f1) SHOP_APPLE_MODE=fake SHOP_APPLE_FAKE_ACK=i-know-this-is-a-test SHOP_APPLE_ENVIRONMENT=sandbox \
 	OCR_URL=$${OCR_URL:-http://127.0.0.1:1} ./bin/shop-hosted serve
 
 .PHONY: isolation

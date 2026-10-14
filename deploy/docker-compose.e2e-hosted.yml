@@ -31,6 +31,7 @@ services:
       ADMIN_ADDR: "127.0.0.1:8081"           # loopback, as in production; the sidecar forwards to it
       ADMIN_TOKEN_HASH: ${E2E_ADMIN_HASH:?set by the harness}
       SHOP_APPLE_MODE: fake                    # Apple simulated in process; refused with a production environment
+      SHOP_APPLE_FAKE_ACK: i-know-this-is-a-test   # second acknowledgement the fake mode now requires
       SHOP_APPLE_ENVIRONMENT: sandbox
       OCR_URL: http://ocr:8000
       OFF_BASE_URL: http://127.0.0.1:9         # no Open Food Facts calls
