@@ -82,15 +82,22 @@ final class OnboardingModel {
         let client = makeClient(url)
         let started = Date()
         do {
-            let status = try await client.authStatus()
-            guard status.server == "shop" else {
+            let info = try await client.serverInfo()
+            guard info.server == "shop" else {
                 serverCheck = .failed("Something answered, but it isn't a Shop server.")
                 Haptics.play(.error)
                 return
             }
+            // The hosted service signs in with Apple, which this screen can't do yet.
+            if info.preferredLogin != .pairingPassword {
+                serverCheck = .failed("This is the Shop hosted service. Use “Continue with Apple” instead.")
+                Haptics.play(.error)
+                return
+            }
+            app.account.adopt(info)
             let ms = Int(Date().timeIntervalSince(started) * 1000)
             let health = try? await client.health()
-            serverCheck = .found(version: status.version, ms: ms, checks: Self.rows(from: health))
+            serverCheck = .found(version: info.version ?? "", ms: ms, checks: Self.rows(from: health))
             testedURL = url
             probe = client
             Haptics.play(.success)

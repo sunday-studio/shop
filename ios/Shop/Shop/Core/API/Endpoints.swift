@@ -30,6 +30,38 @@ extension APIClient {
         try await revokeDevice(me.id)
     }
 
+    /// Public discovery. Servers that predate it answer 404; then `/v1/auth/status` says what little it can.
+    func serverInfo() async throws -> ServerInfo {
+        do {
+            return try await get("/v1/server-info")
+        } catch APIError.notFound {
+            let status = try await authStatus()
+            guard status.server == "shop" else { throw APIError.notFound }
+            return .legacy(version: status.version, pairingEnabled: status.pairingEnabled)
+        }
+    }
+
+    /// Hosted only: who is signed in and what the plan allows. 404 on a single-household server.
+    func account() async throws -> Account { try await get("/v1/account") }
+
+    func appleNonce() async throws -> String {
+        let n: AppleNonce = try await send("POST", "/v1/auth/apple/nonce")
+        return n.nonce
+    }
+
+    func signInWithApple(_ body: AppleSignInBody) async throws -> AppleSignInResponse { try await send("POST", "/v1/auth/apple", body: body) }
+
+    /// After a purchase, on `Transaction.updates` and for Restore: the verified JWS; finish the transaction after a 200.
+    func postAppleTransaction(_ signedTransaction: String) async throws -> BillingResult {
+        try await send("POST", "/v1/billing/apple/transactions", body: SignedTransactionBody(signedTransaction: signedTransaction))
+    }
+
+    /// Asks the server to re-read the subscription from Apple (after Manage subscription). 1 per minute.
+    func refreshBilling() async throws -> Account {
+        let response: BillingRefresh = try await send("POST", "/v1/billing/apple/refresh")
+        return response.account
+    }
+
     func me() async throws -> Me { try await get("/v1/auth/me") }
     func devices() async throws -> [Device] { try await get("/v1/auth/devices") }
     func revokeDevice(_ id: Int64) async throws { try await perform("DELETE", "/v1/auth/devices/\(id)") }

@@ -11,6 +11,7 @@ final class MockServer: HTTPTransport {
     private var deletedProducts: [Int64: Product] = [:]
     private var receipts = MockData.receipts
     private var keptDuplicates: Set<Int64> = []
+    private let hosted = MockHosted()
 
     private func withDuplicate(_ r: Receipt) -> Receipt {
         var r = r
@@ -116,6 +117,9 @@ final class MockServer: HTTPTransport {
 
         // Numeric segments become ":id" so routes match as plain strings.
         let shape = p.map { Int64($0) != nil ? ":id" : $0 }.joined(separator: "/")
+
+        // The hosted personality (plan gates, Apple sign-in, account, billing) answers first when it is on.
+        if let answer = hosted.handle(method, p, shape, body, encoder: encoder, decoder: decoder) { return answer }
 
         switch (method, shape) {
         case ("GET", "healthz"):

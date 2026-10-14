@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Sign in with Apple (hosted door). OWNER TODO before a device or TestFlight build:
+	     1. developer.apple.com > Certificates, Identifiers & Profiles > Identifiers > the app id
+	        (APP_BUNDLE_ID in Config/Shop.xcconfig) > tick "Sign in with Apple" > Save.
+	     2. In Xcode, Signing & Capabilities lists "Sign in with Apple" (automatic signing picks the
+	        updated profile up). The simulator needs none of this.
+	     3. For the server: create a Sign in with Apple key (Keys) and give the server team id,
+	        key id and the .p8 (see notes/hosted-plan.md section 3).
+	     A free personal team cannot sign this capability: use Config/Local.xcconfig, see Shop.xcconfig. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+</dict>
+</plist>

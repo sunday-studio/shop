@@ -1,0 +1,53 @@
+{
+  "identifier": "3B2C0A10",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": {
+    "_applicationInternalID": "6740000001",
+    "_developerTeamID": "2QG5WSN24S",
+    "_failTransactionsEnabled": false,
+    "_lastSynchronizedDate": 781000000,
+    "_locale": "en_NL",
+    "_storefront": "NLD",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [
+    {
+      "id": "21500001",
+      "localizations": [],
+      "name": "Shop Hosted",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "4.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "6740000002",
+          "introductoryOffer": {
+            "internalID": "6740000003",
+            "numberOfPeriods": 1,
+            "paymentMode": "free",
+            "subscriptionPeriod": "P2W"
+          },
+          "localizations": [
+            {
+              "description": "Your shopping, receipts and prices, kept for you.",
+              "displayName": "Shop, monthly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.sundaystudi.shop.hosted.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Shop monthly",
+          "subscriptionGroupID": "21500001",
+          "type": "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

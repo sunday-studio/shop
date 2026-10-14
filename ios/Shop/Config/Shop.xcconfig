@@ -1,0 +1,21 @@
+// The ONE place for the app's identity and signing. Everything else reads these.
+//
+// To change the bundle id or the Apple team (e.g. move to a company team): edit the two lines below.
+// The test targets follow automatically ($(APP_BUNDLE_ID)Tests, $(APP_BUNDLE_ID)UITests).
+// Internal identifiers (Keychain service, queue labels, background session id) do not depend on the
+// bundle id and are left alone.
+APP_BUNDLE_ID = com.sundaystudi.Shop
+DEVELOPMENT_TEAM = 2QG5WSN24S
+
+// The subscription product id in App Store Connect. The app takes the ids the hosted server lists in
+// server-info (billing.product_ids) first; this one is the fallback and the id in Config/Shop.storekit.
+SHOP_PRODUCT_ID = com.sundaystudi.shop.hosted.monthly
+
+// Capabilities (Sign in with Apple, ...). See Config/Shop.entitlements for what the owner must
+// enable in the Apple developer portal. To build to a physical device WITHOUT a paid team, create
+// Config/Local.xcconfig (git-ignored) containing:
+//     CODE_SIGN_ENTITLEMENTS = Config/Shop.NoCapabilities.entitlements
+CODE_SIGN_ENTITLEMENTS = Config/Shop.entitlements
+
+// Optional per-developer overrides, never committed.
+#include? "Local.xcconfig"

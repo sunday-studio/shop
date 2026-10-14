@@ -42,7 +42,11 @@ deploy/offsite/config/*
 !deploy/offsite/config/README
 deploy/offsite/offsite.env
 
+# per-developer build overrides (see ios/Shop/Config/Shop.xcconfig)
+ios/Shop/Config/Local.xcconfig
+
 deploy/hosted/.env
 deploy/hosted/offsite.env
 deploy/hosted/offsite.env.new
 deploy/hosted/secrets.env
+deploy/hosted/.deploy/

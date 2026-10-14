@@ -17,6 +17,12 @@ nonisolated enum APIError: Error, Sendable, Equatable {
     /// 409: duplicate receipt, barcode in use, protected reparse…
     case conflict(Problem)
     case notFound
+    /// 403 read_only: the hosted plan is read-only (lapsed, billing retry, pending deletion); reads and export still work.
+    case readOnly(Problem)
+    /// 403 plan_required: no plan yet (or the household was deleted); show the paywall.
+    case planRequired(Problem)
+    /// 429 limit_reached: a quota (receipts per month, storage, ...) is used up. Not a rate limit.
+    case limitReached(Problem)
     case problem(Problem)
     case http(Int)
     case decoding(String)
@@ -31,6 +37,9 @@ nonisolated enum APIError: Error, Sendable, Equatable {
         case .rateLimited(let d): d ?? "Too many attempts. Wait a few minutes and try again."
         case .conflict(let p): p.detail ?? p.title
         case .notFound: "Not found."
+        case .readOnly: "Your plan is read-only right now."
+        case .planRequired: "Start your plan to use Shop."
+        case .limitReached(let p): p.detail ?? "A limit of your plan is reached."
         case .problem(let p): p.detail ?? p.title
         case .http(let code): "The server answered with an error (\(code))."
         case .decoding: "The server sent something this app doesn't understand."
@@ -245,6 +254,9 @@ final class APIClient {
             throw APIError.unauthorized
         case 404: throw APIError.notFound
         case 409: throw APIError.conflict(problem)
+        case 403 where problem.code == "read_only": throw APIError.readOnly(problem)
+        case 403 where problem.code == "plan_required": throw APIError.planRequired(problem)
+        case 429 where problem.code == "limit_reached": throw APIError.limitReached(problem)
         case 429: throw APIError.rateLimited(problem.detail)
         default:
             throw status >= 500 && problem.detail == nil ? APIError.http(status) : APIError.problem(problem)

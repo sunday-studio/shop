@@ -32,6 +32,14 @@ nonisolated struct Problem: Codable, Sendable, Hashable, Error {
     /// Stable machine code, e.g. "category_name_taken", "category_has_products".
     var code: String?
     var productCount: Int?
+    // Hosted contract (section 7.1): all optional.
+    var limit: String? = nil
+    var limitValue: Int? = nil
+    var current: Int? = nil
+    var resetsAt: Date? = nil
+    var planState: String? = nil
+    var deleteAfter: Date? = nil
+    var retryAfterSeconds: Int? = nil
 }
 
 // MARK: - Auth

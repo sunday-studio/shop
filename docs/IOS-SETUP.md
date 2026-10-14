@@ -5,7 +5,7 @@ The Xcode project is committed: open `ios/Shop/Shop.xcodeproj`. Requires **Xcode
 ## 1. Open and sign
 
 1. Open `ios/Shop/Shop.xcodeproj`.
-2. Target → Signing & Capabilities → pick your team and, if needed, change the bundle identifier (`com.sundaystudi.Shop` by default).
+2. Bundle id and team live in ONE file: `ios/Shop/Config/Shop.xcconfig` (`APP_BUNDLE_ID`, `DEVELOPMENT_TEAM`). Change those two lines (the test targets follow). Don't edit them in Xcode's Signing tab.
 3. The app icon and accent colour (#0A84FF) live in `ios/Shop/Shop/Assets.xcassets`; the fonts are in `ios/Shop/Shop/Resources/Fonts`.
 4. **Background Modes** is *not* needed (background `URLSession` uploads work without it).
 
@@ -54,3 +54,10 @@ Only the unit tests: add `-only-testing:ShopTests`. Only the UI tests: `-only-te
 If other projects run UI tests on the same Mac, give Shop its own simulator so they don't share one (a shared one makes the UI tests flaky): `xcrun simctl create "Shop Tests" "iPhone 17 Pro"`, then use `-destination 'platform=iOS Simulator,id=<the id it prints>'`.
 
 When a UI test fails it prints what was on screen. Launch aids the tests use: `-mock`, `-mock-fresh` (forget saved state), `-mock-import-demo` (skip the photo picker), `-mock-large` (1,500 products), `-bench` (log timings).
+
+
+## 6. Hosted version: capabilities and local purchases
+
+- **Sign in with Apple** is declared in `Config/Shop.entitlements`. The simulator and builds with a paid team work as is; the owner must tick "Sign in with Apple" on the app id in the developer portal (steps in that file). To run on a device with a free personal team, create `Config/Local.xcconfig` (git-ignored) with `CODE_SIGN_ENTITLEMENTS = Config/Shop.NoCapabilities.entitlements`; the hosted door then doesn't work on that build.
+- **Purchases without App Store Connect**: the Debug scheme uses `Config/Shop.storekit` (monthly 4.99 EUR, 14-day free trial, group "Shop Hosted", product id from `SHOP_PRODUCT_ID`). If Xcode doesn't pick it up, set it under Product > Scheme > Edit Scheme > Run > Options > StoreKit Configuration.
+- **Mock server as the hosted service**: `-mock -mock-mode hosted -mock-plan-state <state>` (states in `Core/Mock/MockHosted.swift`; switch while running with `POST /__mock/plan-state`), `-mock-server-info old-level|min-build-high|nopassword`. Magic sign-in and purchase values are listed in `notes/hosted-api-contract.md` section 9.

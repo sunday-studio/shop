@@ -21,6 +21,8 @@
       <BuildableProductRunnable runnableDebuggingMode = "0">
          <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "AF848C89307A6896000938DE" BuildableName = "Shop.app" BlueprintName = "Shop" ReferencedContainer = "container:Shop.xcodeproj"/>
       </BuildableProductRunnable>
+      <!-- Local purchases in the simulator without App Store Connect (Config/Shop.storekit). -->
+      <StoreKitConfigurationFileReference identifier = "../../../Config/Shop.storekit"/>
    </LaunchAction>
    <ProfileAction buildConfiguration = "Release" shouldUseLaunchSchemeArgsEnv = "YES" savedToolIdentifier = "" useCustomWorkingDirectory = "NO" debugDocumentVersioning = "YES">
       <BuildableProductRunnable runnableDebuggingMode = "0">
