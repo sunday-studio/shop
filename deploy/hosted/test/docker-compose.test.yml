@@ -1,0 +1,49 @@
+# Overrides for `make hosted-kit-test`. Always used with ../docker-compose.yml, through test/compose.sh,
+# under project shop-hosted-test. Own port, own throwaway volumes, locally built API image, the
+# OCR image already on this machine; an http-only Caddy. Never touches project "shop".
+name: shop-hosted-test
+
+services:
+  caddy:
+    ports: !override ["127.0.0.1:18490:80"]
+    volumes: !override
+      - ./test/Caddyfile.test:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  api:
+    build:
+      context: ../../api
+      args: { VERSION: hosted-kit-test, COMMIT: test }
+    pull_policy: never
+    environment:
+      LOGO_DEV_TOKEN: ""
+      OFF_BASE_URL: http://127.0.0.1:9      # no outbound product lookups from a test
+
+  ocr:
+    image: shop-ocr:ppocrv5               # built once by `make hosted-kit-test` if missing
+    pull_policy: never
+
+  backup:
+    pull_policy: never
+
+  offsite:
+    environment:
+      RCLONE_CONFIG_TESTSTORE_TYPE: local
+      RCLONE_CONFIG_TESTCRYPT_TYPE: crypt
+      RCLONE_CONFIG_TESTCRYPT_REMOTE: "teststore:/offsite-store"
+      RCLONE_CONFIG_TESTCRYPT_PASSWORD: ${TEST_CRYPT_PASSWORD:-}   # obscured by the test at run time
+      RCLONE_CONFIG_TESTCRYPT_PASSWORD2: ${TEST_CRYPT_PASSWORD2:-}
+    volumes:
+      - "../offsite/offsite.sh:/offsite.sh:ro"
+      - "shop-data:/data"
+      - "backups:/backup"
+      - "offsite-store:/offsite-store"
+
+  monitor:
+    extra_hosts: ["host.docker.internal:host-gateway"]   # the test's webhook listener runs on the host
+    environment:
+      ALERT_WEBHOOK_URL: ${TEST_WEBHOOK_URL:-}
+
+volumes:
+  offsite-store: {}

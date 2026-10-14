@@ -207,3 +207,7 @@ After a parser improvement (a new `parser_version`), re-parse every receipt you 
 docker compose -f deploy/docker-compose.yml exec api shop reparse
 docker compose -f deploy/docker-compose.yml exec api shop reparse -status needs_review
 ```
+
+## Hosted server kit
+
+Running Shop as a hosted service on a Linux server (bootstrap, deploy, update, rollback, restore, monitoring, capacity) is a separate kit in `deploy/hosted/`. Start with [deploy/hosted/RUNBOOK.md](../deploy/hosted/RUNBOOK.md). Test it locally with `make hosted-kit-test`. It does not change the home install described above.

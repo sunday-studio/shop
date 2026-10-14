@@ -1,0 +1,190 @@
+# Shop, hosted stack for a single Linux server (UpCloud or any other). Pulls PUBLISHED images
+# pinned by tag; nothing is built on the server. Not for a home install: that is
+# deploy/docker-compose.yml. Runbook: deploy/hosted/RUNBOOK.md.
+#
+# Always run it through deploy/hosted/compose.sh (or deploy/hosted/deploy.sh): the wrapper pins
+# the project name "shop-hosted", reads deploy/hosted/.env and refuses any other project, so it
+# can never address the home stack ("shop") or the test stack ("shop-hosted-test").
+#
+# Only Caddy publishes ports (80, 443). The API, OCR and every other service are reachable
+# on the internal network only.
+name: shop-hosted
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+services:
+  # HTTPS front. Gets and renews the certificate for SHOP_DOMAIN by itself (needs DNS pointing
+  # at this server and ports 80 and 443 open).
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      SHOP_DOMAIN: ${SHOP_DOMAIN:?set SHOP_DOMAIN in deploy/hosted/.env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in deploy/hosted/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data        # certificates: keep, or Let's Encrypt rate limits bite after a rebuild
+      - caddy-config:/config
+    mem_limit: 128m
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+
+  api:
+    image: ${SHOP_API_IMAGE:-ghcr.io/sunday-studio/shop-api}:${SHOP_API_TAG:?set SHOP_API_TAG (a version, never latest) in deploy/hosted/.env}
+    restart: unless-stopped
+    volumes: ["shop-data:/data"]
+    env_file:
+      # Extra secrets the hosted layer needs (Sign in with Apple, App Store keys, ...).
+      # Names are defined by the hosted layer; the file is optional and git-ignored.
+      - path: ./secrets.env
+        required: false
+    environment:
+      # single = one household, pairing password (what the public image does today).
+      # hosted = many households. Implemented by the hosted layer; this stack only passes it on.
+      SHOP_MODE: ${SHOP_MODE:-hosted}
+      SHOP_DATA_DIR: /data
+      OCR_URL: http://ocr:8000
+      OFF_USER_AGENT: "Shop/0.1 (hosted)"
+      SHOP_TZ: Europe/Amsterdam
+      LOGO_DEV_TOKEN: ${LOGO_DEV_TOKEN:-}
+      AUTO_PRODUCTS: ${AUTO_PRODUCTS:-on}
+    mem_limit: ${API_MEM_LIMIT:-768m}
+    depends_on:
+      ocr:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/shop", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging: *logging
+
+  ocr:
+    image: ${SHOP_OCR_IMAGE:-ghcr.io/sunday-studio/shop-ocr}:${SHOP_OCR_TAG:-ppocrv5}
+    restart: unless-stopped
+    mem_limit: ${OCR_MEM_LIMIT:-3g}
+    memswap_limit: ${OCR_MEM_LIMIT:-3g}      # no swap for OCR: it should be killed and restarted, not thrash the disk
+    # The image carries its own HEALTHCHECK (curl /healthz, 120 s start period).
+    logging: *logging
+
+  # One-shot: the backup volume is created root-owned, the API image runs as uid 65532.
+  backup-init:
+    image: alpine:3.20
+    command: ["chown", "-R", "65532:65532", "/backup"]
+    restart: "no"
+    volumes: ["backups:/backup"]
+    mem_limit: 32m
+    logging: *logging
+
+  # Nightly snapshot of the database + image mirror into the backups volume.
+  backup:
+    image: ${SHOP_API_IMAGE:-ghcr.io/sunday-studio/shop-api}:${SHOP_API_TAG}
+    command: ["backup", "-schedule"]
+    restart: unless-stopped
+    volumes:
+      - "shop-data:/data"
+      - "backups:/backup"
+    environment:
+      SHOP_DATA_DIR: /data
+      SHOP_TZ: Europe/Amsterdam
+      BACKUP_DIR: /backup
+      BACKUP_AT: ${BACKUP_AT:-03:30}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+    mem_limit: 256m
+    depends_on:
+      backup-init:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+    logging: *logging
+
+  # Off-site copy of the backup volume with rclone, ENCRYPTED (an rclone crypt remote).
+  # On by default: this stack refuses to deploy without it (deploy.sh preflight).
+  # Credentials: deploy/hosted/offsite.env (git-ignored, mode 600), see offsite.env.example.
+  offsite:
+    image: rclone/rclone:1.68.2
+    entrypoint: ["sh", "/offsite.sh"]
+    command: ["loop"]
+    restart: unless-stopped
+    volumes:
+      - "../offsite/offsite.sh:/offsite.sh:ro"
+      - "shop-data:/data"          # only to write offsite_status.json, which /healthz reports
+      - "backups:/backup"
+    env_file:
+      - path: ./offsite.env
+        required: false
+    environment:
+      OFFSITE_REMOTE: ${OFFSITE_REMOTE:?set OFFSITE_REMOTE (an rclone crypt remote) in deploy/hosted/.env}
+      OFFSITE_LABEL: ${OFFSITE_LABEL:-offsite-crypt}
+      OFFSITE_PRUNE: ${OFFSITE_PRUNE:-on}
+      OFFSITE_RCLONE_FLAGS: ${OFFSITE_RCLONE_FLAGS:-}
+      OFFSITE_RETRY_MINUTES: ${OFFSITE_RETRY_MINUTES:-30}
+    mem_limit: 256m
+    depends_on:
+      backup-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f offsite.sh >/dev/null || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+
+  # Free monitoring: checks /healthz, disk and the OCR queue every few minutes and sends a
+  # webhook and/or email on trouble. See deploy/hosted/monitor/monitor.sh and RUNBOOK.md.
+  monitor:
+    image: curlimages/curl:8.10.1
+    entrypoint: ["sh", "/monitor.sh"]
+    command: ["loop"]
+    restart: unless-stopped
+    user: "0:0"                  # reads the host disk numbers; the mount below is read-only
+    volumes:
+      - "./monitor/monitor.sh:/monitor.sh:ro"
+      - "/:/host:ro"
+      - "monitor-state:/state"
+    environment:
+      MONITOR_HEALTH_URL: http://api:8080/healthz
+      MONITOR_INTERVAL: ${MONITOR_INTERVAL:-300}
+      MONITOR_NAME: ${SHOP_DOMAIN}
+      DISK_PATH: /host
+      DISK_ALERT_PCT: ${DISK_ALERT_PCT:-80}
+      QUEUE_ALERT_PENDING: ${QUEUE_ALERT_PENDING:-15}
+      QUEUE_ALERT_CHECKS: ${QUEUE_ALERT_CHECKS:-3}
+      ALERT_REPEAT_HOURS: ${ALERT_REPEAT_HOURS:-6}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      ALERT_WEBHOOK_FORMAT: ${ALERT_WEBHOOK_FORMAT:-json}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-}
+      ALERT_EMAIL_FROM: ${ALERT_EMAIL_FROM:-}
+      SMTP_URL: ${SMTP_URL:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      HEALTHCHECKS_PING_URL: ${HEALTHCHECKS_PING_URL:-}
+    mem_limit: 64m
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "find /state/heartbeat -mmin -15 | grep -q . || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    logging: *logging
+
+volumes:
+  shop-data: {}
+  backups: {}
+  caddy-data: {}
+  caddy-config: {}
+  monitor-state: {}
