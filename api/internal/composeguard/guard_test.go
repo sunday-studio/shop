@@ -28,6 +28,7 @@ type harness struct {
 var harnesses = []harness{
 	{"api/e2e", "shop-e2e", "deploy/docker-compose.e2e.yml"},
 	{"api/drill", "shop-drill", "deploy/docker-compose.drill.yml"},
+	{"api/e2ehosted", "shop-e2e-hosted", "deploy/docker-compose.e2e-hosted.yml"},
 }
 
 func TestHarnessesNeverAddressTheLiveStack(t *testing.T) {
@@ -85,7 +86,7 @@ func TestHarnessesNeverAddressTheLiveStack(t *testing.T) {
 
 func TestMakefileHarnessTargetsDoNotCallCompose(t *testing.T) {
 	mk := read(t, "Makefile")
-	for _, target := range []string{"e2e", "restore-drill"} {
+	for _, target := range []string{"e2e", "restore-drill", "e2e-hosted"} {
 		re := regexp.MustCompile(`(?m)^` + target + `:.*\n((?:\t.*\n?)+)`)
 		m := re.FindStringSubmatch(mk)
 		if m == nil {
@@ -239,5 +240,64 @@ func TestHostedKitSecuritySettings(t *testing.T) {
 		if !strings.Contains(string(cf), must) {
 			t.Errorf("deploy/hosted/Caddyfile lost %q", must)
 		}
+	}
+}
+
+// `make e2e-hosted` has no shell script: the Makefile target runs the Go harness (api/e2ehosted) and
+// nothing else. Whatever else lives with it (the compose file, the sidecar script) must never start
+// docker compose, and no file of the target may name any project but shop-e2e-hosted in a compose call.
+func TestE2EHostedHasNoComposeOutsideItsWrapper(t *testing.T) {
+	composeCall := regexp.MustCompile(`docker[\s"',]+compose|docker-compose`)
+	destructive := regexp.MustCompile(`docker\s+(stop|kill|rm|restart|pause)\b|docker\s+system\s+prune|docker\s+volume\s+(rm|prune)|docker\s+container\s+(rm|prune|stop|kill)|down\s+-v`)
+	root := filepath.Join("..", "..", "..", "deploy", "e2e-hosted")
+	files, _ := filepath.Glob(filepath.Join(root, "*"))
+	if len(files) == 0 {
+		t.Fatal("deploy/e2e-hosted is empty")
+	}
+	for _, f := range files {
+		b, _ := os.ReadFile(f)
+		for i, l := range strings.Split(string(b), "\n") {
+			code := strings.TrimSpace(l)
+			if strings.HasPrefix(code, "#") {
+				continue
+			}
+			if composeCall.MatchString(code) || destructive.MatchString(code) {
+				t.Errorf("%s:%d: the e2e-hosted support files must not call docker compose or remove things: %s", f, i+1, code)
+			}
+		}
+	}
+	// the harness has exactly one place that runs compose, and it pins the project
+	src, err := os.ReadFile(filepath.Join("..", "..", "e2ehosted", "stack_test.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(src), `"compose", "-p", project`); n != 1 {
+		t.Errorf("stack_test.go must build the compose command exactly once, found %d", n)
+	}
+	for _, f := range []string{"helpers_test.go", "scenario_test.go"} {
+		b, _ := os.ReadFile(filepath.Join("..", "..", "e2ehosted", f))
+		if strings.Contains(string(b), `"compose"`) || strings.Contains(string(b), `exec.Command`) {
+			t.Errorf("%s must go through compose() in stack_test.go (no exec of its own)", f)
+		}
+	}
+	// the compose file is standalone: no include/extends of the live file, and it names its own project
+	ov, err := os.ReadFile(filepath.Join(root, "..", "docker-compose.e2e-hosted.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ovCode []string
+	for _, l := range strings.Split(string(ov), "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(l), "#") {
+			ovCode = append(ovCode, l)
+		}
+	}
+	live := strings.Join(ovCode, "\n")
+	if regexp.MustCompile(`(?m)^\s*(include|extends):`).MatchString(live) || strings.Contains(live, "shop_shop-data") || strings.Contains(live, "8080:8080") {
+		t.Errorf("docker-compose.e2e-hosted.yml must not include/extend the live stack nor use its volume or port")
+	}
+	mk := read(t, "Makefile")
+	m := regexp.MustCompile(`(?m)^e2e-hosted:.*\n((?:\t.*\n?)+)`).FindStringSubmatch(mk)
+	if m == nil || !strings.Contains(m[1], "-tags e2ehosted") {
+		t.Errorf("Makefile target e2e-hosted must run the e2ehosted Go harness")
 	}
 }
