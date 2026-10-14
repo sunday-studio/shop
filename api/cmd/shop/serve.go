@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"shop/internal/autoprod"
@@ -95,6 +96,9 @@ func migrate(ctx context.Context, log *slog.Logger) error {
 }
 
 func serve(ctx context.Context, log *slog.Logger) error {
+	if os.Getenv("SHOP_MODE") == "hosted" {
+		log.Warn("SHOP_MODE=hosted is set, but this binary serves one household (single mode). The hosted service is the shop-hosted binary.")
+	}
 	a, err := openAppWith(ctx, log, true)
 	if err != nil {
 		return err

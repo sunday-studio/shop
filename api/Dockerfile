@@ -8,10 +8,15 @@ ARG COMMIT=none
 RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags "-s -w -X shop/internal/version.Version=${VERSION} -X shop/internal/version.Commit=${COMMIT}" \
     -o /out/shop ./cmd/shop \
+ && CGO_ENABLED=0 go build -trimpath \
+    -ldflags "-s -w -X shop/internal/version.Version=${VERSION} -X shop/internal/version.Commit=${COMMIT}" \
+    -o /out/shop-hosted ./cmd/shop-hosted \
  && mkdir -p /out/data
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/shop /usr/local/bin/shop
+# The hosted (multi-household) server is a second binary; run it with entrypoint /usr/local/bin/shop-hosted.
+COPY --from=build /out/shop-hosted /usr/local/bin/shop-hosted
 # Named volumes inherit this ownership, so the nonroot user can write the DB.
 COPY --from=build --chown=65532:65532 /out/data /data
 ENV SHOP_DATA_DIR=/data SHOP_ADDR=:8080
