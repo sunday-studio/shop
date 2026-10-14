@@ -70,7 +70,8 @@ type Tenant struct {
 	// ImagesDir holds receipt and product images (and the logo cache).
 	ImagesDir string
 
-	mu      sync.Mutex
+	buildMu sync.Mutex // serialises State builds (a build may call OnClose)
+	mu      sync.Mutex // guards state and closers
 	state   map[any]any
 	closers []func()
 }
@@ -78,19 +79,24 @@ type Tenant struct {
 // State returns the value attached under key, building it once with build. The application uses it
 // to hang the per-household service graph on the tenant; it lives and dies with the open tenant.
 func (t *Tenant) State(key any, build func() (any, error)) (any, error) {
+	t.buildMu.Lock()
+	defer t.buildMu.Unlock()
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if v, ok := t.state[key]; ok {
+	v, ok := t.state[key]
+	t.mu.Unlock()
+	if ok {
 		return v, nil
 	}
 	v, err := build()
 	if err != nil {
 		return nil, err
 	}
+	t.mu.Lock()
 	if t.state == nil {
 		t.state = map[any]any{}
 	}
 	t.state[key] = v
+	t.mu.Unlock()
 	return v, nil
 }
 
