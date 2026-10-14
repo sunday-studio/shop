@@ -44,18 +44,27 @@ services:
 
   api:
     image: ${SHOP_API_IMAGE:-ghcr.io/sunday-studio/shop-api}:${SHOP_API_TAG:?set SHOP_API_TAG (a version, never latest) in deploy/hosted/.env}
+    # The hosted (many households, paid) server is its own binary in the same image. The image's
+    # default entrypoint is the single-household `shop`, which this stack must never run.
+    entrypoint: ["/usr/local/bin/shop-hosted"]
+    command: ["serve"]
     restart: unless-stopped
+    read_only: true                # nothing is written outside /data (volume) and /tmp (memory)
+    tmpfs: ["/tmp:size=64m,mode=1777"]
     volumes: ["shop-data:/data"]
     env_file:
-      # Extra secrets the hosted layer needs (Sign in with Apple, App Store keys, ...).
-      # Names are defined by the hosted layer; the file is optional and git-ignored.
+      # Secrets (mode 600, git-ignored): SHOP_SEALER_KEY, ADMIN_TOKEN_HASH, SHOP_APPLE_SIWA_KEY,
+      # SHOP_APPLE_IAP_KEY. Template: secrets.env.example. deploy.sh preflight requires the file.
       - path: ./secrets.env
         required: false
     environment:
-      # single = one household, pairing password (what the public image does today).
-      # hosted = many households. Implemented by the hosted layer; this stack only passes it on.
-      SHOP_MODE: ${SHOP_MODE:-hosted}
+      SHOP_MODE: hosted
+      SHOP_ADDR: ":8080"
       SHOP_DATA_DIR: /data
+      SHOP_CONTROL_DB: /data/control.db      # the control database: accounts, devices, plans, grants, audit
+      # The admin API listens on the container's loopback only and is not published: operators use
+      # `./compose.sh exec api /usr/local/bin/shop-hosted admin ...` (RUNBOOK.md).
+      ADMIN_ADDR: 127.0.0.1:8081
       OCR_URL: http://ocr:8000
       OFF_USER_AGENT: "Shop/0.1 (hosted)"
       SHOP_TZ: Europe/Amsterdam
@@ -65,9 +74,21 @@ services:
       # limits (sign-in, invite codes, nonces) would be one shared bucket for all users: one client
       # could lock everybody out. Caddy sets X-Forwarded-For; the API publishes no port of its own.
       SHOP_TRUST_PROXY: "1"
-      # The production server trusts only production purchases and Apple's real endpoints. Set
-      # SHOP_APPLE_ENVIRONMENT=sandbox in .env for a staging server.
+      # The production server trusts only Apple's real endpoints. Set SHOP_APPLE_ENVIRONMENT=sandbox
+      # in .env for a staging server.
       SHOP_APPLE_ENVIRONMENT: ${SHOP_APPLE_ENVIRONMENT:-production}
+      # TestFlight and App Review buy in the Apple sandbox against this server. true (default): such
+      # purchases are accepted but flagged, capped at SHOP_APPLE_SANDBOX_MAX_DAYS and never counted
+      # as revenue. false: they are refused. APPLE.md, RUNBOOK.md.
+      SHOP_APPLE_ACCEPT_SANDBOX: ${SHOP_APPLE_ACCEPT_SANDBOX:-true}
+      SHOP_APPLE_SANDBOX_MAX_DAYS: ${SHOP_APPLE_SANDBOX_MAX_DAYS:-30}
+      SHOP_APPLE_BUNDLE_ID: ${SHOP_APPLE_BUNDLE_ID:-com.sundaystudi.Shop}
+      SHOP_APPLE_TEAM_ID: ${SHOP_APPLE_TEAM_ID:-}
+      SHOP_APPLE_APP_ID: ${SHOP_APPLE_APP_ID:-}
+      SHOP_APPLE_SIWA_KEY_ID: ${SHOP_APPLE_SIWA_KEY_ID:-}
+      SHOP_APPLE_IAP_KEY_ID: ${SHOP_APPLE_IAP_KEY_ID:-}
+      SHOP_APPLE_IAP_ISSUER_ID: ${SHOP_APPLE_IAP_ISSUER_ID:-}
+      SHOP_APPLE_PRODUCT_IDS: ${SHOP_APPLE_PRODUCT_IDS:-}
     mem_limit: ${API_MEM_LIMIT:-768m}
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
@@ -75,7 +96,7 @@ services:
       ocr:
         condition: service_started
     healthcheck:
-      test: ["CMD", "/usr/local/bin/shop", "healthcheck"]
+      test: ["CMD", "/usr/local/bin/shop-hosted", "healthcheck"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -99,16 +120,21 @@ services:
     mem_limit: 32m
     logging: *logging
 
-  # Nightly snapshot of the database + image mirror into the backups volume.
+  # Nightly snapshot set into the backups volume: the control database plus every household
+  # (database snapshot and image mirror), all with the same timestamp, and last_backup.json last.
   backup:
     image: ${SHOP_API_IMAGE:-ghcr.io/sunday-studio/shop-api}:${SHOP_API_TAG}
+    entrypoint: ["/usr/local/bin/shop-hosted"]
     command: ["backup", "-schedule"]
     restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1777"]
     volumes:
       - "shop-data:/data"
       - "backups:/backup"
     environment:
       SHOP_DATA_DIR: /data
+      SHOP_CONTROL_DB: /data/control.db
       SHOP_TZ: Europe/Amsterdam
       BACKUP_DIR: /backup
       BACKUP_AT: ${BACKUP_AT:-03:30}
@@ -133,12 +159,12 @@ services:
     restart: unless-stopped
     volumes:
       - "../offsite/offsite.sh:/offsite.sh:ro"
-      - "shop-data:/data"          # only to write offsite_status.json, which /healthz reports
-      - "backups:/backup"
+      - "backups:/backup"          # the only volume it sees: no household data, no keys
     env_file:
       - path: ./offsite.env
         required: false
     environment:
+      OFFSITE_STATUS_FILE: /backup/offsite_status.json   # the monitor reads it from the backups volume
       OFFSITE_REMOTE: ${OFFSITE_REMOTE:?set OFFSITE_REMOTE (an rclone crypt remote) in deploy/hosted/.env}
       OFFSITE_LABEL: ${OFFSITE_LABEL:-offsite-crypt}
       OFFSITE_PRUNE: ${OFFSITE_PRUNE:-on}
@@ -155,8 +181,8 @@ services:
       retries: 3
     logging: *logging
 
-  # Free monitoring: checks /healthz, disk and the OCR queue every few minutes and sends a
-  # webhook and/or email on trouble. See deploy/hosted/monitor/monitor.sh and RUNBOOK.md.
+  # Free monitoring: checks /healthz, the OCR service, the backup and off-site status files and the
+  # disk every few minutes and sends a webhook and/or email on trouble. See monitor/monitor.sh, RUNBOOK.md.
   monitor:
     image: curlimages/curl:8.10.1
     entrypoint: ["sh", "/monitor.sh"]
@@ -168,8 +194,11 @@ services:
     volumes:
       - "./monitor/monitor.sh:/monitor.sh:ro"
       - "monitor-state:/state"
+      - "backups:/backup:ro"       # last_backup.json and offsite_status.json
     environment:
       MONITOR_HEALTH_URL: http://api:8080/healthz
+      MONITOR_OCR_URL: http://ocr:8000/healthz
+      MONITOR_BACKUP_DIR: /backup
       MONITOR_INTERVAL: ${MONITOR_INTERVAL:-300}
       MONITOR_NAME: ${SHOP_DOMAIN}
       DISK_PATH: /state            # a Docker volume lives on the disk that fills up; no host mount needed

@@ -19,6 +19,11 @@ services:
     environment:
       LOGO_DEV_TOKEN: ""
       OFF_BASE_URL: http://127.0.0.1:9      # no outbound product lookups from a test
+      # Apple is simulated in process (never reaches the network); needs the second acknowledgement.
+      SHOP_APPLE_MODE: fake
+      SHOP_APPLE_FAKE_ACK: i-know-this-is-a-test
+      SHOP_APPLE_ENVIRONMENT: sandbox
+      ADMIN_TOKEN_HASH: ${TEST_ADMIN_HASH:-}
 
   ocr:
     image: shop-ocr:ppocrv5               # built once by `make hosted-kit-test` if missing
@@ -36,7 +41,6 @@ services:
       RCLONE_CONFIG_TESTCRYPT_PASSWORD2: ${TEST_CRYPT_PASSWORD2:-}
     volumes:
       - "../offsite/offsite.sh:/offsite.sh:ro"
-      - "shop-data:/data"
       - "backups:/backup"
       - "offsite-store:/offsite-store"
 

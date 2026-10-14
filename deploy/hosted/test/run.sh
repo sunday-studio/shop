@@ -2,9 +2,12 @@
 # `make hosted-kit-test`: runs the hosted kit end to end in an isolated compose project
 # (shop-hosted-test, port 127.0.0.1:18490, throwaway volumes, http-only Caddy, no public DNS).
 # Every compose call goes through test/compose.sh, which refuses any other project name.
-# Proves: static checks, bootstrap in a throwaway Debian container, stack healthy, receipt upload and
-# read (single mode), encrypted off-site backup, alerts, update with snapshot, rollback, restore
-# from the off-site copy, teardown. Never touches the live stack (project shop, port 8080).
+# Runs the HOSTED binary (shop-hosted) with the fake Apple mode. Proves: static checks (entrypoint,
+# read-only root, admin API not published), bootstrap in a throwaway Debian container, stack healthy,
+# sign-in and a trial purchase for a hosted account (sandbox-flagged, not revenue), receipt upload and
+# read, a consistent backup set (control database plus household), encrypted off-site copy, alerts,
+# update with snapshot, rollback, restore from the off-site copy (control database and household),
+# teardown. Never touches the live stack (project shop, port 8080).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KIT="$(dirname "$HERE")"
@@ -89,7 +92,29 @@ for n, s in d.items():
     assert o.get("max-size") and o.get("max-file"), n
     assert s.get("mem_limit"), n + " has no memory limit"
 PY
-check "SHOP_MODE reaches the api container" python3 -c "import json; d=json.load(open('$cfg')); assert d['services']['api']['environment']['SHOP_MODE']=='single'"
+check "api and backup run shop-hosted, never the single-household binary" python3 - "$cfg" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))["services"]
+for n in ("api", "backup"):
+    assert d[n]["entrypoint"] == ["/usr/local/bin/shop-hosted"], (n, d[n].get("entrypoint"))
+assert d["api"]["command"] == ["serve"] and d["api"]["environment"]["SHOP_MODE"] == "hosted"
+PY
+check "api: read-only root filesystem with a tmpfs, no published port, admin API on loopback only, proxy trusted" python3 - "$cfg" <<'PY'
+import json, sys
+a = json.load(open(sys.argv[1]))["services"]["api"]
+assert a["read_only"] is True and any(t.startswith("/tmp") for t in a["tmpfs"]), (a.get("read_only"), a.get("tmpfs"))
+assert not a.get("ports"), a.get("ports")
+e = a["environment"]
+assert e["ADMIN_ADDR"] == "127.0.0.1:8081" and e["SHOP_TRUST_PROXY"] == "1" and e["SHOP_APPLE_ACCEPT_SANDBOX"] == "true", e
+assert e["SHOP_CONTROL_DB"] == "/data/control.db"
+PY
+check "offsite sees only the backups volume (no household data); monitor reads it read-only" python3 - "$cfg" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))["services"]
+src = lambda n: {v["source"]: v.get("read_only", False) for v in d[n]["volumes"] if v["type"] == "volume"}
+assert "shop-data" not in src("offsite"), src("offsite")
+assert src("monitor").get("backups") is True, src("monitor")
+PY
 grep -v '^SHOP_API_TAG=' "$TMP/test.env" >"$TMP/no-tag.env"
 check "production compose refuses a missing image tag (no default to latest)" bash -c "! HOSTED_ENV_FILE='$TMP/no-tag.env' '$KIT/compose.sh' config -q"
 check "production wrapper refuses another project and down -v" bash -c "
@@ -104,6 +129,10 @@ if "$HERE/bootstrap-container.sh" >"$TMP/bootstrap.log" 2>&1 && grep -q BOOTSTRA
 section "images"
 docker image inspect shop-ocr:ppocrv5 >/dev/null 2>&1 || { echo "building shop-ocr:ppocrv5 (once, slow)"; docker build -t shop-ocr:ppocrv5 --build-arg OCR_ENGINE=ppocrv5 "$ROOT/ocr"; }
 c build api >"$TMP/build.log" 2>&1 && ok "api image built from the working tree (shop-hosted-test-api:t1)" || { tail -n 20 "$TMP/build.log"; fail "api build"; exit 1; }
+# Admin API token of the throwaway server: the hash goes into the api container, the token stays here.
+ADMIN_TOKEN="sa_kittest_$RANDOM$RANDOM$RANDOM"
+TEST_ADMIN_HASH="$(printf %s "$ADMIN_TOKEN" | shasum -a 256 | cut -d' ' -f1)"
+export TEST_ADMIN_HASH
 # An encrypted off-site remote with throwaway passwords (rclone wants the obscured form).
 TEST_CRYPT_PASSWORD="$(docker run --rm rclone/rclone:1.68.2 obscure "kit-test-$RANDOM-password")"
 TEST_CRYPT_PASSWORD2="$(docker run --rm rclone/rclone:1.68.2 obscure "kit-test-$RANDOM-salt")"
@@ -113,7 +142,7 @@ export TEST_WEBHOOK_URL="http://host.docker.internal:$SINK_PORT/hook"
 
 section "first deploy (deploy.sh first)"
 if "$DEPLOY" first >"$TMP/first.log" 2>&1; then ok "deploy.sh first: preflight, up, all healthy, first backup and encrypted off-site copy, smoke test"; else tail -n 40 "$TMP/first.log"; fail "deploy.sh first"; exit 1; fi
-check "smoke test passes (healthz, server-info or SKIP, auth/status, 401 without token)" "$KIT/smoke.sh" "$BASE"
+check "smoke test passes (healthz status only, server-info says hosted, auth/status, 401 without token, admin API not public, notification endpoint up)" "$KIT/smoke.sh" "$BASE"
 for s in caddy api ocr backup offsite monitor; do
   [ -n "$(c ps -q --status running "$s")" ] && ok "service $s is running" || fail "service $s is not running"
 done
@@ -122,10 +151,35 @@ ocr_mem=$(docker inspect --format '{{.HostConfig.Memory}}' "$(c ps -q ocr)")
 rot=$(docker inspect --format '{{.HostConfig.LogConfig.Config}}' "$(c ps -q api)")
 case "$rot" in *max-size:10m*) ok "log rotation active ($rot)" ;; *) fail "log rotation: $rot" ;; esac
 
-section "single mode: pair, upload a receipt, read it back"
-pw="$(c exec -T api /usr/local/bin/shop password generate | tail -n 1 | tr -d '\r')"
-tok="$(curl -fsS -X POST "$BASE/v1/auth/pair" -H 'Content-Type: application/json' -d "{\"password\":\"$pw\",\"device_name\":\"hosted-kit-test\"}" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
-[ -n "$tok" ] && ok "paired a device through the front (token received)" || { fail "pairing"; exit 1; }
+section "hosted: sign in with the fake Apple, trial purchase, receipt"
+# The admin listener is on the api container's loopback and is not published, so the test reaches it
+# from a throwaway curl container in the api container's network namespace (the dev routes of the
+# fake Apple live there, behind the admin token).
+admin() { docker run --rm --network "container:$(c ps -q api)" curlimages/curl:8.10.1 -sS -m 20 \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H 'X-Admin-Operator: kit-test' -H 'Content-Type: application/json' "$@"; }
+jpy() { python3 -c 'import json,sys; v=json.load(sys.stdin)
+for k in sys.argv[1].split("."): v=v[k]
+print(v)' "$1"; }
+code=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer x' "$BASE/admin/v1/accounts?account_id=x")
+case "$code" in 401|403|404) ok "the admin API is not reachable through the front (http $code)" ;; *) fail "admin route answered $code through the front" ;; esac
+nonce="$(curl -fsS -X POST "$BASE/v1/auth/apple/nonce" | jpy nonce)"
+idt="$(admin -X POST http://127.0.0.1:8081/admin/v1/dev/identity-token -d "{\"sub\":\"kit-sub-1\",\"nonce\":\"$nonce\"}")"
+signin="$(curl -fsS -X POST "$BASE/v1/auth/apple" -H 'Content-Type: application/json' \
+  -d "{\"identity_token\":\"$(printf %s "$idt" | jpy identity_token)\",\"authorization_code\":\"$(printf %s "$idt" | jpy authorization_code)\",\"nonce\":\"$nonce\",\"device_name\":\"hosted-kit-test\"}")" || true
+tok="$(printf %s "$signin" | jpy token 2>/dev/null || true)"
+[ -n "$tok" ] && ok "signed in through the front with a (fake) Apple identity token; device token received" || { fail "sign in: $signin"; exit 1; }
+acct="$(curl -fsS "$BASE/v1/account" -H "Authorization: Bearer $tok")"
+appacct="$(printf %s "$acct" | jpy app_account_token)"
+[ "$(printf %s "$acct" | jpy plan.state)" = none ] && ok "a new account has no plan yet" || fail "plan before purchase: $acct"
+txn="$(admin -X POST http://127.0.0.1:8081/admin/v1/dev/transaction -d "{\"app_account_token\":\"$appacct\",\"original_transaction_id\":\"kit-otx-1\"}")"
+code=$(curl -sS -o "$TMP/bind.json" -w '%{http_code}' -X POST "$BASE/v1/billing/apple/transactions" -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' \
+  -d "{\"signed_transaction\":\"$(printf %s "$txn" | jpy signed_transaction)\"}")
+[ "$code" = 200 ] && ok "signed transaction bound to the account (200)" || { cat "$TMP/bind.json"; fail "bind http=$code"; exit 1; }
+acct="$(curl -fsS "$BASE/v1/account" -H "Authorization: Bearer $tok")"
+[ "$(printf %s "$acct" | jpy plan.state)" = trial ] && ok "plan is trial" || fail "plan after purchase: $acct"
+[ "$(printf %s "$acct" | jpy plan.environment)" = sandbox ] && ok "the purchase is flagged environment=sandbox in GET /v1/account" || fail "plan.environment: $acct"
+summary="$(admin http://127.0.0.1:8081/admin/v1/subscriptions/summary)"
+[ "$(printf %s "$summary" | jpy paying)" = 0 ] && [ "$(printf %s "$summary" | jpy sandbox)" = 1 ] && ok "admin summary: 1 sandbox subscription, 0 paying" || fail "summary: $summary"
 docker run --rm -i shop-ocr:ppocrv5 python - <"$HERE/mkreceipt.py" >"$TMP/receipt.png"
 [ -s "$TMP/receipt.png" ] && ok "generated an invented receipt image ($(wc -c <"$TMP/receipt.png" | tr -d ' ') bytes)" || fail "receipt image"
 code=$(curl -sS -o "$TMP/up.json" -w '%{http_code}' -X POST "$BASE/v1/receipts" -H "Authorization: Bearer $tok" -F "image=@$TMP/receipt.png;type=image/png")
@@ -143,25 +197,33 @@ code=$(curl -sS -o /dev/null -w '%{http_code}' "$BASE/v1/receipts/$rid/image" -H
 section "backup profile: snapshot, encrypted off-site copy, health"
 "$DEPLOY" backup-now >"$TMP/backup.log" 2>&1 && ok "backup-now: snapshot written and copied off-site" || { tail -n 20 "$TMP/backup.log"; fail "backup-now"; }
 hz="$(curl -sS "$BASE/healthz" | tr -d ' \n')"
-printf '%s' "$hz" | grep -q '"backup":{[^}]*"ok":true' && ok "/healthz backup check ok (includes the off-site status)" || fail "healthz backup: $hz"
+[ "$hz" = '{"status":"ok"}' ] && ok "public /healthz shows only the status" || fail "public healthz: $hz"
+lb="$(c run --rm --no-deps -T --entrypoint sh offsite -c 'cat /backup/last_backup.json /backup/offsite_status.json' | tr -d ' \n')"
+printf '%s' "$lb" | grep -q '"ok":true.*"households":1' && printf '%s' "$lb" | grep -q '"last_ok_unix"' && ok "last_backup.json: ok, 1 household; offsite_status.json: ok" || fail "backup status files: $lb"
+hh="$(c run --rm --no-deps -T --entrypoint sh offsite -c 'ls /backup/households/*/db')"
+printf '%s' "$hh" | grep -q '^shop-.*\.db$' && ok "the household has its own snapshot beside the control snapshot" || fail "no household snapshot: $hh"
 store="$(c run --rm --no-deps -T --entrypoint sh offsite -c 'find /offsite-store -type f | head -n 50')"
 [ -n "$store" ] && ok "off-site store has files" || fail "off-site store is empty"
-if printf '%s' "$store" | grep -Eq 'shop-[0-9]{8}|\.db$|last_backup|receipts'; then fail "off-site file names are NOT encrypted"; else ok "off-site file names are encrypted (no plain snapshot or image names)"; fi
+if printf '%s' "$store" | grep -Eq 'shop-[0-9]{8}|\.db$|last_backup|receipts|households'; then fail "off-site file names are NOT encrypted"; else ok "off-site file names are encrypted (no plain snapshot or image names)"; fi
 
 section "monitoring: alerts reach the webhook"
 if c run --rm --no-deps -T monitor once >"$TMP/m1.log" 2>&1; then ok "monitor once: healthy stack, exit 0"; else tail -n 5 "$TMP/m1.log"; fail "monitor on a healthy stack"; fi
 c run --rm --no-deps -T -e DISK_ALERT_PCT=0 monitor once >"$TMP/m2.log" 2>&1 && fail "disk alert did not trip" || ok "disk above threshold makes the monitor exit 1"
-c run --rm --no-deps -T -e QUEUE_ALERT_PENDING=-1 -e QUEUE_ALERT_CHECKS=1 monitor once >"$TMP/m3.log" 2>&1 && fail "queue alert did not trip" || ok "OCR queue backlog makes the monitor exit 1"
-c run --rm --no-deps -T -e MONITOR_HEALTH_URL="http://host.docker.internal:$SINK_PORT/healthz" monitor once >"$TMP/m4.log" 2>&1 && fail "backup alert did not trip" || ok "a failing backup check makes the monitor exit 1"
+c run --rm --no-deps -T -e MONITOR_OCR_URL="http://127.0.0.1:9/healthz" monitor once >"$TMP/m3.log" 2>&1 && fail "ocr alert did not trip" || ok "an OCR service that does not answer makes the monitor exit 1"
+c run --rm --no-deps -T --entrypoint sh monitor -c 'mkdir -p /tmp/b && printf "{\"ok\":false,\"error\":\"disk full\"}" >/tmp/b/last_backup.json && MONITOR_BACKUP_DIR=/tmp/b STATE_DIR=/tmp/s sh /monitor.sh once' >"$TMP/m4.log" 2>&1 && fail "backup alert did not trip" || ok "a failing backup status file makes the monitor exit 1"
+c run --rm --no-deps -T --entrypoint sh monitor -c 'mkdir -p /tmp/b && printf "{\"ok\":true,\"at_unix\":1000}" >/tmp/b/last_backup.json && MONITOR_BACKUP_DIR=/tmp/b STATE_DIR=/tmp/s sh /monitor.sh once' >"$TMP/m5.log" 2>&1 && fail "stale backup alert did not trip" || ok "a backup set older than 36 h makes the monitor exit 1"
+# the older mode still works: a /healthz that carries details (single-household server, or a local caller)
+c run --rm --no-deps -T -e MONITOR_BACKUP_DIR= -e MONITOR_HEALTH_URL="http://host.docker.internal:$SINK_PORT/healthz" monitor once >"$TMP/m6.log" 2>&1 && fail "healthz-details backup alert did not trip" || ok "a /healthz with a failing backup check still makes the monitor exit 1"
+c run --rm --no-deps -T -e MONITOR_BACKUP_DIR= -e QUEUE_ALERT_PENDING=-1 -e QUEUE_ALERT_CHECKS=1 -e MONITOR_HEALTH_URL="http://host.docker.internal:$SINK_PORT/healthz" monitor once >"$TMP/m7.log" 2>&1 && fail "queue alert did not trip" || ok "OCR queue backlog (from /healthz details) makes the monitor exit 1"
 sleep 1
-for k in "ALERT disk" "ALERT queue" "ALERT backup"; do
+for k in "ALERT disk" "ALERT ocr" "ALERT backup" "ALERT queue"; do
   grep -q "$k" "$TMP/webhook.log" 2>/dev/null && ok "webhook received: $k" || fail "webhook missing: $k"
 done
 c run --rm --no-deps -T monitor once >/dev/null 2>&1 || true
 sleep 1
 grep -q "recovered disk" "$TMP/webhook.log" && ok "webhook received a recovery message" || fail "no recovery message"
 "$KIT/monitor/uptime-check.sh" "$BASE" >"$TMP/up.txt" && grep -q '^OK' "$TMP/up.txt" && ok "uptime-check.sh: OK on the healthy stack" || fail "uptime-check ok case"
-"$KIT/monitor/uptime-check.sh" "http://127.0.0.1:9" >"$TMP/up2.txt"; [ $? = 2 ] && ok "uptime-check.sh: exit 2 when nothing answers" || fail "uptime-check bad case"
+rc=0; "$KIT/monitor/uptime-check.sh" "http://127.0.0.1:9" >"$TMP/up2.txt" || rc=$?; [ "$rc" = 2 ] && ok "uptime-check.sh: exit 2 when nothing answers" || fail "uptime-check bad case"
 
 section "update with pre-update snapshot, then rollback"
 docker tag shop-hosted-test-api:t1 shop-hosted-test-api:t2
@@ -175,7 +237,7 @@ img="$(docker inspect --format '{{.Config.Image}}' "$(c ps -q api)")"
 
 section "restore from the off-site copy"
 curl -fsS -X DELETE "$BASE/v1/receipts/$rid" -H "Authorization: Bearer $tok" >/dev/null && ok "deleted the receipt (simulated loss)" || fail "delete"
-c run --rm --no-deps -T --entrypoint sh offsite -c 'rm -rf /backup/db /backup/images /backup/last_backup.json' && ok "wiped the local backup folder (simulated lost disk)"
+c run --rm --no-deps -T --entrypoint sh offsite -c 'rm -rf /backup/db /backup/images /backup/households /backup/last_backup.json' && ok "wiped the local backup folder (simulated lost disk)"
 "$DEPLOY" restore --from-offsite --yes >"$TMP/restore.log" 2>&1 && ok "deploy.sh restore --from-offsite healthy" || { tail -n 30 "$TMP/restore.log"; fail "restore"; }
 code=$(curl -sS -o /dev/null -w '%{http_code}' "$BASE/v1/receipts/$rid" -H "Authorization: Bearer $tok")
 [ "$code" = 200 ] && ok "the receipt is back after the restore (old token still works)" || fail "receipt after restore http=$code"
