@@ -219,6 +219,9 @@ func (a *API) AdminHandler(tokenHash string) http.Handler {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"entries": out})
 	})
+	if a.Dev != nil {
+		route("POST /admin/v1/dev/{what}", func(w http.ResponseWriter, r *http.Request, op string) { a.Dev(w, r, r.PathValue("what")) })
+	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if !isLoopback(r.RemoteAddr) {
 			a.fail(w, r, control.ErrNotFound)
