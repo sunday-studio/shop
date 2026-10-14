@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.18.0
+  version: 0.19.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -1756,6 +1756,8 @@ paths:
                 properties:
                   name: { type: string }
                   kind: { type: string, enum: [device, manual] }
+                  account_id: { type: string, format: uuid, description: "hosted mode only" }
+                  household_id: { type: string, format: uuid, nullable: true, description: "hosted mode only" }
 
   /v1/auth/devices:
     get:
@@ -1778,6 +1780,415 @@ paths:
       responses:
         "204": { description: Revoked }
         default: { $ref: "#/components/responses/Problem" }
+
+  # ------------------------------------------------- hosted service (mode=hosted; see notes/hosted-api-contract.md)
+  # On a single-household server these answer 404 with code hosted_only (or login_method_unavailable
+  # for /v1/auth/apple*); the authenticated ones answer 401 without a token first.
+  /v1/auth/apple/nonce:
+    post:
+      operationId: createAppleNonce
+      security: []
+      description: >
+        A single-use nonce for Sign in with Apple (32 random bytes, base64url, valid 10 minutes, stored hashed).
+        The app sends sha256(nonce) as lowercase hex to Apple and the raw nonce to POST /v1/auth/apple.
+        Rate limited per IP (20 per minute).
+      responses:
+        "201":
+          description: Nonce
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [nonce, expires_at]
+                properties:
+                  nonce: { type: string }
+                  expires_at: { type: string, format: date-time }
+        "404": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+
+  /v1/auth/apple:
+    post:
+      operationId: signInWithApple
+      security: []
+      description: >
+        Sign in with an Apple identity token. Creates the account on first use (201) or signs in (200) and
+        mints a device token. Signing in never creates a household. Errors: 401 apple_token_invalid,
+        401 apple_nonce_invalid, 403 account_locked, 429 rate_limited, 502 apple_unavailable,
+        404 login_method_unavailable (single mode).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identity_token, authorization_code, nonce, device_name]
+              properties:
+                identity_token: { type: string }
+                authorization_code: { type: string }
+                nonce: { type: string }
+                device_name: { type: string, maxLength: 60 }
+                name:
+                  type: object
+                  properties:
+                    given_name: { type: string }
+                    family_name: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/AppleSignIn" }
+        "201": { $ref: "#/components/responses/AppleSignIn" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+        "502": { $ref: "#/components/responses/Problem" }
+
+  /v1/auth/apple/events:
+    post:
+      operationId: appleSignInEvents
+      security: []
+      description: >
+        Server-to-server notifications of Sign in with Apple (email-disabled, email-enabled, consent-revoked,
+        account-deleted). Called by Apple only; the body is a signed JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payload]
+              properties:
+                payload: { type: string }
+      responses:
+        "200": { description: Processed or duplicate, content: { application/json: { schema: { type: object } } } }
+        "400": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "500": { $ref: "#/components/responses/Problem" }
+
+  /v1/account:
+    get:
+      operationId: getAccount
+      description: The caller's account, plan (the household's plan for a member) and usage.
+      responses:
+        "200":
+          description: Account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountDetail" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [display_name]
+              properties:
+                display_name: { type: string, minLength: 1, maxLength: 60 }
+      responses:
+        "200":
+          description: Account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountDetail" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteAccount
+      description: >
+        Stage 1 of account deletion (7 day cooling-off). Revokes the Apple token and the other devices.
+        A repeat while scheduled returns 200 with the same body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                confirm: { type: string, enum: ["delete my account"] }
+                delete_household: { type: boolean, description: "required true for an owner" }
+      responses:
+        "200": { $ref: "#/components/responses/DeletionScheduled" }
+        "202": { $ref: "#/components/responses/DeletionScheduled" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /v1/account/deletion:
+    delete:
+      operationId: cancelAccountDeletion
+      description: Cancel a requested deletion within the cooling-off window.
+      responses:
+        "200":
+          description: Account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountDetail" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /v1/account/export:
+    post:
+      operationId: createExport
+      description: >
+        Start an export of the household (zip with account.json, household.json, every table as JSON and the
+        images). 202 with the new job; 200 with the job that is already queued or running. Works in every state
+        that still has a household. 3 per day (429 limit_reached, limit exports_per_day).
+      responses:
+        "200": { $ref: "#/components/responses/ExportJob" }
+        "202": { $ref: "#/components/responses/ExportJob" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+    get:
+      operationId: getExport
+      description: The household's most recent export job (404 not_found when there is none). Poll every 3 s for 30 s, then every 15 s.
+      responses:
+        "200": { $ref: "#/components/responses/ExportJob" }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /v1/account/export/{id}/download:
+    get:
+      operationId: downloadExport
+      description: Streams the zip (supports Range). 409 export_not_ready while not ready, 410 export_expired after 7 days.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: The archive
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "206": { description: Partial content }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "410": { $ref: "#/components/responses/Problem" }
+
+  /v1/household:
+    get:
+      operationId: getHousehold
+      description: >
+        The caller's household. `pending_invites` (the list) is present for the owner only;
+        `pending_invites_count` is present for everyone so a member's seat meter matches the owner's.
+      responses:
+        "200":
+          description: Household
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Household" }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /v1/household/invites:
+    post:
+      operationId: createInvite
+      description: >
+        Owner only. A single-use code (12 characters in groups of 4), valid 7 days, shown once. At most 5
+        open invites; members plus open invites may not exceed the household cap (409 household_full).
+      responses:
+        "201":
+          description: Invite
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InviteCreated" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+
+  /v1/household/invites/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string }, description: "invite id (DELETE) or invite code (GET preview)" }
+    get:
+      operationId: previewInvite
+      security: []
+      description: >
+        Public preview of an invite code: whether it can still be used and the owner's display name, nothing
+        else. Always 200. Rate limited like accepting (10 per hour per IP).
+      responses:
+        "200":
+          description: Preview
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [valid, owner_display_name]
+                properties:
+                  valid: { type: boolean }
+                  owner_display_name: { type: string, nullable: true }
+        "404": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: revokeInvite
+      description: Owner only. Revoke an open invite.
+      responses:
+        "204": { description: Revoked }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /v1/household/invites/{id}/accept:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string }, description: "the invite code (with or without dashes, any case)" }
+    post:
+      operationId: acceptInvite
+      description: >
+        Join the household of an invite. Idempotent per account and code. 404 invite_invalid, 409 household_full,
+        409 already_in_household, 429 rate_limited (10 per hour per account and per IP).
+      responses:
+        "200":
+          description: Joined
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [household, account]
+                properties:
+                  household: { $ref: "#/components/schemas/Household" }
+                  account: { $ref: "#/components/schemas/Account" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+
+  /v1/household/members/{account_id}:
+    delete:
+      operationId: removeMember
+      description: Owner only; allowed while the plan allows managing the household.
+      parameters:
+        - { name: account_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Removed }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /v1/household/leave:
+    post:
+      operationId: leaveHousehold
+      responses:
+        "204": { description: Left }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /v1/household/transfer:
+    post:
+      operationId: transferHousehold
+      description: Owner only. The household's plan follows the new owner's entitlements.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account_id]
+              properties:
+                account_id: { type: string, format: uuid }
+                confirm_plan_change: { type: boolean }
+      responses:
+        "200":
+          description: Household
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Household" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /v1/billing/apple/transactions:
+    post:
+      operationId: postAppleTransaction
+      description: >
+        Bind a verified StoreKit transaction (JWS) to the account. Idempotent by original transaction id.
+        The app calls transaction.finish() only after a 200.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [signed_transaction]
+              properties:
+                signed_transaction: { type: string }
+      responses:
+        "200":
+          description: Bound
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [result, account]
+                properties:
+                  result: { type: string, enum: [bound, already_bound, claimed] }
+                  account: { $ref: "#/components/schemas/Account" }
+                  household: { allOf: [{ $ref: "#/components/schemas/Household" }], nullable: true }
+        "400": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+        "502": { $ref: "#/components/responses/Problem" }
+
+  /v1/billing/apple/refresh:
+    post:
+      operationId: refreshAppleSubscription
+      description: Re-read the account's subscriptions from Apple. 1 per minute per account.
+      responses:
+        "200":
+          description: Account
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account]
+                properties:
+                  account: { $ref: "#/components/schemas/Account" }
+        "429": { $ref: "#/components/responses/Problem" }
+        "502": { $ref: "#/components/responses/Problem" }
+
+  /v1/billing/apple/notifications:
+    post:
+      operationId: appleServerNotifications
+      security: []
+      description: >
+        App Store Server Notifications V2 webhook, signed by Apple (verified against the pinned Apple root).
+        200 for processed, duplicate and ignored notifications; 400 apple_token_invalid for a bad signature;
+        500 for a processing failure (Apple retries).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [signedPayload]
+              properties:
+                signedPayload: { type: string }
+      responses:
+        "200": { description: Accepted, content: { application/json: { schema: { type: object } } } }
+        "400": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "500": { $ref: "#/components/responses/Problem" }
+
+  /v1/billing/plan-states:
+    get:
+      operationId: getPlanStates
+      security: []
+      description: The static table of plan states and the actions each allows (owner view).
+      responses:
+        "200":
+          description: States
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [states]
+                properties:
+                  states:
+                    type: array
+                    items:
+                      type: object
+                      required: [state, read_only, allowed, has_household_data]
+                      properties:
+                        state: { $ref: "#/components/schemas/PlanState" }
+                        read_only: { type: boolean }
+                        allowed: { type: array, items: { type: string } }
+                        has_household_data: { type: boolean }
+        "404": { $ref: "#/components/responses/Problem" }
 
   # --------------------------------------------------------------- search
   /v1/search:
@@ -1997,6 +2408,41 @@ components:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
 
+    AppleSignIn:
+      description: Signed in (201 when the account was created)
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [created, token, device, account]
+            properties:
+              created: { type: boolean }
+              token: { type: string }
+              device: { $ref: "#/components/schemas/Device" }
+              account: { $ref: "#/components/schemas/Account" }
+              household: { allOf: [{ $ref: "#/components/schemas/Household" }], nullable: true }
+
+    DeletionScheduled:
+      description: Deletion scheduled (202), or already scheduled (200)
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [status, requested_at, delete_after, subscription_still_active, manage_subscription_url, can_cancel]
+            properties:
+              status: { type: string, enum: [scheduled] }
+              requested_at: { type: string, format: date-time }
+              delete_after: { type: string, format: date-time }
+              subscription_still_active: { type: boolean }
+              manage_subscription_url: { type: string }
+              can_cancel: { type: boolean }
+
+    ExportJob:
+      description: Export job
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ExportJob" }
+
   schemas:
     Problem:
       type: object
@@ -2008,6 +2454,153 @@ components:
         detail: { type: string }
         code: { type: string, description: "stable machine-readable reason, e.g. category_name_taken, category_has_products" }
         product_count: { type: integer, description: "category_has_products: how many products would be orphaned" }
+        limit: { type: string, description: "limit_reached, file_too_large, household_full: which limit (receipts_per_month, receipts_per_day, storage_bytes, max_queued_jobs, exports_per_day, open_invites, max_upload_bytes, household_members); feature_unavailable: the feature" }
+        limit_value: { type: integer, format: int64 }
+        current: { type: integer, format: int64 }
+        resets_at: { type: string, format: date-time }
+        plan_state: { type: string, description: "plan_required, read_only: the plan state" }
+        delete_after: { type: string, format: date-time }
+        retry_after_seconds: { type: integer }
+
+    PlanState:
+      type: string
+      enum: [none, trial, active, grace, billing_retry, comped, lapsed_read_only, pending_deletion, deleted]
+
+    Plan:
+      type: object
+      required: [state, entitlement_source, environment, is_owner, read_only, product_id, trial_ends_at, renews_at, ends_at, grace_until, auto_renew, read_only_since, delete_after, deletion_requested, manage_subscription_url, allowed]
+      properties:
+        state: { $ref: "#/components/schemas/PlanState" }
+        entitlement_source: { type: string, enum: [apple, grant], nullable: true }
+        environment: { type: string, enum: [production, sandbox], nullable: true }
+        is_owner: { type: boolean }
+        read_only: { type: boolean }
+        product_id: { type: string, nullable: true }
+        trial_ends_at: { type: string, format: date-time, nullable: true }
+        renews_at: { type: string, format: date-time, nullable: true }
+        ends_at: { type: string, format: date-time, nullable: true }
+        grace_until: { type: string, format: date-time, nullable: true }
+        auto_renew: { type: boolean, nullable: true }
+        read_only_since: { type: string, format: date-time, nullable: true }
+        delete_after: { type: string, format: date-time, nullable: true }
+        deletion_requested: { type: boolean }
+        manage_subscription_url: { type: string, nullable: true }
+        allowed:
+          type: array
+          description: >
+            What this caller may do now: read, write, upload, export, invite, manage_household, leave_household,
+            subscribe, join_household, cancel_deletion, delete_account. `upload` is also dropped while a hard
+            upload limit (monthly, daily, storage, queue) is reached.
+          items: { type: string }
+
+    Account:
+      type: object
+      required: [id, display_name, email, email_is_private, app_account_token, support_code, role, household_id, created_at, plan]
+      properties:
+        id: { type: string, format: uuid }
+        display_name: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        email_is_private: { type: boolean }
+        app_account_token: { type: string, format: uuid }
+        support_code: { type: string }
+        role: { type: string, enum: [owner, member, none] }
+        household_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        plan: { $ref: "#/components/schemas/Plan" }
+
+    AccountDetail:
+      allOf:
+        - $ref: "#/components/schemas/Account"
+        - type: object
+          required: [usage, limits]
+          properties:
+            usage:
+              type: object
+              nullable: true
+              description: the household's usage; null without a household
+              properties:
+                period: { type: string, example: "2026-10" }
+                resets_at: { type: string, format: date-time }
+                receipts_this_month: { type: integer }
+                receipts_today: { type: integer }
+                storage_bytes: { type: integer, format: int64 }
+                queued_jobs: { type: integer }
+                exports_today: { type: integer }
+                open_invites: { type: integer }
+                members: { type: integer }
+                receipts_soft_limit_reached:
+                  type: boolean
+                  description: >
+                    receipts this month have reached limits.receipts_per_month_soft. The soft limit is a warning
+                    only: nothing is slowed down or refused until the hard limit.
+            limits:
+              type: object
+              nullable: true
+              description: same keys as ServerInfo.limits
+
+    HouseholdMember:
+      type: object
+      required: [account_id, display_name, role, joined_at, is_you]
+      properties:
+        account_id: { type: string, format: uuid }
+        display_name: { type: string, nullable: true }
+        role: { type: string, enum: [owner, member] }
+        joined_at: { type: string, format: date-time }
+        is_you: { type: boolean }
+
+    Household:
+      type: object
+      required: [id, name, owner_account_id, member_cap, your_role, created_at, members]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        owner_account_id: { type: string, format: uuid }
+        member_cap: { type: integer }
+        your_role: { type: string, enum: [owner, member] }
+        created_at: { type: string, format: date-time }
+        members: { type: array, items: { $ref: "#/components/schemas/HouseholdMember" } }
+        pending_invites:
+          type: array
+          description: owner only, GET /v1/household only
+          items:
+            type: object
+            required: [id, created_at, expires_at]
+            properties:
+              id: { type: string, format: uuid }
+              created_at: { type: string, format: date-time }
+              expires_at: { type: string, format: date-time }
+        pending_invites_count:
+          type: integer
+          description: open invites, for every role, GET /v1/household only
+
+    InviteCreated:
+      type: object
+      required: [id, code, url, created_at, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, example: "H4Q8-ZN2M-7TWB" }
+        url: { type: string }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+
+    ExportJob:
+      type: object
+      required: [id, status, created_at, started_at, finished_at, expires_at, size_bytes, download_url, error]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [queued, running, ready, failed, expired] }
+        created_at: { type: string, format: date-time }
+        started_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        size_bytes: { type: integer, format: int64, nullable: true }
+        download_url: { type: string, nullable: true }
+        error:
+          type: object
+          nullable: true
+          properties:
+            code: { type: string }
+            message: { type: string }
 
     Health:
       type: object
@@ -2065,6 +2658,25 @@ components:
             max_queued_jobs: { type: integer, nullable: true }
             exports_per_day: { type: integer, nullable: true }
             open_invites: { type: integer, nullable: true }
+        billing:
+          type: object
+          description: hosted only
+          properties:
+            provider: { type: string, enum: [apple] }
+            product_ids: { type: array, items: { type: string } }
+            subscription_group: { type: string }
+            trial_days: { type: integer }
+            storefronts: { type: array, items: { type: string } }
+            price_display: { type: string, enum: [storekit] }
+            manage_subscription_url: { type: string }
+        links:
+          type: object
+          description: hosted only
+          properties:
+            terms_url: { type: string }
+            privacy_url: { type: string }
+            support_url: { type: string }
+            support_email: { type: string }
 
     Version:
       type: object

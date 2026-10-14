@@ -200,6 +200,9 @@ func specOps(t *testing.T) []specOp {
 		if m := pathRe.FindStringSubmatch(line); m != nil {
 			cur = m[1]
 		} else if m := methodRe.FindStringSubmatch(line); m != nil && cur != "" {
+			if isHostedPath(cur) {
+				continue // hosted-only routes are covered by internal/hosted/hostedapi tests and the hosted isolation world
+			}
 			ops = append(ops, specOp{strings.ToUpper(m[1]), cur})
 		}
 	}
@@ -322,4 +325,15 @@ func strayIDs(body string, own map[int64]bool) []int64 {
 		}
 	}
 	return out
+}
+
+// isHostedPath: routes that exist only in the hosted service (account, household, billing, Sign in with
+// Apple). The household Server answers them 404 hosted_only; the hosted API is tested in hostedapi.
+func isHostedPath(p string) bool {
+	for _, pre := range []string{"/v1/account", "/v1/household", "/v1/billing", "/v1/auth/apple"} {
+		if p == pre || strings.HasPrefix(p, pre+"/") {
+			return true
+		}
+	}
+	return false
 }

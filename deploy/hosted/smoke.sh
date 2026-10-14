@@ -5,6 +5,9 @@
 #   ./smoke.sh http://127.0.0.1:18490          # the local kit test
 # Exit 0 when every check passed.
 #
+# In hosted mode (SHOP_MODE=hosted in the environment, or in $HOSTED_ENV_FILE) /v1/server-info is
+# required and must say mode=hosted: REQUIRE_SERVER_INFO is switched on automatically.
+#
 # /v1/server-info is added by the hosted work (docs: notes/hosted-plan.md). Until the image has it,
 # a 404 or 401 (unknown path) is reported as SKIP, not as a failure; set REQUIRE_SERVER_INFO=1 to make it a failure.
 set -uo pipefail
@@ -17,6 +20,11 @@ if [ -z "$base" ]; then
   base="https://$domain"
 fi
 base="${base%/}"
+mode="${SHOP_MODE:-}"
+if [ -z "$mode" ]; then
+  mode=$(sed -n 's/^SHOP_MODE=\([^ #]*\).*/\1/p' "${HOSTED_ENV_FILE:-$HERE/.env}" 2>/dev/null | head -n 1)
+fi
+if [ "$mode" = hosted ]; then REQUIRE_SERVER_INFO=1; fi
 fail=0
 ok()   { echo "  ok    $*"; }
 bad()  { echo "  FAIL  $*"; fail=1; }
@@ -35,6 +43,9 @@ done
 code=$(curl -sS -m 20 -o "$tmp" -w '%{http_code}' "$base/v1/server-info" 2>/dev/null || true)
 if [ "$code" = 200 ]; then
   ok "server-info: $(tr -d '\n' <"$tmp" | cut -c1-200)"
+  if [ "$mode" = hosted ]; then
+    if tr -d ' \n' <"$tmp" | grep -q '"mode":"hosted"'; then ok "server-info says mode hosted"; else bad "SHOP_MODE=hosted but server-info does not say mode hosted"; fi
+  fi
 elif { [ "$code" = 404 ] || [ "$code" = 401 ]; } && [ "${REQUIRE_SERVER_INFO:-0}" != 1 ]; then
   echo "  SKIP  server-info not in this image yet (http $code)"
 else

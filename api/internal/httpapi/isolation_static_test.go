@@ -30,6 +30,10 @@ func TestIsolationEveryRouteIsInTheMatrix(t *testing.T) {
 	routerOnly := map[string]string{
 		"/mcp": "the MCP endpoint; every tool is covered by TestIsolationMCP",
 		"/":    "the authenticated subtree; every operation below it is in openapi.yaml and the matrix",
+		// hosted-only prefixes: answered 404 hosted_only on a household Server (the hosted API serves them)
+		"/v1/account": "hosted only", "/v1/account/": "hosted only", "/v1/household": "hosted only", "/v1/household/": "hosted only", "/v1/billing/": "hosted only",
+		"POST /v1/auth/apple/nonce": "hosted only", "POST /v1/auth/apple": "hosted only", "POST /v1/auth/apple/events": "hosted only",
+		"GET /v1/billing/plan-states": "hosted only", "POST /v1/billing/apple/notifications": "hosted only", "GET /v1/household/invites/{code}": "hosted only",
 	}
 	files, _ := filepath.Glob("*.go")
 	fset := token.NewFileSet()

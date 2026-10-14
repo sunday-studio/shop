@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -74,6 +75,10 @@ func callTool(cs *mcp.ClientSession, name string, args map[string]any) (string, 
 // TestIsolationMCP calls every MCP tool as household B with household A's ids.
 func TestIsolationMCP(t *testing.T) {
 	w := bootWorld(t)
+	if w.hosted {
+		hostedMCPOff(t, w)
+		return
+	}
 	rep := newReport()
 	before := w.a.tableDigests()
 	sb, err := w.b.mcpSession()
@@ -144,6 +149,9 @@ func TestIsolationMCP(t *testing.T) {
 // TestIsolationMCPProbesWorkForTheOwner: every MCP probe must succeed for the household that owns the ids
 // (each on a fresh world, because some tools change data), otherwise a refusal for B proves nothing.
 func TestIsolationMCPProbesWorkForTheOwner(t *testing.T) {
+	if os.Getenv("ISOLATION_WORLD") == "hosted" {
+		t.Skip("MCP is off in the hosted service; TestIsolationMCP checks that")
+	}
 	names := make([]string, 0, len(mcpProbes))
 	for name := range mcpProbes {
 		names = append(names, name)
@@ -159,6 +167,16 @@ func TestIsolationMCPProbesWorkForTheOwner(t *testing.T) {
 		sa.Close()
 		if isErr {
 			t.Errorf("mcp %s: the probe fails for the owner (fix mcpProbes): %s", name, truncate(text, 160))
+		}
+	}
+}
+
+// hostedMCPOff: the hosted service does not offer MCP at launch, for either household.
+func hostedMCPOff(t *testing.T, w *world) {
+	for _, h := range []*household{w.a, w.b} {
+		rec := h.do("POST", "/mcp", map[string]any{})
+		if rec.Code != 404 || !strings.Contains(rec.Body.String(), "feature_unavailable") {
+			t.Errorf("hosted: POST /mcp for %s answered %d %s, want 404 feature_unavailable", h.name, rec.Code, truncate(rec.Body.String(), 80))
 		}
 	}
 }

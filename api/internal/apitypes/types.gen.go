@@ -9,6 +9,48 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AccountRole.
+const (
+	AccountRoleMember AccountRole = "member"
+	AccountRoleNone   AccountRole = "none"
+	AccountRoleOwner  AccountRole = "owner"
+)
+
+// Valid indicates whether the value is a known member of the AccountRole enum.
+func (e AccountRole) Valid() bool {
+	switch e {
+	case AccountRoleMember:
+		return true
+	case AccountRoleNone:
+		return true
+	case AccountRoleOwner:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AccountDetailRole.
+const (
+	AccountDetailRoleMember AccountDetailRole = "member"
+	AccountDetailRoleNone   AccountDetailRole = "none"
+	AccountDetailRoleOwner  AccountDetailRole = "owner"
+)
+
+// Valid indicates whether the value is a known member of the AccountDetailRole enum.
+func (e AccountDetailRole) Valid() bool {
+	switch e {
+	case AccountDetailRoleMember:
+		return true
+	case AccountDetailRoleNone:
+		return true
+	case AccountDetailRoleOwner:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for BackfillStateState.
 const (
 	BackfillStateStateDone    BackfillStateState = "done"
@@ -135,6 +177,33 @@ func (e CategoryColor) Valid() bool {
 	}
 }
 
+// Defines values for ExportJobStatus.
+const (
+	ExportJobStatusExpired ExportJobStatus = "expired"
+	ExportJobStatusFailed  ExportJobStatus = "failed"
+	ExportJobStatusQueued  ExportJobStatus = "queued"
+	ExportJobStatusReady   ExportJobStatus = "ready"
+	ExportJobStatusRunning ExportJobStatus = "running"
+)
+
+// Valid indicates whether the value is a known member of the ExportJobStatus enum.
+func (e ExportJobStatus) Valid() bool {
+	switch e {
+	case ExportJobStatusExpired:
+		return true
+	case ExportJobStatusFailed:
+		return true
+	case ExportJobStatusQueued:
+		return true
+	case ExportJobStatusReady:
+		return true
+	case ExportJobStatusRunning:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatus.
 const (
 	HealthStatusDegraded HealthStatus = "degraded"
@@ -147,6 +216,42 @@ func (e HealthStatus) Valid() bool {
 	case HealthStatusDegraded:
 		return true
 	case HealthStatusOk:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HouseholdYourRole.
+const (
+	HouseholdYourRoleMember HouseholdYourRole = "member"
+	HouseholdYourRoleOwner  HouseholdYourRole = "owner"
+)
+
+// Valid indicates whether the value is a known member of the HouseholdYourRole enum.
+func (e HouseholdYourRole) Valid() bool {
+	switch e {
+	case HouseholdYourRoleMember:
+		return true
+	case HouseholdYourRoleOwner:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HouseholdMemberRole.
+const (
+	HouseholdMemberRoleMember HouseholdMemberRole = "member"
+	HouseholdMemberRoleOwner  HouseholdMemberRole = "owner"
+)
+
+// Valid indicates whether the value is a known member of the HouseholdMemberRole enum.
+func (e HouseholdMemberRole) Valid() bool {
+	switch e {
+	case HouseholdMemberRoleMember:
+		return true
+	case HouseholdMemberRoleOwner:
 		return true
 	default:
 		return false
@@ -480,6 +585,42 @@ func (e OpenFoodFactsPrefillNetUnit) Valid() bool {
 	}
 }
 
+// Defines values for PlanEntitlementSource.
+const (
+	PlanEntitlementSourceApple PlanEntitlementSource = "apple"
+	PlanEntitlementSourceGrant PlanEntitlementSource = "grant"
+)
+
+// Valid indicates whether the value is a known member of the PlanEntitlementSource enum.
+func (e PlanEntitlementSource) Valid() bool {
+	switch e {
+	case PlanEntitlementSourceApple:
+		return true
+	case PlanEntitlementSourceGrant:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlanEnvironment.
+const (
+	Production PlanEnvironment = "production"
+	Sandbox    PlanEnvironment = "sandbox"
+)
+
+// Valid indicates whether the value is a known member of the PlanEnvironment enum.
+func (e PlanEnvironment) Valid() bool {
+	switch e {
+	case Production:
+		return true
+	case Sandbox:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PlanItemBaseUnit.
 const (
 	PlanItemBaseUnitKg PlanItemBaseUnit = "kg"
@@ -615,24 +756,63 @@ func (e PlanShopPriceBaseUnit) Valid() bool {
 	}
 }
 
+// Defines values for PlanState.
+const (
+	PlanStateActive          PlanState = "active"
+	PlanStateBillingRetry    PlanState = "billing_retry"
+	PlanStateComped          PlanState = "comped"
+	PlanStateDeleted         PlanState = "deleted"
+	PlanStateGrace           PlanState = "grace"
+	PlanStateLapsedReadOnly  PlanState = "lapsed_read_only"
+	PlanStateNone            PlanState = "none"
+	PlanStatePendingDeletion PlanState = "pending_deletion"
+	PlanStateTrial           PlanState = "trial"
+)
+
+// Valid indicates whether the value is a known member of the PlanState enum.
+func (e PlanState) Valid() bool {
+	switch e {
+	case PlanStateActive:
+		return true
+	case PlanStateBillingRetry:
+		return true
+	case PlanStateComped:
+		return true
+	case PlanStateDeleted:
+		return true
+	case PlanStateGrace:
+		return true
+	case PlanStateLapsedReadOnly:
+		return true
+	case PlanStateNone:
+		return true
+	case PlanStatePendingDeletion:
+		return true
+	case PlanStateTrial:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PlanSummaryConfidence.
 const (
-	High   PlanSummaryConfidence = "high"
-	Low    PlanSummaryConfidence = "low"
-	Medium PlanSummaryConfidence = "medium"
-	None   PlanSummaryConfidence = "none"
+	PlanSummaryConfidenceHigh   PlanSummaryConfidence = "high"
+	PlanSummaryConfidenceLow    PlanSummaryConfidence = "low"
+	PlanSummaryConfidenceMedium PlanSummaryConfidence = "medium"
+	PlanSummaryConfidenceNone   PlanSummaryConfidence = "none"
 )
 
 // Valid indicates whether the value is a known member of the PlanSummaryConfidence enum.
 func (e PlanSummaryConfidence) Valid() bool {
 	switch e {
-	case High:
+	case PlanSummaryConfidenceHigh:
 		return true
-	case Low:
+	case PlanSummaryConfidenceLow:
 		return true
-	case Medium:
+	case PlanSummaryConfidenceMedium:
 		return true
-	case None:
+	case PlanSummaryConfidenceNone:
 		return true
 	default:
 		return false
@@ -1053,18 +1233,48 @@ func (e ReviewResultKind) Valid() bool {
 	}
 }
 
+// Defines values for ServerInfoBillingPriceDisplay.
+const (
+	Storekit ServerInfoBillingPriceDisplay = "storekit"
+)
+
+// Valid indicates whether the value is a known member of the ServerInfoBillingPriceDisplay enum.
+func (e ServerInfoBillingPriceDisplay) Valid() bool {
+	switch e {
+	case Storekit:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServerInfoBillingProvider.
+const (
+	ServerInfoBillingProviderApple ServerInfoBillingProvider = "apple"
+)
+
+// Valid indicates whether the value is a known member of the ServerInfoBillingProvider enum.
+func (e ServerInfoBillingProvider) Valid() bool {
+	switch e {
+	case ServerInfoBillingProviderApple:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ServerInfoLoginMethods.
 const (
-	Apple           ServerInfoLoginMethods = "apple"
-	PairingPassword ServerInfoLoginMethods = "pairing_password"
+	ServerInfoLoginMethodsApple           ServerInfoLoginMethods = "apple"
+	ServerInfoLoginMethodsPairingPassword ServerInfoLoginMethods = "pairing_password"
 )
 
 // Valid indicates whether the value is a known member of the ServerInfoLoginMethods enum.
 func (e ServerInfoLoginMethods) Valid() bool {
 	switch e {
-	case Apple:
+	case ServerInfoLoginMethodsApple:
 		return true
-	case PairingPassword:
+	case ServerInfoLoginMethodsPairingPassword:
 		return true
 	default:
 		return false
@@ -1248,6 +1458,66 @@ func (e UndoResultKind) Valid() bool {
 	}
 }
 
+// Defines values for DeletionScheduledStatus.
+const (
+	DeletionScheduledStatusScheduled DeletionScheduledStatus = "scheduled"
+)
+
+// Valid indicates whether the value is a known member of the DeletionScheduledStatus enum.
+func (e DeletionScheduledStatus) Valid() bool {
+	switch e {
+	case DeletionScheduledStatusScheduled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAccountJSONBodyConfirm.
+const (
+	DeleteMyAccount DeleteAccountJSONBodyConfirm = "delete my account"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAccountJSONBodyConfirm enum.
+func (e DeleteAccountJSONBodyConfirm) Valid() bool {
+	switch e {
+	case DeleteMyAccount:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAccount200JSONResponseBodyStatus.
+const (
+	DeleteAccount200JSONResponseBodyStatusScheduled DeleteAccount200JSONResponseBodyStatus = "scheduled"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAccount200JSONResponseBodyStatus enum.
+func (e DeleteAccount200JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case DeleteAccount200JSONResponseBodyStatusScheduled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAccount202JSONResponseBodyStatus.
+const (
+	DeleteAccount202JSONResponseBodyStatusScheduled DeleteAccount202JSONResponseBodyStatus = "scheduled"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAccount202JSONResponseBodyStatus enum.
+func (e DeleteAccount202JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case DeleteAccount202JSONResponseBodyStatusScheduled:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetMe200JSONResponseBodyKind.
 const (
 	GetMe200JSONResponseBodyKindDevice GetMe200JSONResponseBodyKind = "device"
@@ -1275,6 +1545,27 @@ const (
 func (e GetAuthStatus200JSONResponseBodyServer) Valid() bool {
 	switch e {
 	case GetAuthStatus200JSONResponseBodyServerShop:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PostAppleTransaction200JSONResponseBodyResult.
+const (
+	AlreadyBound PostAppleTransaction200JSONResponseBodyResult = "already_bound"
+	Bound        PostAppleTransaction200JSONResponseBodyResult = "bound"
+	Claimed      PostAppleTransaction200JSONResponseBodyResult = "claimed"
+)
+
+// Valid indicates whether the value is a known member of the PostAppleTransaction200JSONResponseBodyResult enum.
+func (e PostAppleTransaction200JSONResponseBodyResult) Valid() bool {
+	switch e {
+	case AlreadyBound:
+		return true
+	case Bound:
+		return true
+	case Claimed:
 		return true
 	default:
 		return false
@@ -1407,6 +1698,61 @@ func (e GetSpendParamsSplitBy) Valid() bool {
 	}
 }
 
+// Account defines model for Account.
+type Account struct {
+	AppAccountToken openapi_types.UUID  `json:"app_account_token"`
+	CreatedAt       time.Time           `json:"created_at"`
+	DisplayName     *string             `json:"display_name"`
+	Email           *string             `json:"email"`
+	EmailIsPrivate  bool                `json:"email_is_private"`
+	HouseholdId     *openapi_types.UUID `json:"household_id"`
+	Id              openapi_types.UUID  `json:"id"`
+	Plan            Plan                `json:"plan"`
+	Role            AccountRole         `json:"role"`
+	SupportCode     string              `json:"support_code"`
+}
+
+// AccountRole defines model for Account.Role.
+type AccountRole string
+
+// AccountDetail defines model for AccountDetail.
+type AccountDetail struct {
+	AppAccountToken openapi_types.UUID  `json:"app_account_token"`
+	CreatedAt       time.Time           `json:"created_at"`
+	DisplayName     *string             `json:"display_name"`
+	Email           *string             `json:"email"`
+	EmailIsPrivate  bool                `json:"email_is_private"`
+	HouseholdId     *openapi_types.UUID `json:"household_id"`
+	Id              openapi_types.UUID  `json:"id"`
+
+	// Limits same keys as ServerInfo.limits
+	Limits      *map[string]interface{} `json:"limits"`
+	Plan        Plan                    `json:"plan"`
+	Role        AccountDetailRole       `json:"role"`
+	SupportCode string                  `json:"support_code"`
+
+	// Usage the household's usage; null without a household
+	Usage *struct {
+		ExportsToday *int `json:"exports_today,omitempty"`
+		Members      *int `json:"members,omitempty"`
+		OpenInvites  *int `json:"open_invites,omitempty"`
+
+		// Period Example: 2026-10
+		Period     *string `json:"period,omitempty"`
+		QueuedJobs *int    `json:"queued_jobs,omitempty"`
+
+		// ReceiptsSoftLimitReached receipts this month have reached limits.receipts_per_month_soft. The soft limit is a warning only: nothing is slowed down or refused until the hard limit.
+		ReceiptsSoftLimitReached *bool      `json:"receipts_soft_limit_reached,omitempty"`
+		ReceiptsThisMonth        *int       `json:"receipts_this_month,omitempty"`
+		ReceiptsToday            *int       `json:"receipts_today,omitempty"`
+		ResetsAt                 *time.Time `json:"resets_at,omitempty"`
+		StorageBytes             *int64     `json:"storage_bytes,omitempty"`
+	} `json:"usage"`
+}
+
+// AccountDetailRole defines model for AccountDetail.Role.
+type AccountDetailRole string
+
 // Alias defines model for Alias.
 type Alias struct {
 	CreatedAt time.Time `json:"created_at"`
@@ -1520,6 +1866,25 @@ type Device struct {
 	Name       string     `json:"name"`
 }
 
+// ExportJob defines model for ExportJob.
+type ExportJob struct {
+	CreatedAt   time.Time `json:"created_at"`
+	DownloadUrl *string   `json:"download_url"`
+	Error       *struct {
+		Code    *string `json:"code,omitempty"`
+		Message *string `json:"message,omitempty"`
+	} `json:"error"`
+	ExpiresAt  *time.Time         `json:"expires_at"`
+	FinishedAt *time.Time         `json:"finished_at"`
+	Id         openapi_types.UUID `json:"id"`
+	SizeBytes  *int64             `json:"size_bytes"`
+	StartedAt  *time.Time         `json:"started_at"`
+	Status     ExportJobStatus    `json:"status"`
+}
+
+// ExportJobStatus defines model for ExportJob.Status.
+type ExportJobStatus string
+
 // FrequentItem defines model for FrequentItem.
 type FrequentItem struct {
 	DaysSince          float64   `json:"days_since"`
@@ -1554,6 +1919,52 @@ type Health struct {
 
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
+
+// Household defines model for Household.
+type Household struct {
+	CreatedAt      time.Time          `json:"created_at"`
+	Id             openapi_types.UUID `json:"id"`
+	MemberCap      int                `json:"member_cap"`
+	Members        []HouseholdMember  `json:"members"`
+	Name           string             `json:"name"`
+	OwnerAccountId openapi_types.UUID `json:"owner_account_id"`
+
+	// PendingInvites owner only, GET /v1/household only
+	PendingInvites *[]struct {
+		CreatedAt time.Time          `json:"created_at"`
+		ExpiresAt time.Time          `json:"expires_at"`
+		Id        openapi_types.UUID `json:"id"`
+	} `json:"pending_invites,omitempty"`
+
+	// PendingInvitesCount open invites, for every role, GET /v1/household only
+	PendingInvitesCount *int              `json:"pending_invites_count,omitempty"`
+	YourRole            HouseholdYourRole `json:"your_role"`
+}
+
+// HouseholdYourRole defines model for Household.YourRole.
+type HouseholdYourRole string
+
+// HouseholdMember defines model for HouseholdMember.
+type HouseholdMember struct {
+	AccountId   openapi_types.UUID  `json:"account_id"`
+	DisplayName *string             `json:"display_name"`
+	IsYou       bool                `json:"is_you"`
+	JoinedAt    time.Time           `json:"joined_at"`
+	Role        HouseholdMemberRole `json:"role"`
+}
+
+// HouseholdMemberRole defines model for HouseholdMember.Role.
+type HouseholdMemberRole string
+
+// InviteCreated defines model for InviteCreated.
+type InviteCreated struct {
+	// Code Example: H4Q8-ZN2M-7TWB
+	Code      string             `json:"code"`
+	CreatedAt time.Time          `json:"created_at"`
+	ExpiresAt time.Time          `json:"expires_at"`
+	Id        openapi_types.UUID `json:"id"`
+	Url       string             `json:"url"`
+}
 
 // LineInput defines model for LineInput.
 type LineInput struct {
@@ -1876,6 +2287,33 @@ type PairConfirmation struct {
 	ShopBId  int64  `json:"shop_b_id"`
 }
 
+// Plan defines model for Plan.
+type Plan struct {
+	// Allowed What this caller may do now: read, write, upload, export, invite, manage_household, leave_household, subscribe, join_household, cancel_deletion, delete_account. `upload` is also dropped while a hard upload limit (monthly, daily, storage, queue) is reached.
+	Allowed               []string               `json:"allowed"`
+	AutoRenew             *bool                  `json:"auto_renew"`
+	DeleteAfter           *time.Time             `json:"delete_after"`
+	DeletionRequested     bool                   `json:"deletion_requested"`
+	EndsAt                *time.Time             `json:"ends_at"`
+	EntitlementSource     *PlanEntitlementSource `json:"entitlement_source"`
+	Environment           *PlanEnvironment       `json:"environment"`
+	GraceUntil            *time.Time             `json:"grace_until"`
+	IsOwner               bool                   `json:"is_owner"`
+	ManageSubscriptionUrl *string                `json:"manage_subscription_url"`
+	ProductId             *string                `json:"product_id"`
+	ReadOnly              bool                   `json:"read_only"`
+	ReadOnlySince         *time.Time             `json:"read_only_since"`
+	RenewsAt              *time.Time             `json:"renews_at"`
+	State                 PlanState              `json:"state"`
+	TrialEndsAt           *time.Time             `json:"trial_ends_at"`
+}
+
+// PlanEntitlementSource defines model for Plan.EntitlementSource.
+type PlanEntitlementSource string
+
+// PlanEnvironment defines model for Plan.Environment.
+type PlanEnvironment string
+
 // PlanBasis defines model for PlanBasis.
 type PlanBasis struct {
 	Comparison      string `json:"comparison"`
@@ -1990,6 +2428,9 @@ type PlanShopPrice struct {
 
 // PlanShopPriceBaseUnit defines model for PlanShopPrice.BaseUnit.
 type PlanShopPriceBaseUnit string
+
+// PlanState defines model for PlanState.
+type PlanState string
 
 // PlanStore defines model for PlanStore.
 type PlanStore struct {
@@ -2122,14 +2563,25 @@ type PricePointUnit string
 // Problem defines model for Problem.
 type Problem struct {
 	// Code stable machine-readable reason, e.g. category_name_taken, category_has_products
-	Code   *string `json:"code,omitempty"`
-	Detail *string `json:"detail,omitempty"`
+	Code        *string    `json:"code,omitempty"`
+	Current     *int64     `json:"current,omitempty"`
+	DeleteAfter *time.Time `json:"delete_after,omitempty"`
+	Detail      *string    `json:"detail,omitempty"`
+
+	// Limit limit_reached, file_too_large, household_full: which limit (receipts_per_month, receipts_per_day, storage_bytes, max_queued_jobs, exports_per_day, open_invites, max_upload_bytes, household_members); feature_unavailable: the feature
+	Limit      *string `json:"limit,omitempty"`
+	LimitValue *int64  `json:"limit_value,omitempty"`
+
+	// PlanState plan_required, read_only: the plan state
+	PlanState *string `json:"plan_state,omitempty"`
 
 	// ProductCount category_has_products: how many products would be orphaned
-	ProductCount *int    `json:"product_count,omitempty"`
-	Status       int     `json:"status"`
-	Title        string  `json:"title"`
-	Type         *string `json:"type,omitempty"`
+	ProductCount      *int       `json:"product_count,omitempty"`
+	ResetsAt          *time.Time `json:"resets_at,omitempty"`
+	RetryAfterSeconds *int       `json:"retry_after_seconds,omitempty"`
+	Status            int        `json:"status"`
+	Title             string     `json:"title"`
+	Type              *string    `json:"type,omitempty"`
 }
 
 // Product defines model for Product.
@@ -2473,6 +2925,17 @@ type ReviewSourceLine struct {
 type ServerInfo struct {
 	// ApiLevel contract revision, raised whenever a field or route is added (8 for this document)
 	ApiLevel int `json:"api_level"`
+
+	// Billing hosted only
+	Billing *struct {
+		ManageSubscriptionUrl *string                        `json:"manage_subscription_url,omitempty"`
+		PriceDisplay          *ServerInfoBillingPriceDisplay `json:"price_display,omitempty"`
+		ProductIds            *[]string                      `json:"product_ids,omitempty"`
+		Provider              *ServerInfoBillingProvider     `json:"provider,omitempty"`
+		Storefronts           *[]string                      `json:"storefronts,omitempty"`
+		SubscriptionGroup     *string                        `json:"subscription_group,omitempty"`
+		TrialDays             *int                           `json:"trial_days,omitempty"`
+	} `json:"billing,omitempty"`
 	Features struct {
 		AccountDeletion bool `json:"account_deletion"`
 		AsyncExport     bool `json:"async_export"`
@@ -2494,6 +2957,14 @@ type ServerInfo struct {
 		StorageBytes         *int64 `json:"storage_bytes,omitempty"`
 	} `json:"limits"`
 
+	// Links hosted only
+	Links *struct {
+		PrivacyUrl   *string `json:"privacy_url,omitempty"`
+		SupportEmail *string `json:"support_email,omitempty"`
+		SupportUrl   *string `json:"support_url,omitempty"`
+		TermsUrl     *string `json:"terms_url,omitempty"`
+	} `json:"links,omitempty"`
+
 	// LoginMethods What the app may offer, in order of preference. Single: `["pairing_password"]`, or empty until a pairing password is set. Hosted: `["apple"]`.
 	LoginMethods []ServerInfoLoginMethods `json:"login_methods"`
 
@@ -2508,6 +2979,12 @@ type ServerInfo struct {
 	// Version server version, e.g. 0.18.0
 	Version string `json:"version"`
 }
+
+// ServerInfoBillingPriceDisplay defines model for ServerInfo.Billing.PriceDisplay.
+type ServerInfoBillingPriceDisplay string
+
+// ServerInfoBillingProvider defines model for ServerInfo.Billing.Provider.
+type ServerInfoBillingProvider string
 
 // ServerInfoLoginMethods defines model for ServerInfo.LoginMethods.
 type ServerInfoLoginMethods string
@@ -2723,6 +3200,67 @@ type Version struct {
 // ID defines model for ID.
 type ID = int64
 
+// AppleSignIn defines model for AppleSignIn.
+type AppleSignIn struct {
+	Account   Account    `json:"account"`
+	Created   bool       `json:"created"`
+	Device    Device     `json:"device"`
+	Household *Household `json:"household,omitempty"`
+	Token     string     `json:"token"`
+}
+
+// DeletionScheduled defines model for DeletionScheduled.
+type DeletionScheduled struct {
+	CanCancel               bool                    `json:"can_cancel"`
+	DeleteAfter             time.Time               `json:"delete_after"`
+	ManageSubscriptionUrl   string                  `json:"manage_subscription_url"`
+	RequestedAt             time.Time               `json:"requested_at"`
+	Status                  DeletionScheduledStatus `json:"status"`
+	SubscriptionStillActive bool                    `json:"subscription_still_active"`
+}
+
+// DeletionScheduledStatus defines model for DeletionScheduled.Status.
+type DeletionScheduledStatus string
+
+// DeleteAccountJSONBody defines parameters for DeleteAccount.
+type DeleteAccountJSONBody struct {
+	Confirm DeleteAccountJSONBodyConfirm `json:"confirm"`
+
+	// DeleteHousehold required true for an owner
+	DeleteHousehold *bool `json:"delete_household,omitempty"`
+}
+
+// DeleteAccountJSONBodyConfirm defines parameters for DeleteAccount.
+type DeleteAccountJSONBodyConfirm string
+
+// DeleteAccount200JSONResponseBodyStatus defines parameters for DeleteAccount.
+type DeleteAccount200JSONResponseBodyStatus string
+
+// DeleteAccount202JSONResponseBodyStatus defines parameters for DeleteAccount.
+type DeleteAccount202JSONResponseBodyStatus string
+
+// UpdateAccountJSONBody defines parameters for UpdateAccount.
+type UpdateAccountJSONBody struct {
+	DisplayName string `json:"display_name"`
+}
+
+// SignInWithAppleJSONBody defines parameters for SignInWithApple.
+type SignInWithAppleJSONBody struct {
+	AuthorizationCode string `json:"authorization_code"`
+	DeviceName        string `json:"device_name"`
+	IdentityToken     string `json:"identity_token"`
+	Name              *struct {
+		FamilyName *string `json:"family_name,omitempty"`
+		GivenName  *string `json:"given_name,omitempty"`
+	} `json:"name,omitempty"`
+	Nonce string `json:"nonce"`
+}
+
+// AppleSignInEventsJSONBody defines parameters for AppleSignInEvents.
+type AppleSignInEventsJSONBody struct {
+	Payload string `json:"payload"`
+}
+
 // GetMe200JSONResponseBodyKind defines parameters for GetMe.
 type GetMe200JSONResponseBodyKind string
 
@@ -2734,6 +3272,19 @@ type PairDeviceJSONBody struct {
 
 // GetAuthStatus200JSONResponseBodyServer defines parameters for GetAuthStatus.
 type GetAuthStatus200JSONResponseBodyServer string
+
+// AppleServerNotificationsJSONBody defines parameters for AppleServerNotifications.
+type AppleServerNotificationsJSONBody struct {
+	SignedPayload string `json:"signedPayload"`
+}
+
+// PostAppleTransactionJSONBody defines parameters for PostAppleTransaction.
+type PostAppleTransactionJSONBody struct {
+	SignedTransaction string `json:"signed_transaction"`
+}
+
+// PostAppleTransaction200JSONResponseBodyResult defines parameters for PostAppleTransaction.
+type PostAppleTransaction200JSONResponseBodyResult string
 
 // DeleteCategoryParams defines parameters for DeleteCategory.
 type DeleteCategoryParams struct {
@@ -2747,6 +3298,12 @@ type PreviewGlossaryTermJSONBody struct {
 	English  *string `json:"english,omitempty"`
 	Examples *int    `json:"examples,omitempty"`
 	KeepAsIs *bool   `json:"keep_as_is,omitempty"`
+}
+
+// TransferHouseholdJSONBody defines parameters for TransferHousehold.
+type TransferHouseholdJSONBody struct {
+	AccountId         openapi_types.UUID `json:"account_id"`
+	ConfirmPlanChange *bool              `json:"confirm_plan_change,omitempty"`
 }
 
 // SplitLineProductJSONBody defines parameters for SplitLineProduct.
@@ -2995,8 +3552,26 @@ type TranslationTodoParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// DeleteAccountJSONRequestBody defines body for DeleteAccount for application/json ContentType.
+type DeleteAccountJSONRequestBody DeleteAccountJSONBody
+
+// UpdateAccountJSONRequestBody defines body for UpdateAccount for application/json ContentType.
+type UpdateAccountJSONRequestBody UpdateAccountJSONBody
+
+// SignInWithAppleJSONRequestBody defines body for SignInWithApple for application/json ContentType.
+type SignInWithAppleJSONRequestBody SignInWithAppleJSONBody
+
+// AppleSignInEventsJSONRequestBody defines body for AppleSignInEvents for application/json ContentType.
+type AppleSignInEventsJSONRequestBody AppleSignInEventsJSONBody
+
 // PairDeviceJSONRequestBody defines body for PairDevice for application/json ContentType.
 type PairDeviceJSONRequestBody PairDeviceJSONBody
+
+// AppleServerNotificationsJSONRequestBody defines body for AppleServerNotifications for application/json ContentType.
+type AppleServerNotificationsJSONRequestBody AppleServerNotificationsJSONBody
+
+// PostAppleTransactionJSONRequestBody defines body for PostAppleTransaction for application/json ContentType.
+type PostAppleTransactionJSONRequestBody PostAppleTransactionJSONBody
 
 // CreateCategoryJSONRequestBody defines body for CreateCategory for application/json ContentType.
 type CreateCategoryJSONRequestBody = CategoryInput
@@ -3009,6 +3584,9 @@ type PreviewGlossaryTermJSONRequestBody PreviewGlossaryTermJSONBody
 
 // TeachWordJSONRequestBody defines body for TeachWord for application/json ContentType.
 type TeachWordJSONRequestBody = GlossaryTermInput
+
+// TransferHouseholdJSONRequestBody defines body for TransferHousehold for application/json ContentType.
+type TransferHouseholdJSONRequestBody TransferHouseholdJSONBody
 
 // UpdateLineJSONRequestBody defines body for UpdateLine for application/json ContentType.
 type UpdateLineJSONRequestBody = LineInput

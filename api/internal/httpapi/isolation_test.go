@@ -44,7 +44,7 @@ func TestIsolationProbesWorkForTheOwner(t *testing.T) {
 	var bad []string
 	for _, op := range ops {
 		p, ok := probes[op.key()]
-		if !ok || p.Exempt != "" {
+		if !ok || p.Exempt != "" || (shared.hosted && hostedSkip(op)) {
 			continue
 		}
 		w := shared
@@ -132,7 +132,7 @@ func TestIsolationEndpoints(t *testing.T) {
 			rep.add("%s: no probe in the isolation matrix (add it to probes in isolation_probes_test.go, or exempt it with a reason)", op.key())
 			continue
 		}
-		if p.Exempt != "" {
+		if p.Exempt != "" || (w.hosted && hostedSkip(op)) {
 			continue
 		}
 		rec := p.call(op, w.b, w.a)
@@ -331,7 +331,8 @@ func TestIsolationTokensImagesAndErasure(t *testing.T) {
 		if err := w.erase(a); err != nil {
 			rep.add("erase: deleting household A failed: %v", err)
 		}
-		if rec := a.do("GET", "/v1/shops", nil); rec.Code != http.StatusUnauthorized && rec.Code != http.StatusNotFound {
+		// Hosted: the account (and its device token) outlives its household; it just has no plan any more.
+		if rec := a.do("GET", "/v1/shops", nil); rec.Code != http.StatusUnauthorized && rec.Code != http.StatusNotFound && !(w.hosted && rec.Code == http.StatusForbidden) {
 			rep.add("erase: A's token still works after A was deleted (%d)", rec.Code)
 		}
 		if rec := b.do("GET", "/v1/shops", nil); rec.Code != 200 || !strings.Contains(strings.ToLower(rec.Body.String()), b.marker) {

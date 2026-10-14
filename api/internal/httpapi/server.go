@@ -215,6 +215,13 @@ func (s *Server) Inner() http.Handler {
 	root.HandleFunc("GET /v1/server-info", s.serverInfo)
 	root.HandleFunc("GET /v1/auth/status", s.authStatus)
 	root.HandleFunc("POST /v1/auth/pair", s.pair)
+	// Hosted-only public routes (the hosted service serves them; a household server refuses them).
+	root.HandleFunc("POST /v1/auth/apple/nonce", loginMethodUnavailable)
+	root.HandleFunc("POST /v1/auth/apple", loginMethodUnavailable)
+	root.HandleFunc("POST /v1/auth/apple/events", loginMethodUnavailable)
+	root.HandleFunc("GET /v1/billing/plan-states", hostedOnly)
+	root.HandleFunc("POST /v1/billing/apple/notifications", hostedOnly)
+	root.HandleFunc("GET /v1/household/invites/{code}", hostedOnly)
 	root.Handle("/", s.requireToken(api))
 	return root
 }
