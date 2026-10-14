@@ -22,6 +22,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -31,11 +32,15 @@ import (
 	"shop/internal/store/db"
 )
 
+// oddWords are long words no glossary knows: a receipt line starting with one makes an "odd name" product
+// that waits for review. A different one per seed round keeps the rounds from linking to each other.
+var oddWords = []string{"ZOEPLAKUNDIG", "KRANTENBOLLOR", "WIMPELSTROEPEN", "BLAFFERDORAMIT", "SNUIFTOBBEROL", "GRUNKELPLOEPS"}
+
 // seedIDs are the ids of household data the other household will try to reach.
 type seedIDs struct {
 	Shop, Category, Receipt, Line, Product, Product2, Alias, Item, Group, Template                                 int64
 	Suggestion, Review, TrashGroup, ProductGroup, ProductGroup2, GroupMember, ProductGroupOp, ProductMerge, Device int64
-	Barcode, Word, Image, ClientItem, ClientGroup, CategoryName                                                    string
+	Barcode, Word, Word2, Image, ClientItem, ClientGroup, CategoryName                                             string
 	ReceiptTotal                                                                                                   int64
 	ReceiptIDs, ProductIDs, ShopIDs, ItemIDs, GroupIDs                                                             map[int64]bool
 }
@@ -241,7 +246,7 @@ func (h *household) seed(rounds int, imageBase uint8) {
 		h.must("DELETE", fmt.Sprintf("/v1/list/groups/%d", isoID(trash)), nil, 200)
 		// a "looks bought?" suggestion: a list item and a confirmed receipt that roughly matches it
 		h.must("POST", "/v1/list", map[string]any{"text": "havermout bio " + tag}, 201)
-		hr := h.receipt(isoID(shop), imageBase+uint8(r*10+8), today()+" 10:00|", "AH HAVERMOUT "+strings.ToUpper(tag)+"|2,10", "ZOEPLAKUNDIG "+strings.ToUpper(tag)+"|1,00", "TOTAAL|3,10")
+		hr := h.receipt(isoID(shop), imageBase+uint8(r*10+8), today()+" 10:00|", "AH HAVERMOUT "+strings.ToUpper(tag)+"|2,10", oddWords[(r-1)%len(oddWords)]+" "+strings.ToUpper(tag)+"|1,00", "TOTAAL|3,10")
 		conf := h.must("POST", fmt.Sprintf("/v1/receipts/%d/confirm", isoID(hr)), nil, 200)
 		var sugID int64
 		if l, ok := conf["list"].(map[string]any); ok {
@@ -255,6 +260,7 @@ func (h *household) seed(rounds int, imageBase uint8) {
 
 		word := "zz" + strings.ToLower(tag) + "ww"
 		h.must("PUT", "/v1/glossary/"+word, map[string]any{"english": "english " + tag}, 200)
+		h.must("PUT", "/v1/glossary/"+word+"x", map[string]any{"english": "english2 " + tag}, 200)
 		h.must("PATCH", "/v1/list/plan/settings", map[string]any{"max_stops": map[string]int{"A": 3, "B": 2}[h.name], "extra_stop_cents": 100 + r}, 200)
 
 		var alias int64
@@ -279,7 +285,7 @@ func (h *household) seed(rounds int, imageBase uint8) {
 		h.ids.ProductGroup, h.ids.ProductGroupOp = pgID, opID
 		h.ids.ProductGroup2, h.ids.GroupMember = pg1ID, g1[0]
 		h.ids.ProductMerge = int64(merge["merge_id"].(float64))
-		h.ids.Barcode, h.ids.Word = ean(1), word
+		h.ids.Barcode, h.ids.Word, h.ids.Word2 = ean(1), word, word+"x"
 		h.ids.Suggestion, h.ids.TrashGroup = sugID, isoID(trash)
 		h.ids.ReceiptTotal = int64(first["total_cents"].(float64))
 	}
@@ -287,8 +293,8 @@ func (h *household) seed(rounds int, imageBase uint8) {
 	items, _ := rq["items"].([]any)
 	for _, it := range items {
 		pr := it.(map[string]any)["product"].(map[string]any)
-		if strings.Contains(strings.ToLower(fmt.Sprint(pr["name"])), "zoeplakundig") {
-			h.ids.Review = isoID(pr)
+		if strings.Contains(strings.ToLower(fmt.Sprint(pr["name"])), strings.ToLower(oddWords[(rounds-1)%len(oddWords)])) && isoID(pr) > h.ids.Review {
+			h.ids.Review = isoID(pr) // the newest, so it is higher than any id of the other household
 		}
 	}
 	if h.ids.Review == 0 {
@@ -380,8 +386,16 @@ func (h *household) mcpSession() (*mcp.ClientSession, error) {
 // bootWorld builds the system under test and seeds both households.
 func bootWorld(t *testing.T) *world {
 	t.Helper()
-	w := bootSingleTenantWorld(t)
-	w.a.seed(2, 10)  // A seeds twice, so A's key ids are higher than every id B has
-	w.b.seed(1, 100) // B once
+	var w *world
+	if os.Getenv("ISOLATION_WORLD") == "shared" {
+		// The control: two tokens in ONE database. Every check must fail here; if one passes, it tests nothing.
+		w = bootSharedDatabaseWorld(t)
+	} else {
+		w = bootMultiTenantWorld(t)
+	}
+	// A seeds several rounds and keeps the ids of the last, so every id A is attacked with is higher than any id
+	// B has even after B's own probes created rows (an id that also exists in B would make a hit ambiguous).
+	w.a.seed(6, 10)
+	w.b.seed(1, 100)
 	return w
 }

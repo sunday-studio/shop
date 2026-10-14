@@ -7,38 +7,33 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"path/filepath"
-	"shop/internal/autoprod"
 	"time"
 
-	"shop/internal/backup"
+	"shop/internal/autoprod"
 	"shop/internal/config"
 	"shop/internal/english"
-	"shop/internal/httpapi"
 	"shop/internal/jobs"
-	"shop/internal/logos"
 	"shop/internal/match"
-	"shop/internal/mcpserver"
-	"shop/internal/ocr"
-	"shop/internal/openfoodfacts"
 	"shop/internal/products"
 	"shop/internal/receipts"
-	"shop/internal/search"
 	"shop/internal/shopping"
-	"shop/internal/shopsuggest"
 	"shop/internal/stats"
 	"shop/internal/store"
+	"shop/internal/tenancy"
+	"shop/internal/tenantapp"
 	"shop/internal/version"
 )
 
-// app holds the wired-up components shared by serve and admin commands.
+// app holds the wired-up components shared by serve and admin commands. A self-hosted server is the
+// single-tenant case of the household seam: one database, one tenancy.Single tenant, one service graph.
 type app struct {
-	cfg      config.Config
-	db       *sql.DB
+	cfg  config.Config
+	db   *sql.DB
+	prov *tenancy.Single
+	rt   *tenantapp.Runtime
+
 	queue    *jobs.Queue
 	auto     *autoprod.Service
-	ocr      *ocr.Client
-	fallback *ocr.Client
 	receipts *receipts.Service
 	products *products.Service
 	stats    *stats.Service
@@ -47,60 +42,41 @@ type app struct {
 	english  *english.Service
 }
 
+// close closes the household (its services' background work, then its database).
+func (a *app) close() error { return a.prov.Close() }
+
 func openApp(ctx context.Context, log *slog.Logger) (*app, error) {
+	return openAppWith(ctx, log, false)
+}
+
+// openAppWith opens the database (snapshotting it first when the schema is about to change), migrates it
+// and builds the service graph. background starts per-household background work (a server wants it,
+// command line tools do not).
+func openAppWith(ctx context.Context, log *slog.Logger, background bool) (*app, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, err
 	}
-	conn, err := store.Open(cfg.DBPath())
+	conn, err := tenancy.OpenDB(ctx, cfg.DBPath(), cfg.DataDir, log)
 	if err != nil {
 		return nil, err
 	}
-	// Safety net for upgrades: snapshot an existing database before its
-	// schema changes. Snapshots older than the newest few are pruned.
-	if pending, v, err := store.PendingMigrations(ctx, conn); err != nil {
+	a := &app{cfg: cfg, db: conn, prov: tenancy.NewSingle(conn, cfg.DataDir, cfg.ImagesDir())}
+	a.rt = tenantapp.NewRuntime(cfg, log)
+	a.rt.Background = background
+	t, release, err := a.prov.Acquire(ctx, tenancy.DefaultID)
+	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("check migrations: %w", err)
-	} else if pending && v > 0 {
-		path := filepath.Join(cfg.DataDir, fmt.Sprintf("pre-migrate-v%d-%s.db", v, time.Now().UTC().Format("20060102-150405")))
-		if err := backup.Snapshot(ctx, conn, path); err != nil {
-			conn.Close()
-			return nil, fmt.Errorf("pre-migration snapshot: %w", err)
-		}
-		log.Info("pre-migration snapshot", "path", path, "from_version", v)
+		return nil, err
 	}
-	if err := store.Migrate(ctx, conn); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("migrate: %w", err)
-	}
-	a := &app{cfg: cfg, db: conn, queue: jobs.New(conn, log), ocr: ocr.New(cfg.OCRURL)}
-	if cfg.OCRFallbackURL != "" {
-		a.fallback = ocr.New(cfg.OCRFallbackURL)
-	}
-	a.receipts = receipts.New(conn, a.ocr, a.fallback, a.queue,
-		receipts.Config{ImagesDir: cfg.ImagesDir(), Location: cfg.Location}, log)
-	a.matcher = match.NewMatcher(conn)
-	foodFacts := openfoodfacts.New(cfg.FoodFactsUserAgent)
-	if cfg.FoodFactsBaseURL != "" {
-		foodFacts = foodFacts.WithBaseURL(cfg.FoodFactsBaseURL)
-	}
-	a.products = products.New(conn, a.matcher, foodFacts, cfg.ImagesDir(), log)
-	a.auto = autoprod.New(conn, a.matcher, a.products, foodFacts, a.queue, log, cfg.AutoProducts)
-	a.auto.RegisterJobs(a.queue)
-	// Install the user's glossary, then bring automatic English names up to
-	// date (new products, a grown built-in glossary).
-	a.english = english.New(conn)
-	if err := a.english.Load(ctx); err != nil {
+	defer release()
+	in, err := a.rt.Instance(ctx, t)
+	if err != nil {
 		conn.Close()
 		return nil, fmt.Errorf("load glossary: %w", err)
 	}
-	if n, err := a.english.Retranslate(ctx); err != nil {
-		log.Warn("english names", "err", err)
-	} else if n > 0 {
-		log.Info("english names updated", "products", n)
-	}
-	a.stats = stats.New(conn, cfg.Location)
-	a.list = shopping.New(conn, a.matcher, a.stats).WithLocation(cfg.Location)
+	a.queue, a.auto, a.receipts, a.products = in.Queue, in.Auto, in.Receipts, in.Products
+	a.stats, a.list, a.matcher, a.english = in.Stats, in.List, in.Matcher, in.English
 	return a, nil
 }
 
@@ -109,7 +85,7 @@ func migrate(ctx context.Context, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	defer a.db.Close()
+	defer a.close()
 	v, err := store.MigrationVersion(ctx, a.db)
 	if err != nil {
 		return err
@@ -119,40 +95,19 @@ func migrate(ctx context.Context, log *slog.Logger) error {
 }
 
 func serve(ctx context.Context, log *slog.Logger) error {
-	a, err := openApp(ctx, log)
+	a, err := openAppWith(ctx, log, true)
 	if err != nil {
 		return err
 	}
-	defer a.db.Close()
-
-	mcpSrv := mcpserver.New(mcpserver.Deps{
-		DB: a.db, Receipts: a.receipts, Products: a.products, Stats: a.stats, List: a.list,
-		Matcher: a.matcher, English: a.english, Location: a.cfg.Location, Auto: a.auto,
-	})
-	api := httpapi.New(httpapi.Deps{
-		DB: a.db, OCR: a.ocr, OCRFallback: a.fallback, Receipts: a.receipts,
-		Products: a.products, Stats: a.stats, List: a.list, English: a.english, Auto: a.auto,
-		Search: search.New(a.db, a.products, a.matcher), Logos: logos.New(a.cfg.LogoDevToken, a.cfg.ImagesDir()),
-		Location: a.cfg.Location, Log: log,
-		DataDir: a.cfg.DataDir,
-		Authed:  map[string]http.Handler{"/mcp": mcpserver.Handler(mcpSrv)},
-	})
+	defer a.close()
 
 	srv := &http.Server{
 		Addr:              a.cfg.Addr,
-		Handler:           api.Handler(),
+		Handler:           a.rt.Gateway(a.prov, tenancy.SingleResolver{}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	workerCtx, stopWorkers := context.WithCancel(ctx)
-	// Read the shop-suggestion header of receipts that have none yet (first start after an upgrade).
-	go func() {
-		if n, err := shopsuggest.NewService(a.db).Reindex(workerCtx); err != nil {
-			log.Warn("reindex receipt headers", "err", err)
-		} else if n > 0 {
-			log.Info("receipt headers indexed", "receipts", n)
-		}
-	}()
 	workersDone := make(chan struct{})
 	go func() {
 		a.queue.Run(workerCtx, a.cfg.Workers)

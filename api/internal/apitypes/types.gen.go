@@ -1053,6 +1053,57 @@ func (e ReviewResultKind) Valid() bool {
 	}
 }
 
+// Defines values for ServerInfoLoginMethods.
+const (
+	Apple           ServerInfoLoginMethods = "apple"
+	PairingPassword ServerInfoLoginMethods = "pairing_password"
+)
+
+// Valid indicates whether the value is a known member of the ServerInfoLoginMethods enum.
+func (e ServerInfoLoginMethods) Valid() bool {
+	switch e {
+	case Apple:
+		return true
+	case PairingPassword:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServerInfoMode.
+const (
+	Hosted ServerInfoMode = "hosted"
+	Single ServerInfoMode = "single"
+)
+
+// Valid indicates whether the value is a known member of the ServerInfoMode enum.
+func (e ServerInfoMode) Valid() bool {
+	switch e {
+	case Hosted:
+		return true
+	case Single:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ServerInfoServer.
+const (
+	ServerInfoServerShop ServerInfoServer = "shop"
+)
+
+// Valid indicates whether the value is a known member of the ServerInfoServer enum.
+func (e ServerInfoServer) Valid() bool {
+	switch e {
+	case ServerInfoServerShop:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ShopPriceBaseUnit.
 const (
 	ShopPriceBaseUnitKg ShopPriceBaseUnit = "kg"
@@ -2417,6 +2468,55 @@ type ReviewSourceLine struct {
 	ReceiptId      int64      `json:"receipt_id"`
 	ShopName       string     `json:"shop_name"`
 }
+
+// ServerInfo defines model for ServerInfo.
+type ServerInfo struct {
+	// ApiLevel contract revision, raised whenever a field or route is added (8 for this document)
+	ApiLevel int `json:"api_level"`
+	Features struct {
+		AccountDeletion bool `json:"account_deletion"`
+		AsyncExport     bool `json:"async_export"`
+		Billing         bool `json:"billing"`
+		Households      bool `json:"households"`
+		Mcp             bool `json:"mcp"`
+	} `json:"features"`
+
+	// Limits public per-household limits; null means no limit
+	Limits struct {
+		ExportsPerDay        *int   `json:"exports_per_day,omitempty"`
+		HouseholdMembers     *int   `json:"household_members,omitempty"`
+		MaxQueuedJobs        *int   `json:"max_queued_jobs,omitempty"`
+		MaxUploadBytes       *int64 `json:"max_upload_bytes,omitempty"`
+		OpenInvites          *int   `json:"open_invites,omitempty"`
+		ReceiptsPerDay       *int   `json:"receipts_per_day,omitempty"`
+		ReceiptsPerMonth     *int   `json:"receipts_per_month,omitempty"`
+		ReceiptsPerMonthSoft *int   `json:"receipts_per_month_soft,omitempty"`
+		StorageBytes         *int64 `json:"storage_bytes,omitempty"`
+	} `json:"limits"`
+
+	// LoginMethods What the app may offer, in order of preference. Single: `["pairing_password"]`, or empty until a pairing password is set. Hosted: `["apple"]`.
+	LoginMethods []ServerInfoLoginMethods `json:"login_methods"`
+
+	// MinAppBuild oldest app build the server accepts
+	MinAppBuild int            `json:"min_app_build"`
+	Mode        ServerInfoMode `json:"mode"`
+
+	// PairingEnabled same meaning as /v1/auth/status
+	PairingEnabled bool             `json:"pairing_enabled"`
+	Server         ServerInfoServer `json:"server"`
+
+	// Version server version, e.g. 0.18.0
+	Version string `json:"version"`
+}
+
+// ServerInfoLoginMethods defines model for ServerInfo.LoginMethods.
+type ServerInfoLoginMethods string
+
+// ServerInfoMode defines model for ServerInfo.Mode.
+type ServerInfoMode string
+
+// ServerInfoServer defines model for ServerInfo.Server.
+type ServerInfoServer string
 
 // Shop defines model for Shop.
 type Shop struct {

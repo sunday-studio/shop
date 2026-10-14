@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -30,7 +31,11 @@ func (r *statusRecorder) Flush() {
 
 func (r *statusRecorder) Unwrap() http.ResponseWriter { return r.ResponseWriter }
 
-func (s *Server) logRequests(next http.Handler) http.Handler {
+func (s *Server) logRequests(next http.Handler) http.Handler { return logRequests(s.Log, next) }
+
+func (s *Server) recoverer(next http.Handler) http.Handler { return recoverer(s.Log, next) }
+
+func logRequests(log *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
@@ -38,7 +43,7 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 		if r.URL.Path == "/healthz" && rec.status == http.StatusOK {
 			return // docker healthchecks would flood the log
 		}
-		s.Log.Info("http",
+		log.Info("http",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rec.status,
@@ -46,11 +51,11 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) recoverer(next http.Handler) http.Handler {
+func recoverer(log *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if v := recover(); v != nil {
-				s.Log.Error("panic", "path", r.URL.Path, "panic", v)
+				log.Error("panic", "path", r.URL.Path, "panic", v)
 				writeProblem(w, http.StatusInternalServerError, "internal error", "")
 			}
 		}()

@@ -99,12 +99,6 @@ func TestIsolationMCP(t *testing.T) {
 			rep.add("mcp %s: no probe in the isolation matrix (add it to mcpProbes in isolation_mcp_test.go)", tl.Name)
 			continue
 		}
-		// The control: the owner's own call must work, or the probe proves nothing.
-		if _, isErr, _ := callTool(sa, tl.Name, p.Args(w.a, w.a)); isErr {
-			ownText, _, _ := callTool(sa, tl.Name, p.Args(w.a, w.a))
-			t.Errorf("mcp %s: the probe fails for the owner too (fix mcpProbes): %s", tl.Name, truncate(ownText, 160))
-			continue
-		}
 		text, isErr, _ := callTool(sb, tl.Name, p.Args(w.a, w.b))
 		low := strings.ToLower(text)
 		switch {
@@ -145,4 +139,26 @@ func TestIsolationMCP(t *testing.T) {
 		}
 	}
 	rep.fail(t, "mcp, world: "+w.mode)
+}
+
+// TestIsolationMCPProbesWorkForTheOwner: every MCP probe must succeed for the household that owns the ids
+// (each on a fresh world, because some tools change data), otherwise a refusal for B proves nothing.
+func TestIsolationMCPProbesWorkForTheOwner(t *testing.T) {
+	names := make([]string, 0, len(mcpProbes))
+	for name := range mcpProbes {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		w := bootWorld(t)
+		sa, err := w.a.mcpSession()
+		if err != nil {
+			t.Fatal(err)
+		}
+		text, isErr, _ := callTool(sa, name, mcpProbes[name].Args(w.a, w.a))
+		sa.Close()
+		if isErr {
+			t.Errorf("mcp %s: the probe fails for the owner (fix mcpProbes): %s", name, truncate(text, 160))
+		}
+	}
 }

@@ -14,7 +14,7 @@ import (
 
 // call performs the probe for op as caller, aimed at the ids of target.
 func (p probe) call(op specOp, caller, target *household) *httptest.ResponseRecorder {
-	path := pathFor(op.Tmpl, target.ids)
+	path := pathFor(op.Method, op.Tmpl, target.ids)
 	if p.Query != nil {
 		path += p.Query(target, caller)
 	}
@@ -152,6 +152,8 @@ func TestIsolationEndpoints(t *testing.T) {
 		}
 	}
 
+	w.b.collectIDs()
+	setupAmbiguity(w, rep) // again: B's own probes created rows too
 	after := w.a.tableDigests()
 	for tb, d := range before {
 		if after[tb] != d {
@@ -332,7 +334,7 @@ func TestIsolationTokensImagesAndErasure(t *testing.T) {
 		if rec := a.do("GET", "/v1/shops", nil); rec.Code != http.StatusUnauthorized && rec.Code != http.StatusNotFound {
 			rep.add("erase: A's token still works after A was deleted (%d)", rec.Code)
 		}
-		if rec := b.do("GET", "/v1/receipts?limit=50", nil); rec.Code != 200 || !strings.Contains(strings.ToLower(rec.Body.String()), b.marker) {
+		if rec := b.do("GET", "/v1/shops", nil); rec.Code != 200 || !strings.Contains(strings.ToLower(rec.Body.String()), b.marker) {
 			rep.add("erase: B lost data when A was deleted (%d)", rec.Code)
 		}
 		afterB := b.tableDigests()

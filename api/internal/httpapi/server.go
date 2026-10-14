@@ -78,7 +78,14 @@ func New(d Deps) *Server {
 	return &Server{Deps: d, q: db.New(d.DB), pairing: newPairLimiter(), suggest: shopsuggest.NewService(d.DB), categories: categories.New(d.DB)}
 }
 
+// Handler is the complete handler of a single-household server: routes, request log, panic recovery.
 func (s *Server) Handler() http.Handler {
+	return s.recoverer(s.logRequests(s.Inner()))
+}
+
+// Inner is the routes of this server without the request log and panic recovery. A gateway that
+// serves many households wraps those once around all of them.
+func (s *Server) Inner() http.Handler {
 	api := http.NewServeMux()
 
 	api.HandleFunc("GET /v1/auth/me", s.me)
@@ -200,10 +207,11 @@ func (s *Server) Handler() http.Handler {
 	root := http.NewServeMux()
 	root.HandleFunc("GET /healthz", s.health)
 	root.HandleFunc("GET /version", s.version)
+	root.HandleFunc("GET /v1/server-info", s.serverInfo)
 	root.HandleFunc("GET /v1/auth/status", s.authStatus)
 	root.HandleFunc("POST /v1/auth/pair", s.pair)
 	root.Handle("/", s.requireToken(api))
-	return s.recoverer(s.logRequests(root))
+	return root
 }
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
