@@ -104,6 +104,15 @@ func (a *API) tenantChain() http.Handler {
 				a.fail(w, r, err)
 				return
 			}
+			if a.upSlots != nil {
+				select {
+				case a.upSlots <- struct{}{}:
+					defer func() { <-a.upSlots }()
+				default:
+					a.fail(w, r, rateLimited(2*time.Second)) // memory guard: a receipt upload is read into memory
+					return
+				}
+			}
 			if r.ContentLength > lim.MaxUploadBytes+(1<<20) && lim.MaxUploadBytes > 0 {
 				a.fail(w, r, &control.LimitError{Limit: "max_upload_bytes", Value: lim.MaxUploadBytes, Current: r.ContentLength, FileTooLarge: true})
 				return

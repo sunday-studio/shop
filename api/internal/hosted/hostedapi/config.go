@@ -60,6 +60,7 @@ type Rates struct {
 	TokenPerMin          int // all other authenticated routes, per token
 	UploadsPerMin        int // per household
 	InFlightPerHousehold int
+	UploadsInFlight      int // receipt uploads being read at once in the whole process (each holds up to 20 MB in memory)
 	// Disabled turns every rate limit off (never in production).
 	Disabled bool
 }
@@ -67,7 +68,7 @@ type Rates struct {
 // DefaultRates returns the contract values.
 func DefaultRates() Rates {
 	return Rates{PublicInfoPerMin: 60, NoncePerMin: 20, SignInPerMin: 10, SignInPerHour: 30, AcceptPerHour: 10,
-		TransactionsPerHr: 30, RefreshPerMin: 1, WebhookPerMin: 600, TokenPerMin: 300, UploadsPerMin: 6, InFlightPerHousehold: 16}
+		TransactionsPerHr: 30, RefreshPerMin: 1, WebhookPerMin: 600, TokenPerMin: 300, UploadsPerMin: 6, InFlightPerHousehold: 16, UploadsInFlight: 6}
 }
 
 // DefaultConfig returns the launch values with placeholder links.
