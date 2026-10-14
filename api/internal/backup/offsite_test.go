@@ -59,6 +59,7 @@ case "$verb" in
     [ "$verb" = sync ] && for f in "$dst"/*; do [ -e "$f" ] && [ ! -e "$src/$(basename "$f")" ] && rm -rf "$f"; done
     cp -R "$src"/. "$dst"/ ;;
   copyto) mkdir -p "$(dirname "$dst")"; cp "$src" "$dst" ;;
+  lsf) for f in "$src"/*; do [ -e "$f" ] || continue; if [ -d "$f" ]; then echo "$(basename "$f")/"; else basename "$f"; fi; done ;;
   check) for f in "$src"/*; do [ -e "$dst/$(basename "$f")" ] || { echo "missing $f" >&2; exit 1; }; done ;;
   *) echo "unsupported $verb" >&2; exit 2 ;;
 esac
