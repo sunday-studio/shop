@@ -16,10 +16,24 @@ import (
 
 const maxImageSide = 1024
 
+// maxDecodePixels caps the size an image may claim before it is decoded. A PNG or JPEG of a few
+// kilobytes can declare 60000x60000 pixels and cost gigabytes to decode, which would take the whole
+// process (every household) down. 40 megapixels covers every phone camera.
+const maxDecodePixels = 40_000_000
+
+// decodeSlots limits how many images decode at once (each can take 160 MB at the cap).
+var decodeSlots = make(chan struct{}, 2)
+
 var ErrBadImage = errors.New("unsupported or corrupt image; use JPEG or PNG")
 
 // normaliseImage decodes, downsizes to maxImageSide and re-encodes as JPEG.
 func normaliseImage(data []byte) ([]byte, error) {
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil || cfg.Width <= 0 || cfg.Height <= 0 || int64(cfg.Width)*int64(cfg.Height) > maxDecodePixels {
+		return nil, ErrBadImage
+	}
+	decodeSlots <- struct{}{}
+	defer func() { <-decodeSlots }()
 	src, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, ErrBadImage
