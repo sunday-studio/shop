@@ -180,6 +180,17 @@ func loadConfig() (hostedConfig, error) {
 	if ap.RootCAFile != "" && ap.Environment == "production" {
 		return c, errors.New("SHOP_APPLE_ROOT_CA_FILE cannot be combined with SHOP_APPLE_ENVIRONMENT=production")
 	}
+	if ap.Environment == "production" {
+		// Where the keys, the sign-in tokens and the money come from must not be redirectable by an
+		// environment variable on the production server (a stray override would make us trust a
+		// stranger's key set or send our signed requests to a stranger).
+		for name, v := range map[string]string{"SHOP_APPLE_JWKS_URL": ap.JWKSURL, "SHOP_APPLE_SIWA_URL": ap.SIWAURL,
+			"SHOP_APPLE_STOREKIT_URL": ap.StoreKitURL, "SHOP_APPLE_STOREKIT_SANDBOX_URL": ap.StoreKitSandboxURL} {
+			if v != "" {
+				return c, fmt.Errorf("%s cannot be combined with SHOP_APPLE_ENVIRONMENT=production", name)
+			}
+		}
+	}
 	c.API.ProductIDs = ap.ProductIDs
 	switch ap.Environment {
 	case "production":

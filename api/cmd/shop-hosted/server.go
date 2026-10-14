@@ -108,6 +108,14 @@ func (s *hostedServer) close() {
 	_ = s.Store.Close()
 }
 
+// newHTTPServer is a listener with the timeouts a public server needs: a client that trickles its
+// headers or body (or keeps an idle connection) must not hold a goroutine and a descriptor forever.
+// There is no WriteTimeout: export downloads stream for as long as the client's link is slow.
+func newHTTPServer(addr string, h http.Handler) *http.Server {
+	return &http.Server{Addr: addr, Handler: h, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 5 * time.Minute,
+		IdleTimeout: 2 * time.Minute, MaxHeaderBytes: 64 << 10}
+}
+
 func serve(ctx context.Context, log *slog.Logger) error {
 	cfg, err := loadConfig()
 	if err != nil {
@@ -137,8 +145,8 @@ func serve(ctx context.Context, log *slog.Logger) error {
 	go func() { s.Sched.Run(bg); done <- struct{}{} }()
 	s.API.StartExports(bg)
 
-	pub := &http.Server{Addr: cfg.Addr, Handler: s.API.Handler(), ReadHeaderTimeout: 10 * time.Second}
-	adm := &http.Server{Addr: cfg.AdminAddr, Handler: s.API.AdminHandler(cfg.AdminHash), ReadHeaderTimeout: 10 * time.Second}
+	pub := newHTTPServer(cfg.Addr, s.API.Handler())
+	adm := newHTTPServer(cfg.AdminAddr, s.API.AdminHandler(cfg.AdminHash))
 	errc := make(chan error, 2)
 	go func() {
 		log.Info("listening", "addr", cfg.Addr, "mode", "hosted", "version", version.Version, "apple", cfg.Apple.Mode, "environment", cfg.Apple.Environment)
