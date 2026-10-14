@@ -31,6 +31,7 @@ final class ReceiptModel {
 
     @ObservationIgnored let app: AppModel
     @ObservationIgnored private var pollTask: Task<Void, Never>?
+    @ObservationIgnored private var retryTask: Task<Void, Never>?
 
     init(receiptId: Int64, app: AppModel) {
         self.receiptId = receiptId
@@ -82,8 +83,26 @@ final class ReceiptModel {
             if await autoLinkStrongMatches(in: fresh) { return await load() }
         } catch let e as APIError {
             error = e
+            scheduleLinesRetry()
         } catch {}
         updatePolling()
+    }
+
+    /// The summary from Home is on screen but the lines didn't arrive: Confirm stays disabled until they do,
+    /// so keep trying (3 s, 6 s, 12 s, 24 s) instead of leaving the person on "Reading lines…" for good.
+    var linesFailedToLoad: Bool { error != nil && receipt != nil && receipt?.lines == nil && receipt?.status != .processing && receipt?.status != .pending }
+
+    private func scheduleLinesRetry() {
+        guard receipt?.lines == nil, retryTask == nil else { return }
+        retryTask = Task { [weak self] in
+            for delay in [3, 6, 12, 24] {
+                try? await Task.sleep(for: .seconds(delay))
+                guard let self, !Task.isCancelled else { return }
+                if self.receipt?.lines != nil { break }
+                await self.load()
+            }
+            self?.retryTask = nil
+        }
     }
 
     /// Lines the server matched at 80 % or better are linked without asking. Each line is tried
@@ -125,6 +144,8 @@ final class ReceiptModel {
     func stop() {
         pollTask?.cancel()
         pollTask = nil
+        retryTask?.cancel()
+        retryTask = nil
     }
 
     // MARK: Presentation

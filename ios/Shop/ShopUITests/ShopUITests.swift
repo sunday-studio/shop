@@ -312,6 +312,30 @@ final class ShopUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Delete product"].exists)
     }
 
+    // MARK: Receipt confirm button (owner report: "sometimes the button doesn't work")
+
+    func testConfirmWorksAfterTheLinesFailedToLoadOnce() {
+        app.terminate()
+        app.launchArguments += ["-mock-fail-receipt-once"]
+        app.launch()
+        exists(button(startingWith: "Albert Heijn, Total doesn’t match")).tap()
+        // The first fetch fails; the screen must recover on its own instead of staying on "Reading lines…".
+        let confirm = exists(app.buttons["Confirm"], timeout: 15)
+        let enabled = NSPredicate(format: "isEnabled == true")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: enabled, object: confirm)], timeout: 15), .completed, "Confirm enables once the lines arrive")
+        confirm.tap()
+        exists(textContaining("Checked"), "confirm went through (list checks toast)")
+    }
+
+    func testAnAcceptedButUnconfirmedReceiptCanBeConfirmed() {
+        exists(text("Receipts to review"))
+        let row = anyElement(startingWith: "Dirk")
+        scrollTo(row)
+        row.tap()
+        // Status ok but never confirmed: Confirm must be there (it checks list items and adds products).
+        exists(app.buttons["Confirm"])
+    }
+
     private func waitForDisappearance(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
         let predicate = NSPredicate(format: "exists == false")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)

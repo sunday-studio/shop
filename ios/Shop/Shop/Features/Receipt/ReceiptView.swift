@@ -38,6 +38,9 @@ private struct ReceiptScreen: View {
                 try? await Task.sleep(for: .milliseconds(1200))
                 staggerOn = false
             }
+            .onChange(of: app.network.isOnline) { _, online in
+                if online && model.receipt?.lines == nil { Task { await model.load() } }
+            }
             .onDisappear { model.stop() }
     }
 
@@ -93,6 +96,12 @@ private struct ReceiptScreen: View {
                             .padding(.horizontal, Space.edge)
                             .padding(.top, 18)
                         }
+                        if model.linesFailedToLoad {
+                            Banner(tone: .amber, lead: "Couldn't load the lines.", message: "Confirm waits for them.",
+                                   action: (title: "Try again ›", run: { Task { await model.load() } }))
+                            .padding(.horizontal, Space.edge)
+                            .padding(.top, 18)
+                        }
                         if let banner = model.banner {
                             Banner(
                                 tone: banner.tone, lead: banner.lead.isEmpty ? nil : banner.lead, message: banner.message,
@@ -138,7 +147,8 @@ private struct ReceiptScreen: View {
             .contentMargins(.bottom, 130, for: .scrollContent)
             .refreshable { await model.load() }
 
-            if let receipt = model.receipt, receipt.status == .needsReview {
+            // Needs review, or accepted but never confirmed (confirming checks list items and adds products).
+            if let receipt = model.receipt, receipt.confirmedAt == nil, receipt.status == .needsReview || receipt.status == .ok {
                 ConfirmBar(linesCents: model.countedCents, totalCents: receipt.totalCents, isWorking: model.isConfirming, isLoading: receipt.lines == nil) {
                     Task {
                         if await model.confirm() {

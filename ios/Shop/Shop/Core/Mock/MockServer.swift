@@ -12,6 +12,8 @@ final class MockServer: HTTPTransport {
     private var receipts = MockData.receipts
     private var keptDuplicates: Set<Int64> = []
     private let hosted = MockHosted()
+    /// `-mock-fail-receipt-once`: the first single-receipt fetch fails (a dropped connection), the next works.
+    private var receiptFetchFailed = !ProcessInfo.processInfo.arguments.contains("-mock-fail-receipt-once")
 
     private func withDuplicate(_ r: Receipt) -> Receipt {
         var r = r
@@ -215,6 +217,7 @@ final class MockServer: HTTPTransport {
         case ("POST", "v1/receipts"):
             return upload(body, contentType: contentType)
         case ("GET", "v1/receipts/:id"):
+            if !receiptFetchFailed { receiptFetchFailed = true; return problem(500, "Server error", nil) }
             guard var r = receipts.first(where: { $0.id == id(2) }) else { return notFound() }
             r.shopSuggestion = mockSuggestion(for: r.id)
             r = withDuplicate(r)
