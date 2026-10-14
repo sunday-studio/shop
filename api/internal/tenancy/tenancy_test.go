@@ -267,6 +267,7 @@ func TestStateIsBuiltOnceAndDiesWithTheTenant(t *testing.T) {
 	tn, r, _ := m.Acquire(ctx, "a")
 	var builds int
 	build := func() (any, error) { builds++; return &builds, nil }
+	tn.State("hook", func() (any, error) { tn.OnClose(func() {}); return 1, nil }) // a build may register a close hook
 	v1, _ := tn.State("k", build)
 	v2, _ := tn.State("k", build)
 	if v1 != v2 || builds != 1 {

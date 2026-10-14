@@ -63,6 +63,7 @@ func newFixture(t *testing.T) *fixture {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	f.rt = tenantapp.NewRuntime(cfg, log)
 	f.rt.Backoff = func(int64) time.Duration { return 0 }
+	f.rt.Background = true // as a server runs it: header reindex starts with the household, stops when it closes
 	var err error
 	f.multi, err = tenancy.NewMulti(tenancy.MultiConfig{Root: t.TempDir(), BackupRoot: t.TempDir(), MaxOpen: 4, Log: log})
 	if err != nil {
