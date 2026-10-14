@@ -477,3 +477,6 @@ func lifecycleRun(ctx context.Context, args []string, env Env) error {
 	}
 	return nil
 }
+
+// GrantJSON renders a grant the way the contract does (also used by the HTTP admin routes).
+func (e Env) GrantJSON(ctx context.Context, g control.Grant) GrantJSON { return e.grantJSON(ctx, g) }

@@ -49,6 +49,14 @@ func (g *Gateway) Handler() http.Handler {
 		for _, p := range publicPaths {
 			root.HandleFunc(p, g.serveDefault)
 		}
+		// Routes of the hosted service answer 404 here, with the code the contract names, so the app
+		// can tell "wrong kind of server" from "route missing".
+		root.HandleFunc("POST /v1/auth/apple/nonce", loginMethodUnavailable)
+		root.HandleFunc("POST /v1/auth/apple", loginMethodUnavailable)
+		root.HandleFunc("POST /v1/auth/apple/events", loginMethodUnavailable)
+		root.HandleFunc("GET /v1/billing/plan-states", hostedOnly)
+		root.HandleFunc("POST /v1/billing/apple/notifications", hostedOnly)
+		root.HandleFunc("GET /v1/household/invites/{code}", hostedOnly)
 	} else {
 		root.HandleFunc("GET /healthz", g.health)
 		root.HandleFunc("GET /version", g.version)
@@ -185,4 +193,14 @@ func (g *Gateway) serverInfo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeServerInfo(w, info)
+}
+
+// loginMethodUnavailable answers the Sign in with Apple routes on a single-household server.
+func loginMethodUnavailable(w http.ResponseWriter, r *http.Request) {
+	writeProblemExt(w, http.StatusNotFound, "login method unavailable", "this server does not offer Sign in with Apple", "login_method_unavailable", nil)
+}
+
+// hostedOnly answers a route that only the hosted service has.
+func hostedOnly(w http.ResponseWriter, r *http.Request) {
+	writeProblemExt(w, http.StatusNotFound, "hosted only", "this route exists on the hosted service only", "hosted_only", nil)
 }

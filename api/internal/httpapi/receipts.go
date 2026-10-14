@@ -294,11 +294,21 @@ func (s *Server) uploadReceipt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	finish := func(bool) {}
+	if g := uploadGuardFrom(r.Context()); g != nil {
+		f, ok := g(w, r, int64(len(img)))
+		if !ok {
+			return // the guard answered (file too large, quota reached, ...)
+		}
+		finish = f
+	}
 	rec, err := s.Receipts.Ingest(r.Context(), shopID, purchased, photoTaken, img)
 	if err != nil {
+		finish(false)
 		s.writeErr(w, r, err)
 		return
 	}
+	finish(true)
 	w.Header().Set("Location", "/v1/receipts/"+itoa(rec.ID))
 	writeJSON(w, http.StatusAccepted, s.toReceipt(rec, nil))
 }
