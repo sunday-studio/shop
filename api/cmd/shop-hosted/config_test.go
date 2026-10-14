@@ -57,3 +57,28 @@ func TestAcceptSandboxSettings(t *testing.T) {
 		}
 	}
 }
+
+func TestFakeAppleNeedsAckAndNoProductionIndicator(t *testing.T) {
+	t.Setenv("SHOP_DATA_DIR", t.TempDir())
+	t.Setenv("SHOP_APPLE_MODE", "fake")
+	t.Setenv("SHOP_APPLE_ENVIRONMENT", "sandbox")
+	if _, err := loadConfig(); err == nil {
+		t.Fatal("fake Apple started without the second acknowledgement")
+	}
+	t.Setenv("SHOP_APPLE_FAKE_ACK", "yes")
+	if _, err := loadConfig(); err == nil {
+		t.Fatal("a wrong acknowledgement was accepted")
+	}
+	t.Setenv("SHOP_APPLE_FAKE_ACK", "i-know-this-is-a-test")
+	if _, err := loadConfig(); err != nil {
+		t.Fatalf("fake Apple with the acknowledgement: %v", err)
+	}
+	for name, v := range map[string]string{"SHOP_APPLE_ENVIRONMENT": "production", "SHOP_APPLE_IAP_KEY_ID": "ABC123", "SHOP_APPLE_SIWA_KEY_FILE": "/run/secrets/k", "SHOP_APPLE_TEAM_ID": "TEAM123456"} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv(name, v)
+			if _, err := loadConfig(); err == nil {
+				t.Fatalf("fake Apple accepted with %s set", name)
+			}
+		})
+	}
+}

@@ -625,6 +625,44 @@ func TestGrantOnlyHouseholdNeedsNoAppleCheck(t *testing.T) {
 	}
 }
 
+// Grant-only households have no Apple answer to contradict the local clock, so a clock that jumped
+// (or is behind the newest audit row) stops every destructive step until it is trustworthy again.
+func TestGrantOnlyErasureRefusesAnUntrustedClock(t *testing.T) {
+	e := newEnv(t)
+	e.run.Cfg.ClockJumpGuard = 24 * time.Hour
+	a := e.account("friend")
+	g, _ := e.st.InsertGrant(e.ctx, control.Grant{AccountID: a.ID, ExpiresAt: t0.Add(days(10)), Reason: "r", CreatedBy: "op"})
+	e.st.UpsertEntitlement(e.ctx, control.Entitlement{AccountID: a.ID, Source: control.SourceGrant, State: control.EntActive, ExpiresAt: t0.Add(days(10)), GrantID: g.ID})
+	e.ctl.EnsureHousehold(e.ctx, a.ID)
+	e.run.Apple = nil
+	e.runNow(false) // records the first heartbeat at t0
+
+	// the clock jumps 40 days in one step: the run does nothing destructive, the next one may
+	e.clock.Set(t0.Add(days(40)))
+	r := e.runNow(false)
+	if e.household(a).Status != control.HouseholdActive || !r.Has(lifecycle.ActSkipped, e.household(a).ID) {
+		t.Fatalf("a clock jump must stop the first run: %s %+v", e.household(a).Status, r.Actions)
+	}
+	e.runNow(false)
+	if e.household(a).Status != control.HouseholdTombstoned {
+		t.Fatalf("the second run should proceed: %s", e.household(a).Status)
+	}
+
+	// a clock that falls behind the newest audit row never deletes
+	e.clock.Set(t0.Add(days(42)))
+	e.runNow(false) // audit rows now exist at day 42
+	e.clock.Set(t0.Add(days(41)))
+	e.runNow(false)
+	if e.household(a).Status != control.HouseholdTombstoned {
+		t.Fatalf("erased with a clock behind the audit log: %s", e.household(a).Status)
+	}
+	e.clock.Set(t0.Add(days(43)))
+	e.runNow(false)
+	if e.household(a).Status != control.HouseholdDeleted {
+		t.Fatalf("a sane clock should finish the erasure: %s", e.household(a).Status)
+	}
+}
+
 // ---- erasure planning and the OS eraser ----
 
 func TestPlanErasure(t *testing.T) {

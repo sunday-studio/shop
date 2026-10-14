@@ -203,8 +203,10 @@ func loadConfig() (hostedConfig, error) {
 	default:
 		return c, errors.New("SHOP_APPLE_ENVIRONMENT must be auto, production or sandbox")
 	}
-	if ap.Mode == "fake" && ap.Environment == "production" {
-		return c, errors.New("SHOP_APPLE_MODE=fake cannot be combined with SHOP_APPLE_ENVIRONMENT=production")
+	if ap.Mode == "fake" {
+		if err := checkFakeAllowed(ap); err != nil {
+			return c, err
+		}
 	}
 	if ap.RootCAFile != "" && ap.Environment == "production" {
 		return c, errors.New("SHOP_APPLE_ROOT_CA_FILE cannot be combined with SHOP_APPLE_ENVIRONMENT=production")
@@ -236,6 +238,29 @@ func loadConfig() (hostedConfig, error) {
 		return c, errors.New("SHOP_SMTP_ADDR needs SHOP_SMTP_FROM")
 	}
 	return c, nil
+}
+
+// fakeAck is the second switch that turns on the simulated Apple. A single variable (a copied
+// .env, a stray export) must not be enough to run a server whose "Apple" says yes to everything.
+const fakeAck = "i-know-this-is-a-test"
+
+// checkFakeAllowed refuses SHOP_APPLE_MODE=fake unless SHOP_APPLE_FAKE_ACK=i-know-this-is-a-test is
+// set too, and never when a production indicator is present: the production environment or real
+// Apple credentials (sign-in or in-app purchase keys, key ids, issuer id, app id).
+func checkFakeAllowed(ap appleConfig) error {
+	if ap.Environment == "production" {
+		return errors.New("SHOP_APPLE_MODE=fake cannot be combined with SHOP_APPLE_ENVIRONMENT=production")
+	}
+	for _, name := range []string{"SHOP_APPLE_SIWA_KEY", "SHOP_APPLE_SIWA_KEY_FILE", "SHOP_APPLE_IAP_KEY", "SHOP_APPLE_IAP_KEY_FILE",
+		"SHOP_APPLE_SIWA_KEY_ID", "SHOP_APPLE_IAP_KEY_ID", "SHOP_APPLE_IAP_ISSUER_ID", "SHOP_APPLE_APP_ID", "SHOP_APPLE_TEAM_ID"} {
+		if os.Getenv(name) != "" {
+			return fmt.Errorf("SHOP_APPLE_MODE=fake cannot be combined with %s (real Apple credentials are configured)", name)
+		}
+	}
+	if os.Getenv("SHOP_APPLE_FAKE_ACK") != fakeAck {
+		return errors.New("SHOP_APPLE_MODE=fake also needs SHOP_APPLE_FAKE_ACK=" + fakeAck + " (it simulates Apple and is for tests and local stacks only)")
+	}
+	return nil
 }
 
 func splitList(s string) []string {

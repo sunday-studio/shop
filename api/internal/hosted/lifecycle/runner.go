@@ -39,7 +39,15 @@ type Config struct {
 	ReminderDays    []int         // days after read-only starts (default 0, 14, 25, 29)
 	CoolingOff      time.Duration // account deletion cooling-off (default 7 days)
 	PurgeNonceAfter time.Duration // default 24 h
+	// ClockJumpGuard (0 = off): a run that finds the clock more than this far ahead of the previous
+	// run's check does no destructive step (the next run, after it recorded the new time, may).
+	// A run whose clock is behind the newest audit row never does one. A wrong system clock (VM
+	// restore, failed NTP) would otherwise start the lapse path of every household, and grant-only
+	// households have no Apple answer to contradict it.
+	ClockJumpGuard time.Duration
 }
+
+const auditClockCheck = "lifecycle.clock_check"
 
 // DefaultConfig returns the launch values.
 func DefaultConfig() Config {
@@ -124,6 +132,8 @@ type run struct {
 	report Report
 	tombs  int
 	erased int
+	// clockDoubt, when not empty, says why the clock cannot be trusted for a destructive step.
+	clockDoubt string
 }
 
 func (r *run) add(kind, subject, detail string) {
@@ -140,10 +150,14 @@ func (rn *Runner) Run(ctx context.Context, opts Options) (Report, error) {
 	if cfg.MaxTombstones == 0 {
 		rn.Cfg = DefaultConfig()
 		rn.Cfg.KillSwitch = cfg.KillSwitch
+		rn.Cfg.ClockJumpGuard = cfg.ClockJumpGuard
 	}
 	r := &run{Runner: rn, ctx: ctx, dry: opts.DryRun, now: rn.S.Now()}
 	r.report = Report{DryRun: opts.DryRun, Now: r.now}
 
+	if err := r.checkClock(); err != nil {
+		return r.report, err
+	}
 	r.retryRevocations()
 	hs, err := rn.S.ListHouseholds(ctx, control.HouseholdActive, control.HouseholdTombstoned)
 	if err != nil {
@@ -164,6 +178,31 @@ func (rn *Runner) Run(ctx context.Context, opts Options) (Report, error) {
 		}
 	}
 	return r.report, nil
+}
+
+// checkClock sets clockDoubt and records a heartbeat (an audit row) so the next run can tell how far
+// the clock moved. See Config.ClockJumpGuard.
+func (r *run) checkClock() error {
+	newest, ok, err := r.S.LatestAuditAt(r.ctx, "")
+	if err != nil {
+		return err
+	}
+	if ok && r.now.Before(newest.Add(-time.Minute)) {
+		r.clockDoubt = "the clock is behind the newest audit entry (" + newest.Format(time.RFC3339) + ")"
+		return nil
+	}
+	last, ok, err := r.S.LatestAuditAt(r.ctx, auditClockCheck)
+	if err != nil {
+		return err
+	}
+	jumped := ok && r.Cfg.ClockJumpGuard > 0 && r.now.Sub(last) > r.Cfg.ClockJumpGuard
+	if jumped {
+		r.clockDoubt = fmt.Sprintf("the clock moved %s since the last run", r.now.Sub(last).Round(time.Minute))
+	}
+	if !r.dry && (!ok || jumped || r.now.Sub(last) >= time.Hour) {
+		return r.S.AppendAudit(r.ctx, "system", auditClockCheck, "", map[string]any{"jumped": jumped})
+	}
+	return nil
 }
 
 func (r *run) retryRevocations() {
@@ -300,6 +339,10 @@ func (r *run) guard(h control.Household, step string) (control.Household, billin
 		return h, billing.Plan{}, false, nil
 	}
 	userPath := !h.DeletionRequestedAt.IsZero()
+	if !userPath && r.clockDoubt != "" {
+		r.add(ActSkipped, h.ID, step+": "+r.clockDoubt+", refusing")
+		return h, billing.Plan{}, false, nil
+	}
 	if !userPath && !r.dry {
 		ents, err := r.S.EntitlementsForAccount(r.ctx, h.OwnerAccountID)
 		if err != nil {
