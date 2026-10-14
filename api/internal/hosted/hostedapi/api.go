@@ -159,10 +159,28 @@ func (a *API) logged(next http.Handler) http.Handler {
 					writeProblem(rec, problem{Status: 500, Code: "internal_error", Detail: "Something went wrong on our side."}, nil)
 				}
 			}
-			a.Log.Info("http", "method", r.Method, "path", r.URL.Path, "status", rec.status, "ms", time.Since(start).Milliseconds())
+			a.Log.Info("http", "method", r.Method, "path", logPath(r.URL.Path), "status", rec.status, "ms", time.Since(start).Milliseconds())
 		}()
 		next.ServeHTTP(rec, r)
 	})
+}
+
+// logPath is the request path as it may appear in logs: an invite code in the path is a bearer
+// secret (it lets anyone who has it join the household), so it never reaches the log.
+func logPath(p string) string {
+	const pre = "/v1/household/invites/"
+	rest, ok := strings.CutPrefix(p, pre)
+	if !ok {
+		return p
+	}
+	code, tail, _ := strings.Cut(rest, "/")
+	if code == "" {
+		return p
+	}
+	if tail != "" {
+		tail = "/" + tail
+	}
+	return pre + "{code}" + tail
 }
 
 type statusRec struct {
