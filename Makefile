@@ -23,6 +23,10 @@ e2e: ## end-to-end test in an isolated docker stack (project shop-e2e, port 1848
 restore-drill: ## restore drill in an isolated docker stack (project shop-drill, port 18481): backup, wipe, restore (also from an off-site copy), verify; never touches the live stack
 	cd api && go test -tags drill -count=1 -v -timeout 30m ./drill/
 
+.PHONY: isolation
+isolation: ## household isolation tests (build tag isolation): two households, every endpoint and MCP tool, plus the process-state scan; fails with a "not isolated: ..." checklist until the tenant seam is complete
+	cd api && go test -tags isolation -count=1 -run 'TestIsolation' ./internal/httpapi/
+
 offsite-up: ## start the optional off-site copy (rclone) after each backup; needs OFFSITE_REMOTE, see docs/operations.md
 	$(COMPOSE) --profile offsite up -d offsite
 
