@@ -39,19 +39,22 @@ type Cleaned struct {
 	Odd  bool   // first token looks like OCR junk the filter could not drop
 }
 
-func knownWord(w string) bool {
+func knownWord(g *translate.Glossary, w string) bool {
 	if brands[w] {
 		return true
 	}
 	if _, ok := match.ExpandAbbreviation(w); ok {
 		return true
 	}
-	r := translate.Translate(w)
+	r := g.Translate(w)
 	return r.Words > 0 && r.Known == r.Words
 }
 
-// CleanLine applies the rules of §3.1 to the raw text of an item line.
-func CleanLine(raw string) Cleaned {
+// CleanLine applies the rules of §3.1 to the raw text of an item line, with the built-in glossary.
+func CleanLine(raw string) Cleaned { return CleanLineWith(nil, raw) }
+
+// CleanLineWith is CleanLine with a household's taught words: a taught word counts as a known word.
+func CleanLineWith(g *translate.Glossary, raw string) Cleaned {
 	s := strings.TrimSpace(raw)
 	if weightRowRe.MatchString(strings.ToLower(s)) {
 		return Cleaned{Skip: true}
@@ -66,7 +69,7 @@ func CleanLine(raw string) Cleaned {
 	// Noise filter: up to 2 leading vowel-less junk tokens.
 	for drop := 0; drop < 2 && len(toks) > 1; drop++ {
 		f := match.Fold(strings.Trim(toks[0], ".,"))
-		if len(f) >= 3 && lettersOnly.MatchString(f) && !vowelRe.MatchString(f) && !knownWord(f) {
+		if len(f) >= 3 && lettersOnly.MatchString(f) && !vowelRe.MatchString(f) && !knownWord(g, f) {
 			toks = toks[1:]
 			continue
 		}
@@ -81,7 +84,7 @@ func CleanLine(raw string) Cleaned {
 	odd := false
 	if len(toks) > 0 {
 		first := match.Fold(strings.Trim(toks[0], ".,"))
-		if len(first) >= 8 && lettersOnly.MatchString(first) && !knownWord(first) {
+		if len(first) >= 8 && lettersOnly.MatchString(first) && !knownWord(g, first) {
 			odd = true
 		}
 	}

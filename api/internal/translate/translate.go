@@ -49,20 +49,34 @@ type Term struct {
 	KeepAsIs bool
 }
 
-var (
-	userMu    sync.RWMutex
-	userTerms = map[string]Term{} // folded single word → term
-)
+// Glossary is one household's taught words. It overrides the built-in glossary, which is shared and
+// read-only. The zero value and a nil *Glossary are valid and mean "no taught words".
+type Glossary struct {
+	mu    sync.RWMutex
+	terms map[string]Term // folded single word → term
+}
 
-// SetUserTerms replaces the user glossary, which overrides the built-in one.
-func SetUserTerms(terms map[string]Term) {
+// NewGlossary returns an empty glossary.
+func NewGlossary() *Glossary { return &Glossary{} }
+
+// Set replaces the taught words.
+func (g *Glossary) Set(terms map[string]Term) {
 	m := make(map[string]Term, len(terms))
 	for k, v := range terms {
 		m[Key(k)] = v
 	}
-	userMu.Lock()
-	userTerms = m
-	userMu.Unlock()
+	g.mu.Lock()
+	g.terms = m
+	g.mu.Unlock()
+}
+
+func (g *Glossary) snapshot() map[string]Term {
+	if g == nil {
+		return nil
+	}
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.terms // replaced wholesale by Set, never mutated in place
 }
 
 // Key is the glossary key for a word: folded, no surrounding punctuation.
@@ -164,20 +178,21 @@ func utf16Len(s string) int {
 	return n
 }
 
-// Translate renders a Dutch product name in English using the built-in and
-// user glossaries.
-func Translate(dutch string) Result { return translate(dutch, nil) }
+// Translate renders a Dutch product name in English using the built-in glossary only.
+func Translate(dutch string) Result { return translate(dutch, nil, nil) }
+
+// Translate renders a Dutch product name in English using the built-in glossary and this
+// household's taught words. A nil Glossary uses the built-in glossary only.
+func (g *Glossary) Translate(dutch string) Result { return translate(dutch, g.snapshot(), nil) }
 
 // TranslateWith is Translate with one extra user term applied on top, for
 // previewing a term before saving it.
-func TranslateWith(dutch, key string, t Term) Result {
-	return translate(dutch, map[string]Term{Key(key): t})
+func (g *Glossary) TranslateWith(dutch, key string, t Term) Result {
+	return translate(dutch, g.snapshot(), map[string]Term{Key(key): t})
 }
 
-func translate(dutch string, extra map[string]Term) Result {
-	userMu.RLock()
-	defer userMu.RUnlock()
-	g := glossaryView{extra: extra}
+func translate(dutch string, user, extra map[string]Term) Result {
+	g := glossaryView{user: user, extra: extra}
 
 	toks := tokenize(dutch)
 	type piece struct {
@@ -215,7 +230,7 @@ func translate(dutch string, extra map[string]Term) Result {
 		}
 		res.Words++
 		key := match.Fold(w)
-		if t, ok := g.user(key); ok {
+		if t, ok := g.userTerm(key); ok {
 			res.Known++
 			if t.KeepAsIs {
 				pieces = append(pieces, piece{text: tok.s})
@@ -290,22 +305,22 @@ func isWord(s string) bool {
 	return letters >= 2
 }
 
-// glossaryView resolves words: a preview term, then the user glossary,
-// then the built-in glossary. Callers hold userMu (read).
-type glossaryView struct{ extra map[string]Term }
+// glossaryView resolves words: a preview term, then the household's taught words,
+// then the built-in glossary.
+type glossaryView struct{ user, extra map[string]Term }
 
-func (g glossaryView) user(key string) (Term, bool) {
+func (g glossaryView) userTerm(key string) (Term, bool) {
 	if t, ok := g.extra[key]; ok {
 		return t, true
 	}
-	t, ok := userTerms[key]
+	t, ok := g.user[key]
 	return t, ok
 }
 
 // get returns the English for a glossary key ("" for dropped function
 // words; the word itself for keep-as-is user terms).
 func (g glossaryView) get(key string) (string, bool) {
-	if t, ok := g.user(key); ok {
+	if t, ok := g.userTerm(key); ok {
 		if t.KeepAsIs {
 			return key, true
 		}

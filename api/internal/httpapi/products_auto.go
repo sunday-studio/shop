@@ -54,7 +54,7 @@ func (s *Server) productFull(ctx context.Context, p db.Product) apitypes.Product
 	if nu, err := s.q.GetNutrition(ctx, p.ID); err == nil {
 		n = &nu
 	}
-	out := toProduct(p, n)
+	out := s.toProduct(p, n)
 	out.SuggestedMerge = s.suggestedMergeOf(ctx, p)
 	return out
 }
@@ -246,7 +246,7 @@ func (s *Server) createBarcodeProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	lines := make([]apitypes.UnmatchedLine, 0, len(o.Unmatched))
 	for _, u := range o.Unmatched {
-		lines = append(lines, unmatchedLineOut(u))
+		lines = append(lines, s.unmatchedLineOut(u))
 	}
 	out := apitypes.BarcodeCreateResult{
 		Status: apitypes.BarcodeCreateResultStatus(o.Status), CreatedNow: o.CreatedNow,

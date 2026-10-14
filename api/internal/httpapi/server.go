@@ -66,6 +66,15 @@ func New(d Deps) *Server {
 	if d.Plan == nil {
 		d.Plan = listplan.New(d.DB)
 	}
+	if d.English != nil {
+		// Automatic English names use this household's taught words.
+		if d.Products != nil {
+			d.Products.UseGlossary(d.English.Glossary())
+		}
+		if d.Auto != nil {
+			d.Auto.UseGlossary(d.English.Glossary())
+		}
+	}
 	return &Server{Deps: d, q: db.New(d.DB), pairing: newPairLimiter(), suggest: shopsuggest.NewService(d.DB), categories: categories.New(d.DB)}
 }
 

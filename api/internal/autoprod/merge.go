@@ -466,7 +466,7 @@ func (s *Service) Split(ctx context.Context, lineID int64, name string) (MergeRe
 			return err
 		}
 		old := line.ProductID.Int64
-		c := CleanLine(line.RawText)
+		c := CleanLineWith(s.gloss, line.RawText)
 		name = trimSpace(name)
 		if name == "" {
 			name = c.Name

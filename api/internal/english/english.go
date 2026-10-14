@@ -25,12 +25,19 @@ var (
 )
 
 type Service struct {
-	conn *sql.DB
-	q    *db.Queries
-	mu   sync.Mutex // serialises glossary changes + re-translation
+	conn  *sql.DB
+	q     *db.Queries
+	gloss *translate.Glossary // this household's taught words
+	mu    sync.Mutex          // serialises glossary changes + re-translation
 }
 
-func New(conn *sql.DB) *Service { return &Service{conn: conn, q: db.New(conn)} }
+func New(conn *sql.DB) *Service {
+	return &Service{conn: conn, q: db.New(conn), gloss: translate.NewGlossary()}
+}
+
+// Glossary is the household's taught words. Services that name products share it, so a word taught
+// here changes their English names too and nobody else's.
+func (s *Service) Glossary() *translate.Glossary { return s.gloss }
 
 // Load installs the stored user glossary into the translator.
 func (s *Service) Load(ctx context.Context) error {
@@ -42,7 +49,7 @@ func (s *Service) Load(ctx context.Context) error {
 	for _, r := range rows {
 		terms[r.Dutch] = translate.Term{English: r.English.String, KeepAsIs: r.KeepAsIs != 0}
 	}
-	translate.SetUserTerms(terms)
+	s.gloss.Set(terms)
 	return nil
 }
 
@@ -55,11 +62,11 @@ type Status struct {
 }
 
 // ProductStatus classifies a product's English name.
-func ProductStatus(p db.Product) Status {
+func (s *Service) ProductStatus(p db.Product) Status {
 	if src := p.NameEnSource.String; p.NameEnSource.Valid && src != "dictionary" {
 		return Status{Status: src}
 	}
-	return statusFor(translate.Translate(p.Name))
+	return statusFor(s.gloss.Translate(p.Name))
 }
 
 func statusFor(r translate.Result) Status {
@@ -80,8 +87,8 @@ type LineGloss struct {
 	Unknown []translate.Span // over TextEN, or raw_text when there's no gloss
 }
 
-func Gloss(rawText string) LineGloss {
-	r := translate.Translate(rawText)
+func (s *Service) Gloss(rawText string) LineGloss {
+	r := s.gloss.Translate(rawText)
 	g := LineGloss{Status: r.Status()}
 	if r.OK() {
 		g.TextEN = &r.Text
@@ -114,7 +121,7 @@ func (s *Service) Retranslate(ctx context.Context) (int, error) {
 	}
 	n := 0
 	for _, r := range rows {
-		name, src := autoName(translate.Translate(r.Name))
+		name, src := autoName(s.gloss.Translate(r.Name))
 		if name == r.NameEn && src == r.NameEnSource {
 			continue
 		}
@@ -263,7 +270,7 @@ func (s *Service) snapshot(ctx context.Context) (map[int64]string, error) {
 	}
 	m := make(map[int64]string, len(rows))
 	for _, r := range rows {
-		m[r.ID] = r.NameEn.String + "\x00" + translate.Translate(r.Name).Status()
+		m[r.ID] = r.NameEn.String + "\x00" + s.gloss.Translate(r.Name).Status()
 	}
 	return m, nil
 }
@@ -338,9 +345,9 @@ func (s *Service) Preview(ctx context.Context, word string, in TermInput, exampl
 	affected := 0
 	var out []PreviewExample
 	for _, r := range rows {
-		after := translate.TranslateWith(r.Name, key, translate.Term{English: in.English, KeepAsIs: in.KeepAsIs})
+		after := s.gloss.TranslateWith(r.Name, key, translate.Term{English: in.English, KeepAsIs: in.KeepAsIs})
 		name, src := autoName(after)
-		before := translate.Translate(r.Name)
+		before := s.gloss.Translate(r.Name)
 		if name == r.NameEn && src == r.NameEnSource && after.Status() == before.Status() {
 			continue
 		}
@@ -403,7 +410,7 @@ func (s *Service) Todo(ctx context.Context, limit int, now time.Time) (Todo, err
 	words := map[string]*TodoWord{}
 	var products []TodoProduct
 	for _, r := range rows {
-		res := translate.Translate(r.Name)
+		res := s.gloss.Translate(r.Name)
 		if res.Complete {
 			continue
 		}
@@ -437,7 +444,7 @@ func (s *Service) Todo(ctx context.Context, limit int, now time.Time) (Todo, err
 	}
 	for _, t := range texts {
 		seen := map[string]bool{}
-		for _, sp := range translate.Translate(t).UnknownInput {
+		for _, sp := range s.gloss.Translate(t).UnknownInput {
 			if w := words[sp.Key]; w != nil && !seen[sp.Key] {
 				seen[sp.Key] = true
 				w.Lines++

@@ -9,7 +9,6 @@ import (
 	"shop/internal/match"
 	"shop/internal/store"
 	"shop/internal/store/db"
-	"shop/internal/translate"
 )
 
 // SuggestedMerge is the product the card could be merged with.
@@ -153,7 +152,7 @@ func (s *Service) Review(ctx context.Context, id int64, in ReviewInput) (ReviewR
 				if p.NameEnSource.String != "manual" && p.NameEnSource.String != "openfoodfacts" {
 					en := sql.NullString{}
 					src := sql.NullString{}
-					if t := translate.Translate(name); t.OK() {
+					if t := s.gloss.Translate(name); t.OK() {
 						en, src = store.Str(t.Text), store.Str("dictionary")
 					}
 					if err := q.SetProductEnglish(ctx, db.SetProductEnglishParams{NameEn: en, NameEnSource: src, ID: id}); err != nil {

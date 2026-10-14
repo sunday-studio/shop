@@ -169,7 +169,7 @@ func (s *Server) previewTranslation(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, badf("text is required"))
 		return
 	}
-	res := translate.Translate(text)
+	res := s.English.Glossary().Translate(text)
 	out := map[string]any{"status": res.Status()}
 	if res.OK() {
 		out["english"] = res.Text
