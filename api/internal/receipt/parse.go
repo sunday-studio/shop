@@ -14,7 +14,7 @@ import (
 
 // ParserVersion is stored on each receipt; bump it whenever rules change so
 // receipts can be selectively re-parsed.
-const ParserVersion = 2
+const ParserVersion = 3
 
 type Kind string
 
@@ -35,7 +35,8 @@ type Line struct {
 	VATCode        string
 	Parent         int // index into Result.Lines, -1 if none
 	row            int
-	modified       bool // qty/weight already applied
+	modified       bool   // qty/weight already applied
+	textPrice      *int64 // price printed in the item text: a per-kg price when it is not the unit price
 }
 
 type Result struct {
@@ -75,6 +76,7 @@ const (
 	rDeposit
 	rBag
 	rSubtotal
+	rWeightOnly // "0,410 KG": the weight of the weighed item next to it
 )
 
 var (
@@ -90,13 +92,16 @@ var (
 	depositRe        = regexp.MustCompile(`(statiegeld|emballage|leeggoed)`)
 	bagRe            = regexp.MustCompile(`(^|\s)((draag|plastic |boodschappen)?tas(je)?|zak|bag)(\s|$)`)
 	// "2 x 0,89" (unit price inside the text); total, if any, is the row amount.
-	qtyFullRe = regexp.MustCompile(`^(\d{1,3})\s*[x×*]\s*(?:€\s*)?(-?\d+[.,]\d{2})$`)
+	qtyFullRe = regexp.MustCompile(`^(\d{1,3})\s*[x×*]\s*(?:€\s*)?(-?\d+[.,]\d{2})(?:\s*(?:€|eur)?\s*/\s*(?:st|stuk|stuks|pc|pcs)\.?)?$`)
 	// "2 x" / "2x" with the unit price as the row amount.
 	qtyBareRe = regexp.MustCompile(`^(\d{1,3})\s*[x×*]$`)
 	// "MELK 2 x 0,89" — qty embedded in an item row.
 	qtyInlineRe = regexp.MustCompile(`(?:^|\s)(\d{1,3})\s*[x×*]\s*(?:€\s*)?(\d+[.,]\d{2})(?:\s|$)`)
 	weightRe    = regexp.MustCompile(`(\d+[.,]\d{1,3})\s*kg\s*[x×*@]?\s*(?:€|eur)?\s*(\d+[.,]\d{2})(?:\s*(?:€|eur)?\s*/\s*kg)?`)
-	letters     = regexp.MustCompile(`[a-z]{2,}`)
+	// "1,25 l x 1,89": litres. Only with an explicit multiplication sign, since "0,92L 1,59" is a bottle size.
+	packSizeRe = regexp.MustCompile(`^\s*(?:l|ltr|liter|ml|cl|dl|g|gr|gram|kg|cm|mm)\b`)
+	litreRe = regexp.MustCompile(`(\d+[.,]\d{1,3})\s*(?:l|ltr)\s*[x×*@]\s*(?:€|eur)?\s*(\d+[.,]\d{2})(?:\s*(?:€|eur)?\s*/\s*(?:l|ltr))?`)
+	letters = regexp.MustCompile(`[a-z]{2,}`)
 )
 
 type rowInfo struct {
@@ -106,6 +111,10 @@ type rowInfo struct {
 	price *int64 // unit price
 	total *int64 // line total if the row carries one
 	desc  string // description text with qty/weight removed
+	// counted: qty and price come from the count column / printed unit price of an item row (not from a
+	// separate "2 x" detail row), so a detail row may still refine them.
+	counted   bool
+	textPrice *int64 // unit price printed in the text that did not divide the amount (per-kg price)
 }
 
 // Parse extracts receipt lines, total, date and payment from OCR output.
@@ -285,6 +294,23 @@ func classify(r Row, f string) rowInfo {
 		return info
 	}
 
+	if loc := litreRe.FindStringSubmatchIndex(f); loc != nil {
+		q, _ := ParseDecimal(f[loc[2]:loc[3]])
+		p, _ := ParseAmount(f[loc[4]:loc[5]])
+		if r.Amount == nil || abs64(mulCents(q, p)-*r.Amount) <= 1 {
+			desc := strings.TrimSpace(r.Text[:min(loc[0], len(r.Text))] + " " + r.Text[min(loc[1], len(r.Text)):])
+			info := rowInfo{kind: rWeight, qty: q, unit: "l", price: &p, total: r.Amount}
+			if letters.MatchString(match.Fold(desc)) && r.Amount != nil {
+				info.kind, info.desc = rItem, desc
+			}
+			return info
+		}
+	}
+	if r.Amount == nil && weightOnlyRe.MatchString(f) {
+		q, _ := ParseDecimal(weightOnlyRe.FindStringSubmatch(f)[1])
+		return rowInfo{kind: rWeightOnly, qty: q, unit: "kg"}
+	}
+
 	if r.Amount == nil {
 		if letters.MatchString(f) {
 			return rowInfo{kind: rDesc, desc: r.Text}
@@ -294,7 +320,11 @@ func classify(r Row, f string) rowInfo {
 
 	switch {
 	case depositRe.MatchString(f):
-		return rowInfo{kind: rDeposit, total: r.Amount}
+		info := rowInfo{kind: rDeposit, total: r.Amount, qty: 1}
+		if q, p, ok := countFromText(r.Text, *r.Amount); ok {
+			info.qty, info.price = q, &p
+		}
+		return info
 	case *r.Amount < 0 || discountRe.MatchString(f):
 		t := -abs64(*r.Amount) // discounts always reduce the sum
 		return rowInfo{kind: rDiscount, total: &t}
@@ -306,8 +336,17 @@ func classify(r Row, f string) rowInfo {
 	if loc := qtyInlineRe.FindStringSubmatchIndex(f); loc != nil {
 		q, _ := ParseDecimal(f[loc[2]:loc[3]])
 		p, _ := ParseAmount(f[loc[4]:loc[5]])
-		info.qty, info.price = q, &p
-		info.desc = strings.TrimSpace(r.Text[:min(loc[0], len(r.Text))] + " " + r.Text[min(loc[1], len(r.Text)):])
+		// "6 x 0,33 L 2,99" is a pack of bottles, not six pieces at 0,33: a unit after the number says so.
+		if !packSizeRe.MatchString(f[loc[5]:]) {
+			info.qty, info.price = q, &p
+			info.desc = strings.TrimSpace(r.Text[:min(loc[0], len(r.Text))] + " " + r.Text[min(loc[1], len(r.Text)):])
+			return info
+		}
+	}
+	if q, p, ok := countFromText(r.Text, *r.Amount); ok {
+		info.qty, info.price, info.counted = q, &p, true
+	} else {
+		info.textPrice = textPriceOf(r.Text)
 	}
 	return info
 }
@@ -321,7 +360,7 @@ type modifier struct {
 
 func assemble(rows []Row, infos []rowInfo, start, end int) ([]Line, int) {
 	var lines []Line
-	var mods []modifier
+	var mods, weights []modifier
 	unattached := 0
 	afterSubtotal := false
 	pendingDesc := -1
@@ -331,8 +370,9 @@ func assemble(rows []Row, infos []rowInfo, start, end int) ([]Line, int) {
 			RawText: strings.TrimSpace(desc), Kind: KindItem, Qty: 1, Unit: "pc",
 			LineTotalCents: *info.total, VATCode: rows[row].VAT, Parent: -1, row: row,
 		}
+		l.textPrice = info.textPrice
 		if info.price != nil {
-			l.Qty, l.Unit, l.modified = info.qty, info.unit, true
+			l.Qty, l.Unit, l.modified = info.qty, info.unit, !info.counted
 			p := *info.price
 			l.UnitPriceCents = &p
 		} else {
@@ -373,9 +413,14 @@ func assemble(rows []Row, infos []rowInfo, start, end int) ([]Line, int) {
 			if info.kind == rBag {
 				k = KindBag
 			}
-			p := *info.total
-			lines = append(lines, Line{RawText: rows[i].Text, Kind: k, Qty: 1, Unit: "pc",
-				UnitPriceCents: &p, LineTotalCents: p, VATCode: rows[i].VAT, Parent: -1, row: i})
+			p, qty := *info.total, 1.0
+			if info.price != nil {
+				p, qty = *info.price, info.qty
+			}
+			lines = append(lines, Line{RawText: rows[i].Text, Kind: k, Qty: qty, Unit: "pc",
+				UnitPriceCents: &p, LineTotalCents: *info.total, VATCode: rows[i].VAT, Parent: -1, row: i})
+		case rWeightOnly:
+			weights = append(weights, modifier{row: i, qty: info.qty, unit: info.unit})
 		case rSubtotal:
 			afterSubtotal = true
 		}
@@ -393,7 +438,42 @@ func assemble(rows []Row, infos []rowInfo, start, end int) ([]Line, int) {
 		}
 	}
 
+	attachWeights(lines, weights)
 	return lines, unattached
+}
+
+// attachWeights gives a weighed item ("GEMBER LOS 5,98 ... 2,45", per-kg price in the text) the weight
+// printed on its own row ("0,410 KG"): the nearest unmodified item above or below whose amount equals
+// weight x price. Rows that fit nothing are left alone.
+func attachWeights(lines []Line, weights []modifier) {
+	for _, w := range weights {
+		best, bestDist := -1, 1<<30
+		for i := range lines {
+			l := &lines[i]
+			if l.Kind != KindItem || l.modified || l.textPrice == nil {
+				continue
+			}
+			if abs64(mulCents(w.qty, *l.textPrice)-l.LineTotalCents) > 1 {
+				continue
+			}
+			if d := abs(l.row - w.row); d < bestDist && d <= 2 {
+				best, bestDist = i, d
+			}
+		}
+		if best >= 0 {
+			l := &lines[best]
+			l.Qty, l.Unit, l.modified = w.qty, w.unit, true
+			p := *l.textPrice
+			l.UnitPriceCents = &p
+		}
+	}
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
 }
 
 // pickModifierTarget chooses the item a qty/weight row belongs to: the
