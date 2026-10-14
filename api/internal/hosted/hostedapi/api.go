@@ -33,6 +33,8 @@ type Deps struct {
 	Gate     *limits.Gate // optional; created when nil
 	Provider *tenancy.Multi
 	Runtime  *tenantapp.Runtime
+	// Dev serves /admin/v1/dev/{what} on the admin listener (the fake Apple of local stacks); nil: no such routes.
+	Dev func(w http.ResponseWriter, r *http.Request, what string)
 }
 
 // API is the hosted HTTP layer.
