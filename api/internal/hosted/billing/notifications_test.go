@@ -345,3 +345,40 @@ func TestEndedAtDoesNotSlideOnLaterEvents(t *testing.T) {
 		t.Fatalf("lapse clock slid from %v to %v", first, got)
 	}
 }
+
+// A production server must not give paid access for sandbox purchases (TestFlight, App Review and
+// sandbox testers buy for free; Apple signs their notifications like any other).
+func TestProductionOnlyIgnoresSandboxData(t *testing.T) {
+	e := newEnv(t)
+	e.svc.Cfg.ProductionOnly = true
+	a := e.account("ama")
+
+	sandbox := e.tx(a, "otx-sb") // helper builds Environment "Sandbox"
+	r := e.process(e.notif(billing.NtSubscribed, "INITIAL_BUY", "n-sb", t0, sandbox, ren(1)))
+	if r.Outcome != billing.OutcomeIgnored {
+		t.Fatalf("sandbox notification: %+v", r)
+	}
+	if _, err := e.st.EntitlementByOriginalTx(e.ctx, "otx-sb"); !errors.Is(err, control.ErrNotFound) {
+		t.Fatalf("a sandbox notification created an entitlement: %v", err)
+	}
+	if p := e.plan(a); p.State != billing.StateNone {
+		t.Fatalf("plan %s, want none", p.State)
+	}
+
+	// a signed sandbox transaction handed in by the app is refused too
+	_, err := e.svc.BindTransaction(e.ctx, a.ID, e.sign(sandbox))
+	if !control.Is(err, billing.ErrTransactionInvalid) {
+		t.Fatalf("bind sandbox transaction: %v", err)
+	}
+
+	// production data still works
+	prod := e.tx(a, "otx-prod", func(x *billing.TransactionInfo) { x.Environment = "Production" })
+	signed := e.sign(billing.NotificationPayload{NotificationType: billing.NtSubscribed, Subtype: "INITIAL_BUY", NotificationUUID: "n-prod", Version: "2.0",
+		SignedDate: billing.MsOf(t0), Data: billing.NotificationData{BundleID: bundle, Environment: "Production", SignedTransactionInfo: e.sign(prod), SignedRenewalInfo: e.sign(ren(1))}})
+	if r := e.process(signed); r.Outcome != billing.OutcomeApplied {
+		t.Fatalf("production notification: %+v", r)
+	}
+	if p := e.plan(a); p.State != billing.StateTrial {
+		t.Fatalf("plan %s, want trial", p.State)
+	}
+}

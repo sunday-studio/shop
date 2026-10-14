@@ -23,10 +23,15 @@ var (
 
 // Config of the billing service.
 type Config struct {
-	BundleID      string
-	ProductIDs    []string      // allow-list (contract: billing.product_ids)
-	AllowLocal    bool          // accept Xcode / LocalTesting environments (dev stacks only)
-	GraceFallback time.Duration // grace length when Apple does not say (16 days)
+	BundleID   string
+	ProductIDs []string // allow-list (contract: billing.product_ids)
+	AllowLocal bool     // accept Xcode / LocalTesting environments (dev stacks only)
+	// ProductionOnly (the production server) accepts only data Apple marks as Production. TestFlight,
+	// App Review and sandbox testers buy for free in the Sandbox environment; their notifications
+	// and signed transactions are genuinely signed by Apple, so without this switch they would
+	// give paid access to anyone who can make a sandbox purchase.
+	ProductionOnly bool
+	GraceFallback  time.Duration // grace length when Apple does not say (16 days)
 }
 
 // Service verifies Apple data and keeps the entitlements table in step with it.
@@ -56,6 +61,25 @@ func (s *Service) productAllowed(id string) bool {
 		}
 	}
 	return false
+}
+
+// productionOK reports whether data from these environments may be used. With ProductionOnly every
+// non-empty environment must be Production and at least one must be given; otherwise anything goes.
+func (s *Service) productionOK(envs ...string) bool {
+	if !s.Cfg.ProductionOnly {
+		return true
+	}
+	seen := false
+	for _, e := range envs {
+		if e == "" {
+			continue
+		}
+		if !strings.EqualFold(e, EnvProduction) {
+			return false
+		}
+		seen = true
+	}
+	return seen
 }
 
 func (s *Service) envOK(env string) bool {
@@ -113,6 +137,11 @@ func (s *Service) ProcessNotification(ctx context.Context, signedPayload string)
 		}
 		res.OriginalTransactionID = tx.OriginalTransactionID
 	}
+	if !s.productionOK(n.Data.Environment, envOf(tx)) {
+		res.Outcome = OutcomeIgnored
+		s.Log.Warn("billing: non-production notification ignored", "uuid", n.NotificationUUID, "environment", n.Data.Environment)
+		return res, nil
+	}
 	if n.Data.SignedRenewalInfo != "" {
 		ren = &RenewalInfo{}
 		if err := s.V.Verify(n.Data.SignedRenewalInfo, ren); err != nil {
@@ -143,6 +172,13 @@ func (s *Service) ProcessNotification(ctx context.Context, signedPayload string)
 	}
 	s.Log.Info("billing: notification", "uuid", res.UUID, "type", res.Type, "subtype", res.Subtype, "outcome", res.Outcome)
 	return res, nil
+}
+
+func envOf(tx *TransactionInfo) string {
+	if tx == nil {
+		return ""
+	}
+	return tx.Environment
 }
 
 func (s *Service) applyNotification(ctx context.Context, st *control.Store, n NotificationPayload, tx *TransactionInfo, ren *RenewalInfo) (outcome, accountID string, err error) {
@@ -362,7 +398,7 @@ func (s *Service) BindTransaction(ctx context.Context, accountID, signedTransact
 	if err := s.V.Verify(signedTransaction, &tx); err != nil {
 		return out, fmt.Errorf("%w: %v", ErrTransactionInvalid, err)
 	}
-	if tx.BundleID != s.Cfg.BundleID || tx.OriginalTransactionID == "" || !s.envOK(tx.Environment) {
+	if tx.BundleID != s.Cfg.BundleID || tx.OriginalTransactionID == "" || !s.envOK(tx.Environment) || !s.productionOK(tx.Environment) {
 		return out, fmt.Errorf("%w: bundle id, environment or ids", ErrTransactionInvalid)
 	}
 	if !s.productAllowed(tx.ProductID) {
