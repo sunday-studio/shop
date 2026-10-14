@@ -11,11 +11,14 @@ DEVELOPMENT_TEAM = 2QG5WSN24S
 // server-info (billing.product_ids) first; this one is the fallback and the id in Config/Shop.storekit.
 SHOP_PRODUCT_ID = com.sundaystudi.shop.hosted.monthly
 
-// Capabilities (Sign in with Apple, ...). See Config/Shop.entitlements for what the owner must
-// enable in the Apple developer portal. To build to a physical device WITHOUT a paid team, create
-// Config/Local.xcconfig (git-ignored) containing:
-//     CODE_SIGN_ENTITLEMENTS = Config/Shop.NoCapabilities.entitlements
-CODE_SIGN_ENTITLEMENTS = Config/Shop.entitlements
+// Capabilities. The DEFAULT builds with no capabilities so the app runs on any team, including a
+// free personal team (Sign in with Apple is not available on personal teams, and Xcode refuses to
+// create the provisioning profile). To build WITH Sign in with Apple (a paid or company team that
+// has the capability enabled for this bundle id, see Config/Shop.entitlements for what the owner
+// must enable in the Apple developer portal), create Config/Local.xcconfig (git-ignored) containing:
+//     CODE_SIGN_ENTITLEMENTS = Config/Shop.entitlements
+// The release build for the App Store must use Config/Shop.entitlements.
+CODE_SIGN_ENTITLEMENTS = Config/Shop.NoCapabilities.entitlements
 
 // Optional per-developer overrides, never committed.
 #include? "Local.xcconfig"
