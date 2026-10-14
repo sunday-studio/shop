@@ -2,6 +2,7 @@ package hostedapi
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -33,6 +34,9 @@ type Deps struct {
 	Gate     *limits.Gate // optional; created when nil
 	Provider *tenancy.Multi
 	Runtime  *tenantapp.Runtime
+	// Sealer encrypts the stored idempotency answers (the key lives in the server environment, never in
+	// the database). Optional: nil makes a random per-process key (a restart then forgets replays).
+	Sealer appleauth.Sealer
 	// Dev serves /admin/v1/dev/{what} on the admin listener (the fake Apple of local stacks); nil: no such routes.
 	Dev func(w http.ResponseWriter, r *http.Request, what string)
 }
@@ -72,6 +76,17 @@ func New(d Deps) (*API, error) {
 	}
 	if d.Gate == nil {
 		d.Gate = limits.NewGate(0)
+	}
+	if d.Sealer == nil {
+		key := make([]byte, 32)
+		if _, err := rand.Read(key); err != nil {
+			return nil, err
+		}
+		sl, err := appleauth.NewAESGCMSealer(key)
+		if err != nil {
+			return nil, err
+		}
+		d.Sealer = sl
 	}
 	a := &API{Deps: d, Store: d.Ctl.S, rl: newRateLimiter(d.Clock)}
 	if n := d.Cfg.Rates.UploadsInFlight; n > 0 {

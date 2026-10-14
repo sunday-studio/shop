@@ -85,7 +85,7 @@ func newServer(cfg hostedConfig, log *slog.Logger, clock hclock.Clock, backgroun
 		return nil, err
 	}
 	if s.API, err = hostedapi.New(hostedapi.Deps{Cfg: cfg.API, Clock: clock, Log: log, Ctl: s.Ctl, Calc: s.Calc, Bill: s.Bill, Auth: s.Auth, Grants: s.Gr,
-		Meter: s.Meter, Gate: limits.NewGate(256), Provider: s.Prov, Runtime: s.RT, Dev: apple.Dev}); err != nil {
+		Meter: s.Meter, Gate: limits.NewGate(256), Provider: s.Prov, Runtime: s.RT, Sealer: sealer, Dev: apple.Dev}); err != nil {
 		return nil, err
 	}
 	layout := lifecycle.Layout{DataDir: cfg.App.DataDir, BackupDir: cfg.BackupDir, ExportDir: cfg.ExportDir}
