@@ -113,6 +113,26 @@ struct CatalogView: View {
                     }
                     SegmentedControl(options: ["By category", "By shop"], title: { $0 }, selection: $segment)
                 }
+                section("Hosted") {
+                    ContinueWithAppleButton(onRequest: { _ in }, onCompletion: { _ in })
+                    SecondaryDoorRow {}
+                    PlanOfferCard(price: "€4,99")
+                    PlanOfferCard(price: nil)
+                    CheckLine(text: "Share receipts and the list with up to 4 people")
+                    FinePrint(text: "Free for 14 days, then €4,99 a month. Renews automatically until you cancel.")
+                    PaywallLinks(onRestore: {}, onTerms: {}, onPrivacy: {})
+                    PlanStatusCard(status: .trial(endsOn: "28 Oct"))
+                    PlanStatusCard(status: .lapsed(daysLeft: 22), detail: "You can look at everything and export your data.")
+                    HostedNoticeBanner(notice: .trialEnding(daysLeft: 3)) {}
+                    HostedNoticeBanner(notice: .grace(daysLeft: 14)) {}
+                    HostedNoticeBanner(notice: .lapsedReadOnly(daysLeft: 22)) {}
+                    HostedNoticeBanner(notice: .receiptLimit(used: 300, limit: 300, resetsOn: "1 Nov"))
+                    DeletionCountdown(daysLeft: 12)
+                    SeatMeter(used: 3)
+                    MemberRow(name: "Casprine", detail: "casprine@example.com", isOwner: true, isYou: true)
+                    MemberRow(name: "Ama", detail: "Joined 3 Oct")
+                    InviteLinkCard(link: "https://shop.casprine.com/join/k3Jx9aQ2", terms: "Valid for 7 days. Works once.", onShare: {}, onCopy: {})
+                }
                 section("Actions and camera off") {
                     PillAction(title: "Edit English name") {}
                     VStack(spacing: 0) {
