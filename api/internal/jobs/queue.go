@@ -38,6 +38,7 @@ type Queue struct {
 	log      *slog.Logger
 	handlers map[string]Handler
 	wake     chan struct{}
+	onNotify func() // optional: told whenever work may have been added (the fair scheduler)
 	// Backoff returns the delay before retrying after the given attempt.
 	Backoff func(attempt int64) time.Duration
 }
@@ -70,8 +71,22 @@ func Enqueue(ctx context.Context, qs *db.Queries, kind string, payload any) erro
 	return err
 }
 
+// SetNotifyHook registers f to be called from Notify. The fair scheduler uses it to learn which
+// household has work. Call it before the queue is used.
+func (q *Queue) SetNotifyHook(f func()) { q.onNotify = f }
+
+// RequeueStale puts jobs that were running when the process stopped back in the queue and returns how many.
+func (q *Queue) RequeueStale(ctx context.Context) (int64, error) {
+	return q.q.RequeueStaleJobs(ctx, db.RequeueStaleJobsParams{
+		Now: store.Now(), StaleBefore: store.TS(time.Now().Add(-staleAfter)),
+	})
+}
+
 // Notify wakes an idle worker.
 func (q *Queue) Notify() {
+	if q.onNotify != nil {
+		q.onNotify()
+	}
 	select {
 	case q.wake <- struct{}{}:
 	default:
