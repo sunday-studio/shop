@@ -29,6 +29,9 @@ services:
       - caddy-data:/data        # certificates: keep, or Let's Encrypt rate limits bite after a rebuild
       - caddy-config:/config
     mem_limit: 128m
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
     depends_on:
       api:
         condition: service_healthy
@@ -58,7 +61,16 @@ services:
       SHOP_TZ: Europe/Amsterdam
       LOGO_DEV_TOKEN: ${LOGO_DEV_TOKEN:-}
       AUTO_PRODUCTS: ${AUTO_PRODUCTS:-on}
+      # Behind Caddy every request comes from Caddy's address. Without this the per-address rate
+      # limits (sign-in, invite codes, nonces) would be one shared bucket for all users: one client
+      # could lock everybody out. Caddy sets X-Forwarded-For; the API publishes no port of its own.
+      SHOP_TRUST_PROXY: "1"
+      # The production server trusts only production purchases and Apple's real endpoints. Set
+      # SHOP_APPLE_ENVIRONMENT=sandbox in .env for a staging server.
+      SHOP_APPLE_ENVIRONMENT: ${SHOP_APPLE_ENVIRONMENT:-production}
     mem_limit: ${API_MEM_LIMIT:-768m}
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     depends_on:
       ocr:
         condition: service_started
@@ -102,6 +114,8 @@ services:
       BACKUP_AT: ${BACKUP_AT:-03:30}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
     mem_limit: 256m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     depends_on:
       backup-init:
         condition: service_completed_successfully
@@ -148,16 +162,17 @@ services:
     entrypoint: ["sh", "/monitor.sh"]
     command: ["loop"]
     restart: unless-stopped
-    user: "0:0"                  # reads the host disk numbers; the mount below is read-only
+    user: "0:0"                  # the named volume below is root-owned
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     volumes:
       - "./monitor/monitor.sh:/monitor.sh:ro"
-      - "/:/host:ro"
       - "monitor-state:/state"
     environment:
       MONITOR_HEALTH_URL: http://api:8080/healthz
       MONITOR_INTERVAL: ${MONITOR_INTERVAL:-300}
       MONITOR_NAME: ${SHOP_DOMAIN}
-      DISK_PATH: /host
+      DISK_PATH: /state            # a Docker volume lives on the disk that fills up; no host mount needed
       DISK_ALERT_PCT: ${DISK_ALERT_PCT:-80}
       QUEUE_ALERT_PENDING: ${QUEUE_ALERT_PENDING:-15}
       QUEUE_ALERT_CHECKS: ${QUEUE_ALERT_CHECKS:-3}
