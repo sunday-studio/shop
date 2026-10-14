@@ -77,11 +77,9 @@ func (s *Server) toProduct(p db.Product, n *db.Nutrition) apitypes.Product {
 		cs := apitypes.ProductCategorySource(p.CategorySource.String)
 		out.CategorySource = &cs
 	}
-	if v := products.ImageVersion(p); v != "" {
-		// The URL carries the version: it is stable until the picture changes, then it changes, so every
-		// device sees a new picture and a cache can keep the old one for good.
-		u := "/v1/products/" + itoa(p.ID) + "/image?v=" + v
-		out.ImageUrl, out.ImageVersion = &u, &v
+	if p.ImagePath.Valid {
+		u := "/v1/products/" + itoa(p.ID) + "/image"
+		out.ImageUrl = &u
 	}
 	if p.NetUnit.Valid {
 		u := apitypes.ProductNetUnit(p.NetUnit.String)
@@ -295,21 +293,10 @@ func (s *Server) productImage(w http.ResponseWriter, r *http.Request) {
 	}
 	path := s.Products.ImagePath(p)
 	if path == "" {
-		w.Header().Set("Cache-Control", "no-store") // a negative answer must never be cached
 		writeProblem(w, http.StatusNotFound, "no image", "")
 		return
 	}
-	// Same bytes for every device and member of the household. The ETag is the picture's version:
-	// ?v=<version> (as in image_url) names exactly one picture and may be cached for good; without it
-	// (or with an old one) the client revalidates and gets a 304 or the new picture.
-	ver := products.ImageVersion(p.Product)
-	w.Header().Set("ETag", `"`+ver+`"`)
-	w.Header().Set("Vary", "Authorization")
-	if r.URL.Query().Get("v") == ver {
-		w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
-	} else {
-		w.Header().Set("Cache-Control", "private, no-cache")
-	}
+	w.Header().Set("Cache-Control", "private, max-age=86400")
 	http.ServeFile(w, r, path)
 }
 

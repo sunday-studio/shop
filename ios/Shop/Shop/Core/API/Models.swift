@@ -336,8 +336,10 @@ nonisolated struct Product: Codable, Sendable, Hashable, Identifiable {
     var suggestedMerge: SuggestedMerge?
     /// rule | off | manual
     var categorySource: String?
-    /// Path of /v1/products/{id}/image when the product has a photo.
+    /// Path of /v1/products/{id}/image?v={imageVersion}: the same for every device and member, changes when the picture does.
     var imageUrl: String?
+    /// Identifies the current picture (also the image's ETag). Absent without a photo.
+    var imageVersion: String?
 
     var sizeText: String? { Quantity.netSize(netQuantity, unit: netUnit) }
 

@@ -3,11 +3,9 @@ package autoprod
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 
 	"shop/internal/jobs"
@@ -59,7 +57,6 @@ type Service struct {
 	enabled bool
 	now     func() time.Time
 	gloss   *translate.Glossary // the household's taught words; nil = built-in glossary only
-	loadMu  sync.Mutex          // one create-or-link write at a time per household (confirm, per receipt, backfill)
 
 	// OFFTimeout bounds the Open Food Facts call of a barcode scan (5 s).
 	OFFTimeout time.Duration
@@ -83,38 +80,9 @@ type Stats struct {
 	NeedsReview int    `json:"needs_review"`
 	Skipped     int    `json:"skipped"`
 	Error       string `json:"error,omitempty"`
-
-	lines []LineOutcome // what happened to each line, in receipt order
-}
-
-// Line outcomes.
-const (
-	ActionCreated = "created"
-	ActionLinked  = "linked"
-	ActionSkipped = "skipped"
-)
-
-// Why a line was skipped.
-const (
-	SkipNotProduct = "not_a_product" // totals, payment, weight and other rows that are no product
-	SkipDiscarded  = "discarded"     // the user discarded the product of this line in the review queue
-	SkipGone       = "product_gone"  // the product it matched was merged away or deleted meanwhile
-)
-
-// LineOutcome is what create_or_link did with one item line.
-type LineOutcome struct {
-	LineID       int64  `json:"line_id"`
-	RawText      string `json:"raw_text"`
-	Action       string `json:"action"` // created | linked | skipped
-	ProductID    int64  `json:"product_id,omitempty"`
-	ProductName  string `json:"product_name,omitempty"`
-	NeedsReview  bool   `json:"needs_review,omitempty"`
-	ReviewReason string `json:"review_reason,omitempty"`
-	SkipReason   string `json:"skip_reason,omitempty"`
 }
 
 func (a *Stats) add(b Stats) {
-	a.lines = append(a.lines, b.lines...)
 	a.Linked += b.Linked
 	a.Created += b.Created
 	a.NeedsReview += b.NeedsReview
@@ -128,8 +96,6 @@ func (a *Stats) add(b Stats) {
 // run in one short transaction, so a background run never holds the database's single write lock for
 // longer than a few milliseconds and the app's own writes are not starved.
 func (s *Service) ProcessReceipt(ctx context.Context, receiptID int64, via string) (Stats, error) {
-	s.loadMu.Lock() // a plan made while another run writes could create the same product twice
-	defer s.loadMu.Unlock()
 	rec, lines, err := s.loadForLinking(ctx, s.q, receiptID)
 	if err != nil {
 		return Stats{}, err
@@ -175,7 +141,6 @@ func (s *Service) loadForLinking(ctx context.Context, q *db.Queries, receiptID i
 type step struct {
 	line     db.ReceiptLine
 	skip     bool
-	skipWhy  string
 	existing int64 // link to this existing product
 	pending  int   // link to the product created by step creates[pending-1] earlier in this plan
 	create   bool  // this line creates a product
@@ -196,18 +161,10 @@ type plan struct {
 func (s *Service) planLinks(ctx context.Context, q *db.Queries, m *match.Matcher, rec db.Receipt, lines []db.ReceiptLine, via string) (plan, error) {
 	var pl plan
 	localAlias := map[string]int{} // norm -> 1-based index into pl.creates
-	discarded, err := discardedLines(ctx, q)
-	if err != nil {
-		return plan{}, err
-	}
 	for _, line := range lines {
-		if discarded[line.ID] { // the user threw this product away: do not bring it back
-			pl.steps = append(pl.steps, step{line: line, skip: true, skipWhy: SkipDiscarded})
-			continue
-		}
 		c := CleanLineWith(s.gloss, line.RawText)
 		if c.Skip || c.Norm == "" {
-			pl.steps = append(pl.steps, step{line: line, skip: true, skipWhy: SkipNotProduct})
+			pl.steps = append(pl.steps, step{line: line, skip: true})
 			continue
 		}
 		st := step{line: line}
@@ -301,7 +258,6 @@ func (s *Service) applyPlan(ctx context.Context, q *db.Queries, rec db.Receipt, 
 		switch {
 		case step.skip:
 			st.Skipped++
-			st.lines = append(st.lines, LineOutcome{LineID: step.line.ID, RawText: step.line.RawText, Action: ActionSkipped, SkipReason: step.skipWhy})
 		case step.create:
 			in := step.in
 			switch {
@@ -325,28 +281,17 @@ func (s *Service) applyPlan(ctx context.Context, q *db.Queries, rec db.Receipt, 
 			if p.NeedsReview != 0 {
 				st.NeedsReview++
 			}
-			st.lines = append(st.lines, LineOutcome{LineID: step.line.ID, RawText: step.line.RawText, Action: ActionCreated, ProductID: p.ID,
-				ProductName: p.Name, NeedsReview: p.NeedsReview != 0, ReviewReason: p.ReviewReason.String})
 		default:
 			pid := step.existing
-			var target db.Product
 			if step.pending > 0 {
 				pid = created[step.pending-1]
-				var err error
-				if target, err = q.GetProduct(ctx, pid); err != nil {
-					return Stats{}, err
+			} else if _, err := q.GetProduct(ctx, pid); err != nil {
+				// merged or deleted since the plan was made: leave the line, the next run decides again
+				if errors.Is(err, sql.ErrNoRows) {
+					st.Skipped++
+					continue
 				}
-			} else {
-				var err error
-				if target, err = q.GetProduct(ctx, pid); err != nil {
-					// merged or deleted since the plan was made: leave the line, the next run decides again
-					if errors.Is(err, sql.ErrNoRows) {
-						st.Skipped++
-						st.lines = append(st.lines, LineOutcome{LineID: step.line.ID, RawText: step.line.RawText, Action: ActionSkipped, SkipReason: SkipGone})
-						continue
-					}
-					return Stats{}, err
-				}
+				return Stats{}, err
 			}
 			if err := link(step.line.ID, pid); err != nil {
 				return Stats{}, err
@@ -358,29 +303,9 @@ func (s *Service) applyPlan(ctx context.Context, q *db.Queries, rec db.Receipt, 
 				}
 			}
 			st.Linked++
-			st.lines = append(st.lines, LineOutcome{LineID: step.line.ID, RawText: step.line.RawText, Action: ActionLinked, ProductID: pid, ProductName: target.Name})
 		}
 	}
 	return st, nil
-}
-
-// discardedLines is the set of receipt lines whose product the user discarded in the review queue
-// (and did not undo).
-func discardedLines(ctx context.Context, q *db.Queries) (map[int64]bool, error) {
-	rows, err := q.ListDiscardedLineIDs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := map[int64]bool{}
-	for _, raw := range rows {
-		var ids []int64
-		if json.Unmarshal([]byte(raw), &ids) == nil {
-			for _, id := range ids {
-				out[id] = true
-			}
-		}
-	}
-	return out, nil
 }
 
 type newProduct struct {

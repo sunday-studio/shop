@@ -187,8 +187,14 @@ func deleteCategory(_ id: Int64, moveTo: Int64? = nil) async throws {
 
     /// Undo of a delete, within 30 days. 409 when it isn't deleted, was merged, or is too old.
     func restoreProduct(_ id: Int64) async throws -> Product { try await send("POST", "/v1/products/\(id)/restore") }
+    /// The server's `image_url` (it carries the version, so a changed picture is a new URL and a new cache entry),
+    /// whoever added the photo. Falls back to the plain path for servers that don't send it yet.
     func productImageURL(_ product: Product) -> URL? {
-        product.hasImage ? url("/v1/products/\(product.id)/image", query: ["v": String(Int(product.updatedAt.timeIntervalSince1970))]) : nil
+        if let path = product.imageUrl, let baseURL {
+            return URL(string: baseURL.absoluteString + (path.hasPrefix("/") ? path : "/" + path))
+        }
+        guard product.hasImage else { return nil }
+        return url("/v1/products/\(product.id)/image", query: ["v": product.imageVersion ?? String(Int(product.updatedAt.timeIntervalSince1970))])
     }
 
     func putProductImage(_ id: Int64, jpeg: Data) async throws -> Product {

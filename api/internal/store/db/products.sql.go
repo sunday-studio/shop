@@ -11,24 +11,6 @@ import (
 	"strings"
 )
 
-const countOtherProductsWithImage = `-- name: CountOtherProductsWithImage :one
-SELECT COUNT(*) FROM products WHERE image_path = ? AND id != ?
-`
-
-type CountOtherProductsWithImageParams struct {
-	ImagePath sql.NullString `json:"image_path"`
-	ID        int64          `json:"id"`
-}
-
-// Product images are content-addressed files that two products can share (same Open Food Facts photo,
-// a merge). The file may be deleted only when no other row, deleted or not, still points at it.
-func (q *Queries) CountOtherProductsWithImage(ctx context.Context, arg CountOtherProductsWithImageParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countOtherProductsWithImage, arg.ImagePath, arg.ID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createProduct = `-- name: CreateProduct :one
 INSERT INTO products (name, name_en, name_en_source, brand, category_id, barcode, net_quantity, net_unit, off_code, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
