@@ -52,6 +52,7 @@ var probes = map[string]probe{
 	"GET /healthz":        {Exempt: "public: process health only (db ping, queue counts of the process), no household data"},
 	"GET /version":        {Exempt: "public: build version and schema version, no household data"},
 	"GET /v1/auth/status": {Exempt: "public: server name, version, whether pairing is set up; no household data"},
+	"GET /v1/server-info": {Exempt: "public: mode, api level, login methods, features; no household data"},
 	"POST /v1/auth/pair":  {Exempt: "public pairing endpoint of the single-household product; a multi-household server does not offer it (404)"},
 
 	"GET /v1/auth/me":              {Scoped: true},
@@ -172,7 +173,7 @@ var probes = map[string]probe{
 	"GET /v1/search":              {Scoped: true, Own: true, Query: func(v, x *household) string { return "?q=" + x.marker }},
 	"GET /v1/glossary":            {Scoped: true, Own: true},
 	"POST /v1/glossary/preview":   {Scoped: true, Echo: true, Body: bodyOf(func(v, x *household) any { return M{"dutch": v.ids.Word, "english": "x"} })},
-	"PUT /v1/glossary/{dutch}":    {Scoped: true, Body: bodyOf(func(v, x *household) any { return M{"english": "taught by " + x.marker} })},
+	"PUT /v1/glossary/{dutch}":    {Scoped: true, Echo: true, Body: bodyOf(func(v, x *household) any { return M{"english": "taught by " + x.marker} })},
 	"DELETE /v1/glossary/{dutch}": {Ctrl: []int{200, 204}},
 	"GET /v1/translations/todo":   {Scoped: true},
 	"GET /v1/translate":           {Scoped: true, Echo: true, Query: func(v, x *household) string { return "?text=" + v.ids.Word }},
@@ -211,7 +212,7 @@ func specOps(t *testing.T) []specOp {
 var pathVarRe = regexp.MustCompile(`\{[^}]+\}`)
 
 // pathFor fills the template with the ids of the household that owns the resource.
-func pathFor(tmpl string, ids seedIDs) string {
+func pathFor(method, tmpl string, ids seedIDs) string {
 	if !pathVarRe.MatchString(tmpl) {
 		return tmpl
 	}
@@ -223,6 +224,9 @@ func pathFor(tmpl string, ids seedIDs) string {
 	}
 	if strings.HasPrefix(tmpl, "/v1/products/") && (strings.HasSuffix(tmpl, "/review") || strings.HasSuffix(tmpl, "/merge")) {
 		return pathVarRe.ReplaceAllString(tmpl, fmt.Sprint(ids.Review))
+	}
+	if method == "DELETE" && strings.HasPrefix(tmpl, "/v1/glossary/") {
+		return pathVarRe.ReplaceAllString(tmpl, ids.Word2) // PUT teaches Word in the caller's own glossary, so DELETE needs another
 	}
 	pick := func(prefix string, val any) (string, bool) {
 		if strings.HasPrefix(tmpl, prefix) {

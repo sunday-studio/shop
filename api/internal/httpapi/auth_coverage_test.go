@@ -17,7 +17,7 @@ func TestEveryRouteRequiresAToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	public := map[string]bool{"/healthz": true, "/version": true, "/v1/auth/status": true, "/v1/auth/pair": true}
+	public := map[string]bool{"/healthz": true, "/version": true, "/v1/auth/status": true, "/v1/auth/pair": true, "/v1/server-info": true}
 	pathRe := regexp.MustCompile(`^  (/[^:\s]+):\s*$`)
 	methodRe := regexp.MustCompile(`^    (get|post|put|patch|delete):`)
 	idRe := regexp.MustCompile(`\{[^}]+\}`)

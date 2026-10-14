@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shop API
-  version: 0.17.0
+  version: 0.18.0
   description: >
     Self-hosted grocery receipt tracker. Money is always integer cents.
     Timestamps are RFC3339 UTC. Errors use application/problem+json (RFC 7807).
@@ -1672,6 +1672,26 @@ paths:
         default: { $ref: "#/components/responses/Problem" }
 
   # ----------------------------------------------------------------- auth
+  /v1/server-info:
+    get:
+      operationId: getServerInfo
+      security: []
+      description: >
+        What this server is and how to sign in to it. Public, cacheable, no household data. The app
+        calls it before showing a login screen and shows the login that `login_methods` says.
+        `mode` is `single` for a self-hosted server (one household, pairing password) and `hosted`
+        for the multi-household service. `GET /v1/auth/status` stays as it was.
+      responses:
+        "200":
+          description: Server info
+          headers:
+            Cache-Control:
+              schema: { type: string }
+              description: public, max-age=60
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServerInfo" }
+
   /v1/auth/status:
     get:
       operationId: getAuthStatus
@@ -2004,6 +2024,47 @@ components:
       properties:
         ok: { type: boolean }
         detail: { type: string }
+
+    ServerInfo:
+      type: object
+      required: [server, version, api_level, mode, login_methods, pairing_enabled, min_app_build, features, limits]
+      properties:
+        server: { type: string, enum: [shop] }
+        version: { type: string, description: "server version, e.g. 0.18.0" }
+        api_level:
+          type: integer
+          description: contract revision, raised whenever a field or route is added (8 for this document)
+        mode: { type: string, enum: [single, hosted] }
+        login_methods:
+          type: array
+          description: >
+            What the app may offer, in order of preference. Single: `["pairing_password"]`, or empty
+            until a pairing password is set. Hosted: `["apple"]`.
+          items: { type: string, enum: [pairing_password, apple] }
+        pairing_enabled: { type: boolean, description: "same meaning as /v1/auth/status" }
+        min_app_build: { type: integer, description: "oldest app build the server accepts" }
+        features:
+          type: object
+          required: [households, billing, account_deletion, async_export, mcp]
+          properties:
+            households: { type: boolean }
+            billing: { type: boolean }
+            account_deletion: { type: boolean }
+            async_export: { type: boolean }
+            mcp: { type: boolean }
+        limits:
+          type: object
+          description: public per-household limits; null means no limit
+          properties:
+            household_members: { type: integer, nullable: true }
+            max_upload_bytes: { type: integer, format: int64, nullable: true }
+            receipts_per_month: { type: integer, nullable: true }
+            receipts_per_month_soft: { type: integer, nullable: true }
+            receipts_per_day: { type: integer, nullable: true }
+            storage_bytes: { type: integer, format: int64, nullable: true }
+            max_queued_jobs: { type: integer, nullable: true }
+            exports_per_day: { type: integer, nullable: true }
+            open_invites: { type: integer, nullable: true }
 
     Version:
       type: object

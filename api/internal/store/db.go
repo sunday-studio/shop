@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
@@ -107,4 +109,20 @@ func MigrationVersion(ctx context.Context, db *sql.DB) (int64, error) {
 
 func newProvider(db *sql.DB) (*goose.Provider, error) {
 	return goose.NewProvider(goose.DialectSQLite3, db, migrations.FS)
+}
+
+// LatestVersion is the newest schema version the binary knows (the highest embedded migration), the
+// version every database reaches once it is migrated.
+func LatestVersion() int64 {
+	ents, _ := migrations.FS.ReadDir(".")
+	var latest int64
+	for _, e := range ents {
+		name := e.Name()
+		if i := strings.IndexByte(name, '_'); i > 0 {
+			if n, err := strconv.ParseInt(name[:i], 10, 64); err == nil && n > latest {
+				latest = n
+			}
+		}
+	}
+	return latest
 }

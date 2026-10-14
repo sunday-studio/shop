@@ -30,7 +30,7 @@ func tokenCmd(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer a.db.Close()
+	defer a.close()
 	q := db.New(a.db)
 
 	switch args[0] {
@@ -87,7 +87,7 @@ func reparseCmd(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer a.db.Close()
+	defer a.close()
 	n, err := a.receipts.ReparseAll(ctx, *status)
 	if err != nil {
 		return err
@@ -111,7 +111,7 @@ func passwordCmd(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer a.db.Close()
+	defer a.close()
 	q := db.New(a.db)
 
 	var pw string
