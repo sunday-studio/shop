@@ -66,6 +66,9 @@ func (m *Multi) Mode() Mode { return ModeMulti }
 // Dir is the household's folder (it need not exist).
 func (m *Multi) Dir(id string) string { return filepath.Join(m.cfg.Root, "households", id) }
 
+// BackupRoot is the folder that holds every household's backups ("" when not set).
+func (m *Multi) BackupRoot() string { return m.cfg.BackupRoot }
+
 // BackupDir is where the household's backups go ("" when BackupRoot is not set).
 func (m *Multi) BackupDir(id string) string {
 	if m.cfg.BackupRoot == "" {
