@@ -1,0 +1,23 @@
+# HTTPS front for the hosted stack. Caddy gets and renews the certificate for SHOP_DOMAIN.
+{
+	email {$ACME_EMAIL}
+}
+
+{$SHOP_DOMAIN} {
+	encode zstd gzip
+	# Receipt photos: the API accepts 20 MB.
+	request_body {
+		max_size 25MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+	# Access logs would carry receipt ids and client addresses; keep only warnings and errors.
+	log {
+		level WARN
+	}
+	reverse_proxy api:8080
+}

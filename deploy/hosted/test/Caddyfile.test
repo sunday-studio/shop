@@ -1,0 +1,14 @@
+# Test only: plain http on :80 inside the container (published on 127.0.0.1:18490), so no public
+# DNS or certificate is needed. Same body limit and proxy as the real Caddyfile.
+{
+	auto_https off
+	admin 127.0.0.1:2019
+}
+
+:80 {
+	encode zstd gzip
+	request_body {
+		max_size 25MB
+	}
+	reverse_proxy api:8080
+}

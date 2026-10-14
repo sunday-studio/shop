@@ -41,3 +41,8 @@ deploy/offsite/config/*
 !deploy/offsite/config/.gitkeep
 !deploy/offsite/config/README
 deploy/offsite/offsite.env
+
+deploy/hosted/.env
+deploy/hosted/offsite.env
+deploy/hosted/offsite.env.new
+deploy/hosted/secrets.env

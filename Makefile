@@ -2,7 +2,7 @@ COMPOSE := docker compose -f deploy/docker-compose.yml
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 
-.PHONY: e2e restore-drill offsite-up offsite-down offsite-sync offsite-pull setup help gen test vet lint build run up down logs ps clean backup token spike-up spike-down spike-status spike-ocr spike-label spike-score
+.PHONY: hosted-kit-test e2e restore-drill offsite-up offsite-down offsite-sync offsite-pull setup help gen test vet lint build run up down logs ps clean backup token spike-up spike-down spike-status spike-ocr spike-label spike-score
 
 help: ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-8s %s\n", $$1, $$2}'
@@ -22,6 +22,9 @@ e2e: ## end-to-end test in an isolated docker stack (project shop-e2e, port 1848
 
 restore-drill: ## restore drill in an isolated docker stack (project shop-drill, port 18481): backup, wipe, restore (also from an off-site copy), verify; never touches the live stack
 	cd api && go test -tags drill -count=1 -v -timeout 30m ./drill/
+
+hosted-kit-test: ## test the hosted server kit (deploy/hosted) in an isolated stack (project shop-hosted-test, port 18490); never touches the live stack
+	deploy/hosted/test/run.sh
 
 .PHONY: isolation
 isolation: ## household isolation tests (build tag isolation): two households, every endpoint and MCP tool, plus the process-state scan; fails with a "not isolated: ..." checklist until the tenant seam is complete
