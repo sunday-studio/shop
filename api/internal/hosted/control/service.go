@@ -341,6 +341,11 @@ func (v *Service) Transfer(ctx context.Context, ownerID, targetID string, confir
 		if err := tx.SetHouseholdOwner(ctx, h.ID, targetID); err != nil {
 			return err
 		}
+		if !has { // the household lapses now (30 day clock) unless the new owner subscribes
+			if err := tx.SetHouseholdForcedLapse(ctx, h.ID, tx.Now()); err != nil {
+				return err
+			}
+		}
 		h.OwnerAccountID = targetID
 		out = h
 		return tx.AppendAudit(ctx, ownerID, "household.transfer", h.ID, map[string]any{"to": targetID, "target_has_plan": has})
@@ -470,4 +475,12 @@ func (v *Service) CancelAccountDeletion(ctx context.Context, accountID string) e
 		}
 		return tx.AppendAudit(ctx, accountID, "account.deletion_cancelled", accountID, nil)
 	})
+}
+
+// WithStore returns a copy of the service bound to another Store, typically the transaction
+// handed to Store.Tx. Use it to call service methods from inside a transaction.
+func (v *Service) WithStore(s *Store) *Service {
+	c := *v
+	c.S = s
+	return &c
 }

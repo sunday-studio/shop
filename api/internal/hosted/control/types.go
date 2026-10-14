@@ -128,6 +128,7 @@ type Entitlement struct {
 	OfferID               string
 	GrantID               string
 	RevokedAt             time.Time
+	EndedAt               time.Time // set once, when the subscription is first seen expired
 	LastSignedMs          int64
 	UpdatedAt             time.Time
 }
