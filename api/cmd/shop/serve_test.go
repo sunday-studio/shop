@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"shop/internal/store"
 )
@@ -63,5 +64,27 @@ func TestOpenAppSnapshotsBeforeMigrating(t *testing.T) {
 	}
 	if n != 1 {
 		t.Errorf("snapshots after second open = %d, want 1", n)
+	}
+}
+
+// A server opens with background work on (the shop-suggestion header reindex hangs off the household);
+// that path must not block and must close cleanly.
+func TestOpenAppWithBackgroundWorkStartsAndCloses(t *testing.T) {
+	t.Setenv("SHOP_DATA_DIR", t.TempDir())
+	done := make(chan error, 1)
+	go func() {
+		a, err := openAppWith(context.Background(), slog.New(slog.NewTextHandler(io.Discard, nil)), true)
+		if err == nil {
+			err = a.close()
+		}
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(20 * time.Second):
+		t.Fatal("openAppWith(background) hangs")
 	}
 }
