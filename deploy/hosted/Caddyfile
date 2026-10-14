@@ -1,6 +1,13 @@
 # HTTPS front for the hosted stack. Caddy gets and renews the certificate for SHOP_DOMAIN.
 {
 	email {$ACME_EMAIL}
+	# A client that trickles its headers or keeps a connection idle must not hold it forever.
+	servers {
+		timeouts {
+			read_header 10s
+			idle 2m
+		}
+	}
 }
 
 {$SHOP_DOMAIN} {
@@ -10,7 +17,7 @@
 		max_size 25MB
 	}
 	header {
-		Strict-Transport-Security "max-age=31536000"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
 		Referrer-Policy no-referrer
 		-Server

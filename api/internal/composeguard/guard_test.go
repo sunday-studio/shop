@@ -213,3 +213,31 @@ func TestHostedKitComposeFilesPinTheirOwnProject(t *testing.T) {
 		t.Errorf("target hosted-kit-test must only run deploy/hosted/test/run.sh, got:\n%s", m[1])
 	}
 }
+
+// Security review settings of the hosted kit that must not be lost in an edit.
+func TestHostedKitSecuritySettings(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", "deploy", "hosted", "docker-compose.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	for _, must := range []string{
+		`SHOP_TRUST_PROXY: "1"`, // without it all clients share one rate-limit bucket (Caddy's address)
+		"SHOP_APPLE_ENVIRONMENT: ${SHOP_APPLE_ENVIRONMENT:-production}",
+		`no-new-privileges:true`,
+		"cap_drop: [ALL]",
+	} {
+		if !strings.Contains(s, must) {
+			t.Errorf("deploy/hosted/docker-compose.yml lost %q", must)
+		}
+	}
+	if regexp.MustCompile(`(?m)^\s*-\s*"/:`).MatchString(s) {
+		t.Error("a container mounts the host root; the monitor reads the disk through a volume instead")
+	}
+	cf, _ := os.ReadFile(filepath.Join("..", "..", "..", "deploy", "hosted", "Caddyfile"))
+	for _, must := range []string{"Strict-Transport-Security", "read_header", "max_size"} {
+		if !strings.Contains(string(cf), must) {
+			t.Errorf("deploy/hosted/Caddyfile lost %q", must)
+		}
+	}
+}
