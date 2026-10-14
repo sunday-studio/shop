@@ -57,6 +57,30 @@ func TestUploadsInFlightAreCappedProcessWide(t *testing.T) {
 	want(t, upload(world, bob.Token, png1(9)), 202, "")
 }
 
+// The same cap covers product pictures (multipart PUT), which are decoded in memory too.
+func TestProductImageUploadsShareTheCap(t *testing.T) {
+	world := w.New(t, w.NoRates, func(c *hostedapi.Config) { c.Rates.UploadsInFlight = 1 })
+	ama := world.SignIn("sub-ama", "Ama")
+	world.Subscribe(ama, "otx-ama")
+	bob := world.SignIn("sub-bob", "Bob")
+	world.Subscribe(bob, "otx-bob")
+
+	pr, pw := io.Pipe()
+	req := httptest.NewRequest("PUT", "/v1/products/1/image", pr)
+	req.Header.Set("Authorization", "Bearer "+ama.Token)
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=x")
+	done := make(chan struct{})
+	go func() {
+		world.Handler.ServeHTTP(httptest.NewRecorder(), req)
+		close(done)
+	}()
+	time.Sleep(200 * time.Millisecond)
+	want(t, upload(world, bob.Token, png1(5)), 429, "rate_limited")
+	_ = pw.CloseWithError(io.ErrClosedPipe)
+	<-done
+	want(t, upload(world, bob.Token, png1(5)), 202, "")
+}
+
 // The address behind the per-address limits is the last X-Forwarded-For entry (set by our proxy),
 // an IPv6 address counts as its /64, and a garbage entry falls back to the socket address.
 func TestRateLimitKeyIP(t *testing.T) {
