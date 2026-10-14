@@ -115,7 +115,9 @@ func (v *Service) Authenticate(ctx context.Context, token string) (Principal, er
 		}
 		return Principal{}, ErrNotFound
 	}
-	_ = v.S.TouchDevice(ctx, d.ID, v.S.Now())
+	if now := v.S.Now(); d.LastUsedAt.IsZero() || now.Sub(d.LastUsedAt) >= time.Minute {
+		_ = v.S.TouchDevice(ctx, d.ID, now) // at most one write a minute per device
+	}
 	return Principal{Account: a, Device: d}, nil
 }
 

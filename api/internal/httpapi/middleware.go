@@ -71,8 +71,34 @@ func currentToken(ctx context.Context) (db.ApiToken, bool) {
 	return t, ok
 }
 
+// ExternalAuth marks a request as already authenticated by the layer in front of the household's
+// Server (the hosted gateway, which keeps device tokens in its control database, not in the
+// household database). It can only be set by code that builds the request context, never by a
+// client, so single mode (nothing sets it) is unchanged.
+type ExternalAuth struct {
+	DeviceID int64
+	Name     string
+	Kind     string
+}
+
+type externalAuthKey struct{}
+
+// WithExternalAuth returns a context that makes the household Server skip its own token check.
+func WithExternalAuth(ctx context.Context, a ExternalAuth) context.Context {
+	return context.WithValue(ctx, externalAuthKey{}, a)
+}
+
 func (s *Server) requireToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if a, ok := r.Context().Value(externalAuthKey{}).(ExternalAuth); ok {
+			kind := a.Kind
+			if kind == "" {
+				kind = "device"
+			}
+			tok := db.ApiToken{ID: a.DeviceID, Name: a.Name, Kind: kind}
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), tokenKey{}, tok)))
+			return
+		}
 		raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if !ok {
 			w.Header().Set("WWW-Authenticate", `Bearer realm="shop"`)

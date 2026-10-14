@@ -203,6 +203,11 @@ func (s *Server) Inner() http.Handler {
 	for pattern, h := range s.Authed {
 		api.Handle(pattern, h)
 	}
+	// Account, household and billing routes belong to the hosted service (after the token check, so
+	// an unauthenticated caller still gets 401).
+	for _, p := range []string{"/v1/account", "/v1/account/", "/v1/household", "/v1/household/", "/v1/billing/"} {
+		api.HandleFunc(p, hostedOnly)
+	}
 
 	root := http.NewServeMux()
 	root.HandleFunc("GET /healthz", s.health)
