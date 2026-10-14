@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"shop/internal/apitypes"
-	"shop/internal/english"
 	"shop/internal/receipts"
 	"shop/internal/store"
 	"shop/internal/store/db"
@@ -18,7 +17,7 @@ import (
 
 const maxUpload = 20 << 20
 
-func toReceipt(r db.Receipt, lines []db.ReceiptLine) apitypes.Receipt {
+func (s *Server) toReceipt(r db.Receipt, lines []db.ReceiptLine) apitypes.Receipt {
 	created, _ := store.ParseTS(r.CreatedAt)
 	updated, _ := store.ParseTS(r.UpdatedAt)
 	reasons := []apitypes.ReceiptReviewReasons{}
@@ -40,7 +39,7 @@ func toReceipt(r db.Receipt, lines []db.ReceiptLine) apitypes.Receipt {
 		ls := make([]apitypes.ReceiptLine, len(lines))
 		var items, unlinked int
 		for i, l := range lines {
-			ls[i] = toLine(l)
+			ls[i] = s.toLine(l)
 			if l.Kind == "item" {
 				items++
 				if !l.ProductID.Valid {
@@ -149,7 +148,7 @@ func (s *Server) undoKeepDuplicate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func toLine(l db.ReceiptLine) apitypes.ReceiptLine {
+func (s *Server) toLine(l db.ReceiptLine) apitypes.ReceiptLine {
 	out := apitypes.ReceiptLine{
 		Id: l.ID, ReceiptId: l.ReceiptID, LineNo: int(l.LineNo), RawText: l.RawText,
 		Kind: apitypes.LineKind(l.Kind), Qty: l.Qty, Unit: apitypes.LineUnit(l.Unit),
@@ -158,7 +157,7 @@ func toLine(l db.ReceiptLine) apitypes.ReceiptLine {
 		ProductId: store.IntPtr(l.ProductID), UserEdited: l.UserEdited != 0,
 	}
 	if l.Kind == "item" {
-		g := english.Gloss(l.RawText)
+		g := s.English.Gloss(l.RawText)
 		status := apitypes.ReceiptLineTextEnStatus(g.Status)
 		spans := toSpans(g.Unknown)
 		out.TextEn, out.TextEnStatus, out.TextEnUnknown = g.TextEN, &status, &spans
@@ -218,7 +217,7 @@ func (s *Server) listReceipts(w http.ResponseWriter, r *http.Request) {
 	}
 	page := apitypes.ReceiptPage{Items: make([]apitypes.Receipt, len(recs))}
 	for i, rec := range recs {
-		page.Items[i] = toReceipt(rec.Receipt, nil)
+		page.Items[i] = s.toReceipt(rec.Receipt, nil)
 		if page.Items[i].PossibleDuplicateOf, err = s.toPossibleDuplicate(r, dups[rec.Receipt.ID]); err != nil {
 			s.writeErr(w, r, err)
 			return
@@ -301,7 +300,7 @@ func (s *Server) uploadReceipt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Location", "/v1/receipts/"+itoa(rec.ID))
-	writeJSON(w, http.StatusAccepted, toReceipt(rec, nil))
+	writeJSON(w, http.StatusAccepted, s.toReceipt(rec, nil))
 }
 
 func (s *Server) getReceipt(w http.ResponseWriter, r *http.Request) {
@@ -325,7 +324,7 @@ func (s *Server) receiptOut(r *http.Request, id int64) (apitypes.Receipt, error)
 	if err != nil {
 		return apitypes.Receipt{}, err
 	}
-	out := toReceipt(rec, lines)
+	out := s.toReceipt(rec, lines)
 	sug, err := s.suggest.Suggest(r.Context(), id)
 	if err != nil {
 		return apitypes.Receipt{}, err
@@ -454,7 +453,7 @@ func (s *Server) requeue(withOCR bool) http.HandlerFunc {
 		if force {
 			s.revertList(r, id) // a forced re-parse unconfirms the receipt
 		}
-		writeJSON(w, http.StatusAccepted, toReceipt(rec, nil))
+		writeJSON(w, http.StatusAccepted, s.toReceipt(rec, nil))
 	}
 }
 
@@ -528,7 +527,7 @@ func (s *Server) createLine(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, toLine(l))
+	writeJSON(w, http.StatusCreated, s.toLine(l))
 }
 
 func (s *Server) updateLine(w http.ResponseWriter, r *http.Request) {
@@ -547,7 +546,7 @@ func (s *Server) updateLine(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toLine(l))
+	writeJSON(w, http.StatusOK, s.toLine(l))
 }
 
 func (s *Server) deleteLine(w http.ResponseWriter, r *http.Request) {

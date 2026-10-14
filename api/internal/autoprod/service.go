@@ -56,6 +56,7 @@ type Service struct {
 	log     *slog.Logger
 	enabled bool
 	now     func() time.Time
+	gloss   *translate.Glossary // the household's taught words; nil = built-in glossary only
 
 	// OFFTimeout bounds the Open Food Facts call of a barcode scan (5 s).
 	OFFTimeout time.Duration
@@ -161,7 +162,7 @@ func (s *Service) planLinks(ctx context.Context, q *db.Queries, m *match.Matcher
 	var pl plan
 	localAlias := map[string]int{} // norm -> 1-based index into pl.creates
 	for _, line := range lines {
-		c := CleanLine(line.RawText)
+		c := CleanLineWith(s.gloss, line.RawText)
 		if c.Skip || c.Norm == "" {
 			pl.steps = append(pl.steps, step{line: line, skip: true})
 			continue
@@ -325,6 +326,9 @@ type newProduct struct {
 	catSource      string
 }
 
+// UseGlossary makes automatic English names use the household's taught words.
+func (s *Service) UseGlossary(g *translate.Glossary) { s.gloss = g }
+
 // insertProduct creates the row with category, English name and review state per §3.2.
 func (s *Service) insertProduct(ctx context.Context, q *db.Queries, in newProduct, now string) (db.Product, error) {
 	arg := db.InsertAutoProductParams{
@@ -339,7 +343,7 @@ func (s *Service) insertProduct(ctx context.Context, q *db.Queries, in newProduc
 	case in.nameEN != "":
 		arg.NameEn, arg.NameEnSource = store.Str(in.nameEN), store.Str("openfoodfacts")
 	default:
-		if t := translate.Translate(in.name); t.OK() {
+		if t := s.gloss.Translate(in.name); t.OK() {
 			arg.NameEn, arg.NameEnSource = store.Str(t.Text), store.Str("dictionary")
 		}
 	}

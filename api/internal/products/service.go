@@ -35,11 +35,15 @@ type Service struct {
 	foodFacts *openfoodfacts.Client
 	imagesDir string
 	log       *slog.Logger
+	gloss     *translate.Glossary // the household's taught words; nil = built-in glossary only
 }
 
 func New(conn *sql.DB, matcher *match.Matcher, foodFacts *openfoodfacts.Client, imagesDir string, log *slog.Logger) *Service {
 	return &Service{conn: conn, q: db.New(conn), matcher: matcher, foodFacts: foodFacts, imagesDir: imagesDir, log: log}
 }
+
+// UseGlossary makes automatic English names use the household's taught words.
+func (s *Service) UseGlossary(g *translate.Glossary) { s.gloss = g }
 
 // Input is a product as entered by the user (or prefilled from OFF).
 type Input struct {
@@ -157,7 +161,7 @@ func (s *Service) Create(ctx context.Context, in Input) (Product, error) {
 	err := store.InTx(ctx, s.conn, func(q *db.Queries) error {
 		now := store.Now()
 		var err error
-		nameEN, source := englishName(in, nil)
+		nameEN, source := s.englishName(in, nil)
 		p, err = q.CreateProduct(ctx, db.CreateProductParams{
 			Name: in.Name, NameEn: nameEN, NameEnSource: source, Brand: store.NullStr(in.Brand), CategoryID: store.NullInt(in.CategoryID),
 			Barcode: store.NullStr(in.Barcode), NetQuantity: floatNull(in.NetQuantity),
@@ -190,7 +194,7 @@ func (s *Service) Create(ctx context.Context, in Input) (Product, error) {
 }
 
 // englishName decides the stored English name (see Input.NameEN).
-func englishName(in Input, cur *db.Product) (sql.NullString, sql.NullString) {
+func (s *Service) englishName(in Input, cur *db.Product) (sql.NullString, sql.NullString) {
 	if in.NameEN != nil {
 		if v := strings.TrimSpace(*in.NameEN); v != "" {
 			src := in.NameENSource
@@ -202,7 +206,7 @@ func englishName(in Input, cur *db.Product) (sql.NullString, sql.NullString) {
 	} else if cur != nil && cur.NameEnSource.Valid && cur.NameEnSource.String != "dictionary" {
 		return cur.NameEn, cur.NameEnSource // keep what the user or Open Food Facts gave
 	}
-	if t := translate.Translate(in.Name); t.OK() {
+	if t := s.gloss.Translate(in.Name); t.OK() {
 		return store.Str(t.Text), store.Str("dictionary")
 	}
 	return sql.NullString{}, sql.NullString{}
@@ -242,7 +246,7 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (Product, erro
 	if err := in.validate(ctx, s.q); err != nil {
 		return Product{}, err
 	}
-	nameEN, source := englishName(in, &cur.Product)
+	nameEN, source := s.englishName(in, &cur.Product)
 	err = store.InTx(ctx, s.conn, func(q *db.Queries) error {
 		_, err := q.UpdateProduct(ctx, db.UpdateProductParams{
 			Name: in.Name, NameEn: nameEN, NameEnSource: source, Brand: store.NullStr(in.Brand), CategoryID: store.NullInt(in.CategoryID),

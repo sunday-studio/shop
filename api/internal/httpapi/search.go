@@ -37,7 +37,7 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	}
 	prods := make([]apitypes.Product, len(res.Products))
 	for i, p := range res.Products {
-		prods[i] = toProduct(p.Product, nil)
+		prods[i] = s.toProduct(p.Product, nil)
 		sc := round3(p.Score)
 		prods[i].Score = &sc
 	}
@@ -55,7 +55,7 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 			ShopID: a.ShopID, ShopName: a.ShopName, Score: round3(a.Score)})
 	}
 	for _, h := range res.Receipts {
-		out.Receipts = append(out.Receipts, receiptHit{Receipt: toReceipt(h.Receipt, nil), MatchedLines: h.MatchedLines})
+		out.Receipts = append(out.Receipts, receiptHit{Receipt: s.toReceipt(h.Receipt, nil), MatchedLines: h.MatchedLines})
 	}
 	writeJSON(w, http.StatusOK, out)
 }

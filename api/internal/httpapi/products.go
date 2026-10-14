@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"shop/internal/apitypes"
-	"shop/internal/english"
 	"shop/internal/match"
 	"shop/internal/openfoodfacts"
 	"shop/internal/products"
@@ -58,7 +57,7 @@ func fromNutrition(n *apitypes.Nutrition) *products.Nutrition {
 	return out
 }
 
-func toProduct(p db.Product, n *db.Nutrition) apitypes.Product {
+func (s *Server) toProduct(p db.Product, n *db.Nutrition) apitypes.Product {
 	created, _ := store.ParseTS(p.CreatedAt)
 	updated, _ := store.ParseTS(p.UpdatedAt)
 	out := apitypes.Product{
@@ -90,7 +89,7 @@ func toProduct(p db.Product, n *db.Nutrition) apitypes.Product {
 		src := apitypes.ProductNameEnSource(p.NameEnSource.String)
 		out.NameEnSource = &src
 	}
-	st := english.ProductStatus(p)
+	st := s.English.ProductStatus(p)
 	status := apitypes.NameEnStatus(st.Status)
 	spans := toSpans(st.Unknown)
 	out.NameEnStatus, out.NameEnUnknown = &status, &spans
@@ -170,7 +169,7 @@ func (s *Server) listProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]apitypes.Product, len(res))
 	for i, p := range res {
-		out[i] = toProduct(p.Product, nil)
+		out[i] = s.toProduct(p.Product, nil)
 		if q.Get("q") != "" {
 			sc := round3(p.Score)
 			out[i].Score = &sc
@@ -194,7 +193,7 @@ func (s *Server) createProduct(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, toProduct(p.Product, p.Nutrition))
+	writeJSON(w, http.StatusCreated, s.toProduct(p.Product, p.Nutrition))
 }
 
 func (s *Server) getProduct(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +207,7 @@ func (s *Server) getProduct(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	out := []apitypes.Product{toProduct(p.Product, p.Nutrition)}
+	out := []apitypes.Product{s.toProduct(p.Product, p.Nutrition)}
 	out[0].SuggestedMerge = s.suggestedMergeOf(r.Context(), p.Product)
 	if err := s.withSummaries(r, out); err != nil {
 		s.writeErr(w, r, err)
@@ -265,7 +264,7 @@ func (s *Server) updateProduct(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toProduct(p.Product, p.Nutrition))
+	writeJSON(w, http.StatusOK, s.toProduct(p.Product, p.Nutrition))
 }
 
 func (s *Server) deleteProduct(w http.ResponseWriter, r *http.Request) {
@@ -324,7 +323,7 @@ func (s *Server) putProductImage(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toProduct(p.Product, p.Nutrition))
+	writeJSON(w, http.StatusOK, s.toProduct(p.Product, p.Nutrition))
 }
 
 func (s *Server) putNutrition(w http.ResponseWriter, r *http.Request) {
@@ -343,7 +342,7 @@ func (s *Server) putNutrition(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toProduct(p.Product, p.Nutrition))
+	writeJSON(w, http.StatusOK, s.toProduct(p.Product, p.Nutrition))
 }
 
 func (s *Server) deleteNutrition(w http.ResponseWriter, r *http.Request) {
@@ -366,7 +365,7 @@ func (s *Server) lookupBarcode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if res.Local != nil {
-		p := toProduct(res.Local.Product, res.Local.Nutrition)
+		p := s.toProduct(res.Local.Product, res.Local.Nutrition)
 		writeJSON(w, http.StatusOK, apitypes.BarcodeLookup{Source: apitypes.BarcodeLookupSourceLocal, Product: &p})
 		return
 	}
@@ -456,7 +455,7 @@ func (s *Server) unmatchedLines(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]apitypes.UnmatchedLine, len(rows))
 	for i, u := range rows {
-		out[i] = unmatchedLineOut(u)
+		out[i] = s.unmatchedLineOut(u)
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -479,13 +478,13 @@ func (s *Server) linkLine(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, apitypes.LinkResult{
-		Line: toLine(res.Line), AlsoLinked: res.AlsoLinked, AliasCreated: res.AliasCreated,
+		Line: s.toLine(res.Line), AlsoLinked: res.AlsoLinked, AliasCreated: res.AliasCreated,
 	})
 }
 
-func unmatchedLineOut(u products.UnmatchedLine) apitypes.UnmatchedLine {
+func (s *Server) unmatchedLineOut(u products.UnmatchedLine) apitypes.UnmatchedLine {
 	return apitypes.UnmatchedLine{
-		Line: toLine(db.ReceiptLine{
+		Line: s.toLine(db.ReceiptLine{
 			ID: u.ID, ReceiptID: u.ReceiptID, LineNo: u.LineNo, RawText: u.RawText, NormText: u.NormText,
 			Kind: u.Kind, Qty: u.Qty, Unit: u.Unit, UnitPriceCents: u.UnitPriceCents,
 			LineTotalCents: u.LineTotalCents, VatCode: u.VatCode, ParentLineID: u.ParentLineID,

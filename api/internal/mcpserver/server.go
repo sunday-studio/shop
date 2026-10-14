@@ -27,7 +27,6 @@ import (
 	"shop/internal/stats"
 	"shop/internal/store"
 	"shop/internal/store/db"
-	"shop/internal/translate"
 	"shop/internal/version"
 )
 
@@ -59,6 +58,15 @@ The shopping list can hold named checklists (groups) such as a recipe or a barbe
 func New(d Deps) *mcp.Server {
 	if d.Location == nil {
 		d.Location = time.UTC
+	}
+	if d.English != nil {
+		// Automatic English names use this household's taught words.
+		if d.Products != nil {
+			d.Products.UseGlossary(d.English.Glossary())
+		}
+		if d.Auto != nil {
+			d.Auto.UseGlossary(d.English.Glossary())
+		}
 	}
 	s := &server{Deps: d, q: db.New(d.DB)}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "shop", Title: "Shop", Version: version.Version},
@@ -435,7 +443,7 @@ func (s *server) getReceipt(ctx context.Context, _ *mcp.CallToolRequest, in GetR
 				}
 			}
 			rl.Product, rl.TextEN = productNames[id][0], productNames[id][1]
-		} else if t := translate.Translate(match.Normalise(l.RawText)); t.OK() && l.Kind == "item" {
+		} else if t := s.English.Glossary().Translate(match.Normalise(l.RawText)); t.OK() && l.Kind == "item" {
 			rl.TextEN = t.Text
 		}
 		out.Lines = append(out.Lines, rl)

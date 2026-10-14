@@ -53,7 +53,6 @@ func TestTranslateUnknownPassesThrough(t *testing.T) {
 }
 
 func TestSpansAndStatus(t *testing.T) {
-	SetUserTerms(nil)
 	r := Translate("Calvé pindakaas met Calvé saus")
 	if r.Status() != StatusPartial || r.Text != "Calvé peanut butter with Calvé sauce" {
 		t.Fatalf("result: %q %s", r.Text, r.Status())
@@ -82,37 +81,35 @@ func TestSpansAndStatus(t *testing.T) {
 }
 
 func TestUserTerms(t *testing.T) {
-	defer SetUserTerms(nil)
-	SetUserTerms(nil)
-	if r := Translate("Appels Elstar"); r.Status() != StatusPartial {
+	g := NewGlossary()
+	if r := g.Translate("Appels Elstar"); r.Status() != StatusPartial {
 		t.Fatalf("before: %+v", r)
 	}
 	// Preview without saving.
-	if r := TranslateWith("Appels Elstar", "elstar", Term{KeepAsIs: true}); r.Status() != StatusDictionary || r.Text != "Apples Elstar" {
+	if r := g.TranslateWith("Appels Elstar", "elstar", Term{KeepAsIs: true}); r.Status() != StatusDictionary || r.Text != "Apples Elstar" {
 		t.Errorf("preview keep-as-is: %+v", r)
 	}
-	if r := Translate("Appels Elstar"); r.Status() != StatusPartial {
+	if r := g.Translate("Appels Elstar"); r.Status() != StatusPartial {
 		t.Errorf("preview must not persist: %+v", r)
 	}
 
-	SetUserTerms(map[string]Term{"Calvé": {English: "Calvé brand"}, "jonagold": {KeepAsIs: true}, "melk": {English: "moo juice"}})
-	if r := Translate("Calvé pindakaas"); r.Text != "Calvé brand peanut butter" || !r.Complete {
+	g.Set(map[string]Term{"Calvé": {English: "Calvé brand"}, "jonagold": {KeepAsIs: true}, "melk": {English: "moo juice"}})
+	if r := g.Translate("Calvé pindakaas"); r.Text != "Calvé brand peanut butter" || !r.Complete {
 		t.Errorf("user term (accent-insensitive key): %+v", r)
 	}
-	if r := Translate("Appels Jonagold"); r.Text != "Apples Jonagold" || !r.Complete {
+	if r := g.Translate("Appels Jonagold"); r.Text != "Apples Jonagold" || !r.Complete {
 		t.Errorf("keep as is: %+v", r)
 	}
 	// User terms override the built-in glossary, also inside compounds.
-	if r := Translate("Halfvolle melk"); r.Text != "Semi-skimmed moo juice" {
+	if r := g.Translate("Halfvolle melk"); r.Text != "Semi-skimmed moo juice" {
 		t.Errorf("override: %q", r.Text)
 	}
-	if r := Translate("Karnemelk"); r.Text != "Buttermilk" {
+	if r := g.Translate("Karnemelk"); r.Text != "Buttermilk" {
 		t.Errorf("exact built-in entry still wins over compound split: %q", r.Text)
 	}
 }
 
 func TestAbbreviationsKeepInputOffsets(t *testing.T) {
-	SetUserTerms(nil)
 	r := Translate("AH HALFV MELK XYZQ")
 	if r.Text != "AH semi-skimmed milk XYZQ" {
 		t.Fatalf("text: %q", r.Text)
@@ -140,5 +137,24 @@ func TestRealReceiptWordsAreDictionaryStatus(t *testing.T) {
 		if r := Translate(name); !r.OK() {
 			t.Errorf("%q is not fully translated: %+v", name, r)
 		}
+	}
+}
+
+// Taught words belong to one Glossary: another household's glossary and the built-in one do not see them.
+func TestGlossariesAreIndependent(t *testing.T) {
+	a, b := NewGlossary(), NewGlossary()
+	a.Set(map[string]Term{"blorptaart": {English: "blorp pie"}})
+	if r := a.Translate("Blorptaart"); r.Text != "blorp pie" && r.Text != "Blorp pie" {
+		t.Errorf("A: %q", r.Text)
+	}
+	if r := b.Translate("Blorptaart"); r.Known != 0 {
+		t.Errorf("B must not know A's word: %+v", r)
+	}
+	var nilG *Glossary
+	if r := nilG.Translate("Blorptaart"); r.Known != 0 {
+		t.Errorf("nil glossary = built-in only: %+v", r)
+	}
+	if r := Translate("Blorptaart"); r.Known != 0 {
+		t.Errorf("built-in must not know it: %+v", r)
 	}
 }
