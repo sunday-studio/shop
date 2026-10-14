@@ -71,7 +71,7 @@ func newServer(cfg hostedConfig, log *slog.Logger, clock hclock.Clock, backgroun
 	}
 	s.Calc = billing.NewCalculator(s.Store)
 	s.Ctl = control.NewService(s.Store, cfg.API.Limits.ControlConfig(control.DefaultConfig()), s.Calc.AccessChecker())
-	s.Bill = billing.NewService(s.Ctl, apple.Verifier, apple.API, billing.Config{BundleID: cfg.Apple.BundleID, ProductIDs: cfg.Apple.ProductIDs, AllowLocal: cfg.Apple.Mode == "fake"})
+	s.Bill = billing.NewService(s.Ctl, apple.Verifier, apple.API, billing.Config{BundleID: cfg.Apple.BundleID, ProductIDs: cfg.Apple.ProductIDs, AllowLocal: cfg.Apple.Mode == "fake", ProductionOnly: cfg.Apple.Environment == "production"})
 	s.Bill.Log = log
 	s.Auth = appleauth.New(s.Ctl, &appleauth.Verifier{Keys: &appleauth.KeySet{Fetcher: apple.Keys, Clock: clock}, Clock: clock, Audience: cfg.Apple.BundleID}, apple.Exchanger, apple.Revoker, sealer)
 	s.Auth.Log = log
