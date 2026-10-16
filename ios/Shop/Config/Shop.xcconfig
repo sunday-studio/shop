@@ -20,5 +20,10 @@ SHOP_PRODUCT_ID = com.sundaystudi.shop.hosted.monthly
 // The release build for the App Store must use Config/Shop.entitlements.
 CODE_SIGN_ENTITLEMENTS = Config/Shop.NoCapabilities.entitlements
 
+// Debug runs optimised (-O) so a regular run from Xcode feels like the real app: SwiftUI lists and
+// scrolling are several times slower at -Onone. Set this to -Onone in Config/Local.xcconfig when you
+// need to step through code with full variable inspection.
+SWIFT_OPTIMIZATION_LEVEL = -O
+
 // Optional per-developer overrides, never committed.
 #include? "Local.xcconfig"
