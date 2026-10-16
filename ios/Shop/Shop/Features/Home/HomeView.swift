@@ -58,8 +58,11 @@ struct HomeView: View {
                 }
 
                 if home.possibleDuplicateCount > 0 && !home.filter.isActive, let first = home.firstPossibleDuplicateId {
-                    AttentionCard(count: home.possibleDuplicateCount, title: home.possibleDuplicateCount == 1 ? "Possible duplicate" : "Possible duplicates", hint: "Compare") {
-                        app.push(.receipt(first))
+                    HStack {
+                        PillAction(title: home.possibleDuplicateCount == 1 ? "Possible duplicate · 1" : "Possible duplicates · \(home.possibleDuplicateCount)", icon: .warning) {
+                            app.push(.receipt(first))
+                        }
+                        Spacer()
                     }
                     .padding(.horizontal, Space.edge)
                     .padding(.top, Space.m)

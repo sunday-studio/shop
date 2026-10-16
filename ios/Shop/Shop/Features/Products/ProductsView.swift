@@ -94,21 +94,23 @@ struct ProductsView: View {
                 .shopListRow()
             }
 
-            if app.needsEnglish.wordsLeft > 0 {
-                AttentionCard(count: app.needsEnglish.wordsLeft, title: "Needs English", hint: "\(app.needsEnglish.wordsLeft) word\(app.needsEnglish.wordsLeft == 1 ? "" : "s")") {
-                    app.push(.needsEnglish)
+            // One amber card for the thing that blocks nothing least; the rest are quiet pills.
+            let words = app.needsEnglish.wordsLeft
+            if words > 0 || app.backfillEligible > 0 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Space.m) {
+                        if words > 0 {
+                            PillAction(title: "Needs English · \(words) word\(words == 1 ? "" : "s")", icon: .edit) { app.push(.needsEnglish) }
+                        }
+                        if app.backfillEligible > 0 {
+                            PillAction(title: "Load from receipts · \(app.backfillEligible)", icon: .plus) {
+                                app.trays.present("backfill") { BackfillTray() }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, Space.edge)
                 }
-                .padding(.horizontal, Space.edge)
-                .padding(.top, Space.m)
-                .shopListRow()
-            }
-
-            if app.backfillEligible > 0 {
-                AttentionCard(count: app.backfillEligible, title: "Load products from receipts", hint: app.backfillEligible == 1 ? "1 receipt" : "\(app.backfillEligible) receipts", tone: .blue) {
-                    app.trays.present("backfill") { BackfillTray() }
-                }
-                .padding(.horizontal, Space.edge)
-                .padding(.top, Space.m)
+                .padding(.top, Space.l)
                 .shopListRow()
             }
 

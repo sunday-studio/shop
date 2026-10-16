@@ -362,12 +362,12 @@ final class ShopUITests: XCTestCase {
 
     func testLoadProductsFromReceiptsOnTheProductsTab() {
         tab("Products"); exists(text("Products"))
-        exists(button(containing: "Load products from receipts")).tap()
+        exists(button(containing: "Load from receipts")).tap()
         exists(textContaining("would be created"), "preview")
         exists(button(startingWith: "Load 5 products")).tap()
         exists(textContaining("Done."), "result")
         app.buttons["Close"].firstMatch.tap()
-        XCTAssertTrue(waitForDisappearance(button(containing: "Load products from receipts")), "the card is gone once nothing is left")
+        XCTAssertTrue(waitForDisappearance(button(containing: "Load from receipts")), "the card is gone once nothing is left")
     }
 
     private func waitForDisappearance(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
