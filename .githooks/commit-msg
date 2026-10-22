@@ -1,0 +1,11 @@
+#!/bin/sh
+# Removes any "Co-Authored-By: Claude/Anthropic" trailer from the commit message.
+# Enabled with: git config core.hooksPath .githooks   (done once per clone; see CONTRIBUTING.md)
+f="$1"
+[ -f "$f" ] || exit 0
+tmp=$(mktemp) || exit 0
+grep -viE '^[[:space:]]*co-authored-by:.*(claude|anthropic)' "$f" > "$tmp" || true
+# drop trailing blank lines left behind
+sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$tmp" > "$f" 2>/dev/null || cp "$tmp" "$f"
+rm -f "$tmp"
+exit 0

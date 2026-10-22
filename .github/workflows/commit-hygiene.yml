@@ -1,0 +1,34 @@
+name: commit hygiene
+
+# Fails when a commit message carries a Claude / Anthropic co-author trailer.
+# Local protection: .githooks/commit-msg (enable with: git config core.hooksPath .githooks).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  no-ai-coauthor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reject Claude / Anthropic co-author trailers
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            range="origin/${{ github.base_ref }}..HEAD"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+            git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null || range="${{ github.sha }}"
+          fi
+          bad=$(git log --format='%h %s%n%B' "$range" | grep -iE '^[[:space:]]*co-authored-by:.*(claude|anthropic)' || true)
+          if [ -n "$bad" ]; then
+            echo "Commit messages contain an AI co-author trailer:"
+            echo "$bad"
+            exit 1
+          fi

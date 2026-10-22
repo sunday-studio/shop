@@ -38,3 +38,15 @@ The GT America font files in this repository are a separate trial licence from G
 ## For the maintainer
 
 Setup for the signing bot is in [docs/cla-setup.md](docs/cla-setup.md).
+
+## Commit messages
+
+Commit messages describe the change in plain words and carry no AI co-author trailer
+("Co-Authored-By: Claude ..." and similar). Enable the repository's commit-msg hook once per clone,
+which strips such lines automatically:
+
+```
+git config core.hooksPath .githooks
+```
+
+CI (`commit-hygiene`) fails a push or pull request whose commits still carry one.
